@@ -1,0 +1,74 @@
+# 网关Http服务器配置
+[HttpServer]
+debug = true
+address = "0.0.0.0"
+port = 8080
+body-limit = "100K"
+version-header = "X-Version"
+tls-cret-file = ""
+tls-key-file = ""
+[HttpServer.BasicAuth]
+username = "yongjia.chen"
+
+# Endpoint元数据配置中心
+[Registry]
+# 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
+registry = "active"
+# ZK服务配置中心地址，支持,分多个地址列表
+address = "tx.devserver.net:2181"
+
+# DubboExange配置参数
+[Exchanges.DUBBO]
+cluster = "failover"
+
+# JWT验证配置
+[JsonWebTokenVerification]
+disable = false
+type = "JWTVerification"
+[JsonWebTokenVerification.InitConfig]
+# Required: Http请求中Token的Header键名。默认: Authorization
+token-header = "Authorization"
+# Required：全局JWT密钥。如果未提供JWT密钥接口，将使用此密钥验证JWT
+secret-default = "chunMianNOjueXia0,chuchuWenT1NiaO"
+# Optional: JWT密钥缓存大小和时间（分钟）
+secret-cache-size = 1000
+secret-cache-expire = 30
+# Optional: 指定获取JWT密钥的Dubbo接口。
+# 当interface非空时生效，接口定义：getPrivateJwtSecret(Map<String, Object>)
+verification-uri = "foo.bar.JWTService"
+verification-method = "getPrivateJwtSecret"
+
+
+# Http后端JWT验证配置
+[HttpJsonWebTokenVerification]
+disable = false
+type = "JWTVerification"
+[HttpJsonWebTokenVerification.InitConfig]
+# Required: Http请求中Token的Header键名。默认: Authorization
+token-header = "form:Authorization"
+# Required：全局JWT密钥。如果未提供JWT密钥接口，将使用此密钥验证JWT
+secret-default = "aabbccdd"
+# Optional: JWT密钥缓存大小和时间（分钟）
+secret-cache-size = 1000
+secret-cache-expire = 30
+# Optional: 指定获取JWT密钥的Dubbo接口。
+# 当interface非空时生效，接口定义：getPrivateJwtSecret(Map<String, Object>)
+verification-uri = "http://foo.bar.com:8080/jwt"
+verification-method = "POST"
+
+
+# 访问权限验证
+[PermissionVerification]
+disable = false
+type = "PermissionVerification"
+[PermissionVerification.InitConfig]
+# 访问Subject在JWT数据中的Key
+subject-jwt-key = "uid"
+# Optional: 指定权限验收Dubbo接口。
+# 当interface非空时生效，接口定义：verify(String uid, String method, String pattern)
+verification-uri = ""
+verification-method = "verify"
+
+# 日志配置
+[Logger]
+level = "debug"
