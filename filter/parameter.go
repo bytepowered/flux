@@ -62,6 +62,8 @@ func _resolve(classType string, genericTypes []string, val interface{}) (interfa
 func _lookup(arg flux.Argument, ctx flux.Context) interface{} {
 	request := ctx.RequestReader()
 	switch arg.HttpScope {
+	case flux.ScopeQuery:
+		return request.ParamInQuery(arg.HttpName)
 	case flux.ScopePath:
 		return request.ParamInPath(arg.HttpName)
 	case flux.ScopeParam:
@@ -72,11 +74,13 @@ func _lookup(arg flux.Argument, ctx flux.Context) interface{} {
 		}
 	case flux.ScopeHeader:
 		return request.Header(arg.HttpName)
+	case flux.ScopeForm:
+		return request.ParamInForm(arg.HttpName)
+	case flux.ScopeAttrs:
+		return ctx.AttrValues()
 	case flux.ScopeAttr:
 		value, _ := ctx.AttrValue(arg.HttpName)
 		return value
-	case flux.ScopeAttributes:
-		return ctx.AttrValues()
 	case flux.ScopeAuto:
 		fallthrough
 	default:

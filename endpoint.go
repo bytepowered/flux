@@ -14,16 +14,20 @@ const (
 const (
 	// 自动查找数据源
 	ScopeAuto = "AUTO"
-	// 从动态Path参数中获取
-	ScopePath = "PATH"
-	// 只从Query和Form表单参数参数列表中读取
-	ScopeParam = "PARAM"
-	// 只从Header参数中读取
-	ScopeHeader = "HEADER"
 	// 获取Http Attributes的单个参数
 	ScopeAttr = "ATTR"
 	// 获取Http Attributes的Map结果
-	ScopeAttributes = "ATTRIBUTES"
+	ScopeAttrs = "ATTRS"
+	// 只从Form表单参数参数列表中读取
+	ScopeForm = "FORM"
+	// 只从Header参数中读取
+	ScopeHeader = "HEADER"
+	// 只从Query和Form表单参数参数列表中读取
+	ScopeParam = "PARAM"
+	// 从动态Path参数中获取
+	ScopePath = "PATH"
+	// 从Query参数中获取
+	ScopeQuery = "QUERY"
 )
 
 const (
