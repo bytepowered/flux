@@ -30,7 +30,7 @@ func (parameterFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 
 func resolve(arguments []flux.Argument, ctx flux.Context) error {
 	for _, p := range arguments {
-		if flux.ArgumentTypePrimary == p.ArgType {
+		if flux.ArgumentTypePrimitive == p.ArgType {
 			raw := _lookup(p, ctx)
 			if v, err := _resolve(p.TypeClass, p.TypeGeneric, raw); nil != err {
 				logger.Warnf("解析参数错误, class: %s, generic: %s, value: %+v, err: ", p.TypeClass, p.TypeGeneric, raw, err)

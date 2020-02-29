@@ -32,7 +32,7 @@ const (
 
 const (
 	// 原始参数类型：int,long...
-	ArgumentTypePrimary = "PRIMARY"
+	ArgumentTypePrimitive = "PRIMITIVE"
 	// 复杂参数类型：POJO
 	ArgumentTypeComplex = "COMPLEX"
 )
@@ -48,7 +48,7 @@ const (
 type (
 	// Argument 定义Endpoint的参数结构元数据
 	Argument struct {
-		TypeClass   string     `json:"typeName"`    // 参数类型
+		TypeClass   string     `json:"typeClass"`    // 参数类型
 		TypeGeneric []string   `json:"typeGeneric"` // 泛型类型
 		ArgName     string     `json:"argName"`     // 参数名称
 		ArgType     string     `json:"argType"`     // 参数结构类型：字段、POJO
@@ -71,7 +71,7 @@ type (
 		UpstreamHost   string     `json:"upstreamHost"`   // 定义Upstream侧的Host
 		UpstreamUri    string     `json:"upstreamUri"`    // 定义Upstream侧的URL
 		UpstreamMethod string     `json:"upstreamMethod"` // 定义Upstream侧的方法
-		HttpPattern    string     `json:"httpUri"`        // 映射Http侧的UriPattern
+		HttpPattern    string     `json:"httpPattern"`    // 映射Http侧的UriPattern
 		HttpMethod     string     `json:"httpMethod"`     // 映射Http侧的Method
 		Arguments      []Argument `json:"arguments"`      // 参数结构
 	}

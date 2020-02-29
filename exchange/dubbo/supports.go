@@ -14,7 +14,7 @@ func assemble(arguments []flux.Argument) (types []string, values []interface{}) 
 	values = make([]interface{}, size)
 	for i, arg := range arguments {
 		types[i] = arg.TypeClass
-		if flux.ArgumentTypePrimary == arg.ArgType {
+		if flux.ArgumentTypePrimitive == arg.ArgType {
 			values[i] = arg.ArgValue.Value()
 		} else if flux.ArgumentTypeComplex == arg.ArgType {
 			values[i] = argToMap(arg)
@@ -29,7 +29,7 @@ func argToMap(arg flux.Argument) map[string]interface{} {
 	m := make(map[string]interface{}, 1+len(arg.Fields))
 	m["class"] = arg.TypeClass
 	for _, field := range arg.Fields {
-		if flux.ArgumentTypePrimary == field.ArgType {
+		if flux.ArgumentTypePrimitive == field.ArgType {
 			m[field.ArgName] = field.ArgValue.Value()
 		} else if flux.ArgumentTypeComplex == arg.ArgType {
 			m[field.ArgName] = argToMap(field)
