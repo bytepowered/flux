@@ -3,6 +3,13 @@ package flux
 // StringMap 定义一个KV字典
 type StringMap map[string]interface{}
 
+// Build version info
+type BuildInfo struct {
+	CommitId string
+	Version  string
+	Date     string
+}
+
 type (
 	// Factory 用于动态初始化
 	Factory func() interface{}

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/bootstrap"
-	"github.com/bytepowered/flux/internal"
 )
 
 var (
@@ -12,5 +12,5 @@ var (
 )
 
 func main() {
-	bootstrap.Run(internal.BuildVersion{CommitId: GitCommit, Version: Version, Date: BuildDate})
+	bootstrap.Run(flux.BuildInfo{CommitId: GitCommit, Version: Version, Date: BuildDate})
 }

@@ -1,11 +1,12 @@
 package bootstrap
 
 import (
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/extension"
 	"github.com/bytepowered/flux/internal"
 )
 
-func Run(ver internal.BuildVersion) {
+func Run(ver flux.BuildInfo) {
 	//init logger
 	logger, err := internal.InitLogger()
 	if err != nil && logger != nil {

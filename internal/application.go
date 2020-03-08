@@ -45,7 +45,9 @@ func init() {
 }
 
 const (
-	DefaultServerName = "FluxGO"
+	DefaultServerName = "Flux-GO"
+	FluxBanner        = "Flux-GO // Fast gateway for microservice: dubbo, grpc, http"
+	FluxVersion       = "Version // git.commit=%s, build.version=%s, build.date=%s"
 )
 
 const (
@@ -112,7 +114,7 @@ func (a *Application) Init() error {
 }
 
 // Start server
-func (a *Application) Start(version BuildVersion) error {
+func (a *Application) Start(version flux.BuildInfo) error {
 	logger.Info(FluxBanner)
 	logger.Infof(FluxVersion, version.CommitId, version.Version, version.Date)
 	if err := a.dispatcher.Startup(); nil != err {
