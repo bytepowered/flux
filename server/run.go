@@ -1,4 +1,4 @@
-package bootstrap
+package server
 
 import (
 	"github.com/bytepowered/flux"
@@ -10,17 +10,16 @@ func Run(ver flux.BuildInfo) {
 	//init logger
 	logger, err := internal.InitLogger()
 	if err != nil && logger != nil {
-		logger.Panicf("Application logger init: %v", err)
+		logger.Panicf("FluxServer logger init: %v", err)
 	} else {
 		extension.SetLogger(logger)
 	}
 	if nil == logger {
 		panic("logger is nil")
 	}
-	extension.LoadConfig()
-	app := internal.NewApplication()
-	if err := app.Init(); nil != err {
-		logger.Panicf("Application init: %v", err)
+	app := NewFluxServer()
+	if err := app.Init(extension.LoadConfig()); nil != err {
+		logger.Panicf("FluxServer init: %v", err)
 	}
 	defer app.Shutdown()
 	logger.Error(app.Start(ver))

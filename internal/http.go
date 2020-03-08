@@ -17,7 +17,7 @@ const (
 
 type HttpAdapter int
 
-func (HttpAdapter) pattern(uri string) string {
+func (HttpAdapter) Pattern(uri string) string {
 	// /api/{userId} -> /api/:userId
 	replaced := strings.Replace(uri, "}", "", -1)
 	if len(replaced) < len(uri) {
@@ -27,20 +27,20 @@ func (HttpAdapter) pattern(uri string) string {
 	}
 }
 
-func (a HttpAdapter) error(c *context, invokeError *flux.InvokeError) error {
+func (a HttpAdapter) WriteError(c *Context, invokeError *flux.InvokeError) error {
 	resp := _setupResponse(c, invokeError.StatusCode)
-	mdata := map[string]string{
+	data := map[string]string{
 		"requestId": c.RequestId(),
 		"status":    "error",
 		"message":   invokeError.Message,
 	}
 	if nil != invokeError.Internal {
-		mdata["error"] = invokeError.Internal.Error()
+		data["error"] = invokeError.Internal.Error()
 	}
-	return _serialize(_formatter(), c, resp, mdata)
+	return _serialize(_formatter(), c, resp, data)
 }
 
-func (a HttpAdapter) response(c *context) error {
+func (a HttpAdapter) WriteResponse(c *Context) error {
 	resp := _setupResponse(c, c.response.status)
 	body := c.response.Body()
 	if r, ok := body.(io.Reader); ok {
@@ -57,7 +57,7 @@ func (a HttpAdapter) response(c *context) error {
 	}
 }
 
-func _serialize(encoder flux.Serializer, c *context, resp *echo.Response, data interface{}) error {
+func _serialize(encoder flux.Serializer, c *Context, resp *echo.Response, data interface{}) error {
 	if bytes, err := encoder.Marshal(data); nil != err {
 		return _endErrorTo(encoder, c, resp, &flux.InvokeError{
 			StatusCode: flux.StatusServerError,
@@ -73,7 +73,7 @@ func _formatter() flux.Serializer {
 	return extension.GetSerializer(extension.TypeNameSerializerDefault)
 }
 
-func _endErrorTo(serializer flux.Serializer, c *context, resp *echo.Response, ierr *flux.InvokeError) error {
+func _endErrorTo(serializer flux.Serializer, c *Context, resp *echo.Response, ierr *flux.InvokeError) error {
 	data := map[string]string{
 		"requestId": c.RequestId(),
 		"status":    "error",
@@ -97,11 +97,11 @@ func _endWriteTo(resp *echo.Response, bytes []byte) error {
 	return err
 }
 
-func _setupResponse(c *context, status int) *echo.Response {
+func _setupResponse(c *Context, status int) *echo.Response {
 	resp := c.echo.Response()
 	resp.Status = status
 	headers := resp.Header()
-	headers.Set(echo.HeaderServer, DefaultServerName)
+	headers.Set(echo.HeaderServer, "FluxGo")
 	headers.Set(echo.HeaderXRequestID, c.RequestId())
 	headers.Set("Content-Type", httpContentTypeJson)
 	// 允许Override默认Header

@@ -5,6 +5,12 @@ import (
 	"sync"
 )
 
+func NewMultiVersionEndpoint() *MultiVersionEndpoint {
+	return &MultiVersionEndpoint{
+		data: new(sync.Map),
+	}
+}
+
 // Multi version Endpoint
 type MultiVersionEndpoint struct {
 	data *sync.Map

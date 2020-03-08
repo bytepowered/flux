@@ -1,4 +1,4 @@
-package internal
+package server
 
 import (
 	"github.com/bytepowered/flux"
@@ -7,16 +7,13 @@ import (
 	"github.com/bytepowered/flux/exchange/http"
 	"github.com/bytepowered/flux/extension"
 	"github.com/bytepowered/flux/filter"
+	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/registry"
-	"github.com/bytepowered/flux/serializer"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 func init() {
-	// Http Middleware
-	extension.AddHttpMiddleware(middleware.CORS())
 	// serializer
-	defaultSerializer := serializer.NewJsonSerializer()
+	defaultSerializer := internal.NewJsonSerializer()
 	extension.SetSerializer(extension.TypeNameSerializerDefault, defaultSerializer)
 	extension.SetSerializer(extension.TypeNameSerializerJson, defaultSerializer)
 	// Registry

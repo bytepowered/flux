@@ -13,9 +13,9 @@ type configurable struct {
 	Factory flux.Factory
 }
 
-func dynloadConfig() []configurable {
+func dynloadConfig(globals flux.Config) []configurable {
 	out := make([]configurable, 0)
-	for name, v := range extension.GetGlobalConfig() {
+	for name, v := range globals {
 		m, is := v.(map[string]interface{})
 		if !is {
 			continue

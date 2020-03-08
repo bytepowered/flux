@@ -16,11 +16,11 @@ type Dispatcher struct {
 	shutdowns []flux.Shutdowner
 }
 
-func newDispatcher() *Dispatcher {
+func NewDispatcher() *Dispatcher {
 	return &Dispatcher{}
 }
 
-func (d *Dispatcher) Init() error {
+func (d *Dispatcher) Init(globals flux.Config) error {
 	logger.Infof("Dispatcher initialing")
 	register := func(ref interface{}, config flux.Config) error {
 		if init, ok := ref.(flux.Initializer); ok {
@@ -37,7 +37,7 @@ func (d *Dispatcher) Init() error {
 		return nil
 	}
 	// 从配置中动态加载的组件
-	for _, item := range dynloadConfig() {
+	for _, item := range dynloadConfig(globals) {
 		ref := item.Factory()
 		logger.Infof("Load component, name: %s, type: %s, inst.type: %T", item.Name, item.Type, ref)
 		if err := register(ref, item.Config); nil != err {
@@ -48,16 +48,17 @@ func (d *Dispatcher) Init() error {
 	// 静态注册的内核组件
 
 	// Registry
-	if registry, err := activeRegistry(); nil != err {
+	registryConfig := globals.Config(flux.KeyConfigRootRegistry)
+	if registry, err := activeRegistry(registryConfig); nil != err {
 		return err
 	} else {
 		d.registry = registry
-		if err := register(registry, extension.GetSectionConfig(flux.KeyConfigRootRegistry)); nil != err {
+		if err := register(registry, registryConfig); nil != err {
 			return err
 		}
 	}
 	// Exchanges
-	exchangeConfig := extension.GetSectionConfig("Exchanges")
+	exchangeConfig := globals.Config("Exchanges")
 	for proto, ex := range extension.Exchanges() {
 		logger.Infof("Load exchange, proto: %s, inst.type: %T", proto, ex)
 		if err := register(ex, exchangeConfig.Config(strings.ToUpper(proto))); nil != err {
@@ -126,8 +127,7 @@ func (d *Dispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.Fi
 	return fi
 }
 
-func activeRegistry() (flux.Registry, error) {
-	config := extension.GetSectionConfig(flux.KeyConfigRootRegistry)
+func activeRegistry(config flux.Config) (flux.Registry, error) {
 	registry := config.StringOrDefault(flux.KeyConfigRegistryProtocol, extension.TypeNameRegistryActive)
 	logger.Infof("Active endpoint registry: %s", registry)
 	if factory, ok := extension.GetRegistryFactory(registry); !ok {

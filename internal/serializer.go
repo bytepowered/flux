@@ -1,4 +1,4 @@
-package serializer
+package internal
 
 import (
 	"github.com/bytepowered/flux"

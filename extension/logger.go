@@ -5,22 +5,22 @@ import (
 )
 
 var (
-	_logger flux.Logger
+	_fluxLogger flux.Logger
 )
 
 // SetLogger ...
 func SetLogger(logger flux.Logger) {
-	_logger = logger
+	_fluxLogger = logger
 }
 
 // GetLogger ...
 func GetLogger() flux.Logger {
-	return _logger
+	return _fluxLogger
 }
 
 // SetLoggerLevel ...
 func SetLoggerLevel(level string) bool {
-	if l, ok := _logger.(OpsLogger); ok {
+	if l, ok := _fluxLogger.(OpsLogger); ok {
 		l.SetLoggerLevel(level)
 		return true
 	}
