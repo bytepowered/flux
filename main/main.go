@@ -12,5 +12,6 @@ var (
 )
 
 func main() {
+	server.InitDefaultLogger()
 	server.Run(flux.BuildInfo{CommitId: GitCommit, Version: Version, Date: BuildDate})
 }
