@@ -165,7 +165,7 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 			if isNew {
 				logger.Infof("Register HTTP routing: %s %s", event.HttpMethod, pattern)
-				fs.httpServer.Add(event.HttpMethod, pattern, fs.generateHttpRouting(vEndpoint))
+				fs.httpServer.Add(event.HttpMethod, pattern, fs.generateRouter(vEndpoint))
 			}
 		case flux.EndpointEventUpdated:
 			logger.Infof("Update HTTP endpoint: %s@%s %s", eEndpoint.Version, event.HttpMethod, pattern)
@@ -188,7 +188,7 @@ func (fs *FluxServer) release(c *internal.Context) {
 	fs.contextPool.Put(c)
 }
 
-func (fs *FluxServer) generateHttpRouting(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
+func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		defer func() {
 			if err := recover(); err != nil {
@@ -218,7 +218,6 @@ func (fs *FluxServer) generateHttpRouting(mvEndpoint *internal.MultiVersionEndpo
 				Internal:   err,
 			})
 		}
-		logger.Infof("Dispatch request, id: %s, endpoint: %s#%s", context.RequestId(), endpoint.HttpMethod, endpoint.HttpPattern)
 		if err := fs.dispatcher.Dispatch(context); nil != err {
 			return fs.httpAdapter.WriteError(context, err)
 		} else {

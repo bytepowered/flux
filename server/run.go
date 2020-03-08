@@ -20,10 +20,12 @@ func InitDefaultLogger() {
 }
 
 func Run(ver flux.BuildInfo) {
-	app := NewFluxServer()
-	if err := app.Init(extension.LoadConfig()); nil != err {
+	fx := NewFluxServer()
+	if err := fx.Init(LoadConfig()); nil != err {
 		logger.Panicf("FluxServer init: %v", err)
 	}
-	defer app.Shutdown()
-	logger.Error(app.Start(ver))
+	if err := fx.Start(ver); nil != err {
+		logger.Error(err)
+	}
+	fx.Shutdown()
 }

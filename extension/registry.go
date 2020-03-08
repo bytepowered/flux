@@ -23,6 +23,7 @@ func SetRegistryFactory(protocol string, factory RegistryFactory) {
 	}
 }
 
+// GetRegistryFactory 根据Protocol协议名，获取Registry的工厂函数
 func GetRegistryFactory(protocol string) (RegistryFactory, bool) {
 	e, ok := _protoNamedRegistryFactories[protocol]
 	return e, ok

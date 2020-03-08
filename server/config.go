@@ -1,7 +1,8 @@
-package extension
+package server
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"sync"
 )
@@ -16,17 +17,17 @@ var (
 	_globalOnce = new(sync.Once)
 )
 
-// GetGlobalConfig 返回全局配置
-func GetGlobalConfig() flux.Config {
+// GlobalConfig 返回全局配置
+func GlobalConfig() flux.Config {
 	return _globals
 }
 
 func LoadConfig() flux.Config {
 	_globalOnce.Do(func() {
 		if data, err := pkg.LoadTomlConfig(ConfigApp); nil != err {
-			GetLogger().Panicf("Config not found: %s", ConfigApp)
+			logger.Panicf("Config not found: %s", ConfigApp)
 		} else {
-			GetLogger().Infof("Using config: %s", ConfigApp)
+			logger.Infof("Using config: %s", ConfigApp)
 			_globals = data
 		}
 	})

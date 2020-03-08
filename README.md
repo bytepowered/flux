@@ -7,12 +7,13 @@
 ```bash
 export APP_LOG_CONF_FILE=./conf.d/log.yml
 export CONF_CONSUMER_FILE_PATH=./conf.d/dubbo.yml
+export CONF_PROVIDER_FILE_PATH=./conf.d/dubbo.yml
 ```
 
 IDE运行
 
 `
-APP_LOG_CONF_FILE=./conf.d/log.yml;CONF_CONSUMER_FILE_PATH=./conf.d/dubbo.yml
+APP_LOG_CONF_FILE=./conf.d/log.yml;CONF_CONSUMER_FILE_PATH=./conf.d/dubbo.yml;CONF_PROVIDER_FILE_PATH=./conf.d/dubbo.yml
 `
 
 ## LICENSE

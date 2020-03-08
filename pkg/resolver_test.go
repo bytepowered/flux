@@ -1,7 +1,6 @@
-package extension
+package pkg
 
 import (
-	"github.com/bytepowered/flux/pkg"
 	"math"
 	"testing"
 )
@@ -50,7 +49,7 @@ var (
 
 func TestSupportedValueToInt(t *testing.T) {
 	for _, ca := range toIntValues {
-		if v, e := pkg.ToInt(ca.input); nil != e {
+		if v, e := ToInt(ca.input); nil != e {
 			t.Errorf("Error, input= %+v, output=%d, error: %s", ca.input, v, e)
 		} else if v != ca.expected {
 			t.Errorf("NotMatch, input=%+v, output=%d, expected=%d", ca.input, v, ca.expected)
@@ -59,7 +58,7 @@ func TestSupportedValueToInt(t *testing.T) {
 }
 
 func TestNotSupportedValueToInt(t *testing.T) {
-	v, e := pkg.ToInt(struct {
+	v, e := ToInt(struct {
 	}{})
 	if nil == e {
 		t.Errorf("ToInt should return error, was, value: %d", v)
@@ -73,13 +72,13 @@ func BenchmarkToInt(b *testing.B) {
 	// goarch: amd64
 	// BenchmarkToInt-4   	68758084	        15.3 ns/op
 	for i := 0; i < b.N; i++ {
-		_, _ = pkg.ToInt64(toIntValues[i%len(toIntValues)].input)
+		_, _ = ToInt64(toIntValues[i%len(toIntValues)].input)
 	}
 }
 
 func TestSupportedValueToFloat(t *testing.T) {
 	for _, ca := range toFloatValues {
-		if v, e := pkg.ToFloat32(ca.input); nil != e {
+		if v, e := ToFloat32(ca.input); nil != e {
 			t.Errorf("Error, input= %+v, output=%f, error: %s", ca.input, v, e)
 		} else if math.Dim(float64(v), float64(ca.expected)) > 0.001 {
 			t.Errorf("NotMatch, input=%+v, output=%f, expected=%f", ca.input, v, ca.expected)
@@ -88,7 +87,7 @@ func TestSupportedValueToFloat(t *testing.T) {
 }
 
 func TestNotSupportedValueToFloat(t *testing.T) {
-	v, e := pkg.ToFloat32(struct {
+	v, e := ToFloat32(struct {
 	}{})
 	if nil == e {
 		t.Errorf("ToFloat should return error, was, value: %f", v)
@@ -102,6 +101,6 @@ func BenchmarkToFloat(b *testing.B) {
 	// goarch: amd64
 	// BenchmarkToFloat-4   	60925686	        19.1 ns/op
 	for i := 0; i < b.N; i++ {
-		_, _ = pkg.ToFloat64(toFloatValues[i%len(toIntValues)].input)
+		_, _ = ToFloat64(toFloatValues[i%len(toIntValues)].input)
 	}
 }

@@ -3,8 +3,8 @@ package filter
 import (
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/pkg"
 )
 
 func NewParameterParsingFilter() flux.Filter {
@@ -52,9 +52,9 @@ func resolve(arguments []flux.Argument, ctx flux.Context) error {
 }
 
 func _resolve(classType string, genericTypes []string, val interface{}) (interface{}, error) {
-	resolver := extension.GetValueResolver(classType)
+	resolver := pkg.GetValueResolver(classType)
 	if nil == resolver {
-		resolver = extension.GetDefaultResolver()
+		resolver = pkg.GetDefaultResolver()
 	}
 	return resolver(classType, genericTypes, val)
 }
