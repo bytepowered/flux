@@ -5,44 +5,16 @@ import (
 	"expvar"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/exchange/dubbo"
-	"github.com/bytepowered/flux/exchange/echoex"
-	"github.com/bytepowered/flux/exchange/http"
 	"github.com/bytepowered/flux/extension"
-	"github.com/bytepowered/flux/filter"
 	_ "github.com/bytepowered/flux/filter"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/registry"
-	"github.com/bytepowered/flux/serializer"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	httplib "net/http"
 	_ "net/http/pprof"
 	"strings"
 	"sync"
 	"time"
 )
-
-func init() {
-	// serializer
-	defaultSerializer := serializer.NewJsonSerializer()
-	extension.SetSerializer(extension.TypeNameSerializerDefault, defaultSerializer)
-	extension.SetSerializer(extension.TypeNameSerializerJson, defaultSerializer)
-	// Registry
-	extension.SetRegistryFactory(extension.TypeNameRegistryActive, registry.ZookeeperRegistryFactory)
-	extension.SetRegistryFactory(extension.TypeNameRegistryZookeeper, registry.ZookeeperRegistryFactory)
-	extension.SetRegistryFactory(extension.TypeNameRegistryEcho, registry.EchoRegistryFactory)
-	// exchanges
-	extension.SetExchange(flux.ProtocolEcho, echoex.NewEchoExchange())
-	extension.SetExchange(flux.ProtocolHttp, http.NewHttpExchange())
-	extension.SetExchange(flux.ProtocolDubbo, dubbo.NewDubboExchange())
-	// filters
-	extension.SetFactory(filter.TypeNameFilterJWTVerification, filter.JwtVerificationFilterFactory)
-	extension.SetFactory(filter.TypeNameFilterPermissionVerification, filter.PermissionVerificationFactory)
-	extension.SetFactory(filter.TypeNameFilterJWTVerification, filter.JwtVerificationFilterFactory)
-	// global filters
-	extension.SetGlobalFilter(filter.NewParameterParsingFilter())
-}
 
 const (
 	DefaultServerName = "Flux-GO"
@@ -52,13 +24,11 @@ const (
 
 const (
 	defaultHttpVersionHeader = "X-Version"
-	defaultHttpBodyLimit     = "100K"
 	defaultHttpVersionValue  = "v1"
 )
 
 const (
 	configHttpSectionName   = "HttpServer"
-	configHttpBodyLimit     = "body-limit"
 	configHttpVersionHeader = "version-header"
 	configHttpDebugEnable   = "debug"
 	configHttpTlsCertFile   = "tls-cert-file"
@@ -104,8 +74,9 @@ func (a *Application) Init() error {
 	a.httpServer = echo.New()
 	a.httpServer.HideBanner = true
 	a.httpServer.HidePort = true
-	a.httpServer.Use(middleware.CORS())
-	a.httpServer.Use(middleware.BodyLimit(httpConfig.StringOrDefault(configHttpBodyLimit, defaultHttpBodyLimit)))
+	// Http拦截器
+	a.httpServer.Pre(extension.HttpInterceptors()...)
+	a.httpServer.Use(extension.HttpMiddlewares()...)
 	// Http debug features
 	if httpConfig.BooleanOrDefault(configHttpDebugEnable, false) {
 		a.enabledDebugFeatures(httpConfig)
