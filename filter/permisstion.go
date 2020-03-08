@@ -26,20 +26,22 @@ var (
 	}
 )
 
-type permissionConfig struct {
-	verificationProtocol string
-	verificationMethod   string
-	verificationUri      string
-}
+type PermissionProvider func(subjectId, method, uri string) (bool, error)
 
 func PermissionVerificationFactory() interface{} {
 	return new(permissionFilter)
 }
 
+func NewPermissionVerificationWith(provider PermissionProvider) flux.Filter {
+	return &permissionFilter{
+		provider: provider,
+	}
+}
+
 // Permission Filter，负责读取JWT的Subject字段，调用指定Dubbo接口判断权限
 type permissionFilter struct {
 	disabled  bool
-	config    permissionConfig
+	provider  PermissionProvider
 	permCache lakego.Cache
 }
 
@@ -51,7 +53,7 @@ func (p *permissionFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
-		if err := p.verifyPermission(ctx); nil != err {
+		if err := p.verify(ctx); nil != err {
 			return err
 		} else {
 			return next(ctx)
@@ -65,12 +67,26 @@ func (p *permissionFilter) Init(config flux.Config) error {
 		logger.Infof("Permission filter was DISABLED!!")
 		return nil
 	}
-	p.config = permissionConfig{
-		verificationProtocol: config.String(keyConfigVerificationProtocol),
-		verificationUri:      config.String(keyConfigVerificationUri),
-		verificationMethod:   config.String(keyConfigVerificationMethod),
+	if !config.IsEmpty() && p.provider == nil {
+		p.provider = func() PermissionProvider {
+			proto := config.String(keyConfigVerificationProtocol)
+			upsHost := config.String(keyConfigVerificationHost)
+			upsUri := config.String(keyConfigVerificationUri)
+			upsMethod := config.String(keyConfigVerificationMethod)
+			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", proto, upsMethod, upsHost, upsHost)
+			return func(subjectId, method, pattern string) (bool, error) {
+				switch strings.ToUpper(proto) {
+				case flux.ProtocolDubbo:
+					return p.loadByExchange(flux.ProtocolDubbo, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+				case flux.ProtocolHttp:
+					return p.loadByExchange(flux.ProtocolHttp, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+				default:
+					return false, fmt.Errorf("unknown verification protocol: %s", proto)
+				}
+			}
+		}()
 	}
-	logger.Infof("Permission filter initializing, config: %+v", p.config)
+	logger.Infof("Permission filter initializing, config: %+v", config)
 	// TODO 检查参数
 	permCacheExpiration := config.Int64OrDefault(keyConfigCacheExpiration, defValueCacheExpiration)
 	p.permCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(permCacheExpiration)))
@@ -81,7 +97,7 @@ func (p *permissionFilter) Order() int {
 	return OrderFilterPermissionVerification
 }
 
-func (p *permissionFilter) verifyPermission(ctx flux.Context) *flux.InvokeError {
+func (p *permissionFilter) verify(ctx flux.Context) *flux.InvokeError {
 	jwtSubjectId, ok := ctx.AttrValue(flux.XJwtSubject)
 	if !ok {
 		return ErrPermissionSubjectNotFound
@@ -91,14 +107,7 @@ func (p *permissionFilter) verifyPermission(ctx flux.Context) *flux.InvokeError 
 	permKey := fmt.Sprintf("%s@%s#%s", jwtSubjectId, endpoint.HttpMethod, endpoint.HttpPattern)
 	allowed, err := p.permCache.GetOrLoad(permKey, func(_ lakego.Key) (lakego.Value, error) {
 		strSubId := pkg.ToString(jwtSubjectId)
-		switch strings.ToUpper(p.config.verificationProtocol) {
-		case flux.ProtocolDubbo:
-			return p.loadAccessPermission(flux.ProtocolDubbo, strSubId, endpoint.HttpMethod, endpoint.HttpPattern)
-		case flux.ProtocolHttp:
-			return p.loadAccessPermission(flux.ProtocolHttp, strSubId, endpoint.HttpMethod, endpoint.HttpPattern)
-		default:
-			return nil, fmt.Errorf("unknown verification protocol: %s", p.config.verificationProtocol)
-		}
+		return p.provider(strSubId, endpoint.HttpMethod, endpoint.HttpPattern)
 	})
 	if err == nil {
 		if v, ok := allowed.(bool); ok && v {
@@ -115,15 +124,18 @@ func (p *permissionFilter) verifyPermission(ctx flux.Context) *flux.InvokeError 
 	}
 }
 
-func (p *permissionFilter) loadAccessPermission(proto string, subjectId, method, pattern string) (bool, error) {
+func (p *permissionFilter) loadByExchange(proto string,
+	upsHost, upsMethod, upsUri string,
+	reqSubjectId, reqMethod, reqPattern string) (bool, error) {
 	exchange, _ := extension.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
-		UpstreamMethod: p.config.verificationMethod,
-		UpstreamUri:    p.config.verificationUri,
+		UpstreamHost:   upsHost,
+		UpstreamMethod: upsMethod,
+		UpstreamUri:    upsUri,
 		Arguments: []flux.Argument{
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "subjectId", ArgValue: flux.NewWrapValue(subjectId)},
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "method", ArgValue: flux.NewWrapValue(method)},
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "pattern", ArgValue: flux.NewWrapValue(pattern)},
+			{TypeClass: pkg.JavaLangStringClassName, ArgName: "subjectId", ArgValue: flux.NewWrapValue(reqSubjectId)},
+			{TypeClass: pkg.JavaLangStringClassName, ArgName: "method", ArgValue: flux.NewWrapValue(reqMethod)},
+			{TypeClass: pkg.JavaLangStringClassName, ArgName: "pattern", ArgValue: flux.NewWrapValue(reqPattern)},
 		},
 	}, nil); nil != err {
 		return false, err

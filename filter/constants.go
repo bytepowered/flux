@@ -11,6 +11,7 @@ const (
 	keyConfigCacheExpiration      = "cache-expiration"
 	keyConfigDisabled             = "disabled"
 	keyConfigVerificationProtocol = "verification-protocol"
+	keyConfigVerificationHost     = "verification-host"
 	keyConfigVerificationUri      = "verification-uri"
 	keyConfigVerificationMethod   = "verification-method"
 	keyConfigJwtSubjectKey        = "jwt-subject-key"
