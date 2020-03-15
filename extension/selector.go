@@ -10,7 +10,7 @@ const (
 )
 
 var (
-	_hostedSelectors map[string][]flux.Selector
+	_hostedSelectors = make(map[string][]flux.Selector)
 	_rwLock          sync.RWMutex
 )
 
@@ -31,18 +31,18 @@ func AddHostedSelector(host string, s flux.Selector) {
 func FindSelectors(host string) []flux.Selector {
 	defer _rwLock.RUnlock()
 	_rwLock.RLock()
-	if l, ok := _hostedSelectors[host]; ok {
-		return _selectors(l)
+	if hosted, ok := _hostedSelectors[host]; ok {
+		return _selectors(hosted)
 	} else if anyHost != host {
-		if l, ok := _hostedSelectors[anyHost]; ok {
-			return _selectors(l)
+		if any, ok := _hostedSelectors[anyHost]; ok {
+			return _selectors(any)
 		}
 	}
 	return nil
 }
 
-func _selectors(l []flux.Selector) []flux.Selector {
-	c := make([]flux.Selector, len(l))
-	copy(c, l)
-	return c
+func _selectors(src []flux.Selector) []flux.Selector {
+	out := make([]flux.Selector, len(src))
+	copy(out, src)
+	return out
 }
