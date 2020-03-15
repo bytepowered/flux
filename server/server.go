@@ -6,6 +6,7 @@ import (
 	"expvar"
 	"fmt"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/extension"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/labstack/echo/v4"
@@ -161,17 +162,17 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 		}
 		switch event.Type {
 		case flux.EndpointEventAdded:
-			logger.Infof("Add HTTP endpoint: %s@%s %s", eEndpoint.Version, event.HttpMethod, pattern)
+			logger.Infof("Endpoint new: %s@%s:%s", eEndpoint.Version, event.HttpMethod, pattern)
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 			if isNew {
-				logger.Infof("Register HTTP routing: %s %s", event.HttpMethod, pattern)
+				logger.Infof("HTTP router: %s:%s", event.HttpMethod, pattern)
 				fs.httpServer.Add(event.HttpMethod, pattern, fs.generateRouter(vEndpoint))
 			}
 		case flux.EndpointEventUpdated:
-			logger.Infof("Update HTTP endpoint: %s@%s %s", eEndpoint.Version, event.HttpMethod, pattern)
+			logger.Infof("Endpoint update: %s@%s:%s", eEndpoint.Version, event.HttpMethod, pattern)
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 		case flux.EndpointEventRemoved:
-			logger.Infof("Remove HTTP endpoint: %s %s", event.HttpMethod, pattern)
+			logger.Infof("Endpoint removed: %s:%s", event.HttpMethod, pattern)
 			vEndpoint.Delete(eEndpoint.Version)
 		}
 	}
@@ -258,4 +259,28 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 			return c.JSONBlob(200, data)
 		}
 	}, authMiddleware)
+}
+
+func (*FluxServer) SetExtendExchange(protoName string, exchange flux.Exchange) {
+	extension.SetExchange(protoName, exchange)
+}
+
+func (*FluxServer) SetExtendFactory(typeName string, exchange flux.Exchange) {
+	extension.SetExchange(typeName, exchange)
+}
+
+func (*FluxServer) SetExtendGlobalFilter(filter flux.Filter) {
+	extension.SetGlobalFilter(filter)
+}
+
+func (*FluxServer) SetExtendLogger(logger flux.Logger) {
+	extension.SetLogger(logger)
+}
+
+func (*FluxServer) SetExtendRegistryFactory(protoName string, factory extension.RegistryFactory) {
+	extension.SetRegistryFactory(protoName, factory)
+}
+
+func (*FluxServer) SetExtendSerializer(typeName string, serializer flux.Serializer) {
+	extension.SetSerializer(typeName, serializer)
 }

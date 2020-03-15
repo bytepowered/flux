@@ -6,6 +6,7 @@ import (
 	"github.com/bytepowered/flux/extension"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"os"
 	"strings"
 	"time"
 )
@@ -77,8 +78,10 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 
 func (d *Dispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
 	// Debug echo registry
-	if fac, ok := extension.GetRegistryFactory(extension.TypeNameRegistryEcho); ok {
-		go func() { pkg.Silently(fac().WatchEvents(events)) }()
+	if "dev" == os.Getenv("runtime.env") {
+		if f, ok := extension.GetRegistryFactory(extension.TypeNameRegistryEcho); ok {
+			go func() { pkg.Silently(f().WatchEvents(events)) }()
+		}
 	}
 	return d.registry.WatchEvents(events)
 }
