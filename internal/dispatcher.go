@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/extension"
@@ -99,9 +100,9 @@ func (d *Dispatcher) Startup() error {
 	return nil
 }
 
-func (d *Dispatcher) Shutdown() error {
+func (d *Dispatcher) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(d.hooksShutdown) {
-		if err := shutdown.Shutdown(); nil != err {
+		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
 		}
 	}

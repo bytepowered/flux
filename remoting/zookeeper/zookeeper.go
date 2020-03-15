@@ -1,6 +1,7 @@
 package zookeeper
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/bytepowered/flux"
@@ -55,7 +56,7 @@ func (r *ZkRetriever) Startup() error {
 	return nil
 }
 
-func (r *ZkRetriever) Shutdown() error {
+func (r *ZkRetriever) Shutdown(ctx context.Context) error {
 	select {
 	case <-r.quit:
 		return nil

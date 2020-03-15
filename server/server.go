@@ -1,7 +1,7 @@
 package server
 
 import (
-	stdContext "context"
+	context "context"
 	"encoding/json"
 	"expvar"
 	"fmt"
@@ -16,7 +16,6 @@ import (
 	_ "net/http/pprof"
 	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -117,20 +116,14 @@ func (fs *FluxServer) Start(version flux.BuildInfo) error {
 }
 
 // Shutdown to cleanup resources
-func (fs *FluxServer) Shutdown() {
+func (fs *FluxServer) Shutdown(ctx context.Context) error {
+	logger.Info("HttpServer shutdown...")
 	// Stop http server
-	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 10*time.Second)
-	defer cancel()
-	_ = fs.httpServer.Shutdown(ctx)
-	if ctx.Err() == stdContext.DeadlineExceeded {
-		logger.Error("HTTP Server forcefully stopped after timeout")
-	} else {
-		logger.Info("HTTP Server gracefully stopped")
+	if err := fs.httpServer.Shutdown(ctx); nil != err {
+		return err
 	}
 	// Stop dispatcher
-	if err := fs.dispatcher.Shutdown(); nil != err {
-		logger.Error("Dispatcher shutdown:", err)
-	}
+	return fs.dispatcher.Shutdown(ctx)
 }
 
 // AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
@@ -141,6 +134,11 @@ func (fs *FluxServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
 // AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
 func (fs *FluxServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
 	fs.httpMiddlewares = append(fs.httpMiddlewares, m)
+}
+
+// AddHttpHandler 添加Http处理接口。
+func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	fs.httpServer.Add(method, pattern, h, m...)
 }
 
 func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {

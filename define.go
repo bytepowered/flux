@@ -1,5 +1,7 @@
 package flux
 
+import "context"
+
 // StringMap 定义一个KV字典
 type StringMap map[string]interface{}
 
@@ -19,7 +21,7 @@ type (
 	}
 	// Shutdowner 用于介入服务停止生命周期的Hook，通常与 Orderer 接口一起使用。
 	Shutdowner interface {
-		Shutdown() error // 当服务停止时，调用此函数
+		Shutdown(ctx context.Context) error // 当服务停止时，调用此函数
 	}
 	// Initializer 用于介入服务停止生命周期的Hook，通常与 Orderer 接口一起使用。
 	Initializer interface {

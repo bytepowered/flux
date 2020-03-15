@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/extension"
@@ -66,9 +67,9 @@ func (r *zkRegistry) Startup() error {
 	return r.retriever.Startup()
 }
 
-func (r *zkRegistry) Shutdown() error {
+func (r *zkRegistry) Shutdown(ctx context.Context) error {
 	logger.Info("Shutdown registry")
-	return r.retriever.Shutdown()
+	return r.retriever.Shutdown(ctx)
 }
 
 func toFluxEvent(zkData []byte, evtType remoting.EventType) (fxEvt flux.EndpointEvent, ok bool) {
