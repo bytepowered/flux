@@ -97,6 +97,10 @@ func (p *permissionFilter) Order() int {
 	return OrderFilterPermissionVerification
 }
 
+func (*permissionFilter) Id() string {
+	return TypeNameFilterPermissionVerification
+}
+
 func (p *permissionFilter) verify(ctx flux.Context) *flux.InvokeError {
 	jwtSubjectId, ok := ctx.AttrValue(flux.XJwtSubject)
 	if !ok {

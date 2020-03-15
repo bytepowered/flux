@@ -51,6 +51,10 @@ func (c *Context) RequestUri() string {
 	return c.echo.Request().RequestURI
 }
 
+func (c *Context) RequestPath() string {
+	return c.echo.Request().URL.Path
+}
+
 func (c *Context) RequestId() string {
 	return c.requestId
 }

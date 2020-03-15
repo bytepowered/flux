@@ -29,8 +29,8 @@ func ZookeeperRegistryFactory() flux.Registry {
 	}
 }
 
-func (r *zkRegistry) Name() string {
-	return flux.KeyConfigRootRegistry
+func (r *zkRegistry) Id() string {
+	return "zookeeper"
 }
 
 func (r *zkRegistry) Init(config flux.Config) error {

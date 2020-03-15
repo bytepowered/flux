@@ -2,29 +2,26 @@ package extension
 
 import "github.com/bytepowered/flux"
 
-// name of registry
+// known ids of registry
 const (
-	TypeNameRegistryActive    = "active"
-	TypeNameRegistryZookeeper = "zookeeper"
-	TypeNameRegistryEcho      = "echo"
+	RegistryIdDefault   = "active"
+	RegistryIdZookeeper = "zookeeper"
+	RegistryIdEcho      = "echo"
 )
 
 var (
-	_protoNamedRegistryFactories = make(map[string]RegistryFactory, 2)
+	_identityRegistryFactories = make(map[string]RegistryFactory, 2)
 )
 
 type RegistryFactory func() flux.Registry
 
-// SetRegistryFactory 设置指定协议名的Registry工厂函数。此函数会自动注册生命周期Hook
-func SetRegistryFactory(protocol string, factory RegistryFactory) {
-	_protoNamedRegistryFactories[protocol] = func() flux.Registry {
-		registry := factory()
-		return registry
-	}
+// SetRegistryFactory 设置指定ID名的Registry工厂函数。
+func SetRegistryFactory(id string, factory RegistryFactory) {
+	_identityRegistryFactories[id] = factory
 }
 
-// GetRegistryFactory 根据Protocol协议名，获取Registry的工厂函数
-func GetRegistryFactory(protocol string) (RegistryFactory, bool) {
-	e, ok := _protoNamedRegistryFactories[protocol]
+// GetRegistryFactory 根据ID名，获取Registry的工厂函数
+func GetRegistryFactory(id string) (RegistryFactory, bool) {
+	e, ok := _identityRegistryFactories[id]
 	return e, ok
 }

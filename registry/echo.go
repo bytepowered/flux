@@ -16,6 +16,11 @@ func EchoRegistryFactory() flux.Registry {
 	return new(echoRegistry)
 }
 
+// Id 返回Registry支持的协议作为ID标识
+func (r *echoRegistry) Id() string {
+	return "echo"
+}
+
 // 监听Metadata配置变化
 func (r *echoRegistry) WatchEvents(outboundEvents chan<- flux.EndpointEvent) error {
 	func(endpoints []endpoint) {

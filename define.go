@@ -34,4 +34,8 @@ type (
 		Value() interface{}
 		SetValue(interface{})
 	}
+	// Identity 用于定义一个组件的唯一ID
+	Identity interface {
+		Id() string
+	}
 )

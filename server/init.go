@@ -17,9 +17,9 @@ func init() {
 	extension.SetSerializer(extension.TypeNameSerializerDefault, defaultSerializer)
 	extension.SetSerializer(extension.TypeNameSerializerJson, defaultSerializer)
 	// Registry
-	extension.SetRegistryFactory(extension.TypeNameRegistryActive, registry.ZookeeperRegistryFactory)
-	extension.SetRegistryFactory(extension.TypeNameRegistryZookeeper, registry.ZookeeperRegistryFactory)
-	extension.SetRegistryFactory(extension.TypeNameRegistryEcho, registry.EchoRegistryFactory)
+	extension.SetRegistryFactory(extension.RegistryIdDefault, registry.ZookeeperRegistryFactory)
+	extension.SetRegistryFactory(extension.RegistryIdZookeeper, registry.ZookeeperRegistryFactory)
+	extension.SetRegistryFactory(extension.RegistryIdEcho, registry.EchoRegistryFactory)
 	// exchanges
 	extension.SetExchange(flux.ProtocolEcho, echoex.NewEchoExchange())
 	extension.SetExchange(flux.ProtocolHttp, http.NewHttpExchange())
@@ -29,5 +29,5 @@ func init() {
 	extension.SetFactory(filter.TypeNameFilterPermissionVerification, filter.PermissionVerificationFactory)
 	extension.SetFactory(filter.TypeNameFilterJWTVerification, filter.JwtVerificationFilterFactory)
 	// global filters
-	extension.SetGlobalFilter(filter.NewParameterParsingFilter())
+	extension.AddGlobalFilter(filter.NewParameterParsingFilter())
 }

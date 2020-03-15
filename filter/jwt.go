@@ -71,7 +71,11 @@ func (j *jwtVerificationFilter) Init(config flux.Config) error {
 	return nil
 }
 
-func (j *jwtVerificationFilter) Order() int {
+func (*jwtVerificationFilter) Id() string {
+	return TypeNameFilterJWTVerification
+}
+
+func (*jwtVerificationFilter) Order() int {
 	return OrderFilterJwtVerification
 }
 

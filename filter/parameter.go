@@ -26,6 +26,10 @@ func (parameterFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	}
 }
 
+func (*parameterFilter) Id() string {
+	return "ParameterParsing"
+}
+
 ////
 
 func resolve(arguments []flux.Argument, ctx flux.Context) error {

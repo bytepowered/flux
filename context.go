@@ -18,6 +18,9 @@ type Context interface {
 	// RequestUri 返回当前请求的URI
 	RequestUri() string
 
+	// RequestPath 返回当前请求的URI的路径
+	RequestPath() string
+
 	// RequestHost 返回当前请求的Host地址
 	RequestHost() string
 

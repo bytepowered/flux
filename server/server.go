@@ -270,7 +270,7 @@ func (*FluxServer) SetExtendFactory(typeName string, exchange flux.Exchange) {
 }
 
 func (*FluxServer) SetExtendGlobalFilter(filter flux.Filter) {
-	extension.SetGlobalFilter(filter)
+	extension.AddGlobalFilter(filter)
 }
 
 func (*FluxServer) SetExtendLogger(logger flux.Logger) {

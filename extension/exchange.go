@@ -6,12 +6,12 @@ var (
 	_protoNamedExchanges = make(map[string]flux.Exchange)
 )
 
-func SetExchange(protocol string, exchange flux.Exchange) {
-	_protoNamedExchanges[protocol] = exchange
+func SetExchange(protoName string, exchange flux.Exchange) {
+	_protoNamedExchanges[protoName] = exchange
 }
 
-func GetExchange(protocol string) (flux.Exchange, bool) {
-	e, ok := _protoNamedExchanges[protocol]
+func GetExchange(protoName string) (flux.Exchange, bool) {
+	e, ok := _protoNamedExchanges[protoName]
 	return e, ok
 }
 
