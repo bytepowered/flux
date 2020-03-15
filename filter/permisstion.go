@@ -77,9 +77,9 @@ func (p *permissionFilter) Init(config flux.Config) error {
 			return func(subjectId, method, pattern string) (bool, error) {
 				switch strings.ToUpper(proto) {
 				case flux.ProtocolDubbo:
-					return p.loadByExchange(flux.ProtocolDubbo, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtocolDubbo, upsHost, upsMethod, upsUri, subjectId, method, pattern)
 				case flux.ProtocolHttp:
-					return p.loadByExchange(flux.ProtocolHttp, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtocolHttp, upsHost, upsMethod, upsUri, subjectId, method, pattern)
 				default:
 					return false, fmt.Errorf("unknown verification protocol: %s", proto)
 				}
@@ -124,7 +124,7 @@ func (p *permissionFilter) verify(ctx flux.Context) *flux.InvokeError {
 	}
 }
 
-func (p *permissionFilter) loadByExchange(proto string,
+func _loadPermByExchange(proto string,
 	upsHost, upsMethod, upsUri string,
 	reqSubjectId, reqMethod, reqPattern string) (bool, error) {
 	exchange, _ := extension.GetExchange(proto)
