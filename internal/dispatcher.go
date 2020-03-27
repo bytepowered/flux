@@ -54,7 +54,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 	// 静态注册的内核组件
 
 	// Registry
-	registryConfig := globals.Config(flux.KeyConfigRootRegistry)
+	registryConfig := extension.ConfigFactory()("flux.registry", globals.Map(flux.KeyConfigRootRegistry))
 	if activeRegistry, err := registryActiveWith(registryConfig); nil != err {
 		return err
 	} else {
@@ -64,17 +64,21 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 		}
 	}
 	// Exchanges
-	exchangeConfig := globals.Config("Exchanges")
+	exchangeConfig := extension.ConfigFactory()("flux.exchanges", globals.Map(flux.KeyConfigRootExchanges))
 	for proto, ex := range extension.Exchanges() {
 		logger.Infof("Load exchange, proto: %s, inst.type: %T", proto, ex)
-		if err := doRegisterHooks(ex, exchangeConfig.Config(strings.ToUpper(proto))); nil != err {
+		protoConfig := extension.ConfigFactory()("flux.exchanges.proto."+proto,
+			exchangeConfig.Map(strings.ToUpper(proto)))
+		if err := doRegisterHooks(ex, protoConfig); nil != err {
 			return err
 		}
 	}
 	// GlobalFilters
-	for i, gf := range extension.GlobalFilters() {
-		logger.Infof("Load global filter, order: %d, filter.type: %T", i, gf)
-		if err := doRegisterHooks(gf, map[string]interface{}{}); nil != err {
+	for i, filter := range extension.GlobalFilters() {
+		logger.Infof("Load global filter, order: %d, filter.type: %T", i, filter)
+		factory := extension.ConfigFactory()
+		filterConfig := factory("flux.component."+filter.Id(), make(map[string]interface{}))
+		if err := doRegisterHooks(filter, filterConfig); nil != err {
 			return err
 		}
 	}

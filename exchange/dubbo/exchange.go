@@ -45,7 +45,7 @@ func NewDubboExchange() flux.Exchange {
 func (ex *exchange) Init(config flux.Config) error {
 	logger.Infof("Dubbo Exchange initializing")
 	ex.config = config
-	if 0 == len(ex.config) {
+	if ex.config.IsEmpty() {
 		return errors.New("dubbo-exchange config not found")
 	} else {
 		return nil

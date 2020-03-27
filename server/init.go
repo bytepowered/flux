@@ -12,7 +12,11 @@ import (
 )
 
 func init() {
-	// serializer
+	// Config factory
+	extension.SetConfigFactory(func(_ string, m map[string]interface{}) flux.Config {
+		return internal.NewMapConfig(m)
+	})
+	// Serializer
 	defaultSerializer := internal.NewJsonSerializer()
 	extension.SetSerializer(extension.TypeNameSerializerDefault, defaultSerializer)
 	extension.SetSerializer(extension.TypeNameSerializerJson, defaultSerializer)

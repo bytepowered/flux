@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/extension"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"sync"
@@ -13,7 +14,7 @@ const (
 )
 
 var (
-	_globals    = flux.Config{}
+	_globals    flux.Config
 	_globalOnce = new(sync.Once)
 )
 
@@ -24,11 +25,11 @@ func GlobalConfig() flux.Config {
 
 func LoadConfig() flux.Config {
 	_globalOnce.Do(func() {
-		if data, err := pkg.LoadTomlConfig(ConfigApp); nil != err {
+		if data, err := pkg.LoadTomlFile(ConfigApp); nil != err {
 			logger.Panicf("Config not found: %s", ConfigApp)
 		} else {
 			logger.Infof("Using config: %s", ConfigApp)
-			_globals = data
+			_globals = extension.ConfigFactory()("globals", data)
 		}
 	})
 	return _globals

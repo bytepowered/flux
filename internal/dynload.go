@@ -15,31 +15,32 @@ type configurable struct {
 
 func dynloadConfig(globals flux.Config) []configurable {
 	out := make([]configurable, 0)
-	for name, v := range globals {
+	globals.Foreach(func(name string, v interface{}) bool {
 		m, is := v.(map[string]interface{})
 		if !is {
-			continue
+			return true
 		}
-		config := flux.ToConfig(m)
+		config := NewMapConfig(m)
 		if config.IsEmpty() || !(config.Contains("type") && config.Contains("InitConfig")) {
-			continue
+			return true
 		}
 		typeName := config.String("type")
 		if config.BooleanOrDefault("disable", false) {
 			logger.Infof("Component is DISABLED, type: %s", typeName)
-			continue
+			return true
 		}
 		f, ok := extension.GetFactory(typeName)
 		if !ok {
 			logger.Warnf("Config factory not found, type: %s", typeName)
-			continue
+			return true
 		}
 		out = append(out, configurable{
 			Name:    name,
 			Type:    typeName,
-			Config:  config.Config("InitConfig"),
+			Config:  extension.ConfigFactory()("flux.component."+typeName, config.Map("InitConfig")),
 			Factory: f,
 		})
-	}
+		return true
+	})
 	return out
 }

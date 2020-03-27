@@ -11,7 +11,7 @@ import (
 )
 
 // LoadTomlConfig 读取一个TOML文件或者文件夹内所有TOML文件，返回一个Map对象。
-func LoadTomlConfig(dirOrFile string) (map[string]interface{}, error) {
+func LoadTomlFile(dirOrFile string) (map[string]interface{}, error) {
 	if "" == dirOrFile {
 		return nil, errors.New("dir or file path is required")
 	}

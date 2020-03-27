@@ -71,7 +71,7 @@ func NewFluxServer() *FluxServer {
 func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.globals = globals
 	// Http server
-	httpConfig := fs.globals.Config(configHttpSectionName)
+	httpConfig := extension.ConfigFactory()("flux.server", fs.globals.Map(configHttpSectionName))
 	fs.httpVersionHeader = httpConfig.StringOrDefault(configHttpVersionHeader, defaultHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
@@ -102,7 +102,7 @@ func (fs *FluxServer) Start(version flux.BuildInfo) error {
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	httpConfig := fs.globals.Config(configHttpSectionName)
+	httpConfig := extension.ConfigFactory()("flux.http", fs.globals.Map(configHttpSectionName))
 	address := fmt.Sprintf("%s:%d", httpConfig.String("address"), httpConfig.Int64("port"))
 	certFile := httpConfig.String(configHttpTlsCertFile)
 	keyFile := httpConfig.String(configHttpTlsKeyFile)
@@ -236,7 +236,7 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 }
 
 func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
-	basicAuthC := httpConfig.Config("BasicAuth")
+	basicAuthC := extension.ConfigFactory()("flux.http.basic-auth", httpConfig.Map("BasicAuth"))
 	username := basicAuthC.StringOrDefault("username", "flux")
 	password := basicAuthC.StringOrDefault("password", random.String(8))
 	logger.Infof("Http debug feature: <Enabled>, basic-auth: username=%s, password=%s", username, password)
