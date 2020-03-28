@@ -31,7 +31,6 @@ func init() {
 	// filters
 	ext.SetFactory(filter.FilterIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetFactory(filter.FilterIdPermissionVerification, filter.PermissionVerificationFactory)
-	ext.SetFactory(filter.FilterIdJWTVerification, filter.JwtVerificationFilterFactory)
 	// global filters
 	ext.AddGlobalFilter(filter.NewParameterParsingFilter())
 }

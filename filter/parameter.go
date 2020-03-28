@@ -8,12 +8,12 @@ import (
 )
 
 func NewParameterParsingFilter() flux.Filter {
-	return new(parameterFilter)
+	return new(ParameterParsingFilter)
 }
 
-type parameterFilter int
+type ParameterParsingFilter int
 
-func (parameterFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
+func (ParameterParsingFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	return func(ctx flux.Context) *flux.InvokeError {
 		if err := resolve(ctx.Endpoint().Arguments, ctx); nil != err {
 			return &flux.InvokeError{
@@ -26,8 +26,8 @@ func (parameterFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	}
 }
 
-func (*parameterFilter) Id() string {
-	return "ParameterParsing"
+func (*ParameterParsingFilter) Id() string {
+	return "ParameterParsingFilter"
 }
 
 ////

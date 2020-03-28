@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	FilterIdPermissionVerification = "PermissionVerification"
+	FilterIdPermissionVerification = "PermissionVerificationFilter"
 )
 
 var (
@@ -29,23 +29,23 @@ var (
 type PermissionProvider func(subjectId, method, uri string) (bool, error)
 
 func PermissionVerificationFactory() interface{} {
-	return new(permissionFilter)
+	return NewPermissionVerificationWith(nil)
 }
 
 func NewPermissionVerificationWith(provider PermissionProvider) flux.Filter {
-	return &permissionFilter{
+	return &PermissionVerificationFilter{
 		provider: provider,
 	}
 }
 
 // Permission Filter，负责读取JWT的Subject字段，调用指定Dubbo接口判断权限
-type permissionFilter struct {
+type PermissionVerificationFilter struct {
 	disabled  bool
 	provider  PermissionProvider
 	permCache lakego.Cache
 }
 
-func (p *permissionFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
+func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	if p.disabled {
 		return next
 	}
@@ -61,7 +61,7 @@ func (p *permissionFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	}
 }
 
-func (p *permissionFilter) Init(config flux.Config) error {
+func (p *PermissionVerificationFilter) Init(config flux.Config) error {
 	p.disabled = config.BooleanOrDefault(keyConfigDisabled, false)
 	if p.disabled {
 		logger.Infof("Permission filter was DISABLED!!")
@@ -93,15 +93,15 @@ func (p *permissionFilter) Init(config flux.Config) error {
 	return nil
 }
 
-func (p *permissionFilter) Order() int {
+func (p *PermissionVerificationFilter) Order() int {
 	return OrderFilterPermissionVerification
 }
 
-func (*permissionFilter) Id() string {
+func (*PermissionVerificationFilter) Id() string {
 	return FilterIdPermissionVerification
 }
 
-func (p *permissionFilter) verify(ctx flux.Context) *flux.InvokeError {
+func (p *PermissionVerificationFilter) verify(ctx flux.Context) *flux.InvokeError {
 	jwtSubjectId, ok := ctx.AttrValue(flux.XJwtSubject)
 	if !ok {
 		return ErrPermissionSubjectNotFound

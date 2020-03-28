@@ -2,7 +2,6 @@ package filter
 
 // 全局Filter排序
 const (
-	OrderFilterParameterParsing       = -100
 	OrderFilterJwtVerification        = -90
 	OrderFilterPermissionVerification = -80
 )

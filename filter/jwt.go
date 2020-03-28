@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	FilterIdJWTVerification = "JWTVerification"
+	FilterIdJWTVerification = "JwtVerificationFilter"
 )
 
 const (
@@ -32,10 +32,10 @@ var (
 )
 
 func JwtVerificationFilterFactory() interface{} {
-	return new(jwtVerificationFilter)
+	return new(JwtVerificationFilter)
 }
 
-type jwtConfig struct {
+type JwtConfig struct {
 	subjectKey           string
 	issuerKey            string
 	verificationProtocol string
@@ -45,19 +45,19 @@ type jwtConfig struct {
 
 // Jwt Filter，负责解码和验证Http请求的JWT令牌数据。
 // 支持从Dubbo接口获取Secret。
-type jwtVerificationFilter struct {
+type JwtVerificationFilter struct {
 	disabled     bool
-	config       jwtConfig
+	config       JwtConfig
 	certKeyCache lakego.Cache
 }
 
-func (j *jwtVerificationFilter) Init(config flux.Config) error {
+func (j *JwtVerificationFilter) Init(config flux.Config) error {
 	j.disabled = config.BooleanOrDefault(keyConfigDisabled, false)
 	if j.disabled {
 		logger.Infof("JWT filter is DISABLED !!")
 		return nil
 	}
-	j.config = jwtConfig{
+	j.config = JwtConfig{
 		issuerKey:            config.StringOrDefault(keyConfigJwtIssuerKey, "iss"),
 		subjectKey:           config.StringOrDefault(keyConfigJwtSubjectKey, "sub"),
 		verificationProtocol: config.String(keyConfigVerificationProtocol),
@@ -71,15 +71,15 @@ func (j *jwtVerificationFilter) Init(config flux.Config) error {
 	return nil
 }
 
-func (*jwtVerificationFilter) Id() string {
+func (*JwtVerificationFilter) Id() string {
 	return FilterIdJWTVerification
 }
 
-func (*jwtVerificationFilter) Order() int {
+func (*JwtVerificationFilter) Order() int {
 	return OrderFilterJwtVerification
 }
 
-func (j *jwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
+func (j *JwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	if j.disabled {
 		return next
 	}
@@ -106,7 +106,7 @@ func (j *jwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvok
 	}
 }
 
-func (j *jwtVerificationFilter) decodeVerified(tokenValue string, ctx flux.Context) (jwt.MapClaims, *flux.InvokeError) {
+func (j *JwtVerificationFilter) decodeVerified(tokenValue string, ctx flux.Context) (jwt.MapClaims, *flux.InvokeError) {
 	token, err := jwt.Parse(tokenValue, j.jwtCertKeyFactory(ctx))
 	if nil != err {
 		return nil, &flux.InvokeError{
@@ -121,7 +121,7 @@ func (j *jwtVerificationFilter) decodeVerified(tokenValue string, ctx flux.Conte
 	return token.Claims.(jwt.MapClaims), nil
 }
 
-func (j *jwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jwt.Token) (interface{}, error) {
+func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jwt.Token) (interface{}, error) {
 	return func(token *jwt.Token) (interface{}, error) {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
@@ -144,7 +144,7 @@ func (j *jwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 	}
 }
 
-func (j *jwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, error) {
+func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, error) {
 	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
 		UpstreamMethod: j.config.verificationMethod,
