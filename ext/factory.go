@@ -1,4 +1,4 @@
-package extension
+package ext
 
 import "github.com/bytepowered/flux"
 

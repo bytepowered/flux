@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"strings"
@@ -54,7 +54,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 	// 静态注册的内核组件
 
 	// Registry
-	registryConfig := extension.ConfigFactory()("flux.registry", globals.Map(flux.KeyConfigRootRegistry))
+	registryConfig := ext.ConfigFactory()("flux.registry", globals.Map(flux.KeyConfigRootRegistry))
 	if activeRegistry, err := registryActiveWith(registryConfig); nil != err {
 		return err
 	} else {
@@ -64,19 +64,19 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 		}
 	}
 	// Exchanges
-	exchangeConfig := extension.ConfigFactory()("flux.exchanges", globals.Map(flux.KeyConfigRootExchanges))
-	for proto, ex := range extension.Exchanges() {
+	exchangeConfig := ext.ConfigFactory()("flux.exchanges", globals.Map(flux.KeyConfigRootExchanges))
+	for proto, ex := range ext.Exchanges() {
 		logger.Infof("Load exchange, proto: %s, inst.type: %T", proto, ex)
-		protoConfig := extension.ConfigFactory()("flux.exchanges.proto."+proto,
+		protoConfig := ext.ConfigFactory()("flux.exchanges.proto."+proto,
 			exchangeConfig.Map(strings.ToUpper(proto)))
 		if err := doRegisterHooks(ex, protoConfig); nil != err {
 			return err
 		}
 	}
 	// GlobalFilters
-	for i, filter := range extension.GlobalFilters() {
+	for i, filter := range ext.GlobalFilters() {
 		logger.Infof("Load global filter, order: %d, filter.type: %T", i, filter)
-		factory := extension.ConfigFactory()
+		factory := ext.ConfigFactory()
 		filterConfig := factory("flux.component."+filter.Id(), make(map[string]interface{}))
 		if err := doRegisterHooks(filter, filterConfig); nil != err {
 			return err
@@ -88,7 +88,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 func (d *Dispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
 	// Debug echo registry
 	if pkg.IsEnv(pkg.EnvDev) {
-		if f, ok := extension.GetRegistryFactory(extension.RegistryIdEcho); ok {
+		if f, ok := ext.GetRegistryFactory(ext.RegistryIdEcho); ok {
 			go func() { pkg.Silently(f().WatchEvents(events)) }()
 		}
 	}
@@ -114,11 +114,11 @@ func (d *Dispatcher) Shutdown(ctx context.Context) error {
 }
 
 func (d *Dispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
-	globalFilters := extension.GlobalFilters()
+	globalFilters := ext.GlobalFilters()
 	selectFilters := make([]flux.Filter, 0)
-	for _, selector := range extension.FindSelectors(ctx.RequestHost()) {
+	for _, selector := range ext.FindSelectors(ctx.RequestHost()) {
 		for _, id := range selector.Select(ctx).Filters {
-			if f, ok := extension.GetFilter(id); ok {
+			if f, ok := ext.GetFilter(id); ok {
 				selectFilters = append(selectFilters, f)
 			} else {
 				logger.Warnf("Filter not found on selector, filterId: %s", id)
@@ -127,7 +127,7 @@ func (d *Dispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 	}
 	return d.walk(func(ctx flux.Context) *flux.InvokeError {
 		protoName := ctx.Endpoint().Protocol
-		if exchange, ok := extension.GetExchange(protoName); !ok {
+		if exchange, ok := ext.GetExchange(protoName); !ok {
 			return &flux.InvokeError{
 				StatusCode: flux.StatusNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL: %s", protoName)}
@@ -149,9 +149,9 @@ func (d *Dispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.Fi
 }
 
 func registryActiveWith(config flux.Config) (flux.Registry, error) {
-	registryId := config.StringOrDefault(flux.KeyConfigRegistryId, extension.RegistryIdDefault)
+	registryId := config.StringOrDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
 	logger.Infof("Active activeRegistry, id: %s", registryId)
-	if factory, ok := extension.GetRegistryFactory(registryId); !ok {
+	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
 		return nil, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
 	} else {
 		return factory(), nil

@@ -3,7 +3,7 @@ package filter
 import (
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/lakego"
@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	TypeNameFilterJWTVerification = "JWTVerification"
+	FilterIdJWTVerification = "JWTVerification"
 )
 
 const (
@@ -72,7 +72,7 @@ func (j *jwtVerificationFilter) Init(config flux.Config) error {
 }
 
 func (*jwtVerificationFilter) Id() string {
-	return TypeNameFilterJWTVerification
+	return FilterIdJWTVerification
 }
 
 func (*jwtVerificationFilter) Order() int {
@@ -145,7 +145,7 @@ func (j *jwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 }
 
 func (j *jwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, error) {
-	exchange, _ := extension.GetExchange(proto)
+	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
 		UpstreamMethod: j.config.verificationMethod,
 		UpstreamUri:    j.config.verificationUri,

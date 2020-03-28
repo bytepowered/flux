@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/remoting"
 	"github.com/bytepowered/flux/remoting/zookeeper"
@@ -79,7 +79,7 @@ func toFluxEvent(zkData []byte, evtType remoting.EventType) (fxEvt flux.Endpoint
 		return _defaultInvalidFluxEvent, false
 	}
 	endpoint := flux.Endpoint{}
-	json := extension.GetSerializer(extension.TypeNameSerializerJson)
+	json := ext.GetSerializer(ext.TypeNameSerializerJson)
 	if err := json.Unmarshal(zkData, &endpoint); nil != err {
 		logger.Warnf("Parsing invalid endpoint registry, evt.type: %s, evt.data: %s", evtType, string(zkData), err)
 		return _defaultInvalidFluxEvent, false

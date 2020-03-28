@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"os"
@@ -16,7 +16,7 @@ func InitDefaultLogger() {
 	if err != nil && l != nil {
 		l.Panicf("FluxServer logger init: %v", err)
 	} else {
-		extension.SetLogger(l)
+		ext.SetLogger(l)
 	}
 	if nil == l {
 		panic("logger is nil")

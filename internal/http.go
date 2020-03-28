@@ -3,7 +3,7 @@ package internal
 import (
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -70,7 +70,7 @@ func _serialize(encoder flux.Serializer, c *Context, resp *echo.Response, data i
 }
 
 func _formatter() flux.Serializer {
-	return extension.GetSerializer(extension.TypeNameSerializerDefault)
+	return ext.GetSerializer(ext.TypeNameSerializerDefault)
 }
 
 func _endErrorTo(serializer flux.Serializer, c *Context, resp *echo.Response, ierr *flux.InvokeError) error {

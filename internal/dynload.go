@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 )
 
@@ -29,7 +29,7 @@ func dynloadConfig(globals flux.Config) []configurable {
 			logger.Infof("Component is DISABLED, type: %s", typeName)
 			return true
 		}
-		f, ok := extension.GetFactory(typeName)
+		f, ok := ext.GetFactory(typeName)
 		if !ok {
 			logger.Warnf("Config factory not found, type: %s", typeName)
 			return true
@@ -37,7 +37,7 @@ func dynloadConfig(globals flux.Config) []configurable {
 		out = append(out, configurable{
 			Name:    name,
 			Type:    typeName,
-			Config:  extension.ConfigFactory()("flux.component."+typeName, config.Map("InitConfig")),
+			Config:  ext.ConfigFactory()("flux.component."+typeName, config.Map("InitConfig")),
 			Factory: f,
 		})
 		return true

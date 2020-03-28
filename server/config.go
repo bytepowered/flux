@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"sync"
@@ -29,7 +29,7 @@ func LoadConfig() flux.Config {
 			logger.Panicf("Config not found: %s", ConfigApp)
 		} else {
 			logger.Infof("Using config: %s", ConfigApp)
-			_globals = extension.ConfigFactory()("globals", data)
+			_globals = ext.ConfigFactory()("globals", data)
 		}
 	})
 	return _globals

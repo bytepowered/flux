@@ -6,7 +6,7 @@ import (
 	"expvar"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/labstack/echo/v4"
@@ -29,7 +29,7 @@ const (
 )
 
 const (
-	configHttpSectionName   = "HttpServer"
+	configHttpRootName      = "HttpServer"
 	configHttpVersionHeader = "version-header"
 	configHttpDebugEnable   = "debug"
 	configHttpTlsCertFile   = "tls-cert-file"
@@ -71,7 +71,7 @@ func NewFluxServer() *FluxServer {
 func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.globals = globals
 	// Http server
-	httpConfig := extension.ConfigFactory()("flux.server", fs.globals.Map(configHttpSectionName))
+	httpConfig := ext.ConfigFactory()("flux.http", fs.globals.Map(configHttpRootName))
 	fs.httpVersionHeader = httpConfig.StringOrDefault(configHttpVersionHeader, defaultHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
@@ -102,7 +102,7 @@ func (fs *FluxServer) Start(version flux.BuildInfo) error {
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	httpConfig := extension.ConfigFactory()("flux.http", fs.globals.Map(configHttpSectionName))
+	httpConfig := ext.ConfigFactory()("flux.http", fs.globals.Map(configHttpRootName))
 	address := fmt.Sprintf("%s:%d", httpConfig.String("address"), httpConfig.Int64("port"))
 	certFile := httpConfig.String(configHttpTlsCertFile)
 	keyFile := httpConfig.String(configHttpTlsKeyFile)
@@ -124,21 +124,6 @@ func (fs *FluxServer) Shutdown(ctx context.Context) error {
 	}
 	// Stop dispatcher
 	return fs.dispatcher.Shutdown(ctx)
-}
-
-// AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
-func (fs *FluxServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
-	fs.httpInterceptors = append(fs.httpInterceptors, m)
-}
-
-// AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
-func (fs *FluxServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
-	fs.httpMiddlewares = append(fs.httpMiddlewares, m)
-}
-
-// AddHttpHandler 添加Http处理接口。
-func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
-	fs.httpServer.Add(method, pattern, h, m...)
 }
 
 func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
@@ -177,9 +162,9 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 }
 
 func (fs *FluxServer) acquire(c echo.Context, endpoint *flux.Endpoint) *internal.Context {
-	context := fs.contextPool.Get().(*internal.Context)
-	context.Reattach(c, endpoint)
-	return context
+	ctx := fs.contextPool.Get().(*internal.Context)
+	ctx.Reattach(c, endpoint)
+	return ctx
 }
 
 func (fs *FluxServer) release(c *internal.Context) {
@@ -202,25 +187,25 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 			version = defaultHttpVersionValue
 			endpoint, found = mvEndpoint.Get(version)
 		}
-		context := fs.acquire(c, endpoint)
-		defer fs.release(context)
+		newCtx := fs.acquire(c, endpoint)
+		defer fs.release(newCtx)
 		logger.Infof("Received request, id: %s, method: %s, uri: %s, version: %s",
-			context.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
+			newCtx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
 		if !found {
-			return fs.httpAdapter.WriteError(context, errEndpointVersionNotFound)
+			return fs.httpAdapter.WriteError(newCtx, errEndpointVersionNotFound)
 		}
 		if err := httpRequest.ParseForm(); nil != err {
 			logger.Errorf("Parse http req-form, method: %s, uri:%s", httpRequest.Method, httpRequest.RequestURI)
-			return fs.httpAdapter.WriteError(context, &flux.InvokeError{
+			return fs.httpAdapter.WriteError(newCtx, &flux.InvokeError{
 				StatusCode: flux.StatusBadRequest,
 				Message:    "REQUEST:FORM_PARSING",
 				Internal:   err,
 			})
 		}
-		if err := fs.dispatcher.Dispatch(context); nil != err {
-			return fs.httpAdapter.WriteError(context, err)
+		if err := fs.dispatcher.Dispatch(newCtx); nil != err {
+			return fs.httpAdapter.WriteError(newCtx, err)
 		} else {
-			return fs.httpAdapter.WriteResponse(context)
+			return fs.httpAdapter.WriteResponse(newCtx)
 		}
 	}
 }
@@ -236,9 +221,9 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 }
 
 func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
-	basicAuthC := extension.ConfigFactory()("flux.http.basic-auth", httpConfig.Map("BasicAuth"))
-	username := basicAuthC.StringOrDefault("username", "flux")
-	password := basicAuthC.StringOrDefault("password", random.String(8))
+	baFactory := ext.ConfigFactory()("flux.http.basic-auth", httpConfig.Map("BasicAuth"))
+	username := baFactory.StringOrDefault("username", "fluxgo")
+	password := baFactory.StringOrDefault("password", random.String(8))
 	logger.Infof("Http debug feature: <Enabled>, basic-auth: username=%s, password=%s", username, password)
 	authMiddleware := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
 		return u == username && p == password, nil
@@ -259,26 +244,45 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 	}, authMiddleware)
 }
 
-func (*FluxServer) SetExtendExchange(protoName string, exchange flux.Exchange) {
-	extension.SetExchange(protoName, exchange)
+// AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
+func (fs *FluxServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
+	fs.httpInterceptors = append(fs.httpInterceptors, m)
 }
 
-func (*FluxServer) SetExtendFactory(typeName string, exchange flux.Exchange) {
-	extension.SetExchange(typeName, exchange)
+// AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
+func (fs *FluxServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
+	fs.httpMiddlewares = append(fs.httpMiddlewares, m)
 }
 
-func (*FluxServer) SetExtendGlobalFilter(filter flux.Filter) {
-	extension.AddGlobalFilter(filter)
+// AddHttpHandler 添加Http处理接口。
+func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	fs.httpServer.Add(method, pattern, h, m...)
 }
 
-func (*FluxServer) SetExtendLogger(logger flux.Logger) {
-	extension.SetLogger(logger)
+func (*FluxServer) SetExchange(protoName string, exchange flux.Exchange) {
+	ext.SetExchange(protoName, exchange)
 }
 
-func (*FluxServer) SetExtendRegistryFactory(protoName string, factory extension.RegistryFactory) {
-	extension.SetRegistryFactory(protoName, factory)
+func (*FluxServer) SetFactory(typeName string, f flux.Factory) {
+	ext.SetFactory(typeName, f)
 }
 
-func (*FluxServer) SetExtendSerializer(typeName string, serializer flux.Serializer) {
-	extension.SetSerializer(typeName, serializer)
+func (*FluxServer) AddGlobalFilter(filter flux.Filter) {
+	ext.AddGlobalFilter(filter)
+}
+
+func (*FluxServer) AddFilter(filter flux.Filter) {
+	ext.AddFilter(filter)
+}
+
+func (*FluxServer) SetLogger(logger flux.Logger) {
+	ext.SetLogger(logger)
+}
+
+func (*FluxServer) SetRegistryFactory(protoName string, factory ext.RegistryFactory) {
+	ext.SetRegistryFactory(protoName, factory)
+}
+
+func (*FluxServer) SetSerializer(typeName string, serializer flux.Serializer) {
+	ext.SetSerializer(typeName, serializer)
 }

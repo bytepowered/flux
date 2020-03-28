@@ -1,4 +1,4 @@
-package extension
+package ext
 
 import "github.com/bytepowered/flux"
 
@@ -6,8 +6,8 @@ var (
 	_configFactory flux.ConfigFactory
 )
 
-func SetConfigFactory(config flux.ConfigFactory) {
-	_configFactory = config
+func SetConfigFactory(factory flux.ConfigFactory) {
+	_configFactory = factory
 }
 
 func ConfigFactory() flux.ConfigFactory {

@@ -5,7 +5,7 @@ import (
 	"github.com/bytepowered/flux/exchange/dubbo"
 	"github.com/bytepowered/flux/exchange/echoex"
 	"github.com/bytepowered/flux/exchange/http"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/registry"
@@ -13,25 +13,25 @@ import (
 
 func init() {
 	// Config factory
-	extension.SetConfigFactory(func(_ string, m map[string]interface{}) flux.Config {
+	ext.SetConfigFactory(func(ns string, m map[string]interface{}) flux.Config {
 		return internal.NewMapConfig(m)
 	})
 	// Serializer
-	defaultSerializer := internal.NewJsonSerializer()
-	extension.SetSerializer(extension.TypeNameSerializerDefault, defaultSerializer)
-	extension.SetSerializer(extension.TypeNameSerializerJson, defaultSerializer)
+	serializer := internal.NewJsonSerializer()
+	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
+	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
 	// Registry
-	extension.SetRegistryFactory(extension.RegistryIdDefault, registry.ZookeeperRegistryFactory)
-	extension.SetRegistryFactory(extension.RegistryIdZookeeper, registry.ZookeeperRegistryFactory)
-	extension.SetRegistryFactory(extension.RegistryIdEcho, registry.EchoRegistryFactory)
+	ext.SetRegistryFactory(ext.RegistryIdDefault, registry.ZookeeperRegistryFactory)
+	ext.SetRegistryFactory(ext.RegistryIdZookeeper, registry.ZookeeperRegistryFactory)
+	ext.SetRegistryFactory(ext.RegistryIdEcho, registry.EchoRegistryFactory)
 	// exchanges
-	extension.SetExchange(flux.ProtocolEcho, echoex.NewEchoExchange())
-	extension.SetExchange(flux.ProtocolHttp, http.NewHttpExchange())
-	extension.SetExchange(flux.ProtocolDubbo, dubbo.NewDubboExchange())
+	ext.SetExchange(flux.ProtocolEcho, echoex.NewEchoExchange())
+	ext.SetExchange(flux.ProtocolHttp, http.NewHttpExchange())
+	ext.SetExchange(flux.ProtocolDubbo, dubbo.NewDubboExchange())
 	// filters
-	extension.SetFactory(filter.TypeNameFilterJWTVerification, filter.JwtVerificationFilterFactory)
-	extension.SetFactory(filter.TypeNameFilterPermissionVerification, filter.PermissionVerificationFactory)
-	extension.SetFactory(filter.TypeNameFilterJWTVerification, filter.JwtVerificationFilterFactory)
+	ext.SetFactory(filter.FilterIdJWTVerification, filter.JwtVerificationFilterFactory)
+	ext.SetFactory(filter.FilterIdPermissionVerification, filter.PermissionVerificationFactory)
+	ext.SetFactory(filter.FilterIdJWTVerification, filter.JwtVerificationFilterFactory)
 	// global filters
-	extension.AddGlobalFilter(filter.NewParameterParsingFilter())
+	ext.AddGlobalFilter(filter.NewParameterParsingFilter())
 }

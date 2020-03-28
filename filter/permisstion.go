@@ -3,7 +3,7 @@ package filter
 import (
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/extension"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/lakego"
@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	TypeNameFilterPermissionVerification = "PermissionVerification"
+	FilterIdPermissionVerification = "PermissionVerification"
 )
 
 var (
@@ -98,7 +98,7 @@ func (p *permissionFilter) Order() int {
 }
 
 func (*permissionFilter) Id() string {
-	return TypeNameFilterPermissionVerification
+	return FilterIdPermissionVerification
 }
 
 func (p *permissionFilter) verify(ctx flux.Context) *flux.InvokeError {
@@ -131,7 +131,7 @@ func (p *permissionFilter) verify(ctx flux.Context) *flux.InvokeError {
 func _loadPermByExchange(proto string,
 	upsHost, upsMethod, upsUri string,
 	reqSubjectId, reqMethod, reqPattern string) (bool, error) {
-	exchange, _ := extension.GetExchange(proto)
+	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
 		UpstreamHost:   upsHost,
 		UpstreamMethod: upsMethod,
