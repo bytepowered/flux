@@ -70,19 +70,19 @@ func (p *PermissionVerificationFilter) Init(config flux.Config) error {
 	}
 	if !config.IsEmpty() && p.provider == nil {
 		p.provider = func() PermissionVerificationFunc {
-			proto := config.String(keyConfigVerificationProtocol)
-			upsHost := config.String(keyConfigVerificationHost)
-			upsUri := config.String(keyConfigVerificationUri)
-			upsMethod := config.String(keyConfigVerificationMethod)
-			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", proto, upsMethod, upsHost, upsHost)
+			upProto := config.String(keyConfigUpstreamProtocol)
+			upHost := config.String(keyConfigUpstreamHost)
+			upUri := config.String(keyConfigUpstreamUri)
+			upMethod := config.String(keyConfigUpstreamMethod)
+			logger.Infof("Permission filter config provider, upProto:%s, method: %s, uri: %s%s", upProto, upMethod, upHost, upHost)
 			return func(subjectId, method, pattern string) (bool, error) {
-				switch strings.ToUpper(proto) {
+				switch strings.ToUpper(upProto) {
 				case flux.ProtocolDubbo:
-					return _loadPermByExchange(flux.ProtocolDubbo, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtocolDubbo, upHost, upMethod, upUri, subjectId, method, pattern)
 				case flux.ProtocolHttp:
-					return _loadPermByExchange(flux.ProtocolHttp, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtocolHttp, upHost, upMethod, upUri, subjectId, method, pattern)
 				default:
-					return false, fmt.Errorf("unknown verification protocol: %s", proto)
+					return false, fmt.Errorf("unknown verification protocol: %s", upProto)
 				}
 			}
 		}()

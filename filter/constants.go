@@ -7,14 +7,14 @@ const (
 )
 
 const (
-	keyConfigCacheExpiration      = "cache-expiration"
-	keyConfigDisabled             = "disabled"
-	keyConfigVerificationProtocol = "verification-protocol"
-	keyConfigVerificationHost     = "verification-host"
-	keyConfigVerificationUri      = "verification-uri"
-	keyConfigVerificationMethod   = "verification-method"
-	keyConfigJwtSubjectKey        = "jwt-subject-key"
-	keyConfigJwtIssuerKey         = "jwt-issuer-key"
+	keyConfigCacheExpiration  = "cache-expiration"
+	keyConfigDisabled         = "disabled"
+	keyConfigUpstreamProtocol = "upstream-protocol"
+	keyConfigUpstreamHost     = "upstream-host"
+	keyConfigUpstreamUri      = "upstream-uri"
+	keyConfigUpstreamMethod   = "upstream-method"
+	keyConfigJwtSubjectKey    = "jwt-subject-key"
+	keyConfigJwtIssuerKey     = "jwt-issuer-key"
 )
 
 const (

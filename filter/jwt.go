@@ -36,11 +36,11 @@ func JwtVerificationFilterFactory() interface{} {
 }
 
 type JwtConfig struct {
-	subjectKey           string
-	issuerKey            string
-	verificationProtocol string
-	verificationMethod   string
-	verificationUri      string
+	subjectKey string
+	issuerKey  string
+	upProto    string
+	upMethod   string
+	upUri      string
 }
 
 // Jwt Filter，负责解码和验证Http请求的JWT令牌数据。
@@ -58,11 +58,11 @@ func (j *JwtVerificationFilter) Init(config flux.Config) error {
 		return nil
 	}
 	j.config = JwtConfig{
-		issuerKey:            config.StringOrDefault(keyConfigJwtIssuerKey, "iss"),
-		subjectKey:           config.StringOrDefault(keyConfigJwtSubjectKey, "sub"),
-		verificationProtocol: config.String(keyConfigVerificationProtocol),
-		verificationUri:      config.String(keyConfigVerificationUri),
-		verificationMethod:   config.String(keyConfigVerificationMethod),
+		issuerKey:  config.StringOrDefault(keyConfigJwtIssuerKey, "iss"),
+		subjectKey: config.StringOrDefault(keyConfigJwtSubjectKey, "sub"),
+		upProto:    config.String(keyConfigUpstreamProtocol),
+		upUri:      config.String(keyConfigUpstreamUri),
+		upMethod:   config.String(keyConfigUpstreamMethod),
 	}
 	logger.Infof("JWT filter initializing, config: %+v", j.config)
 	// Key缓存大小
@@ -132,13 +132,13 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 		subject := pkg.ToString(claims[j.config.subjectKey])
 		subjectCacheKey := fmt.Sprintf("%s.%s", issuer, subject)
 		return j.certKeyCache.GetOrLoad(subjectCacheKey, func(_ lakego.Key) (lakego.Value, error) {
-			switch strings.ToUpper(j.config.verificationProtocol) {
+			switch strings.ToUpper(j.config.upProto) {
 			case flux.ProtocolDubbo:
 				return j.loadJwtCertKey(flux.ProtocolDubbo, issuer, subject, claims)
 			case flux.ProtocolHttp:
 				return j.loadJwtCertKey(flux.ProtocolHttp, issuer, subject, claims)
 			default:
-				return nil, fmt.Errorf("unknown verification protocol: %s", j.config.verificationProtocol)
+				return nil, fmt.Errorf("unknown verification protocol: %s", j.config.upProto)
 			}
 		})
 	}
@@ -147,8 +147,8 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, error) {
 	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
-		UpstreamMethod: j.config.verificationMethod,
-		UpstreamUri:    j.config.verificationUri,
+		UpstreamMethod: j.config.upMethod,
+		UpstreamUri:    j.config.upUri,
 		Arguments: []flux.Argument{
 			{TypeClass: pkg.JavaLangStringClassName, ArgName: "issuer", ArgValue: flux.NewWrapValue(issuer)},
 			{TypeClass: pkg.JavaLangStringClassName, ArgName: "subject", ArgValue: flux.NewWrapValue(subject)},

@@ -6,8 +6,8 @@ PermissionFilter 依赖于JWT过滤器的验证结果，用于验证JWT的用户
 
 1. 根据JWT验证过滤器的Token数据，获取`jwt-subject-id`所指定的用户数据；
 2. 根据用户访问权限的三元组`(subjectId, method, pattern)`，获取对应访问权限；访问权限的获取方式按配置参数，有如下方式：
-    a. Http方式，通过配置指定的`verification-uri,verification-method`，从指定Http API加载签名密钥；
-    a. Dubbo方式，通过配置指定的`verification-uri(dubbo interface),verification-method`，从指定Dubbo接口加载签名密钥；
+    a. Http方式，通过配置指定的`upstrem-host, upstream-uri,upstream-method`，从指定Http API加载签名密钥；
+    a. Dubbo方式，通过配置指定的`upstream-uri(dubbo interface),upstream-method`，从指定Dubbo接口加载签名密钥；
 3. 根据返回权限结果，判定访问是否授权。
 
 ## 构成用户访问权限的三元组：
@@ -23,9 +23,9 @@ PermissionFilter 依赖于JWT过滤器的验证结果，用于验证JWT的用户
 ```toml
 [PermissionVerification]
 disabled = false
-verification-protocol = "dubbo"
-verification-uri = "net.bytepowered.lingxiao.PermissionService"
-verification-method = "verify"
+upstream-protocol = "dubbo"
+upstream-uri = "net.bytepowered.lingxiao.PermissionService"
+upstream-method = "verify"
 ```
 
 **示例: 基于Http协议的配置**
@@ -33,16 +33,18 @@ verification-method = "verify"
 ```toml
 [PermissionVerification]
 disabled = false
-verification-protocol = "http"
-verification-uri = "http://acl.bytepowered-internal.io:8080/permission/api"
-verification-method = "POST"
+upstream-protocol = "http"
+upstream-host = "http://acl.bytepowered-internal.io:8080"
+upstream-uri = "/permission/api"
+upstream-method = "POST"
 ```
 
 ### 参数说明
 
-- `verification-protocol` 后端服务支持权限校验的协议。支持: \[http, dubbo\]
-- `verification-uri` 后端服务地址：在dubbo协议中为 interface 路径；在http协议下，是完整URL地址；
-- `verification-method` 后端服务方法：在dubbo协议中为接口方法名；在http协议下，是Http方法名；
+- `upstream-protocol` 后端服务支持权限校验的协议。支持: \[http, dubbo\]
+- `upstream-host` 后端服务地址。在http协议下使用
+- `upstream-uri` 后端服务地址：在dubbo协议中为 interface 路径；在http协议下，是完整URL地址；
+- `upstream-method` 后端服务方法：在dubbo协议中为接口方法名；在http协议下，是Http方法名；
 
 ## 权限校验接口签名和参数
 
