@@ -5,6 +5,14 @@ import (
 	"github.com/bytepowered/flux/pkg"
 )
 
+// 各个组件的配置命名空间前缀
+const (
+	configNsPrefixComponent     = "flux.component."
+	configNsPrefixExchange      = "flux.exchanges"
+	configNsPrefixExchangeProto = "flux.exchanges.proto."
+	configNsPrefixRegistry      = "flux.registry"
+)
+
 type mapConfig struct {
 	data map[string]interface{}
 }

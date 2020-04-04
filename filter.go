@@ -18,6 +18,8 @@ type FilterInvoker func(Context) *InvokeError
 
 // Filter 用于定义处理方法的顺序及内在业务逻辑
 type Filter interface {
-	Identity
+	// TypeId Filter的类型标识
+	TypeId() string
+	// Invoke 执行Filter链
 	Invoke(next FilterInvoker) FilterInvoker
 }

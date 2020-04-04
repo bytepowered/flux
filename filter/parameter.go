@@ -26,7 +26,7 @@ func (ParameterParsingFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker
 	}
 }
 
-func (*ParameterParsingFilter) Id() string {
+func (*ParameterParsingFilter) TypeId() string {
 	return "ParameterParsingFilter"
 }
 

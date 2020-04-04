@@ -6,26 +6,33 @@ import (
 	"github.com/bytepowered/flux/logger"
 )
 
-type configurable struct {
-	Name    string
-	Type    string
-	Config  flux.Config
-	Factory flux.Factory
+const (
+	configKeyDisable    = "disable"
+	configKeyTypeId     = "type-id"
+	configKeyInitConfig = "InitConfig"
+)
+
+type awareConfig struct {
+	Name     string
+	Type     string
+	ConfigNs string
+	Config   flux.Config
+	Factory  flux.Factory
 }
 
-func dynloadConfig(globals flux.Config) []configurable {
-	out := make([]configurable, 0)
+func dynloadConfig(globals flux.Config) []awareConfig {
+	out := make([]awareConfig, 0)
 	globals.Foreach(func(name string, v interface{}) bool {
 		m, is := v.(map[string]interface{})
 		if !is {
 			return true
 		}
 		config := NewMapConfig(m)
-		if config.IsEmpty() || !(config.Contains("type") && config.Contains("InitConfig")) {
+		if config.IsEmpty() || !(config.Contains(configKeyTypeId) && config.Contains(configKeyInitConfig)) {
 			return true
 		}
-		typeName := config.String("type")
-		if config.BooleanOrDefault("disable", false) {
+		typeName := config.String(configKeyTypeId)
+		if config.BooleanOrDefault(configKeyDisable, false) {
 			logger.Infof("Component is DISABLED, type: %s", typeName)
 			return true
 		}
@@ -34,11 +41,13 @@ func dynloadConfig(globals flux.Config) []configurable {
 			logger.Warnf("Config factory not found, type: %s", typeName)
 			return true
 		}
-		out = append(out, configurable{
-			Name:    name,
-			Type:    typeName,
-			Config:  ext.ConfigFactory()("flux.component."+typeName, config.Map("InitConfig")),
-			Factory: f,
+		cns := configNsPrefixComponent + typeName
+		out = append(out, awareConfig{
+			Name:     name,
+			Type:     typeName,
+			ConfigNs: cns,
+			Config:   ext.ConfigFactory()(cns, config.Map(configKeyInitConfig)),
+			Factory:  f,
 		})
 		return true
 	})

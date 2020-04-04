@@ -45,7 +45,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 	// 从配置中动态加载的组件
 	for _, item := range dynloadConfig(globals) {
 		ref := item.Factory()
-		logger.Infof("Load component, name: %s, type: %s, inst.type: %T", item.Name, item.Type, ref)
+		logger.Infof("Load component, name: %s, type: %s, inst.type: %T, config.ns: %s", item.Name, item.Type, ref, item.ConfigNs)
 		if err := doRegisterHooks(ref, item.Config); nil != err {
 			return err
 		}
@@ -54,7 +54,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 	// 静态注册的内核组件
 
 	// Registry
-	registryConfig := ext.ConfigFactory()("flux.registry", globals.Map(flux.KeyConfigRootRegistry))
+	registryConfig := ext.ConfigFactory()(configNsPrefixRegistry, globals.Map(flux.KeyConfigRootRegistry))
 	if activeRegistry, err := registryActiveWith(registryConfig); nil != err {
 		return err
 	} else {
@@ -64,10 +64,10 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 		}
 	}
 	// Exchanges
-	exchangeConfig := ext.ConfigFactory()("flux.exchanges", globals.Map(flux.KeyConfigRootExchanges))
+	exchangeConfig := ext.ConfigFactory()(configNsPrefixExchange, globals.Map(flux.KeyConfigRootExchanges))
 	for proto, ex := range ext.Exchanges() {
-		logger.Infof("Load exchange, proto: %s, inst.type: %T", proto, ex)
-		protoConfig := ext.ConfigFactory()("flux.exchanges.proto."+proto,
+		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, configNsPrefixExchange)
+		protoConfig := ext.ConfigFactory()(configNsPrefixExchangeProto+proto,
 			exchangeConfig.Map(strings.ToUpper(proto)))
 		if err := doRegisterHooks(ex, protoConfig); nil != err {
 			return err
@@ -75,9 +75,10 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 	}
 	// GlobalFilters
 	for i, filter := range ext.GlobalFilters() {
-		logger.Infof("Load global filter, order: %d, filter.type: %T", i, filter)
 		factory := ext.ConfigFactory()
-		filterConfig := factory("flux.component."+filter.Id(), make(map[string]interface{}))
+		cns := configNsPrefixComponent + filter.TypeId()
+		filterConfig := factory(cns, make(map[string]interface{}))
+		logger.Infof("Load global filter, order: %d, filter.type: %T, config.ns: %s", i, filter, cns)
 		if err := doRegisterHooks(filter, filterConfig); nil != err {
 			return err
 		}
@@ -117,11 +118,11 @@ func (d *Dispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 	globalFilters := ext.GlobalFilters()
 	selectFilters := make([]flux.Filter, 0)
 	for _, selector := range ext.FindSelectors(ctx.RequestHost()) {
-		for _, id := range selector.Select(ctx).Filters {
-			if f, ok := ext.GetFilter(id); ok {
+		for _, typeId := range selector.Select(ctx).Filters {
+			if f, ok := ext.GetFilter(typeId); ok {
 				selectFilters = append(selectFilters, f)
 			} else {
-				logger.Warnf("Filter not found on selector, filterId: %s", id)
+				logger.Warnf("Filter not found on selector, filter.typeId: %s", typeId)
 			}
 		}
 	}
@@ -150,7 +151,7 @@ func (d *Dispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.Fi
 
 func registryActiveWith(config flux.Config) (flux.Registry, error) {
 	registryId := config.StringOrDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
-	logger.Infof("Active activeRegistry, id: %s", registryId)
+	logger.Infof("Active registry, id: %s", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
 		return nil, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
 	} else {

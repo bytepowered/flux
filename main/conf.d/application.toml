@@ -25,7 +25,7 @@ cluster = "failover"
 # JWT验证配置
 [JsonWebTokenVerification]
 disable = false
-type = "JWTVerification"
+type-id = "JwtVerificationFilter"
 [JsonWebTokenVerification.InitConfig]
 # Required: Http请求中Token的Header键名。默认: Authorization
 token-header = "Authorization"
@@ -43,7 +43,7 @@ verification-method = "getPrivateJwtSecret"
 # Http后端JWT验证配置
 [HttpJsonWebTokenVerification]
 disable = false
-type = "JWTVerification"
+type-id = "JwtVerificationFilter"
 [HttpJsonWebTokenVerification.InitConfig]
 # Required: Http请求中Token的Header键名。默认: Authorization
 token-header = "form:Authorization"
@@ -61,7 +61,7 @@ verification-method = "POST"
 # 访问权限验证
 [PermissionVerification]
 disable = false
-type = "PermissionVerification"
+type-id = "PermissionVerification"
 [PermissionVerification.InitConfig]
 # 访问Subject在JWT数据中的Key
 subject-jwt-key = "uid"

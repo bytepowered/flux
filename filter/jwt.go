@@ -71,7 +71,7 @@ func (j *JwtVerificationFilter) Init(config flux.Config) error {
 	return nil
 }
 
-func (*JwtVerificationFilter) Id() string {
+func (*JwtVerificationFilter) TypeId() string {
 	return FilterIdJWTVerification
 }
 

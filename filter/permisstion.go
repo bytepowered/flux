@@ -97,7 +97,7 @@ func (p *PermissionVerificationFilter) Order() int {
 	return OrderFilterPermissionVerification
 }
 
-func (*PermissionVerificationFilter) Id() string {
+func (*PermissionVerificationFilter) TypeId() string {
 	return FilterIdPermissionVerification
 }
 

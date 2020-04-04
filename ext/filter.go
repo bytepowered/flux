@@ -54,7 +54,7 @@ func GlobalFilters() []flux.Filter {
 // GlobalFilters 获取已排序的全局Filter列表
 func GetFilter(filterId string) (flux.Filter, bool) {
 	for _, f := range _scopedFilter {
-		if filterId == f.filter.Id() {
+		if filterId == f.filter.TypeId() {
 			return f.filter, true
 		}
 	}
