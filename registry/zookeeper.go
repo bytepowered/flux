@@ -86,14 +86,16 @@ func toFluxEvent(zkData []byte, evtType remoting.EventType) (fxEvt flux.Endpoint
 		logger.Warnf("Parsing invalid endpoint registry, evt.type: %s, evt.data: %s", evtType, string(zkData), err)
 		return _defaultInvalidFluxEvent, false
 	}
+	logger.Debugf("Parsed endpoint registry, event: %s, method: %s, uri-pattern: %s", evtType, endpoint.HttpMethod, endpoint.HttpPattern)
+	if endpoint.HttpPattern == "" {
+		logger.Infof("illegal http-pattern, data: %s", string(zkData))
+		return _defaultInvalidFluxEvent, false
+	}
 	// Init arg value
 	for i := range endpoint.Arguments {
 		_initArgumentValue(&endpoint.Arguments[i])
 	}
-	logger.Debugf("Parsed endpoint registry, event: %s, method: %s, uri-pattern: %s", evtType, endpoint.HttpMethod, endpoint.HttpPattern)
-	if endpoint.HttpPattern == "" {
-		return _defaultInvalidFluxEvent, false
-	}
+
 	event := flux.EndpointEvent{
 		HttpMethod:  endpoint.HttpMethod,
 		HttpPattern: endpoint.HttpPattern,

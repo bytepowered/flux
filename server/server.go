@@ -146,17 +146,17 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 		}
 		switch event.Type {
 		case flux.EndpointEventAdded:
-			logger.Infof("Endpoint new: %s@%s:%s", eEndpoint.Version, event.HttpMethod, pattern)
+			logger.Infof("Endpoint new: [%s@%s] %s", eEndpoint.Version, event.HttpMethod, pattern)
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 			if isNew {
-				logger.Infof("HTTP router: %s:%s", event.HttpMethod, pattern)
+				logger.Infof("HTTP router: [%s] %s", event.HttpMethod, pattern)
 				fs.httpServer.Add(event.HttpMethod, pattern, fs.generateRouter(vEndpoint))
 			}
 		case flux.EndpointEventUpdated:
-			logger.Infof("Endpoint update: %s@%s:%s", eEndpoint.Version, event.HttpMethod, pattern)
+			logger.Infof("Endpoint update: [%s@%s] %s", eEndpoint.Version, event.HttpMethod, pattern)
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 		case flux.EndpointEventRemoved:
-			logger.Infof("Endpoint removed: %s:%s", event.HttpMethod, pattern)
+			logger.Infof("Endpoint removed: [%s] %s", event.HttpMethod, pattern)
 			vEndpoint.Delete(eEndpoint.Version)
 		}
 	}
