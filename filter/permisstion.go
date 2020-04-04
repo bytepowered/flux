@@ -26,13 +26,14 @@ var (
 	}
 )
 
-type PermissionProvider func(subjectId, method, uri string) (bool, error)
+// 权限验证函数 检查SubjectId,Method,Patter是否具有权限
+type PermissionVerificationFunc func(subjectId, method, pattern string) (bool, error)
 
 func PermissionVerificationFactory() interface{} {
 	return NewPermissionVerificationWith(nil)
 }
 
-func NewPermissionVerificationWith(provider PermissionProvider) flux.Filter {
+func NewPermissionVerificationWith(provider PermissionVerificationFunc) flux.Filter {
 	return &PermissionVerificationFilter{
 		provider: provider,
 	}
@@ -41,7 +42,7 @@ func NewPermissionVerificationWith(provider PermissionProvider) flux.Filter {
 // Permission Filter，负责读取JWT的Subject字段，调用指定Dubbo接口判断权限
 type PermissionVerificationFilter struct {
 	disabled  bool
-	provider  PermissionProvider
+	provider  PermissionVerificationFunc
 	permCache lakego.Cache
 }
 
@@ -53,7 +54,7 @@ func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.Filt
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
-		if err := p.verify(ctx); nil != err {
+		if err := p.doVerification(ctx); nil != err {
 			return err
 		} else {
 			return next(ctx)
@@ -68,26 +69,25 @@ func (p *PermissionVerificationFilter) Init(config flux.Config) error {
 		return nil
 	}
 	if !config.IsEmpty() && p.provider == nil {
-		p.provider = func() PermissionProvider {
-			proto := config.String(keyConfigVerificationProtocol)
-			upsHost := config.String(keyConfigVerificationHost)
-			upsUri := config.String(keyConfigVerificationUri)
-			upsMethod := config.String(keyConfigVerificationMethod)
-			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", proto, upsMethod, upsHost, upsHost)
+		p.provider = func() PermissionVerificationFunc {
+			upProto := config.String(keyConfigUpstreamProtocol)
+			upHost := config.String(keyConfigUpstreamHost)
+			upUri := config.String(keyConfigUpstreamUri)
+			upMethod := config.String(keyConfigUpstreamMethod)
+			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", upProto, upMethod, upHost, upHost)
 			return func(subjectId, method, pattern string) (bool, error) {
-				switch strings.ToUpper(proto) {
+				switch strings.ToUpper(upProto) {
 				case flux.ProtocolDubbo:
-					return _loadPermByExchange(flux.ProtocolDubbo, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtocolDubbo, upHost, upMethod, upUri, subjectId, method, pattern)
 				case flux.ProtocolHttp:
-					return _loadPermByExchange(flux.ProtocolHttp, upsHost, upsMethod, upsUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtocolHttp, upHost, upMethod, upUri, subjectId, method, pattern)
 				default:
-					return false, fmt.Errorf("unknown verification protocol: %s", proto)
+					return false, fmt.Errorf("unknown verification protocol: %s", upProto)
 				}
 			}
 		}()
 	}
 	logger.Infof("Permission filter initializing, config: %+v", config)
-	// TODO 检查参数
 	permCacheExpiration := config.Int64OrDefault(keyConfigCacheExpiration, defValueCacheExpiration)
 	p.permCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(permCacheExpiration)))
 	return nil
@@ -101,7 +101,7 @@ func (*PermissionVerificationFilter) TypeId() string {
 	return FilterIdPermissionVerification
 }
 
-func (p *PermissionVerificationFilter) verify(ctx flux.Context) *flux.InvokeError {
+func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.InvokeError {
 	jwtSubjectId, ok := ctx.AttrValue(flux.XJwtSubject)
 	if !ok {
 		return ErrPermissionSubjectNotFound

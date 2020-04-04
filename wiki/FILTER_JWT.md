@@ -6,8 +6,8 @@ JWTVerificationFilter 通过读取Http请求的 Authorization解析并验证Toke
 
 1. 从Header、Query、FormParam等数据源读取JWT的原始Token数据；
 2. 根据Token的`issuer(iss)、subject(sub)`字段，获取对应的Token签名密钥；加载密钥的方式按配置参数，有如下方式：
-    a. Http方式，通过配置指定的`verification-uri, verification-method`，从指定Http API加载签名密钥；
-    a. Dubbo方式，通过配置指定的`verification-uri(dubbo interface), verification-method`，从指定Dubbo接口加载签名密钥；
+    a. Http方式，通过配置指定的`upstream-host, upstream-uri, upstream-method`，从指定Http API加载签名密钥；
+    a. Dubbo方式，通过配置指定的`upstream-uri(dubbo interface), upstream-method`，从指定Dubbo接口加载签名密钥；
 3. 使用获取的签名密钥，对Token进行验证。通过后，将Token的claims设置到`Context.Attributes`中，供后续组件使用；
 
 **Token数据传递**
@@ -37,9 +37,9 @@ type-id = "JwtVerificationFilter"
 jwt-lookup-token = "header:Authorization"
 jwt-issuer-key = "iss"
 jwt-subject-key = "sub"
-verification-protocol = "DUBBO"
-verification-uri = "net.bytepowered.lingxiao.JWTCertService"
-verification-method = "getCertKey"
+upstream-protocol = "DUBBO"
+upstream-uri = "net.bytepowered.lingxiao.JWTCertService"
+upstream-method = "getCertKey"
 ```
 
 **示例: 基于Http协议的配置**
@@ -52,16 +52,18 @@ type-id = "JwtVerificationFilter"
 jwt-lookup-token = "Authorization"
 jwt-issuer-key = "iss"
 jwt-subject-key = "sub"
-verification-proto = "HTTP"
-verification-uri = "http://foo.bar.com:8080/jwt"
-verification-method = "POST"
+upstream-proto = "HTTP"
+upstream-host = "http://foo.bar.com:8080"
+upstream-uri = "/jwt"
+upstream-method = "POST"
 ```
 
 ### 参数说明
 
-- `verification-protocol` 后端服务支持权限校验的协议。支持: \[HTTP, DUBBO\]
-- `verification-uri` 后端服务地址：在dubbo协议中为 interface 路径；在http协议下，是完整URL地址；
-- `verification-method` 后端服务方法：在dubbo协议中为接口方法名；在http协议下，是Http方法名；
+- `upstream-protocol` 后端服务支持权限校验的协议。支持: \[HTTP, DUBBO\]
+- `upstream-host` 后端服务地址：在http协议中为域名地址；
+- `upstream-uri` 后端服务地址：在dubbo协议中为 interface 路径；在http协议下，是URL地址；
+- `upstream-method` 后端服务方法：在dubbo协议中为接口方法名；在http协议下，是Http方法名；
 - `jwt-issuer-key` 用于识别JWT标识Issuer的字段，默认为JWT标准："iss"；
 - `jwt-subject-key` 用于识别JWT标识用户的字段，默认为JWT标准："sub"；
 
