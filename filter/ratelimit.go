@@ -15,6 +15,14 @@ const (
 	keyConfigLimitSizeKey  = "limit-size"
 )
 
+const (
+	FilterIdRateLimitFilter = "RateLimitFilter"
+)
+
+func RateLimitFilterFactory() interface{} {
+	return NewRateLimitFilter()
+}
+
 func NewRateLimitFilter() flux.Filter {
 	return new(RateLimitFilter)
 }
@@ -64,5 +72,5 @@ func (r *RateLimitFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 }
 
 func (*RateLimitFilter) TypeId() string {
-	return "RateLimitFilter"
+	return FilterIdRateLimitFilter
 }
