@@ -28,30 +28,38 @@ JWT验证通过后，JWTVerificationFilter会将Token对象，
 **示例: 基于Dubbo协议的配置**
 
 ```toml
-[JWTVerification]
-disabled = false
-verification-protocol = "dubbo"
+# JWT验证配置
+[JsonWebTokenVerification]
+disable = false
+type-id = "JwtVerificationFilter"
+[JsonWebTokenVerification.InitConfig]
+# 在Http请求中查找Token的Key定义。默认: header:Authorization。支持域：[query, form, path, header, attr]
+jwt-lookup-token = "header:Authorization"
+jwt-issuer-key = "iss"
+jwt-subject-key = "sub"
+verification-protocol = "DUBBO"
 verification-uri = "net.bytepowered.lingxiao.JWTCertService"
 verification-method = "getCertKey"
-jwt-subject-key = "sub"
-jwt-issuer-key = "iss"
 ```
 
 **示例: 基于Http协议的配置**
 
 ```toml
-[JWTVerification]
-disabled = false
-verification-protocol = "http"
-verification-uri = "http://acl.bytepowered-internal.io:8080/cert/jwt"
-verification-method = "POST"
-jwt-subject-key = "sub"
+[HttpJsonWebTokenVerification]
+disable = false
+type-id = "JwtVerificationFilter"
+[HttpJsonWebTokenVerification.InitConfig]
+jwt-lookup-token = "Authorization"
 jwt-issuer-key = "iss"
+jwt-subject-key = "sub"
+verification-proto = "HTTP"
+verification-uri = "http://foo.bar.com:8080/jwt"
+verification-method = "POST"
 ```
 
 ### 参数说明
 
-- `verification-protocol` 后端服务支持权限校验的协议。支持: \[http, dubbo\]
+- `verification-protocol` 后端服务支持权限校验的协议。支持: \[HTTP, DUBBO\]
 - `verification-uri` 后端服务地址：在dubbo协议中为 interface 路径；在http协议下，是完整URL地址；
 - `verification-method` 后端服务方法：在dubbo协议中为接口方法名；在http协议下，是Http方法名；
 - `jwt-issuer-key` 用于识别JWT标识Issuer的字段，默认为JWT标准："iss"；

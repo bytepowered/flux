@@ -23,37 +23,29 @@ root-path = "/flux-metadata"
 cluster = "failover"
 
 # JWT验证配置
+
+## Dubbo协议
 [JsonWebTokenVerification]
 disable = false
 type-id = "JwtVerificationFilter"
 [JsonWebTokenVerification.InitConfig]
-# Required: Http请求中Token的Header键名。默认: Authorization
-token-header = "Authorization"
-# Required：全局JWT密钥。如果未提供JWT密钥接口，将使用此密钥验证JWT
-secret-default = "chunMianNOjueXia0,chuchuWenT1NiaO"
-# Optional: JWT密钥缓存大小和时间（分钟）
-secret-cache-size = 1000
-secret-cache-expire = 30
-# Optional: 指定获取JWT密钥的Dubbo接口。
-# 当interface非空时生效，接口定义：getPrivateJwtSecret(Map<String, Object>)
+# Http请求中Token的Header键名。默认: Authorization。支持域：[query, form, path, header, attr]，默认header
+jwt-lookup-token = "header:Authorization"
+jwt-issuer-key = "iss"
+jwt-subject-key = "sub"
+verification-protocol = "DUBBO"
 verification-uri = "foo.bar.JWTService"
 verification-method = "getPrivateJwtSecret"
-
 
 # Http后端JWT验证配置
 [HttpJsonWebTokenVerification]
 disable = false
 type-id = "JwtVerificationFilter"
 [HttpJsonWebTokenVerification.InitConfig]
-# Required: Http请求中Token的Header键名。默认: Authorization
-token-header = "form:Authorization"
-# Required：全局JWT密钥。如果未提供JWT密钥接口，将使用此密钥验证JWT
-secret-default = "aabbccdd"
-# Optional: JWT密钥缓存大小和时间（分钟）
-secret-cache-size = 1000
-secret-cache-expire = 30
-# Optional: 指定获取JWT密钥的Dubbo接口。
-# 当interface非空时生效，接口定义：getPrivateJwtSecret(Map<String, Object>)
+jwt-lookup-token = "Authorization"
+jwt-issuer-key = "iss"
+jwt-subject-key = "sub"
+verification-protocol = "HTTP"
 verification-uri = "http://foo.bar.com:8080/jwt"
 verification-method = "POST"
 

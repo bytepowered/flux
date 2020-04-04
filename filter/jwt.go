@@ -59,7 +59,7 @@ func (j *JwtVerificationFilter) Init(config flux.Config) error {
 		return nil
 	}
 	j.config = JwtConfig{
-		lookupToken:          config.StringOrDefault(keyConfigJwtLookupKey, keyHeaderAuthorization),
+		lookupToken:          config.StringOrDefault(keyConfigJwtLookupToken, keyHeaderAuthorization),
 		issuerKey:            config.StringOrDefault(keyConfigJwtIssuerKey, "iss"),
 		subjectKey:           config.StringOrDefault(keyConfigJwtSubjectKey, "sub"),
 		verificationProtocol: config.String(keyConfigVerificationProtocol),

@@ -15,7 +15,7 @@ const (
 	keyConfigVerificationMethod   = "verification-method"
 	keyConfigJwtSubjectKey        = "jwt-subject-key"
 	keyConfigJwtIssuerKey         = "jwt-issuer-key"
-	keyConfigJwtLookupKey         = "jwt-lookup-key"
+	keyConfigJwtLookupToken       = "jwt-lookup-token"
 )
 
 const (
