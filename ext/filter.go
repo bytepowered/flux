@@ -25,7 +25,7 @@ var (
 // AddGlobalFilter 注册全局Filter；
 func AddGlobalFilter(v interface{}) {
 	f, ok := v.(flux.Filter)
-	if !ok {
+	if !ok || nil == f {
 		GetLogger().Panicf("Not a Filter: type=%s, v=%+v", reflect.TypeOf(v), v)
 	}
 	_globalFilter = append(_globalFilter, filterWrapper{filter: f, order: orderOf(v)})
@@ -35,7 +35,7 @@ func AddGlobalFilter(v interface{}) {
 // AddGlobalFilter 注册全局Filter；
 func AddFilter(v interface{}) {
 	f, ok := v.(flux.Filter)
-	if !ok {
+	if !ok || nil == f {
 		GetLogger().Panicf("Not a Filter: type=%s, v=%+v", reflect.TypeOf(v), v)
 	}
 	_scopedFilter = append(_scopedFilter, filterWrapper{filter: f, order: orderOf(v)})
