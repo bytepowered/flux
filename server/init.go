@@ -32,6 +32,7 @@ func init() {
 	ext.SetFactory(filter.FilterIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetFactory(filter.FilterIdPermissionVerification, filter.PermissionVerificationFactory)
 	ext.SetFactory(filter.FilterIdRateLimitFilter, filter.RateLimitFilterFactory)
+	ext.SetFactory(filter.FilterIdHystrixFilter, filter.HystrixFilterFactory)
 	// global filters
 	ext.AddGlobalFilter(filter.NewParameterParsingFilter())
 }
