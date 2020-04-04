@@ -36,6 +36,10 @@ const (
 	configHttpTlsKeyFile    = "tls-key-file"
 )
 
+const (
+	_echoKeyContext = "$flux.context"
+)
+
 var (
 	errEndpointVersionNotFound = &flux.InvokeError{
 		StatusCode: flux.StatusNotFound,
@@ -73,6 +77,7 @@ func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
 	fs.httpServer.HidePort = true
+	fs.httpServer.HTTPErrorHandler = fs.httpErrorAdapting
 	// Http拦截器
 	fs.AddHttpInterceptor(middleware.CORS())
 	// Http debug features
@@ -184,24 +189,43 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 			endpoint, found = mvEndpoint.Get(version)
 		}
 		newCtx := fs.acquire(c, endpoint)
+		c.Set(_echoKeyContext, newCtx)
 		defer fs.release(newCtx)
 		logger.Infof("Received request, id: %s, method: %s, uri: %s, version: %s",
 			newCtx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
 		if !found {
-			return fs.httpAdapter.WriteError(newCtx, errEndpointVersionNotFound)
+			return errEndpointVersionNotFound
 		}
 		if err := httpRequest.ParseForm(); nil != err {
-			logger.Errorf("Parse http req-form, method: %s, uri:%s", httpRequest.Method, httpRequest.RequestURI)
-			return fs.httpAdapter.WriteError(newCtx, &flux.InvokeError{
+			return &flux.InvokeError{
 				StatusCode: flux.StatusBadRequest,
 				Message:    "REQUEST:FORM_PARSING",
-				Internal:   err,
-			})
+				Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", httpRequest.Method, httpRequest.RequestURI, err),
+			}
 		}
 		if err := fs.dispatcher.Dispatch(newCtx); nil != err {
-			return fs.httpAdapter.WriteError(newCtx, err)
+			return err
 		} else {
 			return fs.httpAdapter.WriteResponse(newCtx)
+		}
+	}
+}
+
+func (fs *FluxServer) httpErrorAdapting(err error, ctx echo.Context) {
+	iErr, ok := err.(*flux.InvokeError)
+	if !ok {
+		iErr = &flux.InvokeError{
+			StatusCode: flux.StatusBadRequest,
+			Message:    "REQUEST:FORM_PARSING",
+			Internal:   err,
+		}
+	}
+	fc := ctx.Get(_echoKeyContext)
+	if fctx, ok := fc.(*internal.Context); !ok {
+		logger.Errorf("Illegal flux context in echo.context, was: %T", fc)
+	} else {
+		if err := fs.httpAdapter.WriteError(fctx, iErr); nil != err {
+			logger.Errorf("Write errors to response: ", err)
 		}
 	}
 }
@@ -274,12 +298,6 @@ func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc,
 func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
 	fs.checkInit()
 	echo.NotFoundHandler = nfh
-}
-
-// SetHttpErrorHandler 设置Http错误处理接口
-func (fs *FluxServer) SetHttpErrorHandler(nfh echo.HTTPErrorHandler) {
-	fs.checkInit()
-	fs.httpServer.HTTPErrorHandler = nfh
 }
 
 func (*FluxServer) SetExchange(protoName string, exchange flux.Exchange) {

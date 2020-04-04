@@ -37,7 +37,7 @@ func (a HttpAdapter) WriteError(c *Context, invokeError *flux.InvokeError) error
 	if nil != invokeError.Internal {
 		data["error"] = invokeError.Internal.Error()
 	}
-	return _serialize(_formatter(), c, resp, data)
+	return _serializeWith(_httpSerializer(), resp, data)
 }
 
 func (a HttpAdapter) WriteResponse(c *Context) error {
@@ -50,46 +50,30 @@ func (a HttpAdapter) WriteResponse(c *Context) error {
 		if data, err := ioutil.ReadAll(r); nil != err {
 			return err
 		} else {
-			return _serialize(_formatter(), c, resp, data)
+			return _serializeWith(_httpSerializer(), resp, data)
 		}
 	} else {
-		return _serialize(_formatter(), c, resp, body)
+		return _serializeWith(_httpSerializer(), resp, body)
 	}
 }
 
-func _serialize(encoder flux.Serializer, c *Context, resp *echo.Response, data interface{}) error {
+func _serializeWith(encoder flux.Serializer, resp *echo.Response, data interface{}) error {
 	if bytes, err := encoder.Marshal(data); nil != err {
-		return _endErrorTo(encoder, c, resp, &flux.InvokeError{
+		return &flux.InvokeError{
 			StatusCode: flux.StatusServerError,
 			Message:    "RESPONSE:MARSHALING",
 			Internal:   err,
-		})
+		}
 	} else {
-		return _endWriteTo(resp, bytes)
+		return _writeToHttp(resp, bytes)
 	}
 }
 
-func _formatter() flux.Serializer {
+func _httpSerializer() flux.Serializer {
 	return ext.GetSerializer(ext.TypeNameSerializerDefault)
 }
 
-func _endErrorTo(serializer flux.Serializer, c *Context, resp *echo.Response, ierr *flux.InvokeError) error {
-	data := map[string]string{
-		"requestId": c.RequestId(),
-		"status":    "error",
-		"message":   ierr.Message,
-	}
-	if nil != ierr.Internal {
-		data["error"] = ierr.Internal.Error()
-	}
-	if bytes, err := serializer.Marshal(data); nil != err {
-		return fmt.Errorf("marshal http response: %w", err)
-	} else {
-		return _endWriteTo(resp, bytes)
-	}
-}
-
-func _endWriteTo(resp *echo.Response, bytes []byte) error {
+func _writeToHttp(resp *echo.Response, bytes []byte) error {
 	_, err := resp.Write(bytes)
 	if nil != err {
 		return fmt.Errorf("write http response: %w", err)
