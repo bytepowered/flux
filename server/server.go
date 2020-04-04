@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	_echoKeyContext = "$flux.context"
+	_echoKeyRoutedContext = "$flux.context"
 )
 
 var (
@@ -51,7 +51,7 @@ var (
 type FluxServer struct {
 	httpServer        *echo.Echo
 	httpVisits        *expvar.Int
-	httpAdapter       internal.HttpAdapter
+	httpAdaptWriter   internal.HttpAdaptWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
 	dispatcher        *internal.Dispatcher
@@ -129,7 +129,7 @@ func (fs *FluxServer) Shutdown(ctx context.Context) error {
 
 func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 	for event := range events {
-		pattern := fs.httpAdapter.Pattern(event.HttpPattern)
+		pattern := fs.toHttpServerPattern(event.HttpPattern)
 		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
 		vEndpoint, isNew := fs.getVersionEndpoint(routeKey)
 		// Check http method
@@ -189,7 +189,7 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 			endpoint, found = mvEndpoint.Get(version)
 		}
 		newCtx := fs.acquire(c, endpoint)
-		c.Set(_echoKeyContext, newCtx)
+		c.Set(_echoKeyRoutedContext, newCtx)
 		defer fs.release(newCtx)
 		logger.Infof("Received request, id: %s, method: %s, uri: %s, version: %s",
 			newCtx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
@@ -206,7 +206,7 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 		if err := fs.dispatcher.Dispatch(newCtx); nil != err {
 			return err
 		} else {
-			return fs.httpAdapter.WriteResponse(newCtx)
+			return fs.httpAdaptWriter.WriteResponse(newCtx)
 		}
 	}
 }
@@ -220,13 +220,26 @@ func (fs *FluxServer) httpErrorAdapting(err error, ctx echo.Context) {
 			Internal:   err,
 		}
 	}
-	fc := ctx.Get(_echoKeyContext)
-	if fctx, ok := fc.(*internal.Context); !ok {
-		logger.Errorf("Illegal flux context in echo.context, was: %T", fc)
-	} else {
-		if err := fs.httpAdapter.WriteError(fctx, iErr); nil != err {
-			logger.Errorf("Write errors to response: ", err)
+	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
+	fc := ctx.Get(_echoKeyRoutedContext)
+	if fxCtx, ok := fc.(*internal.Context); ok {
+		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), fxCtx.RequestId(), fxCtx.ResponseWriter().Headers(), iErr); nil != err {
+			logger.Errorf("Response errors: ", err)
 		}
+	} else {
+		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), "$proxy", httplib.Header{}, iErr); nil != err {
+			logger.Errorf("Proxy errors: ", err)
+		}
+	}
+}
+
+func (fs *FluxServer) toHttpServerPattern(uri string) string {
+	// /api/{userId} -> /api/:userId
+	replaced := strings.Replace(uri, "}", "", -1)
+	if len(replaced) < len(uri) {
+		return strings.Replace(replaced, "{", ":", -1)
+	} else {
+		return uri
 	}
 }
 

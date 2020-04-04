@@ -8,29 +8,19 @@ import (
 	"github.com/labstack/echo/v4"
 	"io"
 	"io/ioutil"
-	"strings"
+	"net/http"
 )
 
 const (
 	httpContentTypeJson = "application/json;charset=utf-8"
 )
 
-type HttpAdapter int
+type HttpAdaptWriter int
 
-func (HttpAdapter) Pattern(uri string) string {
-	// /api/{userId} -> /api/:userId
-	replaced := strings.Replace(uri, "}", "", -1)
-	if len(replaced) < len(uri) {
-		return strings.Replace(replaced, "{", ":", -1)
-	} else {
-		return uri
-	}
-}
-
-func (a HttpAdapter) WriteError(c *Context, invokeError *flux.InvokeError) error {
-	resp := _setupResponse(c, invokeError.StatusCode)
+func (a HttpAdaptWriter) WriteError(resp *echo.Response, reqId string, outHeader http.Header, invokeError *flux.InvokeError) error {
+	_setupResponse(resp, reqId, outHeader, invokeError.StatusCode)
 	data := map[string]string{
-		"requestId": c.RequestId(),
+		"requestId": reqId,
 		"status":    "error",
 		"message":   invokeError.Message,
 	}
@@ -40,8 +30,8 @@ func (a HttpAdapter) WriteError(c *Context, invokeError *flux.InvokeError) error
 	return _serializeWith(_httpSerializer(), resp, data)
 }
 
-func (a HttpAdapter) WriteResponse(c *Context) error {
-	resp := _setupResponse(c, c.response.status)
+func (a HttpAdaptWriter) WriteResponse(c *Context) error {
+	resp := _setupResponse(c.echo.Response(), c.RequestId(), c.ResponseWriter().Headers(), c.response.status)
 	body := c.response.Body()
 	if r, ok := body.(io.Reader); ok {
 		if c, ok := r.(io.Closer); ok {
@@ -81,15 +71,14 @@ func _writeToHttp(resp *echo.Response, bytes []byte) error {
 	return err
 }
 
-func _setupResponse(c *Context, status int) *echo.Response {
-	resp := c.echo.Response()
+func _setupResponse(resp *echo.Response, reqId string, outHeader http.Header, status int) *echo.Response {
 	resp.Status = status
 	headers := resp.Header()
 	headers.Set(echo.HeaderServer, "FluxGo")
-	headers.Set(echo.HeaderXRequestID, c.RequestId())
+	headers.Set(echo.HeaderXRequestID, reqId)
 	headers.Set("Content-Type", httpContentTypeJson)
 	// 允许Override默认Header
-	for k, v := range c.response.Headers() {
+	for k, v := range outHeader {
 		for _, iv := range v {
 			headers.Add(k, iv)
 		}
