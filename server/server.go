@@ -48,8 +48,6 @@ type FluxServer struct {
 	httpServer        *echo.Echo
 	httpVisits        *expvar.Int
 	httpAdapter       internal.HttpAdapter
-	httpInterceptors  []echo.MiddlewareFunc
-	httpMiddlewares   []echo.MiddlewareFunc
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
 	dispatcher        *internal.Dispatcher
@@ -60,12 +58,10 @@ type FluxServer struct {
 
 func NewFluxServer() *FluxServer {
 	return &FluxServer{
-		httpVisits:       expvar.NewInt("HttpVisits"),
-		httpInterceptors: make([]echo.MiddlewareFunc, 0),
-		httpMiddlewares:  make([]echo.MiddlewareFunc, 0),
-		dispatcher:       internal.NewDispatcher(),
-		endpointMvMap:    make(map[string]*internal.MultiVersionEndpoint),
-		contextPool:      sync.Pool{New: internal.NewContext},
+		httpVisits:    expvar.NewInt("HttpVisits"),
+		dispatcher:    internal.NewDispatcher(),
+		endpointMvMap: make(map[string]*internal.MultiVersionEndpoint),
+		contextPool:   sync.Pool{New: internal.NewContext},
 	}
 }
 
@@ -79,8 +75,6 @@ func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.httpServer.HidePort = true
 	// Http拦截器
 	fs.AddHttpInterceptor(middleware.CORS())
-	fs.httpServer.Pre(fs.httpInterceptors...)
-	fs.httpServer.Use(fs.httpMiddlewares...)
 	// Http debug features
 	if httpConfig.BooleanOrDefault(configHttpDebugEnable, false) {
 		fs.debugFeatures(httpConfig)
@@ -90,6 +84,7 @@ func (fs *FluxServer) Init(globals flux.Config) error {
 
 // Start server
 func (fs *FluxServer) Start(version flux.BuildInfo) error {
+	fs.checkInit()
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, version.CommitId, version.Version, version.Date)
 	if err := fs.dispatcher.Startup(); nil != err {
@@ -245,33 +240,45 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 	}, authMiddleware)
 }
 
+func (fs *FluxServer) checkInit() {
+	if fs.httpServer == nil {
+		logger.Panicf("Call must after init()")
+	}
+}
+
 // HttpServer 返回Http服务器实例
 func (fs *FluxServer) HttpServer() *echo.Echo {
+	fs.checkInit()
 	return fs.httpServer
 }
 
 // AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
 func (fs *FluxServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
-	fs.httpInterceptors = append(fs.httpInterceptors, m)
+	fs.checkInit()
+	fs.httpServer.Pre(m)
 }
 
 // AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
 func (fs *FluxServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
-	fs.httpMiddlewares = append(fs.httpMiddlewares, m)
+	fs.checkInit()
+	fs.httpServer.Use(m)
 }
 
 // AddHttpHandler 添加Http处理接口。
 func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	fs.checkInit()
 	fs.httpServer.Add(method, pattern, h, m...)
 }
 
 // SetHttpNotFoundHandler 设置Http路由失败的处理接口
 func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
+	fs.checkInit()
 	echo.NotFoundHandler = nfh
 }
 
 // SetHttpErrorHandler 设置Http错误处理接口
 func (fs *FluxServer) SetHttpErrorHandler(nfh echo.HTTPErrorHandler) {
+	fs.checkInit()
 	fs.httpServer.HTTPErrorHandler = nfh
 }
 
