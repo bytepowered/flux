@@ -21,7 +21,8 @@ var (
 
 // zkRegistry 基于ZK节点树实现的Endpoint元数据注册中心
 type zkRegistry struct {
-	retriever *zookeeper.ZkRetriever
+	zkRootPath string
+	retriever  *zookeeper.ZkRetriever
 }
 
 func ZookeeperRegistryFactory() flux.Registry {
@@ -35,23 +36,24 @@ func (r *zkRegistry) Id() string {
 }
 
 func (r *zkRegistry) Init(config flux.Config) error {
+	r.zkRootPath = config.StringOrDefault("root-path", zkRegistryRootNodePath)
 	return r.retriever.Init(config)
 }
 
 // 监听Metadata配置变化
 func (r *zkRegistry) WatchEvents(outboundEvents chan<- flux.EndpointEvent) error {
-	if exists, _ := r.retriever.Exists(zkRegistryRootNodePath); !exists {
-		if err := r.retriever.Create(zkRegistryRootNodePath); nil != err {
+	if exists, _ := r.retriever.Exists(r.zkRootPath); !exists {
+		if err := r.retriever.Create(r.zkRootPath); nil != err {
 			return fmt.Errorf("init metadata node: %w", err)
 		}
 	}
-	logger.Infof("Zookeeper watching metadata node: %s", zkRegistryRootNodePath)
+	logger.Infof("Zookeeper watching metadata node: %s", r.zkRootPath)
 	nodeChangeListener := func(event remoting.NodeEvent) {
 		if evt, ok := toFluxEvent(event.Data, event.EventType); ok {
 			outboundEvents <- evt
 		}
 	}
-	err := r.retriever.WatchChildren("", zkRegistryRootNodePath, func(event remoting.NodeEvent) {
+	err := r.retriever.WatchChildren("", r.zkRootPath, func(event remoting.NodeEvent) {
 		logger.Infof("Receive child change: %s", event)
 		if event.EventType == remoting.EventTypeChildAdd {
 			if err := r.retriever.WatchNodeData("", event.Path, nodeChangeListener); nil != err {
@@ -89,6 +91,9 @@ func toFluxEvent(zkData []byte, evtType remoting.EventType) (fxEvt flux.Endpoint
 		_initArgumentValue(&endpoint.Arguments[i])
 	}
 	logger.Debugf("Parsed endpoint registry, event: %s, method: %s, uri-pattern: %s", evtType, endpoint.HttpMethod, endpoint.HttpPattern)
+	if endpoint.HttpPattern == "" {
+		return _defaultInvalidFluxEvent, false
+	}
 	event := flux.EndpointEvent{
 		HttpMethod:  endpoint.HttpMethod,
 		HttpPattern: endpoint.HttpPattern,

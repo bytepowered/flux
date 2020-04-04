@@ -16,6 +16,7 @@ username = "yongjia.chen"
 registry = "active"
 # ZK服务配置中心地址，支持,分多个地址列表
 address = "tx.devserver.net:2181"
+root-path = "/flux-metadata"
 
 # DubboExange配置参数
 [Exchanges.DUBBO]
