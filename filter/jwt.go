@@ -36,6 +36,7 @@ func JwtVerificationFilterFactory() interface{} {
 }
 
 type JwtConfig struct {
+	lookupToken          string
 	subjectKey           string
 	issuerKey            string
 	verificationProtocol string
@@ -58,6 +59,7 @@ func (j *JwtVerificationFilter) Init(config flux.Config) error {
 		return nil
 	}
 	j.config = JwtConfig{
+		lookupToken:          config.StringOrDefault(keyConfigJwtLookupKey, keyHeaderAuthorization),
 		issuerKey:            config.StringOrDefault(keyConfigJwtIssuerKey, "iss"),
 		subjectKey:           config.StringOrDefault(keyConfigJwtSubjectKey, "sub"),
 		verificationProtocol: config.String(keyConfigVerificationProtocol),
@@ -87,8 +89,7 @@ func (j *JwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvok
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
-		// TODO 支持从Header/Query/Params读取JWT数据
-		tokenString := ctx.RequestReader().Header(keyHeaderAuthorization)
+		tokenString := pkg.ToString(LookupValue(j.config.lookupToken, ctx))
 		if "" == tokenString {
 			return ErrorAuthorizationHeaderRequired
 		}
