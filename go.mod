@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5
 	github.com/apache/dubbo-go v1.5.0
 	github.com/apache/dubbo-go-hessian2 v1.6.1
 	github.com/bytepowered/lakego v0.0.3
