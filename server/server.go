@@ -50,6 +50,7 @@ type FluxServer struct {
 	httpAdapter       internal.HttpAdapter
 	httpInterceptors  []echo.MiddlewareFunc
 	httpMiddlewares   []echo.MiddlewareFunc
+	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
 	dispatcher        *internal.Dispatcher
 	endpointMvMap     map[string]*internal.MultiVersionEndpoint
@@ -244,6 +245,11 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 	}, authMiddleware)
 }
 
+// HttpServer 返回Http服务器实例
+func (fs *FluxServer) HttpServer() *echo.Echo {
+	return fs.httpServer
+}
+
 // AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
 func (fs *FluxServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
 	fs.httpInterceptors = append(fs.httpInterceptors, m)
@@ -257,6 +263,16 @@ func (fs *FluxServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
 // AddHttpHandler 添加Http处理接口。
 func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
 	fs.httpServer.Add(method, pattern, h, m...)
+}
+
+// SetHttpNotFoundHandler 设置Http路由失败的处理接口
+func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
+	echo.NotFoundHandler = nfh
+}
+
+// SetHttpErrorHandler 设置Http错误处理接口
+func (fs *FluxServer) SetHttpErrorHandler(nfh echo.HTTPErrorHandler) {
+	fs.httpServer.HTTPErrorHandler = nfh
 }
 
 func (*FluxServer) SetExchange(protoName string, exchange flux.Exchange) {
