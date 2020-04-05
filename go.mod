@@ -7,7 +7,7 @@ require (
 	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5
 	github.com/apache/dubbo-go v1.5.0
 	github.com/apache/dubbo-go-hessian2 v1.6.1
-	github.com/bytepowered/lakego v0.0.3
+	github.com/bytepowered/lakego v0.0.4
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dubbogo/go-zookeeper v1.0.1
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
