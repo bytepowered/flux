@@ -51,10 +51,10 @@ var (
 type FluxServer struct {
 	httpServer        *echo.Echo
 	httpVisits        *expvar.Int
-	httpAdaptWriter   internal.HttpAdaptWriter
+	httpAdaptWriter   internal.FxHttpWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
-	dispatcher        *internal.Dispatcher
+	dispatcher        *internal.FxDispatcher
 	endpointMvMap     map[string]*internal.MultiVersionEndpoint
 	contextPool       sync.Pool
 	globals           flux.Config
@@ -65,7 +65,7 @@ func NewFluxServer() *FluxServer {
 		httpVisits:    expvar.NewInt("HttpVisits"),
 		dispatcher:    internal.NewDispatcher(),
 		endpointMvMap: make(map[string]*internal.MultiVersionEndpoint),
-		contextPool:   sync.Pool{New: internal.NewContext},
+		contextPool:   sync.Pool{New: internal.NewFxContext},
 	}
 }
 
@@ -162,13 +162,13 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 	}
 }
 
-func (fs *FluxServer) acquire(c echo.Context, endpoint *flux.Endpoint) *internal.Context {
-	ctx := fs.contextPool.Get().(*internal.Context)
+func (fs *FluxServer) acquire(c echo.Context, endpoint *flux.Endpoint) *internal.FxContext {
+	ctx := fs.contextPool.Get().(*internal.FxContext)
 	ctx.Reattach(c, endpoint)
 	return ctx
 }
 
-func (fs *FluxServer) release(c *internal.Context) {
+func (fs *FluxServer) release(c *internal.FxContext) {
 	c.Release()
 	fs.contextPool.Put(c)
 }
@@ -222,7 +222,7 @@ func (fs *FluxServer) httpErrorAdapting(err error, ctx echo.Context) {
 	}
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
 	fc := ctx.Get(_echoKeyRoutedContext)
-	if fxCtx, ok := fc.(*internal.Context); ok {
+	if fxCtx, ok := fc.(*internal.FxContext); ok {
 		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), fxCtx.RequestId(), fxCtx.ResponseWriter().Headers(), iErr); nil != err {
 			logger.Errorf("Response errors: ", err)
 		}

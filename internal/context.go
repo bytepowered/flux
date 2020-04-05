@@ -11,81 +11,81 @@ import (
 )
 
 // Context接口实现
-type Context struct {
+type FxContext struct {
 	echo         echo.Context
 	completed    bool
 	endpoint     *flux.Endpoint
 	requestId    string
 	attrValues   flux.StringMap
 	scopedValues flux.StringMap
-	response     *response
-	request      *request
+	response     *FxResponse
+	request      *FxRequest
 	bodyBuffer   *bytes.Buffer
 }
 
-func NewContext() interface{} {
-	return &Context{
+func NewFxContext() interface{} {
+	return &FxContext{
 		response:   newResponseWriter(),
 		request:    newRequestReader(),
 		bodyBuffer: new(bytes.Buffer),
 	}
 }
 
-func (c *Context) RequestReader() flux.RequestReader {
+func (c *FxContext) RequestReader() flux.RequestReader {
 	return c.request
 }
 
-func (c *Context) ResponseWriter() flux.ResponseWriter {
+func (c *FxContext) ResponseWriter() flux.ResponseWriter {
 	return c.response
 }
 
-func (c *Context) Endpoint() flux.Endpoint {
+func (c *FxContext) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *Context) RequestMethod() string {
+func (c *FxContext) RequestMethod() string {
 	return c.echo.Request().Method
 }
 
-func (c *Context) RequestUri() string {
+func (c *FxContext) RequestUri() string {
 	return c.echo.Request().RequestURI
 }
 
-func (c *Context) RequestPath() string {
+func (c *FxContext) RequestPath() string {
 	return c.echo.Request().URL.Path
 }
 
-func (c *Context) RequestId() string {
+func (c *FxContext) RequestId() string {
 	return c.requestId
 }
 
-func (c *Context) RequestHost() string {
+func (c *FxContext) RequestHost() string {
 	return c.echo.Request().Host
 }
 
-func (c *Context) AttrValues() flux.StringMap {
+func (c *FxContext) AttrValues() flux.StringMap {
 	return c.attrValues
 }
 
-func (c *Context) SetAttrValue(name string, value interface{}) {
+func (c *FxContext) SetAttrValue(name string, value interface{}) {
 	c.attrValues[name] = value
 }
 
-func (c *Context) AttrValue(name string) (interface{}, bool) {
+func (c *FxContext) AttrValue(name string) (interface{}, bool) {
 	v, ok := c.attrValues[name]
 	return v, ok
 }
 
-func (c *Context) SetScopedValue(name string, value interface{}) {
+func (c *FxContext) SetScopedValue(name string, value interface{}) {
 	c.scopedValues[name] = value
 }
 
-func (c *Context) ScopedValue(name string) (interface{}, bool) {
+func (c *FxContext) ScopedValue(name string) (interface{}, bool) {
 	v, ok := c.scopedValues[name]
 	return v, ok
 }
 
-func (c *Context) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
+func (c *FxContext) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
 	request := echo.Request()
 	request.GetBody = c.bodyBufferGetter
 	c.echo = echo
@@ -101,7 +101,7 @@ func (c *Context) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
 	c.SetAttrValue(flux.XRequestAgent, "flux/gateway")
 }
 
-func (c *Context) Release() {
+func (c *FxContext) Release() {
 	c.echo = nil
 	c.request = nil
 	c.endpoint = nil
@@ -111,7 +111,7 @@ func (c *Context) Release() {
 	c.bodyBuffer.Reset()
 }
 
-func (c *Context) bodyBufferGetter() (io.ReadCloser, error) {
+func (c *FxContext) bodyBufferGetter() (io.ReadCloser, error) {
 	if c.bodyBuffer != nil {
 		return ioutil.NopCloser(bytes.NewReader(c.bodyBuffer.Bytes())), nil
 	}

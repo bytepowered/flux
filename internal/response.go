@@ -5,53 +5,53 @@ import (
 	"net/http"
 )
 
-// Response 定义响应数据
-type response struct {
+// FxResponse 定义响应数据
+type FxResponse struct {
 	status  int
 	headers http.Header
 	body    interface{}
 }
 
-func (r *response) StatusCode() int {
+func (r *FxResponse) StatusCode() int {
 	return r.status
 }
 
-func (r *response) Headers() http.Header {
+func (r *FxResponse) Headers() http.Header {
 	return r.headers
 }
 
-func (r *response) Body() interface{} {
+func (r *FxResponse) Body() interface{} {
 	return r.body
 }
 
-func (r *response) SetStatusCode(status int) flux.ResponseWriter {
+func (r *FxResponse) SetStatusCode(status int) flux.ResponseWriter {
 	r.status = status
 	return r
 }
 
-func (r *response) AddHeader(name, value string) flux.ResponseWriter {
+func (r *FxResponse) AddHeader(name, value string) flux.ResponseWriter {
 	r.headers.Add(name, value)
 	return r
 }
 
-func (r *response) SetHeaders(headers http.Header) flux.ResponseWriter {
+func (r *FxResponse) SetHeaders(headers http.Header) flux.ResponseWriter {
 	r.headers = headers
 	return r
 }
 
-func (r *response) SetBody(body interface{}) flux.ResponseWriter {
+func (r *FxResponse) SetBody(body interface{}) flux.ResponseWriter {
 	r.body = body
 	return r
 }
 
-func (r *response) reset() {
+func (r *FxResponse) reset() {
 	r.status = flux.StatusOK
 	r.body = nil
 	r.headers = http.Header{}
 }
 
-func newResponseWriter() *response {
-	return &response{
+func newResponseWriter() *FxResponse {
+	return &FxResponse{
 		status:  flux.StatusOK,
 		headers: http.Header{},
 		body:    nil,

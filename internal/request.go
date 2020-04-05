@@ -6,32 +6,32 @@ import (
 	"net/http"
 )
 
-type request struct {
-	echoCtx echo.Context
+type FxRequest struct {
+	ctx echo.Context
 }
 
-func (r *request) ParamInQuery(name string) string {
-	return r.echoCtx.QueryParam(name)
+func (r *FxRequest) ParamInQuery(name string) string {
+	return r.ctx.QueryParam(name)
 }
 
-func (r *request) ParamInPath(name string) string {
-	return r.echoCtx.Param(name)
+func (r *FxRequest) ParamInPath(name string) string {
+	return r.ctx.Param(name)
 }
 
-func (r *request) ParamInForm(name string) string {
-	return r.echoCtx.FormValue(name)
+func (r *FxRequest) ParamInForm(name string) string {
+	return r.ctx.FormValue(name)
 }
 
-func (r *request) Header(name string) string {
-	return r.echoCtx.Request().Header.Get(name)
+func (r *FxRequest) Header(name string) string {
+	return r.ctx.Request().Header.Get(name)
 }
 
-func (r *request) Headers() http.Header {
-	return r.echoCtx.Request().Header.Clone()
+func (r *FxRequest) Headers() http.Header {
+	return r.ctx.Request().Header.Clone()
 }
 
-func (r *request) Cookie(name string) string {
-	c, e := r.echoCtx.Cookie(name)
+func (r *FxRequest) Cookie(name string) string {
+	c, e := r.ctx.Cookie(name)
 	if e == echo.ErrCookieNotFound {
 		return ""
 	} else {
@@ -39,22 +39,22 @@ func (r *request) Cookie(name string) string {
 	}
 }
 
-func (r *request) RemoteAddress() string {
-	return r.echoCtx.RealIP()
+func (r *FxRequest) RemoteAddress() string {
+	return r.ctx.RealIP()
 }
 
-func (r *request) HttpRequest() *http.Request {
-	return r.echoCtx.Request()
+func (r *FxRequest) HttpRequest() *http.Request {
+	return r.ctx.Request()
 }
 
-func (r *request) HttpBody() (io.ReadCloser, error) {
-	return r.echoCtx.Request().GetBody()
+func (r *FxRequest) HttpBody() (io.ReadCloser, error) {
+	return r.ctx.Request().GetBody()
 }
 
-func (r *request) attach(echo echo.Context) {
-	r.echoCtx = echo
+func (r *FxRequest) attach(echo echo.Context) {
+	r.ctx = echo
 }
 
-func newRequestReader() *request {
-	return &request{}
+func newRequestReader() *FxRequest {
+	return &FxRequest{}
 }
