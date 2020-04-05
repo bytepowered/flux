@@ -20,6 +20,7 @@ type AwareConfig struct {
 	Factory  flux.Factory
 }
 
+// dynloadConfig 基于type-id标记的工厂函数，可以生成相同类型的多实例组件
 func dynloadConfig(globals flux.Config) []AwareConfig {
 	out := make([]AwareConfig, 0)
 	globals.Foreach(func(name string, v interface{}) bool {

@@ -41,7 +41,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 		}
 		return nil
 	}
-	// 静态注册的内核组件
+	// 静态注册的单实例内核组件
 	// Registry
 	registryConfig := ext.ConfigFactory()(configNsPrefixRegistry, globals.Map(flux.KeyConfigRootRegistry))
 	if activeRegistry, err := registryActiveWith(registryConfig); nil != err {
@@ -71,7 +71,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 			return err
 		}
 	}
-	// 从配置中动态加载的组件
+	// 加载和注册，动态多实例组件
 	for _, item := range dynloadConfig(globals) {
 		comp := item.Factory()
 		// 目前只支持Filter动态注册
