@@ -48,7 +48,7 @@ func (d *FxDispatcher) Init(globals flux.Config) error {
 		}
 	}
 	// Exchanges
-	exchangeConfig := ext.ConfigFactory()(configNsPrefixExchange, globals.Map(flux.KeyConfigRootExchanges))
+	exchangeConfig := ext.NewMapConfig(globals.Map(flux.KeyConfigRootExchanges))
 	for proto, ex := range ext.Exchanges() {
 		ns := configNsPrefixExchangeProto + proto
 		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, ns)

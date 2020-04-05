@@ -29,7 +29,7 @@ func LoadConfig() flux.Config {
 			logger.Panicf("Config not found: %s", ConfigApp)
 		} else {
 			logger.Infof("Using config: %s", ConfigApp)
-			_globals = ext.ConfigFactory()("globals", data)
+			_globals = ext.NewMapConfig(data)
 		}
 	})
 	return _globals
