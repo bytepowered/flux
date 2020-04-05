@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	configKeyDisable    = "disable"
-	configKeyTypeId     = "type-id"
-	configKeyInitConfig = "InitConfig"
+	configKeyDynDisable    = "disable"
+	configKeyDynTypeId     = "type-id"
+	configKeyDynInitConfig = "InitConfig"
 )
 
 type AwareConfig struct {
@@ -28,12 +28,12 @@ func dynloadConfig(globals flux.Config) []AwareConfig {
 		if !is {
 			return true
 		}
-		config := NewMapConfig(m)
-		if config.IsEmpty() || !(config.Contains(configKeyTypeId) && config.Contains(configKeyInitConfig)) {
+		config := ext.NewMapConfig(m)
+		if config.IsEmpty() || !(config.Contains(configKeyDynTypeId) && config.Contains(configKeyDynInitConfig)) {
 			return true
 		}
-		typeId := config.String(configKeyTypeId)
-		if config.BooleanOrDefault(configKeyDisable, false) {
+		typeId := config.String(configKeyDynTypeId)
+		if config.BooleanOrDefault(configKeyDynDisable, false) {
 			logger.Infof("Component is DISABLED, type: %s", typeId)
 			return true
 		}
@@ -47,7 +47,7 @@ func dynloadConfig(globals flux.Config) []AwareConfig {
 			Name:     name,
 			TypeId:   typeId,
 			ConfigNs: ns,
-			Config:   ext.ConfigFactory()(ns, config.Map(configKeyInitConfig)),
+			Config:   ext.ConfigFactory()(ns, config.Map(configKeyDynInitConfig)),
 			Factory:  factory,
 		})
 		return true

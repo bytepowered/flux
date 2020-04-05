@@ -11,10 +11,6 @@ import (
 	"net/http"
 )
 
-const (
-	httpContentTypeJson = "application/json;charset=utf-8"
-)
-
 type FxHttpWriter int
 
 func (a FxHttpWriter) WriteError(resp *echo.Response, reqId string, outHeader http.Header, invokeError *flux.InvokeError) error {

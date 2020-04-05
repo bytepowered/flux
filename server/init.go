@@ -14,7 +14,7 @@ import (
 func init() {
 	// Config factory
 	ext.SetConfigFactory(func(ns string, m map[string]interface{}) flux.Config {
-		return internal.NewMapConfig(m)
+		return ext.NewMapConfig(m)
 	})
 	// Serializer
 	serializer := internal.NewJsonSerializer()
