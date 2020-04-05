@@ -69,6 +69,14 @@ func NewFluxServer() *FluxServer {
 	}
 }
 
+// Prepare Call before init and startup
+func (fs *FluxServer) Prepare(globals flux.Config, hooks ...func(globals flux.Config)) {
+	for _, h := range hooks {
+		h(globals)
+	}
+}
+
+// Init : Call before startup
 func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.globals = globals
 	// Http server
