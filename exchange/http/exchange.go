@@ -119,7 +119,7 @@ func (e *exchange) Assemble(endpoint *flux.Endpoint, inReq *http.Request) (*http
 	}
 	// Body数据设置application/x-www-url-encoded
 	if http.MethodGet != endpoint.UpstreamMethod {
-		newRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		newRequest.Header.Set("Content-TypeId", "application/x-www-form-urlencoded")
 	}
 	newRequest.Header.Set("User-Agent", "FluxGo/Exchange/v1")
 	return newRequest, err

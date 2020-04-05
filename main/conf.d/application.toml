@@ -33,9 +33,9 @@ type-id = "JwtVerificationFilter"
 jwt-lookup-token = "header:Authorization"
 jwt-issuer-key = "iss"
 jwt-subject-key = "sub"
-verification-protocol = "DUBBO"
-verification-uri = "foo.bar.JWTService"
-verification-method = "getPrivateJwtSecret"
+upstream-protocol = "DUBBO"
+upstream-uri = "foo.bar.JWTService"
+upstream-method = "getPrivateJwtSecret"
 
 # Http后端JWT验证配置
 [HttpJsonWebTokenVerification]
@@ -45,22 +45,24 @@ type-id = "JwtVerificationFilter"
 jwt-lookup-token = "Authorization"
 jwt-issuer-key = "iss"
 jwt-subject-key = "sub"
-verification-protocol = "HTTP"
-verification-uri = "http://foo.bar.com:8080/jwt"
-verification-method = "POST"
+upstream-protocol = "HTTP"
+upstream-uri = "http://foo.bar.com:8080/jwt"
+upstream-method = "POST"
 
 
 # 访问权限验证
 [PermissionVerification]
 disable = false
-type-id = "PermissionVerification"
+type-id = "PermissionVerificationFilter"
 [PermissionVerification.InitConfig]
 # 访问Subject在JWT数据中的Key
 subject-jwt-key = "uid"
 # Optional: 指定权限验收Dubbo接口。
 # 当interface非空时生效，接口定义：verify(String uid, String method, String pattern)
-verification-uri = ""
-verification-method = "verify"
+upstream-proto = "HTTP"
+upstream-host = "http://bytepowered.net"
+upstream-uri = "/jwt/permission"
+upstream-method = "POST"
 
 # 日志配置
 [Logger]

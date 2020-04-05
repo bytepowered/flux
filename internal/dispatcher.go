@@ -26,7 +26,6 @@ func NewDispatcher() *Dispatcher {
 
 func (d *Dispatcher) Init(globals flux.Config) error {
 	logger.Infof("Dispatcher initialing")
-
 	// 组件需要注册生命周期回调钩子
 	doRegisterHooks := func(ref interface{}, config flux.Config) error {
 		if init, ok := ref.(flux.Initializer); ok {
@@ -42,17 +41,7 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 		}
 		return nil
 	}
-	// 从配置中动态加载的组件
-	for _, item := range dynloadConfig(globals) {
-		ref := item.Factory()
-		logger.Infof("Load component, name: %s, type: %s, inst.type: %T, config.ns: %s", item.Name, item.Type, ref, item.ConfigNs)
-		if err := doRegisterHooks(ref, item.Config); nil != err {
-			return err
-		}
-	}
-
 	// 静态注册的内核组件
-
 	// Registry
 	registryConfig := ext.ConfigFactory()(configNsPrefixRegistry, globals.Map(flux.KeyConfigRootRegistry))
 	if activeRegistry, err := registryActiveWith(registryConfig); nil != err {
@@ -66,21 +55,34 @@ func (d *Dispatcher) Init(globals flux.Config) error {
 	// Exchanges
 	exchangeConfig := ext.ConfigFactory()(configNsPrefixExchange, globals.Map(flux.KeyConfigRootExchanges))
 	for proto, ex := range ext.Exchanges() {
-		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, configNsPrefixExchange)
-		protoConfig := ext.ConfigFactory()(configNsPrefixExchangeProto+proto,
-			exchangeConfig.Map(strings.ToUpper(proto)))
+		ns := configNsPrefixExchangeProto + proto
+		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, ns)
+		protoConfig := ext.ConfigFactory()(ns, exchangeConfig.Map(strings.ToUpper(proto)))
 		if err := doRegisterHooks(ex, protoConfig); nil != err {
 			return err
 		}
 	}
-	// GlobalFilters
-	for i, filter := range ext.GlobalFilters() {
-		factory := ext.ConfigFactory()
-		cns := configNsPrefixComponent + filter.TypeId()
-		filterConfig := factory(cns, make(map[string]interface{}))
-		logger.Infof("Load global filter, order: %d, filter.type: %T, config.ns: %s", i, filter, cns)
+	// Filters
+	for _, filter := range append(ext.GlobalFilters(), ext.ScopedFilters()...) {
+		ns := configNsPrefixComponent + filter.TypeId()
+		filterConfig := ext.ConfigFactory()(ns, globals.Map(filter.TypeId()))
+		logger.Infof("Load filter, filter.type: %T, config.ns: %s", filter, ns)
 		if err := doRegisterHooks(filter, filterConfig); nil != err {
 			return err
+		}
+	}
+	// 从配置中动态加载的组件
+	for _, item := range dynloadConfig(globals) {
+		comp := item.Factory()
+		// 目前只支持Filter动态注册
+		if filter, ok := comp.(flux.Filter); ok {
+			logger.Infof("Load component, name: %s, type: %s, comp.type: %T, config.ns: %s", item.Name, item.TypeId, comp, item.ConfigNs)
+			if err := doRegisterHooks(filter, item.Config); nil != err {
+				return err
+			}
+			ext.AddFilter(filter)
+		} else {
+			return fmt.Errorf("dynamic component, support scoped-filter ONLY, was: %T", comp)
 		}
 	}
 	return nil

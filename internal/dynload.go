@@ -12,16 +12,16 @@ const (
 	configKeyInitConfig = "InitConfig"
 )
 
-type awareConfig struct {
+type AwareConfig struct {
 	Name     string
-	Type     string
+	TypeId   string
 	ConfigNs string
 	Config   flux.Config
 	Factory  flux.Factory
 }
 
-func dynloadConfig(globals flux.Config) []awareConfig {
-	out := make([]awareConfig, 0)
+func dynloadConfig(globals flux.Config) []AwareConfig {
+	out := make([]AwareConfig, 0)
 	globals.Foreach(func(name string, v interface{}) bool {
 		m, is := v.(map[string]interface{})
 		if !is {
@@ -31,23 +31,23 @@ func dynloadConfig(globals flux.Config) []awareConfig {
 		if config.IsEmpty() || !(config.Contains(configKeyTypeId) && config.Contains(configKeyInitConfig)) {
 			return true
 		}
-		typeName := config.String(configKeyTypeId)
+		typeId := config.String(configKeyTypeId)
 		if config.BooleanOrDefault(configKeyDisable, false) {
-			logger.Infof("Component is DISABLED, type: %s", typeName)
+			logger.Infof("Component is DISABLED, type: %s", typeId)
 			return true
 		}
-		f, ok := ext.GetFactory(typeName)
+		factory, ok := ext.GetFactory(typeId)
 		if !ok {
-			logger.Warnf("Config factory not found, type: %s", typeName)
+			logger.Warnf("Config factory not found, type: %s", typeId)
 			return true
 		}
-		cns := configNsPrefixComponent + typeName
-		out = append(out, awareConfig{
+		ns := configNsPrefixComponent + typeId
+		out = append(out, AwareConfig{
 			Name:     name,
-			Type:     typeName,
-			ConfigNs: cns,
-			Config:   ext.ConfigFactory()(cns, config.Map(configKeyInitConfig)),
-			Factory:  f,
+			TypeId:   typeId,
+			ConfigNs: ns,
+			Config:   ext.ConfigFactory()(ns, config.Map(configKeyInitConfig)),
+			Factory:  factory,
 		})
 		return true
 	})

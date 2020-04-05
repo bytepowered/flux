@@ -32,7 +32,7 @@ func AddGlobalFilter(v interface{}) {
 	sort.Sort(filterArray(_globalFilter))
 }
 
-// AddGlobalFilter 注册全局Filter；
+// AddFilter 注册Filter；
 func AddFilter(v interface{}) {
 	f, ok := v.(flux.Filter)
 	if !ok || nil == f {
@@ -40,6 +40,15 @@ func AddFilter(v interface{}) {
 	}
 	_scopedFilter = append(_scopedFilter, filterWrapper{filter: f, order: orderOf(v)})
 	sort.Sort(filterArray(_scopedFilter))
+}
+
+// ScopedFilters 获取已排序的Filter列表
+func ScopedFilters() []flux.Filter {
+	out := make([]flux.Filter, len(_scopedFilter))
+	for i, v := range _scopedFilter {
+		out[i] = v.filter
+	}
+	return out
 }
 
 // GlobalFilters 获取已排序的全局Filter列表
