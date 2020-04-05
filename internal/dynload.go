@@ -34,12 +34,12 @@ func dynloadConfig(globals flux.Config) []AwareConfig {
 		}
 		typeId := config.String(configKeyDynTypeId)
 		if config.BooleanOrDefault(configKeyDynDisable, false) {
-			logger.Infof("Component is DISABLED, type: %s", typeId)
+			logger.Infof("Aware is DISABLED, typeId: %s", typeId)
 			return true
 		}
 		factory, ok := ext.GetFactory(typeId)
 		if !ok {
-			logger.Warnf("Config factory not found, type: %s", typeId)
+			logger.Warnf("TypeFactory not found, typeId: %s", typeId)
 			return true
 		}
 		ns := configNsPrefixComponent + typeId

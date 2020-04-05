@@ -313,6 +313,10 @@ func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
 	echo.NotFoundHandler = nfh
 }
 
+func (fs *FluxServer) AddHook(hook interface{}) {
+	fs.dispatcher.AddHook(hook)
+}
+
 func (*FluxServer) SetExchange(protoName string, exchange flux.Exchange) {
 	ext.SetExchange(protoName, exchange)
 }

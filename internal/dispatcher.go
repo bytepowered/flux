@@ -26,19 +26,14 @@ func NewDispatcher() *FxDispatcher {
 
 func (d *FxDispatcher) Init(globals flux.Config) error {
 	logger.Infof("Dispatcher initialing")
-	// 组件需要注册生命周期回调钩子
-	doRegisterHooks := func(ref interface{}, config flux.Config) error {
+	// 组件生命周期回调钩子
+	initRegisterHook := func(ref interface{}, config flux.Config) error {
 		if init, ok := ref.(flux.Initializer); ok {
 			if err := init.Init(config); nil != err {
 				return err
 			}
 		}
-		if startup, ok := ref.(flux.Startuper); ok {
-			d.hooksStartup = append(d.hooksStartup, startup)
-		}
-		if shutdown, ok := ref.(flux.Shutdowner); ok {
-			d.hooksShutdown = append(d.hooksShutdown, shutdown)
-		}
+		d.AddHook(ref)
 		return nil
 	}
 	// 静态注册的单实例内核组件
@@ -48,7 +43,7 @@ func (d *FxDispatcher) Init(globals flux.Config) error {
 		return err
 	} else {
 		d.activeRegistry = activeRegistry
-		if err := doRegisterHooks(activeRegistry, registryConfig); nil != err {
+		if err := initRegisterHook(activeRegistry, registryConfig); nil != err {
 			return err
 		}
 	}
@@ -58,7 +53,7 @@ func (d *FxDispatcher) Init(globals flux.Config) error {
 		ns := configNsPrefixExchangeProto + proto
 		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, ns)
 		protoConfig := ext.ConfigFactory()(ns, exchangeConfig.Map(strings.ToUpper(proto)))
-		if err := doRegisterHooks(ex, protoConfig); nil != err {
+		if err := initRegisterHook(ex, protoConfig); nil != err {
 			return err
 		}
 	}
@@ -67,25 +62,33 @@ func (d *FxDispatcher) Init(globals flux.Config) error {
 		ns := configNsPrefixComponent + filter.TypeId()
 		filterConfig := ext.ConfigFactory()(ns, globals.Map(filter.TypeId()))
 		logger.Infof("Load filter, filter.type: %T, config.ns: %s", filter, ns)
-		if err := doRegisterHooks(filter, filterConfig); nil != err {
+		if err := initRegisterHook(filter, filterConfig); nil != err {
 			return err
 		}
 	}
 	// 加载和注册，动态多实例组件
 	for _, item := range dynloadConfig(globals) {
-		comp := item.Factory()
+		aware := item.Factory()
+		logger.Infof("Load aware, name: %s, type: %s, aware.type: %T, config.ns: %s", item.Name, item.TypeId, aware, item.ConfigNs)
+		if err := initRegisterHook(aware, item.Config); nil != err {
+			return err
+		}
 		// 目前只支持Filter动态注册
-		if filter, ok := comp.(flux.Filter); ok {
-			logger.Infof("Load component, name: %s, type: %s, comp.type: %T, config.ns: %s", item.Name, item.TypeId, comp, item.ConfigNs)
-			if err := doRegisterHooks(filter, item.Config); nil != err {
-				return err
-			}
+		// 其它未知组件，只做动态启动生命周期
+		if filter, ok := aware.(flux.Filter); ok {
 			ext.AddFilter(filter)
-		} else {
-			return fmt.Errorf("dynamic component, support scoped-filter ONLY, was: %T", comp)
 		}
 	}
 	return nil
+}
+
+func (d *FxDispatcher) AddHook(hook interface{}) {
+	if startup, ok := hook.(flux.Startuper); ok {
+		d.hooksStartup = append(d.hooksStartup, startup)
+	}
+	if shutdown, ok := hook.(flux.Shutdowner); ok {
+		d.hooksShutdown = append(d.hooksShutdown, shutdown)
+	}
 }
 
 func (d *FxDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
