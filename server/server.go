@@ -70,10 +70,13 @@ func NewFluxServer() *FluxServer {
 }
 
 // Prepare Call before init and startup
-func (fs *FluxServer) Prepare(globals flux.Config, hooks ...func(globals flux.Config)) {
-	for _, h := range hooks {
-		h(globals)
+func (fs *FluxServer) Prepare(globals flux.Config, hooks ...flux.PrepareHook) error {
+	for _, prepare := range append(ext.PrepareHooks(), hooks...) {
+		if err := prepare(globals); nil != err {
+			return err
+		}
 	}
+	return nil
 }
 
 // Init : Call before startup
@@ -95,8 +98,8 @@ func (fs *FluxServer) Init(globals flux.Config) error {
 	return fs.dispatcher.Init(globals)
 }
 
-// Start server
-func (fs *FluxServer) Start(version flux.BuildInfo) error {
+// Startup server
+func (fs *FluxServer) Startup(version flux.BuildInfo) error {
 	fs.checkInit()
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, version.CommitId, version.Version, version.Date)
@@ -321,8 +324,13 @@ func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
 	echo.NotFoundHandler = nfh
 }
 
-func (fs *FluxServer) AddHook(hook interface{}) {
-	fs.dispatcher.AddHook(hook)
+// AddLifecycleHook 添加生命周期Hook接口：Startuper/Shutdowner接口
+func (fs *FluxServer) AddLifecycleHook(lifecycleHook interface{}) {
+	fs.dispatcher.AddLifecycleHook(lifecycleHook)
+}
+
+func (*FluxServer) AddPrepareHook(ph flux.PrepareHook) {
+	ext.AddPrepareHook(ph)
 }
 
 func (*FluxServer) SetExchange(protoName string, exchange flux.Exchange) {

@@ -33,7 +33,7 @@ func (d *FxDispatcher) Init(globals flux.Config) error {
 				return err
 			}
 		}
-		d.AddHook(ref)
+		d.AddLifecycleHook(ref)
 		return nil
 	}
 	// 静态注册的单实例内核组件
@@ -82,7 +82,7 @@ func (d *FxDispatcher) Init(globals flux.Config) error {
 	return nil
 }
 
-func (d *FxDispatcher) AddHook(hook interface{}) {
+func (d *FxDispatcher) AddLifecycleHook(hook interface{}) {
 	if startup, ok := hook.(flux.Startuper); ok {
 		d.hooksStartup = append(d.hooksStartup, startup)
 	}

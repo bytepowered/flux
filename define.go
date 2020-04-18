@@ -15,6 +15,8 @@ type BuildInfo struct {
 type (
 	// Factory 用于动态初始化
 	Factory func() interface{}
+	// PrepareHook 在初始化调用前的预备函数
+	PrepareHook func(globals Config) error
 	// Startuper 用于介入服务启动生命周期的Hook，通常与 Orderer 接口一起使用。
 	Startuper interface {
 		Startup() error // 当服务启动时，调用此函数

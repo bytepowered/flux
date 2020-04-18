@@ -26,11 +26,14 @@ func InitDefaultLogger() {
 func Run(ver flux.BuildInfo) {
 	fx := NewFluxServer()
 	globals := LoadConfig()
+	if err := fx.Prepare(globals); nil != err {
+		logger.Panic("FluxServer prepare:", err)
+	}
 	if err := fx.Init(globals); nil != err {
-		logger.Panicf("FluxServer init: %v", err)
+		logger.Panic("FluxServer init:", err)
 	}
 	go func() {
-		if err := fx.Start(ver); nil != err {
+		if err := fx.Startup(ver); nil != err {
 			logger.Error(err)
 		}
 	}()
