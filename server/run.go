@@ -11,13 +11,13 @@ import (
 )
 
 func InitDefaultLogger() {
-	l, err := InitLogger()
-	if err != nil && l != nil {
-		l.Panic("FluxServer logger init:", err)
+	zLogger, err := InitLogger()
+	if err != nil && zLogger != nil {
+		zLogger.Panic("FluxServer logger init:", err)
 	} else {
-		ext.SetLogger(l)
+		ext.SetLogger(zLogger)
 	}
-	if nil == l {
+	if nil == zLogger {
 		panic("logger is nil")
 	}
 }
