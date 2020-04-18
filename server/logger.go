@@ -10,13 +10,18 @@ import (
 )
 
 const (
-	// 日志文件环境变量名称
-	AppLogConfFile = "APP_LOG_CONF_FILE"
+	// 默认外部化配置的日志文件环境变量名称，与Dubbo的环境变量保持一致
+	EnvKeyApplicationLogConfFile = "APP_LOG_CONF_FILE"
 )
 
-// InitLogger ...
-func InitLogger() (*zap.SugaredLogger, error) {
-	file := os.Getenv(AppLogConfFile)
+func InitLoggerDefault() (*zap.SugaredLogger, error) {
+	return InitLogger("")
+}
+
+func InitLogger(file string) (*zap.SugaredLogger, error) {
+	if file == "" {
+		file = os.Getenv(EnvKeyApplicationLogConfFile)
+	}
 	if file == "" {
 		return NewZapLogger(nil), errors.New("log configure file name is nil")
 	}
@@ -35,7 +40,6 @@ func InitLogger() (*zap.SugaredLogger, error) {
 	return NewZapLogger(conf), nil
 }
 
-// initZapLogger ...
 func NewZapLogger(conf *zap.Config) *zap.SugaredLogger {
 	var zLogConfig zap.Config
 	if conf != nil {

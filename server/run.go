@@ -7,11 +7,16 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 )
 
+const (
+	templateEnvApplicationConfigPath = "conf.d/application-{env}.toml"
+)
+
 func InitDefaultLogger() {
-	zLogger, err := InitLogger()
+	zLogger, err := InitLoggerDefault()
 	if err != nil && zLogger != nil {
 		zLogger.Panic("FluxServer logger init:", err)
 	} else {
@@ -22,9 +27,28 @@ func InitDefaultLogger() {
 	}
 }
 
+// 根据环境配置参数，获取带环境参数后缀的配置文件路径
+func GetEnvBasedConfigPath() string {
+	env := os.Getenv("env")
+	if env == "" {
+		env = os.Getenv("runtime.env")
+	}
+	if env != "" {
+		path := strings.Replace(templateEnvApplicationConfigPath, "{env}", env, 1)
+		// 如果环境后缀的配置文件不存在，返回空路径
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return ""
+		} else {
+			return path
+		}
+	} else {
+		return ""
+	}
+}
+
 func Run(ver flux.BuildInfo) {
 	fx := NewFluxServer()
-	globals := LoadConfig()
+	globals := LoadConfig(GetEnvBasedConfigPath())
 	if err := fx.Prepare(globals); nil != err {
 		logger.Panic("FluxServer prepare:", err)
 	}

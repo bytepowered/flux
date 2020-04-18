@@ -5,12 +5,13 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"os"
 	"sync"
 )
 
 const (
-	ConfigDir = "conf.d"
-	ConfigApp = ConfigDir + "/application.toml"
+	EnvKeyApplicationConfigPath  = "APP_CONF_FILE"
+	DefaultApplicationConfigPath = "conf.d/application.toml"
 )
 
 var (
@@ -23,12 +24,20 @@ func GlobalConfig() flux.Config {
 	return _globals
 }
 
-func LoadConfig() flux.Config {
+func LoadConfig(outpath string) flux.Config {
 	_globalOnce.Do(func() {
-		if data, err := pkg.LoadTomlFile(ConfigApp); nil != err {
-			logger.Panicf("Config not found: %s", ConfigApp)
+		configPath := DefaultApplicationConfigPath
+		// 1. Env配置
+		if envpath := os.Getenv(EnvKeyApplicationConfigPath); envpath != "" {
+			configPath = envpath
+		} else if outpath != "" {
+			// 2. 外部配置
+			configPath = outpath
+		}
+		logger.Infof("Using config, path: %s", configPath)
+		if data, err := pkg.LoadTomlFile(configPath); nil != err {
+			logger.Panicf("Config not found: %s", configPath)
 		} else {
-			logger.Infof("Using config: %s", ConfigApp)
 			_globals = ext.NewMapConfig(data)
 		}
 	})
