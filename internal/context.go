@@ -86,10 +86,10 @@ func (c *FxContext) ScopedValue(name string) (interface{}, bool) {
 }
 
 func (c *FxContext) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
-	request := echo.Request()
-	request.GetBody = c.bodyBufferGetter
+	httpRequest := echo.Request()
+	httpRequest.GetBody = c.bodyBufferGetter
 	c.echo = echo
-	c.request.attach(echo)
+	c.request.reattach(echo)
 	c.endpoint = endpoint
 	c.completed = false
 	c.requestId = random.String(20)
@@ -97,16 +97,16 @@ func (c *FxContext) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
 	c.scopedValues = make(flux.StringMap, 8)
 	c.SetAttrValue(flux.XRequestTime, time.Now().Unix())
 	c.SetAttrValue(flux.XRequestId, c.requestId)
-	c.SetAttrValue(flux.XRequestHost, request.Host)
+	c.SetAttrValue(flux.XRequestHost, httpRequest.Host)
 	c.SetAttrValue(flux.XRequestAgent, "flux/gateway")
 }
 
 func (c *FxContext) Release() {
 	c.echo = nil
-	c.request = nil
 	c.endpoint = nil
 	c.attrValues = nil
 	c.scopedValues = nil
+	c.request.reset()
 	c.response.reset()
 	c.bodyBuffer.Reset()
 }

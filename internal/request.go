@@ -51,8 +51,12 @@ func (r *FxRequest) HttpBody() (io.ReadCloser, error) {
 	return r.ctx.Request().GetBody()
 }
 
-func (r *FxRequest) attach(echo echo.Context) {
+func (r *FxRequest) reattach(echo echo.Context) {
 	r.ctx = echo
+}
+
+func (r *FxRequest) reset() {
+	r.ctx = nil
 }
 
 func newRequestReader() *FxRequest {
