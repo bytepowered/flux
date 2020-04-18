@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"os"
 	"os/signal"
@@ -12,9 +11,9 @@ import (
 )
 
 func InitDefaultLogger() {
-	l, err := internal.InitLogger()
+	l, err := InitLogger()
 	if err != nil && l != nil {
-		l.Panicf("FluxServer logger init: %v", err)
+		l.Panic("FluxServer logger init:", err)
 	} else {
 		ext.SetLogger(l)
 	}
