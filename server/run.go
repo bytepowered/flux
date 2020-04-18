@@ -15,6 +15,10 @@ const (
 	templateEnvApplicationConfigPath = "conf.d/application-{env}.toml"
 )
 
+const (
+	EnvKeyDeployEnv = "DEPLOY_ENV"
+)
+
 func InitDefaultLogger() {
 	zLogger, err := InitLoggerDefault()
 	if err != nil && zLogger != nil {
@@ -28,11 +32,8 @@ func InitDefaultLogger() {
 }
 
 // 根据环境配置参数，获取带环境参数后缀的配置文件路径
-func GetEnvBasedConfigPath() string {
-	env := os.Getenv("env")
-	if env == "" {
-		env = os.Getenv("runtime.env")
-	}
+func GetEnvBasedConfigPath(envKey string) string {
+	env := os.Getenv(envKey)
 	if env != "" {
 		path := strings.Replace(templateEnvApplicationConfigPath, "{env}", env, 1)
 		// 如果环境后缀的配置文件不存在，返回空路径
@@ -48,7 +49,7 @@ func GetEnvBasedConfigPath() string {
 
 func Run(ver flux.BuildInfo) {
 	fx := NewFluxServer()
-	globals := LoadConfig(GetEnvBasedConfigPath())
+	globals := LoadConfig(GetEnvBasedConfigPath(EnvKeyDeployEnv))
 	if err := fx.Prepare(globals); nil != err {
 		logger.Panic("FluxServer prepare:", err)
 	}
