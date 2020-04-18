@@ -4,7 +4,7 @@ type ConfigFactory func(namespace string, data map[string]interface{}) Config
 
 type Config interface {
 	IsEmpty() bool
-	Get(name string) (interface{}, bool)
+	GetValue(name string) (interface{}, bool)
 	String(name string) string
 	StringOrDefault(name string, defaultValue string) string
 	Int64(name string) int64

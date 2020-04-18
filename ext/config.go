@@ -19,27 +19,27 @@ func ConfigFactory() flux.ConfigFactory {
 
 // MapConfig实现
 
-type MapConfig struct {
-	data map[string]interface{}
-}
-
-func (c *MapConfig) Get(name string) (interface{}, bool) {
-	v, ok := c.data[name]
-	return v, ok
-}
-
 func NewMapConfig(values map[string]interface{}) flux.Config {
 	return &MapConfig{
-		data: values,
+		MapValues: values,
 	}
 }
 
+type MapConfig struct {
+	MapValues map[string]interface{}
+}
+
+func (c *MapConfig) GetValue(name string) (interface{}, bool) {
+	v, ok := c.MapValues[name]
+	return v, ok
+}
+
 func (c *MapConfig) IsEmpty() bool {
-	return 0 == len(c.data)
+	return 0 == len(c.MapValues)
 }
 
 func (c *MapConfig) Foreach(fun func(key string, val interface{}) bool) {
-	for k, v := range c.data {
+	for k, v := range c.MapValues {
 		if !fun(k, v) {
 			return
 		}
@@ -51,7 +51,7 @@ func (c *MapConfig) String(name string) string {
 }
 
 func (c *MapConfig) StringOrDefault(name string, defaultValue string) string {
-	if v, ok := c.Get(name); ok {
+	if v, ok := c.GetValue(name); ok {
 		return pkg.ToString(v)
 	} else {
 		return defaultValue
@@ -63,7 +63,7 @@ func (c *MapConfig) Int64(name string) int64 {
 }
 
 func (c *MapConfig) Int64OrDefault(name string, defaultValue int64) int64 {
-	if v, ok := c.Get(name); ok {
+	if v, ok := c.GetValue(name); ok {
 		if iv, e := pkg.ToInt64(v); nil != e {
 			return defaultValue
 		} else {
@@ -79,7 +79,7 @@ func (c *MapConfig) Float64(name string) float64 {
 }
 
 func (c *MapConfig) Float64OrDefault(name string, defaultValue float64) float64 {
-	if v, ok := c.Get(name); ok {
+	if v, ok := c.GetValue(name); ok {
 		if fv, e := pkg.ToFloat64(v); nil != e {
 			return defaultValue
 		} else {
@@ -95,7 +95,7 @@ func (c *MapConfig) Boolean(name string) bool {
 }
 
 func (c *MapConfig) BooleanOrDefault(name string, defaultValue bool) bool {
-	if v, ok := c.Get(name); ok {
+	if v, ok := c.GetValue(name); ok {
 		return pkg.ToBool(v)
 	} else {
 		return defaultValue
@@ -103,7 +103,7 @@ func (c *MapConfig) BooleanOrDefault(name string, defaultValue bool) bool {
 }
 
 func (c *MapConfig) Map(name string) map[string]interface{} {
-	if v, ok := c.Get(name); ok {
+	if v, ok := c.GetValue(name); ok {
 		return v.(map[string]interface{})
 	} else {
 		return make(map[string]interface{})
@@ -111,6 +111,6 @@ func (c *MapConfig) Map(name string) map[string]interface{} {
 }
 
 func (c *MapConfig) Contains(name string) bool {
-	_, ok := c.data[name]
+	_, ok := c.MapValues[name]
 	return ok
 }
