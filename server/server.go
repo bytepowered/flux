@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	_echoKeyRoutedContext = "$flux.context"
+	_echoAttrRoutedContext = "$inner.flux.context"
 )
 
 var (
@@ -46,6 +46,9 @@ var (
 		Message:    "ENDPOINT_VERSION_NOT_FOUND",
 	}
 )
+
+// Bridge func
+type ContextBridgeFunc func(echo.Context, flux.Context)
 
 // FluxServer
 type FluxServer struct {
@@ -57,15 +60,17 @@ type FluxServer struct {
 	dispatcher        *internal.FxDispatcher
 	endpointMvMap     map[string]*internal.MultiVersionEndpoint
 	contextPool       sync.Pool
+	contextBridges    []ContextBridgeFunc
 	globals           flux.Config
 }
 
 func NewFluxServer() *FluxServer {
 	return &FluxServer{
-		httpVisits:    expvar.NewInt("HttpVisits"),
-		dispatcher:    internal.NewDispatcher(),
-		endpointMvMap: make(map[string]*internal.MultiVersionEndpoint),
-		contextPool:   sync.Pool{New: internal.NewFxContext},
+		httpVisits:     expvar.NewInt("HttpVisits"),
+		dispatcher:     internal.NewDispatcher(),
+		endpointMvMap:  make(map[string]*internal.MultiVersionEndpoint),
+		contextPool:    sync.Pool{New: internal.NewFxContext},
+		contextBridges: make([]ContextBridgeFunc, 0),
 	}
 }
 
@@ -200,7 +205,11 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 			endpoint, found = mvEndpoint.Get(version)
 		}
 		newCtx := fs.acquire(c, endpoint)
-		c.Set(_echoKeyRoutedContext, newCtx)
+		// Bridge Echo <-> Flux
+		for _, cbf := range fs.contextBridges {
+			cbf(c, newCtx)
+		}
+		c.Set(_echoAttrRoutedContext, newCtx)
 		defer fs.release(newCtx)
 		logger.Infof("Received request, id: %s, method: %s, uri: %s, version: %s",
 			newCtx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
@@ -231,14 +240,14 @@ func (fs *FluxServer) httpErrorAdapting(err error, ctx echo.Context) {
 			Internal:   err,
 		}
 	}
+	fc := ctx.Get(_echoAttrRoutedContext)
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
-	fc := ctx.Get(_echoKeyRoutedContext)
 	if fxCtx, ok := fc.(*internal.FxContext); ok {
 		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), fxCtx.RequestId(), fxCtx.ResponseWriter().Headers(), iErr); nil != err {
 			logger.Errorf("Response errors: ", err)
 		}
 	} else {
-		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), "$proxy", httplib.Header{}, iErr); nil != err {
+		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), "UNROUTED_REQUEST", httplib.Header{}, iErr); nil != err {
 			logger.Errorf("Proxy errors: ", err)
 		}
 	}
@@ -327,6 +336,11 @@ func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
 // AddLifecycleHook 添加生命周期Hook接口：Startuper/Shutdowner接口
 func (fs *FluxServer) AddLifecycleHook(lifecycleHook interface{}) {
 	fs.dispatcher.AddLifecycleHook(lifecycleHook)
+}
+
+// AddContextBridge 添加Http与Flux的Context桥接参数
+func (fs *FluxServer) AddContextBridge(bridgeFunc ContextBridgeFunc) {
+	fs.contextBridges = append(fs.contextBridges, bridgeFunc)
 }
 
 func (*FluxServer) AddPrepareHook(ph flux.PrepareHook) {
