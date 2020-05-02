@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	context "context"
 	"encoding/json"
 	"expvar"
@@ -12,6 +13,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/random"
+	"io"
+	"io/ioutil"
 	httplib "net/http"
 	_ "net/http/pprof"
 	"strings"
@@ -291,12 +294,26 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 func (*FluxServer) prepareRequest() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			req := c.Request()
-			if err := req.ParseForm(); nil != err {
+			// Body缓存，允许通过 GetBody 多次读取Body
+			request := c.Request()
+			data, err := ioutil.ReadAll(request.Body)
+			if nil != err {
+				return &flux.InvokeError{
+					StatusCode: flux.StatusBadRequest,
+					Message:    "REQUEST:BODY_PREPARE",
+					Internal:   fmt.Errorf("read req-body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
+				}
+			}
+			request.GetBody = func() (io.ReadCloser, error) {
+				return ioutil.NopCloser(bytes.NewBuffer(data)), nil
+			}
+			// 恢复Body，但ParseForm解析后，request.Body无法重读，需要通过GetBody
+			request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+			if err := request.ParseForm(); nil != err {
 				return &flux.InvokeError{
 					StatusCode: flux.StatusBadRequest,
 					Message:    "REQUEST:FORM_PARSING",
-					Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", req.Method, req.RequestURI, err),
+					Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 				}
 			} else {
 				return next(c)
