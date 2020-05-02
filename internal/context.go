@@ -1,12 +1,9 @@
 package internal
 
 import (
-	"bytes"
 	"github.com/bytepowered/flux"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
-	"io"
-	"io/ioutil"
 	"time"
 )
 
@@ -20,14 +17,12 @@ type FxContext struct {
 	scopedValues flux.StringMap
 	response     *FxResponse
 	request      *FxRequest
-	bodyBuffer   *bytes.Buffer
 }
 
 func NewFxContext() interface{} {
 	return &FxContext{
-		response:   newResponseWriter(),
-		request:    newRequestReader(),
-		bodyBuffer: new(bytes.Buffer),
+		response: newResponseWriter(),
+		request:  newRequestReader(),
 	}
 }
 
@@ -87,7 +82,6 @@ func (c *FxContext) ScopedValue(name string) (interface{}, bool) {
 
 func (c *FxContext) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
 	httpRequest := echo.Request()
-	httpRequest.GetBody = c.bodyBufferGetter
 	c.echo = echo
 	c.request.reattach(echo)
 	c.endpoint = endpoint
@@ -108,25 +102,4 @@ func (c *FxContext) Release() {
 	c.scopedValues = nil
 	c.request.reset()
 	c.response.reset()
-	c.bodyBuffer.Reset()
-}
-
-func (c *FxContext) bodyBufferGetter() (io.ReadCloser, error) {
-	if c.bodyBuffer != nil {
-		return ioutil.NopCloser(bytes.NewReader(c.bodyBuffer.Bytes())), nil
-	}
-	request := c.echo.Request()
-	if request.Body != nil {
-		b, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			return nil, err
-		}
-		// Restore the Body
-		if c, ok := request.Body.(io.Closer); ok {
-			_ = c.Close()
-		}
-		request.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-		return ioutil.NopCloser(bytes.NewBuffer(b)), nil
-	}
-	return nil, nil
 }
