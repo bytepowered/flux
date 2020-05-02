@@ -198,12 +198,9 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 		}()
 		fs.httpVisits.Add(1)
 		httpRequest := c.Request()
+		// Multi version selection
 		version := httpRequest.Header.Get(fs.httpVersionHeader)
 		endpoint, found := mvEndpoint.Get(version)
-		if !found {
-			version = defaultHttpVersionValue
-			endpoint, found = mvEndpoint.Get(version)
-		}
 		newCtx := fs.acquire(c, endpoint)
 		// Bridge Echo <-> Flux
 		for _, cbf := range fs.contextBridges {

@@ -7,37 +7,52 @@ import (
 
 func NewMultiVersionEndpoint() *MultiVersionEndpoint {
 	return &MultiVersionEndpoint{
-		data: new(sync.Map),
+		versions: make(map[string]*flux.Endpoint),
+		rwmu:     new(sync.RWMutex),
 	}
 }
 
 // Multi version Endpoint
 type MultiVersionEndpoint struct {
-	data *sync.Map
+	versions map[string]*flux.Endpoint // 各版本数据
+	latest   *flux.Endpoint            // 最新版本
+	rwmu     *sync.RWMutex             // 读写锁
 }
 
-func (m MultiVersionEndpoint) Get(version string) (*flux.Endpoint, bool) {
-	v, ok := m.data.Load(version)
-	if ok {
-		return v.(*flux.Endpoint), true
-	} else {
+func (m *MultiVersionEndpoint) Get(version string) (*flux.Endpoint, bool) {
+	m.rwmu.RLock()
+	defer m.rwmu.RUnlock()
+	if "" == version {
+		return m.latest, true
+	}
+	if 1 == len(m.versions) {
+		for _, v := range m.versions {
+			return v, true
+		}
 		return nil, false
+	} else {
+		v, ok := m.versions[version]
+		return v, ok
 	}
 }
 
-func (m MultiVersionEndpoint) Update(version string, endpoint *flux.Endpoint) {
-	m.data.Store(version, endpoint)
+func (m *MultiVersionEndpoint) Update(version string, endpoint *flux.Endpoint) {
+	m.rwmu.Lock()
+	m.versions[version] = endpoint
+	m.latest = endpoint
+	m.rwmu.Unlock()
 }
 
-func (m MultiVersionEndpoint) Delete(version string) {
-	m.data.Delete(version)
+func (m *MultiVersionEndpoint) Delete(version string) {
+	m.rwmu.Lock()
+	delete(m.versions, version)
+	m.rwmu.Unlock()
 }
 
-func (m MultiVersionEndpoint) ToSerializableMap() map[interface{}]interface{} {
-	amap := make(map[interface{}]interface{})
-	m.data.Range(func(key, value interface{}) bool {
-		amap[key] = value
-		return false
-	})
-	return amap
+func (m *MultiVersionEndpoint) ToSerializableMap() map[interface{}]interface{} {
+	copies := make(map[interface{}]interface{})
+	for k, v := range m.versions {
+		copies[k] = v
+	}
+	return copies
 }
