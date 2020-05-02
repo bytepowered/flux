@@ -96,6 +96,7 @@ func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.httpServer.HTTPErrorHandler = fs.httpErrorAdapting
 	// Http拦截器
 	fs.AddHttpInterceptor(middleware.CORS())
+	fs.AddHttpInterceptor(fs.prepareRequest())
 	// Http debug features
 	if httpConfig.BooleanOrDefault(configHttpDebugEnable, false) {
 		fs.debugFeatures(httpConfig)
@@ -213,13 +214,6 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 		if !found {
 			return errEndpointVersionNotFound
 		}
-		if err := httpRequest.ParseForm(); nil != err {
-			return &flux.InvokeError{
-				StatusCode: flux.StatusBadRequest,
-				Message:    "REQUEST:FORM_PARSING",
-				Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", httpRequest.Method, httpRequest.RequestURI, err),
-			}
-		}
 		if err := fs.dispatcher.Dispatch(newCtx); nil != err {
 			return err
 		} else {
@@ -292,6 +286,23 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 			return c.JSONBlob(200, data)
 		}
 	}, authMiddleware)
+}
+
+func (*FluxServer) prepareRequest() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			req := c.Request()
+			if err := req.ParseForm(); nil != err {
+				return &flux.InvokeError{
+					StatusCode: flux.StatusBadRequest,
+					Message:    "REQUEST:FORM_PARSING",
+					Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", req.Method, req.RequestURI, err),
+				}
+			} else {
+				return next(c)
+			}
+		}
+	}
 }
 
 func (fs *FluxServer) checkInit() {
