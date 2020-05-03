@@ -3,7 +3,6 @@ package internal
 import (
 	"github.com/bytepowered/flux"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/random"
 	"sync"
 	"time"
 )
@@ -11,7 +10,6 @@ import (
 // Context接口实现
 type FxContext struct {
 	echo         echo.Context
-	completed    bool
 	endpoint     *flux.Endpoint
 	requestId    string
 	attrValues   *sync.Map
@@ -86,13 +84,12 @@ func (c *FxContext) ScopedValue(name string) (interface{}, bool) {
 	return v, ok
 }
 
-func (c *FxContext) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
+func (c *FxContext) Reattach(requestId string, echo echo.Context, endpoint *flux.Endpoint) {
 	httpRequest := echo.Request()
 	c.echo = echo
 	c.request.reattach(echo)
 	c.endpoint = endpoint
-	c.completed = false
-	c.requestId = random.String(20)
+	c.requestId = requestId
 	c.attrValues = new(sync.Map)
 	c.scopedValues = new(sync.Map)
 	c.SetAttrValue(flux.XRequestTime, time.Now().Unix())

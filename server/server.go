@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"github.com/bwmarrin/snowflake"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
@@ -63,17 +64,20 @@ type FluxServer struct {
 	dispatcher        *internal.FxDispatcher
 	endpointMvMap     map[string]*internal.MultiVersionEndpoint
 	contextPool       sync.Pool
+	snowflakeId       *snowflake.Node
 	contextBridges    []ContextBridgeFunc
 	globals           flux.Config
 }
 
 func NewFluxServer() *FluxServer {
+	id, _ := snowflake.NewNode(1)
 	return &FluxServer{
 		httpVisits:     expvar.NewInt("HttpVisits"),
 		dispatcher:     internal.NewDispatcher(),
 		endpointMvMap:  make(map[string]*internal.MultiVersionEndpoint),
 		contextPool:    sync.Pool{New: internal.NewFxContext},
 		contextBridges: make([]ContextBridgeFunc, 0),
+		snowflakeId:    id,
 	}
 }
 
@@ -184,7 +188,8 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 
 func (fs *FluxServer) acquire(c echo.Context, endpoint *flux.Endpoint) *internal.FxContext {
 	ctx := fs.contextPool.Get().(*internal.FxContext)
-	ctx.Reattach(c, endpoint)
+	reqId := fs.snowflakeId.Generate().Base64()
+	ctx.Reattach(reqId, c, endpoint)
 	return ctx
 }
 
