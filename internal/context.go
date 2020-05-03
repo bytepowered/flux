@@ -4,6 +4,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
+	"sync"
 	"time"
 )
 
@@ -13,8 +14,8 @@ type FxContext struct {
 	completed    bool
 	endpoint     *flux.Endpoint
 	requestId    string
-	attrValues   flux.StringMap
-	scopedValues flux.StringMap
+	attrValues   *sync.Map
+	scopedValues *sync.Map
 	response     *FxResponse
 	request      *FxRequest
 }
@@ -59,24 +60,29 @@ func (c *FxContext) RequestHost() string {
 }
 
 func (c *FxContext) AttrValues() flux.StringMap {
-	return c.attrValues
+	m := make(flux.StringMap)
+	c.attrValues.Range(func(key, value interface{}) bool {
+		m[key.(string)] = value
+		return true
+	})
+	return m
 }
 
 func (c *FxContext) SetAttrValue(name string, value interface{}) {
-	c.attrValues[name] = value
+	c.attrValues.Store(name, value)
 }
 
 func (c *FxContext) AttrValue(name string) (interface{}, bool) {
-	v, ok := c.attrValues[name]
+	v, ok := c.attrValues.Load(name)
 	return v, ok
 }
 
 func (c *FxContext) SetScopedValue(name string, value interface{}) {
-	c.scopedValues[name] = value
+	c.scopedValues.Store(name, value)
 }
 
 func (c *FxContext) ScopedValue(name string) (interface{}, bool) {
-	v, ok := c.scopedValues[name]
+	v, ok := c.scopedValues.Load(name)
 	return v, ok
 }
 
@@ -87,8 +93,8 @@ func (c *FxContext) Reattach(echo echo.Context, endpoint *flux.Endpoint) {
 	c.endpoint = endpoint
 	c.completed = false
 	c.requestId = random.String(20)
-	c.attrValues = make(flux.StringMap, 20)
-	c.scopedValues = make(flux.StringMap, 8)
+	c.attrValues = new(sync.Map)
+	c.scopedValues = new(sync.Map)
 	c.SetAttrValue(flux.XRequestTime, time.Now().Unix())
 	c.SetAttrValue(flux.XRequestId, c.requestId)
 	c.SetAttrValue(flux.XRequestHost, httpRequest.Host)
