@@ -20,13 +20,13 @@ func LookupValue(lookup string, ctx flux.Context) interface{} {
 	}
 	switch parts[0] {
 	case "query":
-		return req.ParamInQuery(parts[1])
+		return req.QueryValue(parts[1])
 	case "form":
-		return req.ParamInForm(parts[1])
+		return req.FormValue(parts[1])
 	case "path":
-		return req.ParamInPath(parts[1])
+		return req.PathValue(parts[1])
 	case "header":
-		return req.Header(parts[1])
+		return req.HeaderValue(parts[1])
 	case "attr":
 		v, _ := ctx.AttrValue(parts[1])
 		return v

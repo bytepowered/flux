@@ -11,19 +11,46 @@ type FxRequest struct {
 }
 
 func (r *FxRequest) ParamInQuery(name string) string {
-	return r.ctx.QueryParam(name)
+	return r.QueryValue(name)
 }
 
 func (r *FxRequest) ParamInPath(name string) string {
-	return r.ctx.Param(name)
+	return r.PathValue(name)
 }
 
 func (r *FxRequest) ParamInForm(name string) string {
-	return r.ctx.FormValue(name)
+	return r.FormValue(name)
 }
 
 func (r *FxRequest) Header(name string) string {
+	return r.HeaderValue(name)
+}
+
+func (r *FxRequest) QueryValue(name string) string {
+	return r.ctx.QueryParam(name)
+}
+
+func (r *FxRequest) PathValue(name string) string {
+	return r.ctx.Param(name)
+}
+
+func (r *FxRequest) FormValue(name string) string {
+	return r.ctx.FormValue(name)
+}
+
+func (r *FxRequest) HeaderValue(name string) string {
 	return r.ctx.Request().Header.Get(name)
+}
+
+func (r *FxRequest) CookieValue(name string) string {
+	c, e := r.ctx.Cookie(name)
+	if e == echo.ErrCookieNotFound {
+		return ""
+	} else if nil != c {
+		return c.Raw
+	} else {
+		return ""
+	}
 }
 
 func (r *FxRequest) Headers() http.Header {
@@ -31,12 +58,7 @@ func (r *FxRequest) Headers() http.Header {
 }
 
 func (r *FxRequest) Cookie(name string) string {
-	c, e := r.ctx.Cookie(name)
-	if e == echo.ErrCookieNotFound {
-		return ""
-	} else {
-		return c.Raw
-	}
+	return r.CookieValue(name)
 }
 
 func (r *FxRequest) RemoteAddress() string {
