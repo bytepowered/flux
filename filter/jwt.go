@@ -151,9 +151,9 @@ func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject str
 		UpstreamMethod: j.config.upMethod,
 		UpstreamUri:    j.config.upUri,
 		Arguments: []flux.Argument{
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "issuer", ArgValue: flux.NewWrapValue(issuer)},
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "subject", ArgValue: flux.NewWrapValue(subject)},
-			{TypeClass: pkg.JavaUtilMapClassName, ArgName: "claims", ArgValue: flux.NewWrapValue(claims)},
+			ext.NewStringArgument("issuer", issuer),
+			ext.NewStringArgument("subject", subject),
+			ext.NewHashMapArgument("claims", claims),
 		},
 	}, nil); nil != err {
 		return false, err

@@ -137,9 +137,9 @@ func _loadPermByExchange(proto string,
 		UpstreamMethod: upsMethod,
 		UpstreamUri:    upsUri,
 		Arguments: []flux.Argument{
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "subjectId", ArgValue: flux.NewWrapValue(reqSubjectId)},
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "method", ArgValue: flux.NewWrapValue(reqMethod)},
-			{TypeClass: pkg.JavaLangStringClassName, ArgName: "pattern", ArgValue: flux.NewWrapValue(reqPattern)},
+			ext.NewStringArgument("subjectId", reqSubjectId),
+			ext.NewStringArgument("method", reqMethod),
+			ext.NewStringArgument("pattern", reqPattern),
 		},
 	}, nil); nil != err {
 		return false, err
