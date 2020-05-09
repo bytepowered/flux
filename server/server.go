@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	context "context"
-	"encoding/json"
 	"expvar"
 	"fmt"
 	"github.com/bwmarrin/snowflake"
@@ -28,16 +27,21 @@ const (
 )
 
 const (
-	defaultHttpVersionHeader = "X-Version"
-	defaultHttpVersionValue  = "v1"
+	DefaultHttpVersionHeader = "X-Version"
 )
 
 const (
-	configHttpRootName      = "HttpServer"
-	configHttpVersionHeader = "version-header"
-	configHttpDebugEnable   = "debug"
-	configHttpTlsCertFile   = "tls-cert-file"
-	configHttpTlsKeyFile    = "tls-key-file"
+	ConfigHttpRootName      = "HttpServer"
+	ConfigHttpVersionHeader = "version-header"
+	ConfigHttpDebugEnable   = "debug"
+	ConfigHttpTlsCertFile   = "tls-cert-file"
+	ConfigHttpTlsKeyFile    = "tls-key-file"
+)
+
+const (
+	DebugPathVars      = "/debug/vars"
+	DebugPathPprof     = "/debug/pprof/*"
+	DebugPathEndpoints = "/debug/endpoints"
 )
 
 const (
@@ -69,6 +73,10 @@ type FluxServer struct {
 	globals           flux.Config
 }
 
+func LoadHttpServerConfig(globals flux.Config) flux.Config {
+	return ext.ConfigFactory()("flux.http", globals.Map(ConfigHttpRootName))
+}
+
 func NewFluxServer() *FluxServer {
 	id, _ := snowflake.NewNode(1)
 	return &FluxServer{
@@ -95,8 +103,8 @@ func (fs *FluxServer) Prepare(globals flux.Config, hooks ...flux.PrepareHook) er
 func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.globals = globals
 	// Http server
-	httpConfig := ext.ConfigFactory()("flux.http", fs.globals.Map(configHttpRootName))
-	fs.httpVersionHeader = httpConfig.StringOrDefault(configHttpVersionHeader, defaultHttpVersionHeader)
+	httpConfig := LoadHttpServerConfig(fs.globals)
+	fs.httpVersionHeader = httpConfig.StringOrDefault(ConfigHttpVersionHeader, DefaultHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
 	fs.httpServer.HidePort = true
@@ -105,7 +113,7 @@ func (fs *FluxServer) Init(globals flux.Config) error {
 	fs.AddHttpInterceptor(middleware.CORS())
 	fs.AddHttpInterceptor(fs.prepareRequest())
 	// Http debug features
-	if httpConfig.BooleanOrDefault(configHttpDebugEnable, false) {
+	if httpConfig.BooleanOrDefault(ConfigHttpDebugEnable, false) {
 		fs.debugFeatures(httpConfig)
 	}
 	return fs.dispatcher.Init(globals)
@@ -127,10 +135,10 @@ func (fs *FluxServer) Startup(version flux.BuildInfo) error {
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	httpConfig := ext.ConfigFactory()("flux.http", fs.globals.Map(configHttpRootName))
+	httpConfig := LoadHttpServerConfig(fs.globals)
 	address := fmt.Sprintf("%s:%d", httpConfig.String("address"), httpConfig.Int64("port"))
-	certFile := httpConfig.String(configHttpTlsCertFile)
-	keyFile := httpConfig.String(configHttpTlsKeyFile)
+	certFile := httpConfig.String(ConfigHttpTlsCertFile)
+	keyFile := httpConfig.String(ConfigHttpTlsKeyFile)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
 		return fs.httpServer.StartTLS(address, certFile, keyFile)
@@ -300,14 +308,15 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 		return u == username && p == password, nil
 	})
 	debugHandler := echo.WrapHandler(httplib.DefaultServeMux)
-	fs.httpServer.GET("/debug/vars", debugHandler, authMiddleware)
-	fs.httpServer.GET("/debug/pprof/*", debugHandler, authMiddleware)
-	fs.httpServer.GET("/debug/endpoints", func(c echo.Context) error {
+	fs.httpServer.GET(DebugPathVars, debugHandler, authMiddleware)
+	fs.httpServer.GET(DebugPathPprof, debugHandler, authMiddleware)
+	fs.httpServer.GET(DebugPathEndpoints, func(c echo.Context) error {
 		m := make(map[string]interface{})
 		for k, v := range fs.endpointMvMap {
 			m[k] = v.ToSerializableMap()
 		}
-		if data, err := json.Marshal(m); nil != err {
+		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+		if data, err := decoder.Marshal(m); nil != err {
 			return err
 		} else {
 			return c.JSONBlob(200, data)
