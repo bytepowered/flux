@@ -20,7 +20,7 @@ func InvokeExchanger(ctx flux.Context, exchange flux.Exchange) *flux.InvokeError
 	if !ok {
 		return ErrExchangeDecoderNotFound
 	}
-	if code, headers, body, err := decoder(ctx, resp); nil != err {
+	if code, headers, body, err := decoder(ctx, resp); nil == err {
 		ctx.ResponseWriter().SetStatusCode(code).SetHeaders(headers).SetBody(body)
 		return nil
 	} else {
