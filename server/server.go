@@ -51,8 +51,8 @@ var (
 	}
 )
 
-// Bridge func
-type ContextBridgeFunc func(echo.Context, flux.Context)
+// Context pipeline
+type ContextPipelineFunc func(echo.Context, flux.Context)
 
 // FluxServer
 type FluxServer struct {
@@ -65,19 +65,19 @@ type FluxServer struct {
 	endpointMvMap     map[string]*internal.MultiVersionEndpoint
 	contextPool       sync.Pool
 	snowflakeId       *snowflake.Node
-	contextBridges    []ContextBridgeFunc
+	pipelines         []ContextPipelineFunc
 	globals           flux.Config
 }
 
 func NewFluxServer() *FluxServer {
 	id, _ := snowflake.NewNode(1)
 	return &FluxServer{
-		httpVisits:     expvar.NewInt("HttpVisits"),
-		dispatcher:     internal.NewDispatcher(),
-		endpointMvMap:  make(map[string]*internal.MultiVersionEndpoint),
-		contextPool:    sync.Pool{New: internal.NewFxContext},
-		contextBridges: make([]ContextBridgeFunc, 0),
-		snowflakeId:    id,
+		httpVisits:    expvar.NewInt("HttpVisits"),
+		dispatcher:    internal.NewDispatcher(),
+		endpointMvMap: make(map[string]*internal.MultiVersionEndpoint),
+		contextPool:   sync.Pool{New: internal.NewFxContext},
+		pipelines:     make([]ContextPipelineFunc, 0),
+		snowflakeId:   id,
 	}
 }
 
@@ -211,13 +211,13 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 		version := httpRequest.Header.Get(fs.httpVersionHeader)
 		endpoint, found := mvEndpoint.Get(version)
 		newCtx := fs.acquire(c, endpoint)
-		// Bridge Echo <-> Flux
-		for _, cbf := range fs.contextBridges {
-			cbf(c, newCtx)
+		// Context exchange: Echo <-> Flux
+		for _, pipe := range fs.pipelines {
+			pipe(c, newCtx)
 		}
 		c.Set(_echoAttrRoutedContext, newCtx)
 		defer fs.release(newCtx)
-		logger.Infof("Received request, id: %s, method: %s, uri: %s, version: %s",
+		logger.Infof("Received request, id: %s, method: %s, uri: %s, endpoint.ver(%s)",
 			newCtx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
 		if !found {
 			return errEndpointVersionNotFound
@@ -230,25 +230,44 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 	}
 }
 
-func (fs *FluxServer) httpErrorAdapting(err error, ctx echo.Context) {
-	iErr, ok := err.(*flux.InvokeError)
-	if !ok {
+// httpErrorAdapting EchoHttp状态错误处理函数。Err包含网关内部错误，以及Http框架原生错误
+func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
+	iErr, isie := inErr.(*flux.InvokeError)
+	// 解析非Flux.InvokeError的消息
+	if !isie {
+		code := httplib.StatusInternalServerError
+		msg := "INTERNAL:SERVER_ERROR"
+		if he, ishe := inErr.(*echo.HTTPError); ishe {
+			code = he.Code
+			msg = he.Error()
+			if mstr, isms := he.Message.(string); isms {
+				msg = mstr
+			}
+		}
 		iErr = &flux.InvokeError{
-			StatusCode: flux.StatusBadRequest,
-			Message:    "REQUEST:FORM_PARSING",
-			Internal:   err,
+			StatusCode: code,
+			Message:    msg,
+			Internal:   inErr,
 		}
 	}
-	fc := ctx.Get(_echoAttrRoutedContext)
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
-	if fxCtx, ok := fc.(*internal.FxContext); ok {
-		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), fxCtx.RequestId(), fxCtx.ResponseWriter().Headers(), iErr); nil != err {
-			logger.Errorf("Response errors: ", err)
-		}
+	var requestId string
+	var headers httplib.Header
+	if fc, ok := ctx.Get(_echoAttrRoutedContext).(*internal.FxContext); ok {
+		requestId = fc.RequestId()
+		headers = fc.ResponseWriter().Headers()
 	} else {
-		if err := fs.httpAdaptWriter.WriteError(ctx.Response(), "UNROUTED_REQUEST", httplib.Header{}, iErr); nil != err {
-			logger.Errorf("Proxy errors: ", err)
-		}
+		requestId = "ID:NON_CONTEXT"
+	}
+	var outErr error
+	if ctx.Request().Method == httplib.MethodHead {
+		ctx.Response().Header().Set("X-Error-Message", iErr.Message)
+		outErr = ctx.NoContent(iErr.StatusCode)
+	} else {
+		outErr = fs.httpAdaptWriter.WriteError(ctx.Response(), requestId, headers, iErr)
+	}
+	if nil != outErr {
+		logger.Errorf("Error responding(%s): ", requestId, outErr)
 	}
 }
 
@@ -368,9 +387,9 @@ func (fs *FluxServer) AddLifecycleHook(lifecycleHook interface{}) {
 	fs.dispatcher.AddLifecycleHook(lifecycleHook)
 }
 
-// AddContextBridge 添加Http与Flux的Context桥接参数
-func (fs *FluxServer) AddContextBridge(bridgeFunc ContextBridgeFunc) {
-	fs.contextBridges = append(fs.contextBridges, bridgeFunc)
+// AddContextPipeline 添加Http与Flux的Context桥接函数
+func (fs *FluxServer) AddContextPipeline(bridgeFunc ContextPipelineFunc) {
+	fs.pipelines = append(fs.pipelines, bridgeFunc)
 }
 
 func (*FluxServer) AddPrepareHook(ph flux.PrepareHook) {
