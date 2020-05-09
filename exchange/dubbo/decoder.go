@@ -15,12 +15,12 @@ func NewDubboExchangeDecoder() flux.ExchangeDecoder {
 		if valueM, ok := value.(map[interface{}]interface{}); ok {
 			headers, err = _headers(valueM)
 			if nil != err {
-				return 0, emptyHeaders, nil, err
+				return flux.StatusServerError, emptyHeaders, nil, err
 			}
 			// StatusCode
 			statusCode, err = _status(valueM)
 			if nil != err {
-				return 0, emptyHeaders, nil, err
+				return flux.StatusServerError, emptyHeaders, nil, err
 			}
 			// body
 			body = _body(valueM)
