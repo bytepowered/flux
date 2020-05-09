@@ -27,9 +27,10 @@ var (
 
 // 集成DubboRPC框架的Exchange
 type exchange struct {
-	config       flux.Config
-	referenceMap map[string]*dubbogo.ReferenceConfig
-	referenceMu  sync.RWMutex
+	config         flux.Config // 配置数据
+	loggingEnabled bool        // 日志打印
+	referenceMap   map[string]*dubbogo.ReferenceConfig
+	referenceMu    sync.RWMutex
 }
 
 func NewDubboExchange() flux.Exchange {
@@ -41,6 +42,7 @@ func NewDubboExchange() flux.Exchange {
 func (ex *exchange) Init(config flux.Config) error {
 	logger.Infof("Dubbo Exchange initializing")
 	ex.config = config
+	ex.loggingEnabled = config.BooleanOrDefault("logging-enable", false)
 	if ex.config.IsEmpty() {
 		return errors.New("dubbo-exchange config not found")
 	} else {
@@ -52,12 +54,20 @@ func (ex *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
 	return internal.InvokeExchanger(ctx, ex)
 }
 
-func (ex *exchange) Invoke(target *flux.Endpoint, reqCtx flux.Context) (interface{}, *flux.InvokeError) {
+func (ex *exchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.InvokeError) {
 	types, args := assemble(target.Arguments)
 	reference := ex.lookup(target)
 	goctx := context.Background()
-	if nil != reqCtx {
-		goctx = context.WithValue(context.Background(), constant.AttachmentKey, pkg.ToStringKVMap(reqCtx.AttrValues()))
+	if nil != fxctx {
+		goctx = context.WithValue(goctx, constant.AttachmentKey, pkg.ToStringKVMap(fxctx.AttrValues()))
+	}
+	if ex.loggingEnabled {
+		attrs := make(flux.StringMap)
+		if fxctx != nil {
+			attrs = fxctx.AttrValues()
+		}
+		logger.Infof("Dubbo invoke, service:<%s$%s>, args.type:[%s], args.value:[%s], attrs: %+v",
+			target.UpstreamUri, target.UpstreamMethod, types, args, attrs)
 	}
 	if resp, err := reference.GetRPCService().(*dubbogo.GenericService).
 		Invoke(goctx, []interface{}{target.UpstreamMethod, types, args}); err != nil {
