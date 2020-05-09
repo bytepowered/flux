@@ -65,16 +65,16 @@ func queryEndpoints(data map[string]*internal.MultiVersionEndpoint, request echo
 }
 
 func _queryWithFilters(data map[string]*internal.MultiVersionEndpoint, filters ..._filter) []interface{} {
-	s := make([]interface{}, 0)
+	items := make([]interface{}, 0)
 DataLoop:
 	for _, v := range data {
 		for _, filter := range filters {
 			// 任意Filter返回True
 			if filter(v) {
-				s = append(s, v)
+				items = append(items, v.ToSerializableMap())
 				continue DataLoop
 			}
 		}
 	}
-	return s
+	return items
 }
