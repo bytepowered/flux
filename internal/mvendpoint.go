@@ -19,6 +19,22 @@ type MultiVersionEndpoint struct {
 	rwmu     *sync.RWMutex             // 读写锁
 }
 
+func (m *MultiVersionEndpoint) Application() string {
+	return m.latest.Application
+}
+
+func (m *MultiVersionEndpoint) ProtoName() string {
+	return m.latest.Protocol
+}
+
+func (m *MultiVersionEndpoint) HttpPattern() string {
+	return m.latest.HttpPattern
+}
+
+func (m *MultiVersionEndpoint) UpstreamUri() string {
+	return m.latest.UpstreamUri
+}
+
 func (m *MultiVersionEndpoint) Get(version string) (*flux.Endpoint, bool) {
 	m.rwmu.RLock()
 	defer m.rwmu.RUnlock()

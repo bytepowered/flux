@@ -311,12 +311,8 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 	fs.httpServer.GET(DebugPathVars, debugHandler, authMiddleware)
 	fs.httpServer.GET(DebugPathPprof, debugHandler, authMiddleware)
 	fs.httpServer.GET(DebugPathEndpoints, func(c echo.Context) error {
-		m := make(map[string]interface{})
-		for k, v := range fs.endpointMvMap {
-			m[k] = v.ToSerializableMap()
-		}
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
-		if data, err := decoder.Marshal(m); nil != err {
+		if data, err := decoder.Marshal(queryEndpoints(fs.endpointMvMap, c)); nil != err {
 			return err
 		} else {
 			return c.JSONBlob(flux.StatusOK, data)
