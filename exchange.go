@@ -1,5 +1,8 @@
 package flux
 
+import (
+	"net/http"
+)
 
 const (
 	KeyConfigRootExchanges = "Exchanges"
@@ -12,3 +15,6 @@ type Exchange interface {
 	// Invoke 执行指定目标Endpoint的通讯，返回响应结果
 	Invoke(target *Endpoint, reqCtx Context) (interface{}, *InvokeError)
 }
+
+// ExchangeDecoder 解析Exchange返回的数据
+type ExchangeDecoder func(ctx Context, resp interface{}) (statusCode int, headers http.Header, body Object, err error)

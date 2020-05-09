@@ -9,24 +9,25 @@ import (
 	"reflect"
 )
 
-// decode 解码Dubbo返回数据，生成Response
-func decode(value interface{}) (code int, headers http.Header, body hessian.Object, err error) {
-	emptyHeaders := make(http.Header)
-	if valueM, ok := value.(map[interface{}]interface{}); ok {
-		headers, err = _headers(valueM)
-		if nil != err {
-			return 0, emptyHeaders, nil, err
+func NewDubboExchangeDecoder() flux.ExchangeDecoder {
+	return func(ctx flux.Context, value interface{}) (statusCode int, headers http.Header, body flux.Object, err error) {
+		emptyHeaders := make(http.Header)
+		if valueM, ok := value.(map[interface{}]interface{}); ok {
+			headers, err = _headers(valueM)
+			if nil != err {
+				return 0, emptyHeaders, nil, err
+			}
+			// StatusCode
+			statusCode, err = _status(valueM)
+			if nil != err {
+				return 0, emptyHeaders, nil, err
+			}
+			// body
+			body = _body(valueM)
+			return statusCode, headers, body, nil
+		} else {
+			return flux.StatusOK, emptyHeaders, value, nil
 		}
-		// StatusCode
-		code, err = _status(valueM)
-		if nil != err {
-			return 0, emptyHeaders, nil, err
-		}
-		// body
-		body = _body(valueM)
-		return code, headers, body, nil
-	} else {
-		return flux.StatusOK, emptyHeaders, value, nil
 	}
 }
 

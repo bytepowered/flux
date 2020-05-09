@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"io"
@@ -11,6 +12,10 @@ import (
 	"net/url"
 	"strings"
 	"time"
+)
+
+var (
+	ErrDecoderNotFound = &flux.InvokeError{StatusCode: flux.StatusServerError, Message: "DUBBO:DECODER_NOT_FOUND"}
 )
 
 func NewHttpExchange() *exchange {
@@ -25,23 +30,13 @@ type exchange struct {
 	httpClient *http.Client
 }
 
-func (e *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
-	ep := ctx.Endpoint()
-	ret, err := e.Invoke(&ep, ctx)
-	if err != nil {
-		return err
-	}
-	resp := ret.(*http.Response)
-	ctx.ResponseWriter().
-		SetStatusCode(resp.StatusCode).
-		SetHeaders(resp.Header).
-		SetBody(resp.Body)
-	return nil
+func (ex *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
+	return internal.InvokeExchanger(ctx, ex)
 }
 
-func (e *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.InvokeError) {
+func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.InvokeError) {
 	httpRequest := ctx.RequestReader().HttpRequest()
-	newRequest, err := e.Assemble(target, httpRequest)
+	newRequest, err := ex.Assemble(target, httpRequest)
 	if nil != err {
 		return nil, &flux.InvokeError{
 			StatusCode: flux.StatusServerError,
@@ -55,7 +50,7 @@ func (e *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{},
 			newRequest.Header.Set(k, pkg.ToString(v))
 		}
 	}
-	resp, err := e.httpClient.Do(newRequest)
+	resp, err := ex.httpClient.Do(newRequest)
 	if nil != err {
 		msg := "HTTP:REMOTE_ERROR"
 		if uErr, ok := err.(*url.Error); ok {
@@ -70,7 +65,7 @@ func (e *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{},
 	return resp, nil
 }
 
-func (e *exchange) Assemble(endpoint *flux.Endpoint, inReq *http.Request) (*http.Request, error) {
+func (ex *exchange) Assemble(endpoint *flux.Endpoint, inReq *http.Request) (*http.Request, error) {
 	inParams := endpoint.Arguments
 	newQuery := inReq.URL.RawQuery
 	// 使用可重复读的GetBody函数

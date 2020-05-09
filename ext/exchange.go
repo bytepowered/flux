@@ -3,16 +3,26 @@ package ext
 import "github.com/bytepowered/flux"
 
 var (
-	_protoNamedExchanges = make(map[string]flux.Exchange)
+	_protoNamedExchanges        = make(map[string]flux.Exchange)
+	_protoNamedExchangeDecoders = make(map[string]flux.ExchangeDecoder)
 )
 
 func SetExchange(protoName string, exchange flux.Exchange) {
 	_protoNamedExchanges[protoName] = exchange
 }
 
+func SetExchangeDecoder(protoName string, decoder flux.ExchangeDecoder) {
+	_protoNamedExchangeDecoders[protoName] = decoder
+}
+
 func GetExchange(protoName string) (flux.Exchange, bool) {
-	e, ok := _protoNamedExchanges[protoName]
-	return e, ok
+	exchange, ok := _protoNamedExchanges[protoName]
+	return exchange, ok
+}
+
+func GetExchangeDecoder(protoName string) (flux.ExchangeDecoder, bool) {
+	decoder, ok := _protoNamedExchangeDecoders[protoName]
+	return decoder, ok
 }
 
 func Exchanges() map[string]flux.Exchange {

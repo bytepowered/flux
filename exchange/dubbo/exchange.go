@@ -13,20 +13,16 @@ import (
 	_ "github.com/apache/dubbo-go/registry/protocol"
 	_ "github.com/apache/dubbo-go/registry/zookeeper"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"sync"
-)
-
-const (
-	ConfigName = "DubboExchange"
 )
 
 var (
 	ErrInvalidHeaders = errors.New("DUBBO_RPC:INVALID_HEADERS")
 	ErrInvalidStatus  = errors.New("DUBBO_RPC:INVALID_STATUS")
 	ErrMessageInvoke  = "DUBBO_RPC:INVOKE"
-	ErrMessageDecode  = "DUBBO_RPC:DECODE"
 )
 
 // 集成DubboRPC框架的Exchange
@@ -52,27 +48,8 @@ func (ex *exchange) Init(config flux.Config) error {
 	}
 }
 
-func (ex *exchange) Name() string {
-	return ConfigName
-}
-
 func (ex *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
-	endpoint := ctx.Endpoint()
-	resp, err := ex.Invoke(&endpoint, ctx)
-	if err != nil {
-		return err
-	}
-	// decode response
-	if code, headers, body, err := decode(resp); nil == err {
-		ctx.ResponseWriter().SetStatusCode(code).SetHeaders(headers).SetBody(body)
-		return nil
-	} else {
-		return &flux.InvokeError{
-			StatusCode: flux.StatusServerError,
-			Message:    ErrMessageDecode,
-			Internal:   err,
-		}
-	}
+	return internal.InvokeExchanger(ctx, ex)
 }
 
 func (ex *exchange) Invoke(target *flux.Endpoint, reqCtx flux.Context) (interface{}, *flux.InvokeError) {
