@@ -15,7 +15,7 @@ import (
 	"github.com/labstack/gommon/random"
 	"io"
 	"io/ioutil"
-	httplib "net/http"
+	https "net/http"
 	_ "net/http/pprof"
 	"strings"
 	"sync"
@@ -168,8 +168,8 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 		event.Endpoint.HttpMethod = strings.ToUpper(event.Endpoint.HttpMethod)
 		eEndpoint := event.Endpoint
 		switch eEndpoint.HttpMethod {
-		case httplib.MethodGet, httplib.MethodPost, httplib.MethodDelete, httplib.MethodPut,
-			httplib.MethodHead, httplib.MethodOptions, httplib.MethodPatch, httplib.MethodTrace:
+		case https.MethodGet, https.MethodPost, https.MethodDelete, https.MethodPut,
+			https.MethodHead, https.MethodOptions, https.MethodPatch, https.MethodTrace:
 			// Allowed
 		default:
 			// http.MethodConnect, and Others
@@ -243,7 +243,7 @@ func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
 	iErr, isie := inErr.(*flux.InvokeError)
 	// 解析非Flux.InvokeError的消息
 	if !isie {
-		code := httplib.StatusInternalServerError
+		code := https.StatusInternalServerError
 		msg := "INTERNAL:SERVER_ERROR"
 		if he, ishe := inErr.(*echo.HTTPError); ishe {
 			code = he.Code
@@ -260,7 +260,7 @@ func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
 	}
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
 	var requestId string
-	var headers httplib.Header
+	var headers https.Header
 	if fc, ok := ctx.Get(_echoAttrRoutedContext).(*internal.FxContext); ok {
 		requestId = fc.RequestId()
 		headers = fc.ResponseWriter().Headers()
@@ -268,7 +268,7 @@ func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
 		requestId = "ID:NON_CONTEXT"
 	}
 	var outErr error
-	if ctx.Request().Method == httplib.MethodHead {
+	if ctx.Request().Method == https.MethodHead {
 		ctx.Response().Header().Set("X-Error-Message", iErr.Message)
 		outErr = ctx.NoContent(iErr.StatusCode)
 	} else {
@@ -307,7 +307,7 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 	authMiddleware := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
 		return u == username && p == password, nil
 	})
-	debugHandler := echo.WrapHandler(httplib.DefaultServeMux)
+	debugHandler := echo.WrapHandler(https.DefaultServeMux)
 	fs.httpServer.GET(DebugPathVars, debugHandler, authMiddleware)
 	fs.httpServer.GET(DebugPathPprof, debugHandler, authMiddleware)
 	fs.httpServer.GET(DebugPathEndpoints, func(c echo.Context) error {
@@ -319,7 +319,7 @@ func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
 		if data, err := decoder.Marshal(m); nil != err {
 			return err
 		} else {
-			return c.JSONBlob(200, data)
+			return c.JSONBlob(flux.StatusOK, data)
 		}
 	}, authMiddleware)
 }

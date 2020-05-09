@@ -3,14 +3,13 @@ package flux
 import "net/http"
 
 const (
-	StatusOK                 = 200
-	StatusBadRequest         = 400
-	StatusNotFound           = 404
-	StatusUnauthorized       = 401
-	StatusAccessDenied       = 403
-	StatusServerError        = 500
-	StatusBadGateway         = 502
-	StatusServiceUnavailable = 503
+	StatusOK           = http.StatusOK
+	StatusBadRequest   = http.StatusBadRequest
+	StatusNotFound     = http.StatusNotFound
+	StatusUnauthorized = http.StatusUnauthorized
+	StatusAccessDenied = http.StatusForbidden
+	StatusServerError  = http.StatusInternalServerError
+	StatusBadGateway   = http.StatusBadGateway
 )
 
 // ResponseWriter 是写入响应数据的接口
