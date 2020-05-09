@@ -35,7 +35,7 @@ func (r *zkRegistry) Id() string {
 	return "zookeeper"
 }
 
-func (r *zkRegistry) Init(config flux.Config) error {
+func (r *zkRegistry) Init(config flux.Configuration) error {
 	r.zkRootPath = config.StringOrDefault("root-path", zkRegistryRootNodePath)
 	return r.retriever.Init(config)
 }
@@ -103,11 +103,11 @@ func toFluxEvent(zkData []byte, evtType remoting.EventType) (fxEvt flux.Endpoint
 	}
 	switch evtType {
 	case remoting.EventTypeNodeAdd:
-		event.Type = flux.EndpointEventAdded
+		event.EventType = flux.EndpointEventAdded
 	case remoting.EventTypeNodeDelete:
-		event.Type = flux.EndpointEventRemoved
+		event.EventType = flux.EndpointEventRemoved
 	case remoting.EventTypeNodeUpdate:
-		event.Type = flux.EndpointEventUpdated
+		event.EventType = flux.EndpointEventUpdated
 	default:
 		return _defaultInvalidFluxEvent, false
 	}
@@ -115,7 +115,7 @@ func toFluxEvent(zkData []byte, evtType remoting.EventType) (fxEvt flux.Endpoint
 }
 
 func _initArgumentValue(arg *flux.Argument) {
-	arg.ArgValue = flux.NewWrapValue(nil)
+	arg.HttpValue = flux.NewWrapValue(nil)
 	for i := range arg.Fields {
 		_initArgumentValue(&arg.Fields[i])
 	}

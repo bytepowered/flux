@@ -38,7 +38,7 @@ type RateLimitFilter struct {
 	limiters lakego.Cache
 }
 
-func (r *RateLimitFilter) Init(config flux.Config) error {
+func (r *RateLimitFilter) Init(config flux.Configuration) error {
 	rateDuration, err := time.ParseDuration(config.StringOrDefault(keyConfigLimitRateKey, "1m"))
 	if err != nil {
 		return err

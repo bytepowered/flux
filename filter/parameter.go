@@ -34,22 +34,22 @@ func (*ParameterParsingFilter) TypeId() string {
 
 func resolve(arguments []flux.Argument, ctx flux.Context) error {
 	for _, p := range arguments {
-		if flux.ArgumentTypePrimitive == p.ArgType {
+		if flux.ArgumentTypePrimitive == p.Type {
 			raw := _lookup(p, ctx)
 			if v, err := _resolve(p.TypeClass, p.TypeGeneric, raw); nil != err {
 				logger.Warnf("解析参数错误, class: %s, generic: %s, value: %+v, err: ", p.TypeClass, p.TypeGeneric, raw, err)
 				return fmt.Errorf("endpoint argument resolve: arg.http=%s, class=[%s], generic=[%+v], error=%s",
-					p.HttpName, p.TypeClass, p.TypeGeneric, err)
+					p.HttpKey, p.TypeClass, p.TypeGeneric, err)
 			} else {
-				p.ArgValue.SetValue(v)
+				p.HttpValue.SetValue(v)
 			}
-		} else if flux.ArgumentTypeComplex == p.ArgType {
+		} else if flux.ArgumentTypeComplex == p.Type {
 			if err := resolve(p.Fields, ctx); nil != err {
 				return err
 			}
 		} else {
 			logger.Warnf("未支持的参数类型, class: %s, generic: %s, type: %s",
-				p.TypeClass, p.TypeGeneric, p.ArgType)
+				p.TypeClass, p.TypeGeneric, p.Type)
 		}
 	}
 	return nil
@@ -67,36 +67,36 @@ func _lookup(arg flux.Argument, ctx flux.Context) interface{} {
 	request := ctx.RequestReader()
 	switch arg.HttpScope {
 	case flux.ScopeQuery:
-		return request.QueryValue(arg.HttpName)
+		return request.QueryValue(arg.HttpKey)
 	case flux.ScopePath:
-		return request.PathValue(arg.HttpName)
+		return request.PathValue(arg.HttpKey)
 	case flux.ScopeParam:
-		if v := request.QueryValue(arg.HttpName); "" == v {
-			return request.FormValue(arg.HttpName)
+		if v := request.QueryValue(arg.HttpKey); "" == v {
+			return request.FormValue(arg.HttpKey)
 		} else {
 			return v
 		}
 	case flux.ScopeHeader:
-		return request.HeaderValue(arg.HttpName)
+		return request.HeaderValue(arg.HttpKey)
 	case flux.ScopeForm:
-		return request.FormValue(arg.HttpName)
+		return request.FormValue(arg.HttpKey)
 	case flux.ScopeAttrs:
 		return ctx.AttrValues()
 	case flux.ScopeAttr:
-		value, _ := ctx.AttrValue(arg.HttpName)
+		value, _ := ctx.AttrValue(arg.HttpKey)
 		return value
 	case flux.ScopeAuto:
 		fallthrough
 	default:
-		if v := request.PathValue(arg.HttpName); "" != v {
+		if v := request.PathValue(arg.HttpKey); "" != v {
 			return v
-		} else if v := request.QueryValue(arg.HttpName); "" != v {
+		} else if v := request.QueryValue(arg.HttpKey); "" != v {
 			return v
-		} else if v := request.FormValue(arg.HttpName); "" != v {
+		} else if v := request.FormValue(arg.HttpKey); "" != v {
 			return v
-		} else if v := request.HeaderValue(arg.HttpName); "" != v {
+		} else if v := request.HeaderValue(arg.HttpKey); "" != v {
 			return v
-		} else if v, _ := ctx.AttrValue(arg.HttpName); "" != v {
+		} else if v, _ := ctx.AttrValue(arg.HttpKey); "" != v {
 			return v
 		} else {
 			return nil

@@ -27,7 +27,7 @@ var (
 
 // 集成DubboRPC框架的Exchange
 type exchange struct {
-	config       flux.Config
+	config       flux.Configuration
 	referenceMap map[string]*dubbogo.ReferenceConfig
 	referenceMu  sync.RWMutex
 }
@@ -38,7 +38,7 @@ func NewDubboExchange() flux.Exchange {
 	}
 }
 
-func (ex *exchange) Init(config flux.Config) error {
+func (ex *exchange) Init(config flux.Configuration) error {
 	logger.Infof("Dubbo Exchange initializing")
 	ex.config = config
 	if ex.config.IsEmpty() {

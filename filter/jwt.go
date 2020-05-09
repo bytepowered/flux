@@ -52,7 +52,7 @@ type JwtVerificationFilter struct {
 	certKeyCache lakego.Cache
 }
 
-func (j *JwtVerificationFilter) Init(config flux.Config) error {
+func (j *JwtVerificationFilter) Init(config flux.Configuration) error {
 	j.disabled = config.BooleanOrDefault(keyConfigDisabled, false)
 	if j.disabled {
 		logger.Infof("JWT filter is DISABLED !!")
@@ -134,10 +134,10 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 		subjectCacheKey := fmt.Sprintf("%s.%s", issuer, subject)
 		return j.certKeyCache.GetOrLoad(subjectCacheKey, func(_ lakego.Key) (lakego.Value, error) {
 			switch strings.ToUpper(j.config.upProto) {
-			case flux.ProtocolDubbo:
-				return j.loadJwtCertKey(flux.ProtocolDubbo, issuer, subject, claims)
-			case flux.ProtocolHttp:
-				return j.loadJwtCertKey(flux.ProtocolHttp, issuer, subject, claims)
+			case flux.ProtoDubbo:
+				return j.loadJwtCertKey(flux.ProtoDubbo, issuer, subject, claims)
+			case flux.ProtoHttp:
+				return j.loadJwtCertKey(flux.ProtoHttp, issuer, subject, claims)
 			default:
 				return nil, fmt.Errorf("unknown verification protocol: %s", j.config.upProto)
 			}

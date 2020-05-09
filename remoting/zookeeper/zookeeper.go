@@ -31,7 +31,7 @@ type ZkRetriever struct {
 	timeout     time.Duration
 }
 
-func (r *ZkRetriever) Init(config flux.Config) error {
+func (r *ZkRetriever) Init(config flux.Configuration) error {
 	if nil == config || config.IsEmpty() {
 		return errors.New("config is required, was empty")
 	}

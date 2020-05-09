@@ -2,7 +2,6 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"os"
@@ -15,16 +14,16 @@ const (
 )
 
 var (
-	_globals    flux.Config
+	_globals    flux.Configuration
 	_globalOnce = new(sync.Once)
 )
 
 // GlobalConfig 返回全局配置
-func GlobalConfig() flux.Config {
+func GlobalConfig() flux.Configuration {
 	return _globals
 }
 
-func LoadConfig(outpath string) flux.Config {
+func LoadConfig(outpath string) flux.Configuration {
 	_globalOnce.Do(func() {
 		configPath := DefaultApplicationConfigPath
 		// 1. Env配置
@@ -38,7 +37,7 @@ func LoadConfig(outpath string) flux.Config {
 		if data, err := pkg.LoadTomlFile(configPath); nil != err {
 			logger.Panicf("Config not found: %s", configPath)
 		} else {
-			_globals = ext.NewMapConfig(data)
+			_globals = flux.NewMapConfiguration(data)
 		}
 	})
 	return _globals

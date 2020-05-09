@@ -70,11 +70,11 @@ type FluxServer struct {
 	contextPool       sync.Pool
 	snowflakeId       *snowflake.Node
 	pipelines         []ContextPipelineFunc
-	globals           flux.Config
+	globals           flux.Configuration
 }
 
-func LoadHttpServerConfig(globals flux.Config) flux.Config {
-	return ext.ConfigFactory()("flux.http", globals.Map(ConfigHttpRootName))
+func LoadHttpServerConfig(globals flux.Configuration) flux.Configuration {
+	return ext.ConfigurationFactory()("flux.http", globals.Map(ConfigHttpRootName))
 }
 
 func NewFluxServer() *FluxServer {
@@ -90,7 +90,7 @@ func NewFluxServer() *FluxServer {
 }
 
 // Prepare Call before init and startup
-func (fs *FluxServer) Prepare(globals flux.Config, hooks ...flux.PrepareHook) error {
+func (fs *FluxServer) Prepare(globals flux.Configuration, hooks ...flux.PrepareHook) error {
 	for _, prepare := range append(ext.PrepareHooks(), hooks...) {
 		if err := prepare(globals); nil != err {
 			return err
@@ -100,7 +100,7 @@ func (fs *FluxServer) Prepare(globals flux.Config, hooks ...flux.PrepareHook) er
 }
 
 // Init : Call before startup
-func (fs *FluxServer) Init(globals flux.Config) error {
+func (fs *FluxServer) Init(globals flux.Configuration) error {
 	fs.globals = globals
 	// Http server
 	httpConfig := LoadHttpServerConfig(fs.globals)
@@ -176,7 +176,7 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 			logger.Errorf("Unsupported http method: %s, ignore", eEndpoint.HttpMethod)
 			continue
 		}
-		switch event.Type {
+		switch event.EventType {
 		case flux.EndpointEventAdded:
 			logger.Infof("Endpoint new: [%s@%s] %s", eEndpoint.Version, event.HttpMethod, pattern)
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
@@ -299,8 +299,8 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 	}
 }
 
-func (fs *FluxServer) debugFeatures(httpConfig flux.Config) {
-	baFactory := ext.ConfigFactory()("flux.http.basic-auth", httpConfig.Map("BasicAuth"))
+func (fs *FluxServer) debugFeatures(httpConfig flux.Configuration) {
+	baFactory := ext.ConfigurationFactory()("flux.http.basic-auth", httpConfig.Map("BasicAuth"))
 	username := baFactory.StringOrDefault("username", "fluxgo")
 	password := baFactory.StringOrDefault("password", random.String(8))
 	logger.Infof("Http debug feature: <Enabled>, basic-auth: username=%s, password=%s", username, password)

@@ -9,7 +9,7 @@ import (
 func _toHttpUrlValues(arguments []flux.Argument) url.Values {
 	values := make(url.Values)
 	for _, kv := range arguments {
-		values.Add(kv.ArgName, pkg.ToString(kv.ArgValue.Value()))
+		values.Add(kv.Name, pkg.ToString(kv.HttpValue.Value()))
 	}
 	return values
 }
