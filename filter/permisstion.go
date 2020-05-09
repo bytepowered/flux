@@ -62,7 +62,7 @@ func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.Filt
 	}
 }
 
-func (p *PermissionVerificationFilter) Init(config flux.Config) error {
+func (p *PermissionVerificationFilter) Init(config flux.Configuration) error {
 	p.disabled = config.BooleanOrDefault(keyConfigDisabled, false)
 	if p.disabled {
 		logger.Infof("Permission filter was DISABLED!!")
@@ -77,10 +77,10 @@ func (p *PermissionVerificationFilter) Init(config flux.Config) error {
 			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", upProto, upMethod, upHost, upHost)
 			return func(subjectId, method, pattern string) (bool, error) {
 				switch strings.ToUpper(upProto) {
-				case flux.ProtocolDubbo:
-					return _loadPermByExchange(flux.ProtocolDubbo, upHost, upMethod, upUri, subjectId, method, pattern)
-				case flux.ProtocolHttp:
-					return _loadPermByExchange(flux.ProtocolHttp, upHost, upMethod, upUri, subjectId, method, pattern)
+				case flux.ProtoDubbo:
+					return _loadPermByExchange(flux.ProtoDubbo, upHost, upMethod, upUri, subjectId, method, pattern)
+				case flux.ProtoHttp:
+					return _loadPermByExchange(flux.ProtoHttp, upHost, upMethod, upUri, subjectId, method, pattern)
 				default:
 					return false, fmt.Errorf("unknown verification protocol: %s", upProto)
 				}

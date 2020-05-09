@@ -27,8 +27,8 @@ var (
 
 // 集成DubboRPC框架的Exchange
 type exchange struct {
-	config         flux.Config // 配置数据
-	loggingEnabled bool        // 日志打印
+	config         flux.Configuration // 配置数据
+	loggingEnabled bool               // 日志打印
 	referenceMap   map[string]*dubbogo.ReferenceConfig
 	referenceMu    sync.RWMutex
 }
@@ -39,7 +39,7 @@ func NewDubboExchange() flux.Exchange {
 	}
 }
 
-func (ex *exchange) Init(config flux.Config) error {
+func (ex *exchange) Init(config flux.Configuration) error {
 	logger.Infof("Dubbo Exchange initializing")
 	ex.config = config
 	ex.loggingEnabled = config.BooleanOrDefault("logging-enable", false)

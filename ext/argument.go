@@ -8,9 +8,9 @@ import (
 func NewPrimitiveArgument(typeClass, argName string, value interface{}) flux.Argument {
 	return flux.Argument{
 		TypeClass: typeClass,
-		ArgType:   flux.ArgumentTypePrimitive,
-		ArgName:   argName,
-		ArgValue:  flux.NewWrapValue(value),
+		Type:      flux.ArgumentTypePrimitive,
+		Name:      argName,
+		HttpValue: flux.NewWrapValue(value),
 	}
 }
 

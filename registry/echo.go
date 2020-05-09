@@ -38,12 +38,12 @@ func (r *echoRegistry) WatchEvents(outboundEvents chan<- flux.EndpointEvent) err
 
 func (r *echoRegistry) toEndpointEvent(ep endpoint) flux.EndpointEvent {
 	return flux.EndpointEvent{
-		Type:        flux.EndpointEventAdded,
+		EventType:   flux.EndpointEventAdded,
 		HttpMethod:  ep.Method,
 		HttpPattern: ep.Pattern,
 		Endpoint: flux.Endpoint{
 			Version:        "v1",
-			Protocol:       flux.ProtocolEcho,
+			Protocol:       flux.ProtoEcho,
 			UpstreamUri:    ep.Pattern,
 			UpstreamMethod: ep.Method,
 			HttpPattern:    ep.Pattern,

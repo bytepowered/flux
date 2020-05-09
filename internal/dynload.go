@@ -16,19 +16,19 @@ type AwareConfig struct {
 	Name     string
 	TypeId   string
 	ConfigNs string
-	Config   flux.Config
+	Config   flux.Configuration
 	Factory  flux.Factory
 }
 
 // dynloadConfig 基于type-id标记的工厂函数，可以生成相同类型的多实例组件
-func dynloadConfig(globals flux.Config) []AwareConfig {
+func dynloadConfig(globals flux.Configuration) []AwareConfig {
 	out := make([]AwareConfig, 0)
 	globals.Foreach(func(name string, v interface{}) bool {
 		m, is := v.(map[string]interface{})
 		if !is {
 			return true
 		}
-		config := ext.NewMapConfig(m)
+		config := flux.NewMapConfiguration(m)
 		if config.IsEmpty() || !(config.Contains(configKeyDynTypeId) && config.Contains(configKeyDynInitConfig)) {
 			return true
 		}
@@ -47,7 +47,7 @@ func dynloadConfig(globals flux.Config) []AwareConfig {
 			Name:     name,
 			TypeId:   typeId,
 			ConfigNs: ns,
-			Config:   ext.ConfigFactory()(ns, config.Map(configKeyDynInitConfig)),
+			Config:   ext.ConfigurationFactory()(ns, config.Map(configKeyDynInitConfig)),
 			Factory:  factory,
 		})
 		return true

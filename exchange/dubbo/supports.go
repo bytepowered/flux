@@ -14,12 +14,12 @@ func assemble(arguments []flux.Argument) (types []string, values []interface{}) 
 	values = make([]interface{}, size)
 	for i, arg := range arguments {
 		types[i] = arg.TypeClass
-		if flux.ArgumentTypePrimitive == arg.ArgType {
-			values[i] = arg.ArgValue.Value()
-		} else if flux.ArgumentTypeComplex == arg.ArgType {
+		if flux.ArgumentTypePrimitive == arg.Type {
+			values[i] = arg.HttpValue.Value()
+		} else if flux.ArgumentTypeComplex == arg.Type {
 			values[i] = argToMap(arg)
 		} else {
-			logger.Warnf("Unsupported parameter type: %s", arg.ArgType)
+			logger.Warnf("Unsupported parameter type: %s", arg.Type)
 		}
 	}
 	return
@@ -29,18 +29,18 @@ func argToMap(arg flux.Argument) map[string]interface{} {
 	m := make(map[string]interface{}, 1+len(arg.Fields))
 	m["class"] = arg.TypeClass
 	for _, field := range arg.Fields {
-		if flux.ArgumentTypePrimitive == field.ArgType {
-			m[field.ArgName] = field.ArgValue.Value()
-		} else if flux.ArgumentTypeComplex == arg.ArgType {
-			m[field.ArgName] = argToMap(field)
+		if flux.ArgumentTypePrimitive == field.Type {
+			m[field.Name] = field.HttpValue.Value()
+		} else if flux.ArgumentTypeComplex == arg.Type {
+			m[field.Name] = argToMap(field)
 		} else {
-			logger.Warnf("Unsupported parameter type: %s", arg.ArgType)
+			logger.Warnf("Unsupported parameter type: %s", arg.Type)
 		}
 	}
 	return m
 }
 
-func newReference(endpoint *flux.Endpoint, config flux.Config) *dubbogo.ReferenceConfig {
+func newReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.ReferenceConfig {
 	ifaceName := endpoint.UpstreamUri
 	timeout := getConfig(endpoint.RpcTimeout, "timeout", config, "3000")
 	retries := getConfig(endpoint.RpcRetries, "retries", config, "0")
@@ -61,7 +61,7 @@ func newReference(endpoint *flux.Endpoint, config flux.Config) *dubbogo.Referenc
 	return reference
 }
 
-func getConfig(specifiedValue string, configKey string, configs flux.Config, defValue string) string {
+func getConfig(specifiedValue string, configKey string, configs flux.Configuration, defValue string) string {
 	if "" != specifiedValue {
 		return specifiedValue
 	}

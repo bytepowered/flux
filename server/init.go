@@ -13,8 +13,8 @@ import (
 
 func init() {
 	// Config factory
-	ext.SetConfigFactory(func(ns string, m map[string]interface{}) flux.Config {
-		return ext.NewMapConfig(m)
+	ext.SetConfigurationFactory(func(ns string, m map[string]interface{}) flux.Configuration {
+		return flux.NewMapConfiguration(m)
 	})
 	// Serializer
 	serializer := internal.NewJsonSerializer()
@@ -25,11 +25,11 @@ func init() {
 	ext.SetRegistryFactory(ext.RegistryIdZookeeper, registry.ZookeeperRegistryFactory)
 	ext.SetRegistryFactory(ext.RegistryIdEcho, registry.EchoRegistryFactory)
 	// exchanges
-	ext.SetExchange(flux.ProtocolEcho, echoex.NewEchoExchange())
-	ext.SetExchange(flux.ProtocolHttp, http.NewHttpExchange())
-	ext.SetExchangeDecoder(flux.ProtocolHttp, http.NewHttpExchangeDecoder())
-	ext.SetExchange(flux.ProtocolDubbo, dubbo.NewDubboExchange())
-	ext.SetExchangeDecoder(flux.ProtocolDubbo, dubbo.NewDubboExchangeDecoder())
+	ext.SetExchange(flux.ProtoEcho, echoex.NewEchoExchange())
+	ext.SetExchange(flux.ProtoHttp, http.NewHttpExchange())
+	ext.SetExchangeDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())
+	ext.SetExchange(flux.ProtoDubbo, dubbo.NewDubboExchange())
+	ext.SetExchangeDecoder(flux.ProtoDubbo, dubbo.NewDubboExchangeDecoder())
 	// filters
 	ext.SetFactory(filter.FilterIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetFactory(filter.FilterIdPermissionVerification, filter.PermissionVerificationFactory)

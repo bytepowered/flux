@@ -43,7 +43,7 @@ type HystrixFilter struct {
 	marks  sync.Map
 }
 
-func (r *HystrixFilter) Init(config flux.Config) error {
+func (r *HystrixFilter) Init(config flux.Configuration) error {
 	r.config = &HystrixConfig{
 		Timeout:                int(config.Int64OrDefault(keyConfigHystrixTimeout, 1000)),
 		MaxConcurrentRequests:  int(config.Int64OrDefault(keyConfigHystrixMaxRequest, 10)),
@@ -59,7 +59,7 @@ func (r *HystrixFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	return func(ctx flux.Context) *flux.InvokeError {
 		// 只处理Http协议，Dubbo协议内部自带熔断逻辑
 		ep := ctx.Endpoint()
-		if flux.ProtocolHttp != ep.Protocol {
+		if flux.ProtoHttp != ep.Protocol {
 			return next(ctx)
 		}
 		// Proto/Host/Uri 可以标识一个服务。Host可能为空，直接在Url中展示
