@@ -1,6 +1,9 @@
 package ext
 
-import "github.com/bytepowered/flux"
+import (
+	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
+)
 
 // known ids of registry
 const (
@@ -17,7 +20,7 @@ type RegistryFactory func() flux.Registry
 
 // SetRegistryFactory 设置指定ID名的Registry工厂函数。
 func SetRegistryFactory(id string, factory RegistryFactory) {
-	_identityRegistryFactories[id] = factory
+	_identityRegistryFactories[id] = pkg.RequireNotNil(factory, "RegistryFactory is nil").(RegistryFactory)
 }
 
 // GetRegistryFactory 根据ID名，获取Registry的工厂函数

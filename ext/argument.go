@@ -15,7 +15,7 @@ var (
 type ArgumentLookupFunc func(argument flux.Argument, context flux.Context) interface{}
 
 func SetArgumentLookupFunc(fun ArgumentLookupFunc) {
-	_argumentLookupFunc = fun
+	_argumentLookupFunc = pkg.RequireNotNil(fun, "ArgumentLookupFunc is nil").(ArgumentLookupFunc)
 }
 
 func GetArgumentLookupFunc() ArgumentLookupFunc {

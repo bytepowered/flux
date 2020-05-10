@@ -1,6 +1,9 @@
 package ext
 
-import "github.com/bytepowered/flux"
+import (
+	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
+)
 
 var (
 	_protoNamedExchanges        = make(map[string]flux.Exchange)
@@ -8,11 +11,11 @@ var (
 )
 
 func SetExchange(protoName string, exchange flux.Exchange) {
-	_protoNamedExchanges[protoName] = exchange
+	_protoNamedExchanges[protoName] = pkg.RequireNotNil(exchange, "Exchange is nil").(flux.Exchange)
 }
 
 func SetExchangeDecoder(protoName string, decoder flux.ExchangeDecoder) {
-	_protoNamedExchangeDecoders[protoName] = decoder
+	_protoNamedExchangeDecoders[protoName] = pkg.RequireNotNil(decoder, "ExchangeDecoder is nil").(flux.ExchangeDecoder)
 }
 
 func GetExchange(protoName string) (flux.Exchange, bool) {

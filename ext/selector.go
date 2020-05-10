@@ -2,6 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
 	"sync"
 )
 
@@ -15,10 +16,12 @@ var (
 )
 
 func AddSelector(s flux.Selector) {
+	pkg.RequireNotNil(s, "Selector is nil")
 	AddHostedSelector(anyHost, s)
 }
 
 func AddHostedSelector(host string, s flux.Selector) {
+	pkg.RequireNotNil(s, "Selector is nil")
 	defer _rwLock.Unlock()
 	_rwLock.Lock()
 	if l, ok := _hostedSelectors[host]; ok {

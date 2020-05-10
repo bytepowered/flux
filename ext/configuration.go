@@ -2,6 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
 )
 
 var (
@@ -9,7 +10,7 @@ var (
 )
 
 func SetConfigurationFactory(factory flux.ConfigurationFactory) {
-	_configurationFactory = factory
+	_configurationFactory = pkg.RequireNotNil(factory, "ConfigurationFactory is nil").(flux.ConfigurationFactory)
 }
 
 func ConfigurationFactory() flux.ConfigurationFactory {

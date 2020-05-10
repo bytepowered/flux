@@ -1,6 +1,9 @@
 package ext
 
-import "github.com/bytepowered/flux"
+import (
+	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
+)
 
 var (
 	_typeNamedFactories = make(map[string]flux.Factory)
@@ -11,6 +14,6 @@ func GetFactory(typeName string) (flux.Factory, bool) {
 	return f, o
 }
 
-func SetFactory(typeName string, f flux.Factory) {
-	_typeNamedFactories[typeName] = f
+func SetFactory(typeName string, factory flux.Factory) {
+	_typeNamedFactories[typeName] = pkg.RequireNotNil(factory, "Factory is nil").(flux.Factory)
 }

@@ -2,6 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
 )
 
 var (
@@ -10,25 +11,10 @@ var (
 
 // SetLogger ...
 func SetLogger(logger flux.Logger) {
-	_fluxLogger = logger
+	_fluxLogger = pkg.RequireNotNil(logger, "Logger is nil").(flux.Logger)
 }
 
 // GetLogger ...
 func GetLogger() flux.Logger {
 	return _fluxLogger
-}
-
-// SetLoggerLevel ...
-func SetLoggerLevel(level string) bool {
-	if l, ok := _fluxLogger.(OpsLogger); ok {
-		l.SetLoggerLevel(level)
-		return true
-	}
-	return false
-}
-
-// OpsLogger ...
-type OpsLogger interface {
-	flux.Logger
-	SetLoggerLevel(level string)
 }

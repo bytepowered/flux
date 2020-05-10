@@ -2,6 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
 )
 
 // Default name
@@ -17,10 +18,7 @@ var (
 ////
 
 func SetSerializer(typeName string, serializer flux.Serializer) {
-	if nil == serializer {
-		GetLogger().Panic("Serialize is nil")
-	}
-	_typeNamedSerializers[typeName] = serializer
+	_typeNamedSerializers[typeName] = pkg.RequireNotNil(serializer, "Serializer is nil").(flux.Serializer)
 }
 
 func GetSerializer(typeName string) flux.Serializer {
