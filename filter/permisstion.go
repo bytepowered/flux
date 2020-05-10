@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	FilterIdPermissionVerification = "PermissionVerificationFilter"
+	TypeIdPermissionVerification = "PermissionVerificationFilter"
 )
 
 var (
@@ -98,7 +98,7 @@ func (p *PermissionVerificationFilter) Order() int {
 }
 
 func (*PermissionVerificationFilter) TypeId() string {
-	return FilterIdPermissionVerification
+	return TypeIdPermissionVerification
 }
 
 func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.InvokeError {

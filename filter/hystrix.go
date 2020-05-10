@@ -18,7 +18,7 @@ const (
 )
 
 const (
-	FilterIdHystrixFilter = "HystrixFilter"
+	TypeIdHystrixFilter = "HystrixFilter"
 )
 
 func HystrixFilterFactory() interface{} {
@@ -100,5 +100,5 @@ func (r *HystrixFilter) initCommand(serviceKey string) {
 }
 
 func (*HystrixFilter) TypeId() string {
-	return FilterIdHystrixFilter
+	return TypeIdHystrixFilter
 }

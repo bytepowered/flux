@@ -16,7 +16,7 @@ const (
 )
 
 const (
-	FilterIdRateLimitFilter = "RateLimitFilter"
+	TypeIdRateLimitFilter = "RateLimitFilter"
 )
 
 func RateLimitFilterFactory() interface{} {
@@ -72,5 +72,5 @@ func (r *RateLimitFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 }
 
 func (*RateLimitFilter) TypeId() string {
-	return FilterIdRateLimitFilter
+	return TypeIdRateLimitFilter
 }

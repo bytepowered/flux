@@ -31,10 +31,10 @@ func init() {
 	ext.SetExchange(flux.ProtoDubbo, dubbo.NewDubboExchange())
 	ext.SetExchangeDecoder(flux.ProtoDubbo, dubbo.NewDubboExchangeDecoder())
 	// filters
-	ext.SetFactory(filter.FilterIdJWTVerification, filter.JwtVerificationFilterFactory)
-	ext.SetFactory(filter.FilterIdPermissionVerification, filter.PermissionVerificationFactory)
-	ext.SetFactory(filter.FilterIdRateLimitFilter, filter.RateLimitFilterFactory)
-	ext.SetFactory(filter.FilterIdHystrixFilter, filter.HystrixFilterFactory)
+	ext.SetFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
+	ext.SetFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
+	ext.SetFactory(filter.TypeIdRateLimitFilter, filter.RateLimitFilterFactory)
+	ext.SetFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
 	// global filters
 	ext.AddGlobalFilter(filter.NewParameterParsingFilter())
 }
