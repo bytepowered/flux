@@ -28,6 +28,9 @@ func ToStringWith(v interface{}, strFunc func(interface{}) string) string {
 	if s, ok := v.(string); ok {
 		return s
 	}
+	if b, ok := v.([]byte); ok {
+		return string(b)
+	}
 	if ser, ok := v.(fmt.Stringer); ok {
 		return ser.String()
 	} else {
