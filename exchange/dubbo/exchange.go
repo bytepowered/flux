@@ -19,18 +19,35 @@ import (
 	"sync"
 )
 
+const (
+	ResponseKeyHttpStatus  = "@net.bytepowered.flux.http-status"
+	ResponseKeyHttpHeaders = "@net.bytepowered.flux.http-headers"
+	ResponseKeyHttpBody    = "@net.bytepowered.flux.http-body"
+)
+
 var (
 	ErrInvalidHeaders = errors.New("DUBBO_RPC:INVALID_HEADERS")
 	ErrInvalidStatus  = errors.New("DUBBO_RPC:INVALID_STATUS")
 	ErrMessageInvoke  = "DUBBO_RPC:INVOKE"
 )
 
+var (
+	gDecoderConfig DecoderConfig
+)
+
+// 定义Decoder的解析响应结构的字段
+type DecoderConfig struct {
+	KeyCode   string
+	KeyHeader string
+	KeyBody   string
+}
+
 // 集成DubboRPC框架的Exchange
 type exchange struct {
-	config         flux.Configuration // 配置数据
-	loggingEnabled bool               // 日志打印
-	referenceMap   map[string]*dubbogo.ReferenceConfig
-	referenceMu    sync.RWMutex
+	config       flux.Configuration // 配置数据
+	traceEnabled bool               // 日志打印
+	referenceMap map[string]*dubbogo.ReferenceConfig
+	referenceMu  sync.RWMutex
 }
 
 func NewDubboExchange() flux.Exchange {
@@ -42,7 +59,12 @@ func NewDubboExchange() flux.Exchange {
 func (ex *exchange) Init(config flux.Configuration) error {
 	logger.Infof("Dubbo Exchange initializing")
 	ex.config = config
-	ex.loggingEnabled = config.BooleanOrDefault("logging-enable", false)
+	ex.traceEnabled = config.BooleanOrDefault("trace-enable", false)
+	gDecoderConfig = DecoderConfig{
+		KeyCode:   config.StringOrDefault("decoder-key-code", ResponseKeyHttpStatus),
+		KeyHeader: config.StringOrDefault("decoder-key-header", ResponseKeyHttpHeaders),
+		KeyBody:   config.StringOrDefault("decoder-key-body", ResponseKeyHttpBody),
+	}
 	if ex.config.IsEmpty() {
 		return errors.New("dubbo-exchange config not found")
 	} else {
@@ -61,12 +83,12 @@ func (ex *exchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface
 	if nil != fxctx {
 		goctx = context.WithValue(goctx, constant.AttachmentKey, pkg.ToStringKVMap(fxctx.AttrValues()))
 	}
-	if ex.loggingEnabled {
+	if ex.traceEnabled {
 		attrs := make(flux.StringMap)
 		if fxctx != nil {
 			attrs = fxctx.AttrValues()
 		}
-		logger.Infof("Dubbo invoke, service:<%s$%s>, args.type:[%s], args.value:[%s], attrs: %+v",
+		logger.Infof("Dubbo invoke, service:<%s$%s>, args.type:[%v], args.value:[%v], attrs: %v",
 			target.UpstreamUri, target.UpstreamMethod, types, args, attrs)
 	}
 	if resp, err := reference.GetRPCService().(*dubbogo.GenericService).

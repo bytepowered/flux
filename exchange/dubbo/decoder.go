@@ -10,37 +10,38 @@ import (
 )
 
 func NewDubboExchangeDecoder() flux.ExchangeDecoder {
-	return func(ctx flux.Context, value interface{}) (statusCode int, headers http.Header, body flux.Object, err error) {
-		emptyHeaders := make(http.Header)
-		if valueM, ok := value.(map[interface{}]interface{}); ok {
-			headers, err = _headers(valueM)
+	return func(ctx flux.Context, input interface{}) (statusCode int, header http.Header, body flux.Object, err error) {
+		header = make(http.Header)
+		if mapValues, ok := input.(map[interface{}]interface{}); ok {
+			// Header
+			header, err = ReadHeader(gDecoderConfig.KeyHeader, mapValues)
 			if nil != err {
-				return flux.StatusServerError, emptyHeaders, nil, err
+				return flux.StatusServerError, header, nil, err
 			}
 			// StatusCode
-			statusCode, err = _status(valueM)
+			statusCode, err = ReadStatusCode(gDecoderConfig.KeyCode, mapValues)
 			if nil != err {
-				return flux.StatusServerError, emptyHeaders, nil, err
+				return flux.StatusServerError, header, nil, err
 			}
-			// body
-			body = _body(valueM)
-			return statusCode, headers, body, nil
+			// Body
+			body = ReadBodyObject(gDecoderConfig.KeyBody, mapValues)
+			return statusCode, header, body, nil
 		} else {
-			return flux.StatusOK, emptyHeaders, value, nil
+			return flux.StatusOK, header, input, nil
 		}
 	}
 }
 
-func _body(values map[interface{}]interface{}) hessian.Object {
-	if body, ok := values[KeyHttpBody]; ok {
+func ReadBodyObject(key string, values map[interface{}]interface{}) hessian.Object {
+	if body, ok := values[key]; ok {
 		return body.(hessian.Object)
 	} else {
 		return values
 	}
 }
 
-func _status(values map[interface{}]interface{}) (int, error) {
-	if status, ok := values[KeyHttpStatus]; ok {
+func ReadStatusCode(key string, values map[interface{}]interface{}) (int, error) {
+	if status, ok := values[key]; ok {
 		if code, err := pkg.ToInt(status); nil != err {
 			logger.Warnf("Invalid rpc response status, type: %s, value: %+v", reflect.TypeOf(status), status)
 			return 0, ErrInvalidStatus
@@ -52,8 +53,8 @@ func _status(values map[interface{}]interface{}) (int, error) {
 	}
 }
 
-func _headers(values map[interface{}]interface{}) (http.Header, error) {
-	hkv, ok := values[KeyHttpHeaders]
+func ReadHeader(key string, values map[interface{}]interface{}) (http.Header, error) {
+	hkv, ok := values[key]
 	if !ok {
 		return make(http.Header), nil
 	}

@@ -21,6 +21,12 @@ root-path = "/flux-metadata"
 # DubboExange配置参数
 [Exchanges.DUBBO]
 cluster = "failover"
+# 日志开关；如果开启则打印Dubbo调用细节
+trace-enable = false
+# Decoder关于读取响应体的字段Key。当响应体为JSON(Map)类型时，会尝试查找以下字段来作为Http层的响应数据。
+decoder-key-code = "@net.bytepowered.flux.http-status"
+decoder-key-header = "@net.bytepowered.flux.http-headers"
+decoder-key-body = "@net.bytepowered.flux.http-body"
 
 # JWT验证配置
 
