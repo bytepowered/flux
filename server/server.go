@@ -27,7 +27,8 @@ const (
 )
 
 const (
-	DefaultHttpVersionHeader = "X-Version"
+	DefaultHttpVersionHeader   = "X-Version"
+	DefaultHttpRequestIdHeader = "X-Request-Id"
 )
 
 const (
@@ -61,7 +62,7 @@ type ContextPipelineFunc func(echo.Context, flux.Context)
 // FluxServer
 type FluxServer struct {
 	httpServer        *echo.Echo
-	httpVisits        *expvar.Int
+	visits            *expvar.Int
 	httpAdaptWriter   internal.FxHttpWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
@@ -75,7 +76,7 @@ type FluxServer struct {
 func NewFluxServer() *FluxServer {
 	id, _ := snowflake.NewNode(1)
 	return &FluxServer{
-		httpVisits:    expvar.NewInt("HttpVisits"),
+		visits:        expvar.NewInt("visits"),
 		dispatcher:    internal.NewDispatcher(),
 		endpointMvMap: make(map[string]*internal.MultiVersionEndpoint),
 		contextPool:   sync.Pool{New: internal.NewFxContext},
@@ -189,9 +190,12 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 }
 
 func (fs *FluxServer) acquire(c echo.Context, endpoint *flux.Endpoint) *internal.FxContext {
+	requestId := c.Request().Header.Get(DefaultHttpRequestIdHeader)
+	if "" == requestId {
+		requestId = fs.snowflakeId.Generate().Base64()
+	}
 	ctx := fs.contextPool.Get().(*internal.FxContext)
-	reqId := fs.snowflakeId.Generate().Base64()
-	ctx.Reattach(reqId, c, endpoint)
+	ctx.Reattach(requestId, c, endpoint)
 	return ctx
 }
 
@@ -207,7 +211,7 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 				logger.Error(err)
 			}
 		}()
-		fs.httpVisits.Add(1)
+		fs.visits.Add(1)
 		httpRequest := c.Request()
 		// Multi version selection
 		version := httpRequest.Header.Get(fs.httpVersionHeader)
