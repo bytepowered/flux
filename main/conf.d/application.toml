@@ -1,15 +1,14 @@
 # 网关Http服务器配置
 [HttpServer]
-debug = true
 address = "0.0.0.0"
 port = 8080
 body-limit = "100K"
 version-header = "X-Version"
 tls-cret-file = ""
 tls-key-file = ""
-[HttpServer.BasicAuth]
-username = "yongjia.chen"
-# password = "yongjiaxxl"
+# debug-enable = true
+# debug-auth-username = "yongjia.chen"
+# debug-auth-password = "yongjiaxxl"
 
 # Endpoint元数据配置中心
 [Registry]

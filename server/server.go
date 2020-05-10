@@ -34,7 +34,7 @@ const (
 const (
 	ConfigHttpRootName      = "HttpServer"
 	ConfigHttpVersionHeader = "version-header"
-	ConfigHttpDebugEnable   = "debug"
+	ConfigHttpDebugEnable   = "debug-enable"
 	ConfigHttpTlsCertFile   = "tls-cert-file"
 	ConfigHttpTlsKeyFile    = "tls-key-file"
 )
@@ -295,15 +295,15 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 }
 
 func (fs *FluxServer) debugFeatures(configuration pkg.Configuration) {
-	username := configuration.GetStringOr("username", "fluxgo")
-	password := configuration.GetStringOr("password", random.String(8))
-	logger.Infof("Http debug feature: <Enabled>, basic-auth: username=%s, password=%s", username, password)
-	authMiddleware := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
+	username := configuration.GetStringOr("debug-auth-username", "fluxgo")
+	password := configuration.GetStringOr("debug-auth-password", random.String(8))
+	logger.Infof("Http debug feature: [ENABLED], Auth: BasicAuth, username: %s, password: %s", username, password)
+	auth := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
 		return u == username && p == password, nil
 	})
 	debugHandler := echo.WrapHandler(https.DefaultServeMux)
-	fs.httpServer.GET(DebugPathVars, debugHandler, authMiddleware)
-	fs.httpServer.GET(DebugPathPprof, debugHandler, authMiddleware)
+	fs.httpServer.GET(DebugPathVars, debugHandler, auth)
+	fs.httpServer.GET(DebugPathPprof, debugHandler, auth)
 	fs.httpServer.GET(DebugPathEndpoints, func(c echo.Context) error {
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
 		if data, err := decoder.Marshal(queryEndpoints(fs.endpointMvMap, c)); nil != err {
@@ -311,7 +311,7 @@ func (fs *FluxServer) debugFeatures(configuration pkg.Configuration) {
 		} else {
 			return c.JSONBlob(flux.StatusOK, data)
 		}
-	}, authMiddleware)
+	}, auth)
 }
 
 func (*FluxServer) prepareRequest() echo.MiddlewareFunc {
