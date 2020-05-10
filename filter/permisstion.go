@@ -5,8 +5,8 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/lakego"
+	"github.com/spf13/cast"
 	"strings"
 	"time"
 )
@@ -110,7 +110,7 @@ func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.In
 	// 验证用户是否有权限访问API：(userSubId, method, uri-pattern)
 	permKey := fmt.Sprintf("%s@%s#%s", jwtSubjectId, endpoint.HttpMethod, endpoint.HttpPattern)
 	allowed, err := p.permCache.GetOrLoad(permKey, func(_ lakego.Key) (lakego.Value, error) {
-		strSubId := pkg.ToString(jwtSubjectId)
+		strSubId := cast.ToString(jwtSubjectId)
 		return p.provider(strSubId, endpoint.HttpMethod, endpoint.HttpPattern)
 	})
 	if err == nil {
@@ -144,6 +144,6 @@ func _loadPermByExchange(proto string,
 	}, nil); nil != err {
 		return false, err
 	} else {
-		return strings.Contains(pkg.ToString(ret), "success"), nil
+		return strings.Contains(cast.ToString(ret), "success"), nil
 	}
 }

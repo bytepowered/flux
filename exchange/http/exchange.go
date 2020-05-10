@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"github.com/spf13/cast"
 	"io"
 	"net/http"
 	"net/url"
@@ -51,7 +52,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 		// Header透传以及传递AttrValues
 		newRequest.Header = httpRequest.Header.Clone()
 		for k, v := range ctx.AttrValues() {
-			newRequest.Header.Set(k, pkg.ToString(v))
+			newRequest.Header.Set(k, cast.ToString(v))
 		}
 	}
 	resp, err := ex.httpClient.Do(newRequest)

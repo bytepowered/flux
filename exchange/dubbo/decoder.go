@@ -4,7 +4,7 @@ import (
 	hessian "github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
+	"github.com/spf13/cast"
 	"net/http"
 	"reflect"
 )
@@ -42,7 +42,7 @@ func ReadBodyObject(key string, values map[interface{}]interface{}) hessian.Obje
 
 func ReadStatusCode(key string, values map[interface{}]interface{}) (int, error) {
 	if status, ok := values[key]; ok {
-		if code, err := pkg.ToInt(status); nil != err {
+		if code, err := cast.ToIntE(status); nil != err {
 			logger.Warnf("Invalid rpc response status, type: %s, value: %+v", reflect.TypeOf(status), status)
 			return 0, ErrInvalidStatus
 		} else {
@@ -64,14 +64,14 @@ func ReadHeader(key string, values map[interface{}]interface{}) (http.Header, er
 	if mii, ok := hkv.(map[interface{}]interface{}); ok {
 		omap := make(http.Header)
 		for k, v := range mii {
-			_addToHeader(omap, pkg.ToString(k), v)
+			_addToHeader(omap, cast.ToString(k), v)
 		}
 		return omap, nil
 	}
 	if msi, ok := hkv.(map[string]interface{}); ok {
 		omap := make(http.Header)
 		for k, v := range msi {
-			_addToHeader(omap, pkg.ToString(k), v)
+			_addToHeader(omap, cast.ToString(k), v)
 		}
 		return omap, nil
 	}
@@ -85,6 +85,6 @@ func _addToHeader(headers http.Header, key string, v interface{}) {
 			headers.Add(key, iv)
 		}
 	} else {
-		headers.Add(key, pkg.ToString(v))
+		headers.Add(key, cast.ToString(v))
 	}
 }

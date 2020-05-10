@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/spf13/cast"
 )
 
 const (
@@ -29,22 +30,22 @@ func GetDefaultResolver() ValueResolver {
 
 var (
 	stringResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
-		return ToString(value), nil
+		return cast.ToString(value), nil
 	})
 	integerResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
-		return ToInt(value)
+		return cast.ToIntE(value)
 	})
 	longResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
-		return ToInt64(value)
+		return cast.ToInt64E(value)
 	})
 	float32Resolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
-		return ToFloat32(value)
+		return cast.ToFloat32E(value)
 	})
 	float64Resolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
-		return ToFloat64(value)
+		return cast.ToFloat64E(value)
 	})
 	booleanResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
-		return ToBool(value), nil
+		return cast.ToBool(value), nil
 	})
 	mapResolver = ValueResolver(func(_ string, genericTypes []string, value interface{}) (interface{}, error) {
 		return _toMap(value)

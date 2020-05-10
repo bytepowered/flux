@@ -5,9 +5,9 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/lakego"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/spf13/cast"
 	"strings"
 	"time"
 )
@@ -89,7 +89,7 @@ func (j *JwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvok
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
-		tokenString := pkg.ToString(LookupValue(j.config.lookupToken, ctx))
+		tokenString := cast.ToString(LookupValue(j.config.lookupToken, ctx))
 		if "" == tokenString {
 			return ErrorAuthorizationHeaderRequired
 		}
@@ -129,8 +129,8 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 			return nil, fmt.Errorf("unexpected claims : %s", token.Claims)
 		}
 		// 获取用户标识，从缓存中加载用户的JWT密钥
-		issuer := pkg.ToString(claims[j.config.issuerKey])
-		subject := pkg.ToString(claims[j.config.subjectKey])
+		issuer := cast.ToString(claims[j.config.issuerKey])
+		subject := cast.ToString(claims[j.config.subjectKey])
 		subjectCacheKey := fmt.Sprintf("%s.%s", issuer, subject)
 		return j.certKeyCache.GetOrLoad(subjectCacheKey, func(_ lakego.Key) (lakego.Value, error) {
 			switch strings.ToUpper(j.config.upProto) {
@@ -158,6 +158,6 @@ func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject str
 	}, nil); nil != err {
 		return false, err
 	} else {
-		return strings.Contains(pkg.ToString(ret), "success"), nil
+		return strings.Contains(cast.ToString(ret), "success"), nil
 	}
 }

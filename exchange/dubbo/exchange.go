@@ -15,7 +15,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
+	"github.com/spf13/cast"
 	"sync"
 )
 
@@ -81,7 +81,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface
 	reference := ex.lookup(target)
 	goctx := context.Background()
 	if nil != fxctx {
-		goctx = context.WithValue(goctx, constant.AttachmentKey, pkg.ToStringKVMap(fxctx.AttrValues()))
+		goctx = context.WithValue(goctx, constant.AttachmentKey, cast.ToStringMap(fxctx.AttrValues()))
 	}
 	if ex.traceEnabled {
 		attrs := make(flux.StringMap)

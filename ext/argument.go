@@ -12,7 +12,7 @@ var (
 )
 
 // ArgumentLookupFunc 参数值查找函数
-type ArgumentLookupFunc func(argument flux.Argument, context flux.Context) interface{}
+type ArgumentLookupFunc func(argument flux.Argument, context flux.Context) (interface{}, error)
 
 func SetArgumentLookupFunc(fun ArgumentLookupFunc) {
 	_argumentLookupFunc = pkg.RequireNotNil(fun, "ArgumentLookupFunc is nil").(ArgumentLookupFunc)
