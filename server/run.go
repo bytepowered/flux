@@ -5,6 +5,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"time"
@@ -26,8 +27,23 @@ func InitDefaultLogger() {
 	}
 }
 
+func InitConfiguration(envKey string) {
+	file := "application"
+	env := os.Getenv(envKey)
+	if env != "" {
+		file = file + "-" + env
+	}
+	viper.SetConfigName(file)
+	viper.AddConfigPath("/etc/flux/conf.d")
+	viper.AddConfigPath("./conf.d")
+	logger.Infof("Using config, file: %s, Env: %s", file, env)
+	if err := viper.ReadInConfig(); nil != err {
+		logger.Panicf("Fatal config error, path: %s, err: ", file, err)
+	}
+}
+
 func Run(ver flux.BuildInfo) {
-	InitConfig(EnvKeyDeployEnv)
+	InitConfiguration(EnvKeyDeployEnv)
 	fx := NewFluxServer()
 	if err := fx.Prepare(); nil != err {
 		logger.Panic("FluxServer prepare:", err)
