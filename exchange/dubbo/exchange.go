@@ -62,6 +62,7 @@ func NewDubboExchange() flux.Exchange {
 
 func (ex *exchange) Init(config flux.Configuration) error {
 	logger.Infof("Dubbo Exchange initializing")
+	ex.config = config
 	ex.traceEnabled = config.GetBoolDefault("trace-enable", false)
 	gDecoderConfig = DecoderConfig{
 		KeyCode:   config.GetStringDefault("decoder-key-code", ResponseKeyHttpStatus),

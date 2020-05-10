@@ -72,7 +72,7 @@ func _setupResponse(resp *echo.Response, reqId string, outHeader http.Header, st
 	headers := resp.Header()
 	headers.Set(echo.HeaderServer, "FluxGo")
 	headers.Set(echo.HeaderXRequestID, reqId)
-	headers.Set("Content-Type", httpContentTypeJson)
+	headers.Set("Content-Type", "application/json;charset=utf-8")
 	// 允许Override默认Header
 	for k, v := range outHeader {
 		for _, iv := range v {

@@ -3,11 +3,18 @@ package flux
 import "github.com/spf13/viper"
 
 func NewConfigurationOf(namespace string) Configuration {
-	return Configuration{Viper: viper.Sub(namespace)}
+	v := viper.Sub(namespace)
+	if v != nil {
+		v = viper.New()
+	}
+	return Configuration{Viper: v}
 }
 
-func NewConfiguration(viper *viper.Viper) Configuration {
-	return Configuration{Viper: viper}
+func NewConfiguration(in *viper.Viper) Configuration {
+	if nil == in {
+		in = viper.New()
+	}
+	return Configuration{Viper: in}
 }
 
 type Configuration struct {

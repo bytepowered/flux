@@ -24,11 +24,12 @@ type AwareConfig struct {
 func dynamicFilters() ([]AwareConfig, error) {
 	out := make([]AwareConfig, 0)
 	for id := range viper.GetStringMap("FILTER") {
-		config := viper.Sub("FILTER." + id)
-		if !config.IsSet(dynConfigKeyTypeId) {
-			logger.Infof("Filter[%] config without typeId", id)
+		v := viper.Sub("FILTER." + id)
+		if v == nil || !v.IsSet(dynConfigKeyTypeId) {
+			logger.Infof("Filter[%] configuration is empty or without typeId", id)
 			continue
 		}
+		config := flux.NewConfiguration(v)
 		typeId := config.GetString(dynConfigKeyTypeId)
 		if config.GetBool(dynConfigKeyDisable) {
 			logger.Infof("Filter is DISABLED, typeId: %s, id: %s", typeId, id)
@@ -42,7 +43,7 @@ func dynamicFilters() ([]AwareConfig, error) {
 			Id:      id,
 			TypeId:  typeId,
 			Factory: factory,
-			Config:  flux.NewConfiguration(config),
+			Config:  config,
 		})
 	}
 	return out, nil
