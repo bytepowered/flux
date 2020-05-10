@@ -10,7 +10,6 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/random"
@@ -98,8 +97,8 @@ func (fs *FluxServer) Prepare(hooks ...flux.PrepareHook) error {
 // Init : Call before startup
 func (fs *FluxServer) Init() error {
 	// Http server
-	config := pkg.NewConfigurationWith(ConfigHttpRootName)
-	fs.httpVersionHeader = config.GetStringOr(ConfigHttpVersionHeader, DefaultHttpVersionHeader)
+	config := flux.NewNamespaceConfiguration(ConfigHttpRootName)
+	fs.httpVersionHeader = config.GetStringDefault(ConfigHttpVersionHeader, DefaultHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
 	fs.httpServer.HidePort = true
@@ -108,10 +107,10 @@ func (fs *FluxServer) Init() error {
 	fs.AddHttpInterceptor(middleware.CORS())
 	fs.AddHttpInterceptor(fs.prepareRequest())
 	// Http debug features
-	if config.GetBoolOr(ConfigHttpDebugEnable, false) {
+	if config.GetBoolDefault(ConfigHttpDebugEnable, false) {
 		fs.debugFeatures(config)
 	}
-	return fs.dispatcher.Init()
+	return fs.dispatcher.Initial()
 }
 
 // Startup server
@@ -130,8 +129,8 @@ func (fs *FluxServer) Startup(version flux.BuildInfo) error {
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	httpConfig := pkg.NewConfigurationWith(ConfigHttpRootName)
-	address := fmt.Sprintf("%s:%d", httpConfig.GetStringOr("address", "0.0.0.0"), httpConfig.GetIntOr("port", 8080))
+	httpConfig := flux.NewNamespaceConfiguration(ConfigHttpRootName)
+	address := fmt.Sprintf("%s:%d", httpConfig.GetStringDefault("address", "0.0.0.0"), httpConfig.GetIntDefault("port", 8080))
 	certFile := httpConfig.GetString(ConfigHttpTlsCertFile)
 	keyFile := httpConfig.GetString(ConfigHttpTlsKeyFile)
 	if certFile != "" && keyFile != "" {
@@ -294,9 +293,9 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 	}
 }
 
-func (fs *FluxServer) debugFeatures(configuration pkg.Configuration) {
-	username := configuration.GetStringOr("debug-auth-username", "fluxgo")
-	password := configuration.GetStringOr("debug-auth-password", random.String(8))
+func (fs *FluxServer) debugFeatures(configuration flux.Configuration) {
+	username := configuration.GetStringDefault("debug-auth-username", "fluxgo")
+	password := configuration.GetStringDefault("debug-auth-password", random.String(8))
 	logger.Infof("Http debug feature: [ENABLED], Auth: BasicAuth, username: %s, password: %s", username, password)
 	auth := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
 		return u == username && p == password, nil

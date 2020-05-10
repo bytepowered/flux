@@ -23,12 +23,12 @@ func NewDispatcher() *FxDispatcher {
 	}
 }
 
-func (d *FxDispatcher) Init() error {
+func (d *FxDispatcher) Initial() error {
 	logger.Infof("Dispatcher initialing")
 	// 组件生命周期回调钩子
-	initRegisterHook := func(ref interface{}) error {
+	initRegisterHook := func(ref interface{}, config flux.Configuration) error {
 		if init, ok := ref.(flux.Initializer); ok {
-			if err := init.Init(); nil != err {
+			if err := init.Init(config); nil != err {
 				return err
 			}
 		}
@@ -37,38 +37,42 @@ func (d *FxDispatcher) Init() error {
 	}
 	// 静态注册的单实例内核组件
 	// Registry
-	if registry, err := findActiveRegistry(); nil != err {
+	if registry, config, err := findActiveRegistry(); nil != err {
 		return err
 	} else {
 		d.activeRegistry = registry
-		if err := initRegisterHook(registry); nil != err {
+		if err := initRegisterHook(registry, config); nil != err {
 			return err
 		}
 	}
 	// Exchanges
 	for proto, ex := range ext.Exchanges() {
-		logger.Infof("Load exchange, proto: %s, inst.type: %T", proto, ex)
-		if err := initRegisterHook(ex); nil != err {
+		ns := "EXCHANGE." + proto
+		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, ns)
+		if err := initRegisterHook(ex, flux.NewNamespaceConfiguration(ns)); nil != err {
 			return err
 		}
 	}
-	// Filters
+	// Static Filters
 	for _, filter := range append(ext.GlobalFilters(), ext.ScopedFilters()...) {
-		logger.Infof("Load filter, filter.type: %T", filter)
-		if err := initRegisterHook(filter); nil != err {
+		ns := filter.TypeId()
+		logger.Infof("Load static filter, filter.type: %T, config.ns: %s", filter, ns)
+		if err := initRegisterHook(filter, flux.NewNamespaceConfiguration(ns)); nil != err {
 			return err
 		}
 	}
 	// 加载和注册，动态多实例组件
-	for _, item := range dynloadConfig() {
-		aware := item.Factory()
-		logger.Infof("Load aware, name: %s, type: %s, aware.type: %T", item.Name, item.TypeId, aware)
-		if err := initRegisterHook(aware); nil != err {
+	dynFilters, err := dynamicFilters()
+	if nil != err {
+		return err
+	}
+	for _, item := range dynFilters {
+		filter := item.Factory()
+		logger.Infof("Load dynamic filter, filterId: %s, typeId: %s, filter.type: %T", item.Id, item.TypeId, filter)
+		if err := initRegisterHook(filter, item.Config); nil != err {
 			return err
 		}
-		// 目前只支持Filter动态注册
-		// 其它未知组件，只做动态启动生命周期
-		if filter, ok := aware.(flux.Filter); ok {
+		if filter, ok := filter.(flux.Filter); ok {
 			ext.AddFilter(filter)
 		}
 	}
@@ -147,13 +151,13 @@ func (d *FxDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.
 	return fi
 }
 
-func findActiveRegistry() (flux.Registry, error) {
-	config := pkg.NewConfigurationWith("Registry")
-	registryId := config.GetStringOr("registry-id", ext.RegistryIdDefault)
+func findActiveRegistry() (flux.Registry, flux.Configuration, error) {
+	config := flux.NewNamespaceConfiguration("Registry")
+	registryId := config.GetStringDefault("registry-id", ext.RegistryIdDefault)
 	logger.Infof("Active registry, id: %s", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
-		return nil, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
+		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
 	} else {
-		return factory(), nil
+		return factory(), config, nil
 	}
 }

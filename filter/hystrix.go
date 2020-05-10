@@ -5,7 +5,6 @@ import (
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"net/http"
 	"sync"
 )
@@ -44,16 +43,15 @@ type HystrixFilter struct {
 	marks  sync.Map
 }
 
-func (r *HystrixFilter) Init() error {
-	config := pkg.NewConfigurationWith(TypeIdHystrixFilter)
+func (r *HystrixFilter) Init(config flux.Configuration) error {
+	logger.Infof("Hystrix filter initializing")
 	r.config = &HystrixConfig{
-		Timeout:                int(config.GetInt64Or(keyConfigHystrixTimeout, 1000)),
-		MaxConcurrentRequests:  int(config.GetInt64Or(keyConfigHystrixMaxRequest, 10)),
-		RequestVolumeThreshold: int(config.GetInt64Or(keyConfigHystrixRequestVolumeThreshold, 20)),
-		SleepWindow:            int(config.GetInt64Or(keyConfigHystrixSleepWindow, 5000)),
-		ErrorPercentThreshold:  int(config.GetInt64Or(keyConfigHystrixErrorPercentThreshold, 50)),
+		Timeout:                int(config.GetInt64Default(keyConfigHystrixTimeout, 1000)),
+		MaxConcurrentRequests:  int(config.GetInt64Default(keyConfigHystrixMaxRequest, 10)),
+		RequestVolumeThreshold: int(config.GetInt64Default(keyConfigHystrixRequestVolumeThreshold, 20)),
+		SleepWindow:            int(config.GetInt64Default(keyConfigHystrixSleepWindow, 5000)),
+		ErrorPercentThreshold:  int(config.GetInt64Default(keyConfigHystrixErrorPercentThreshold, 50)),
 	}
-	logger.Infof("Hystrix filter initializing, config: %+v", r.config)
 	return nil
 }
 

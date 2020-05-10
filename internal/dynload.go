@@ -1,52 +1,49 @@
 package internal
 
 import (
+	"fmt"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/ext"
+	"github.com/bytepowered/flux/logger"
+	"github.com/spf13/viper"
 )
 
 const (
-	configKeyDynDisable    = "disable"
-	configKeyDynTypeId     = "type-id"
-	configKeyDynInitConfig = "InitConfig"
+	dynConfigKeyDisable = "disable"
+	dynConfigKeyTypeId  = "type-id"
 )
 
 type AwareConfig struct {
-	Name    string
+	Id      string
 	TypeId  string
+	Config  flux.Configuration
 	Factory flux.Factory
 }
 
-// dynloadConfig 基于type-id标记的工厂函数，可以生成相同类型的多实例组件
-func dynloadConfig() []AwareConfig {
+// 动态加载Filter
+func dynamicFilters() ([]AwareConfig, error) {
 	out := make([]AwareConfig, 0)
-	//globals.Foreach(func(name string, v interface{}) bool {
-	//	m, is := v.(map[string]interface{})
-	//	if !is {
-	//		return true
-	//	}
-	//	config := flux.NewMapConfiguration(m)
-	//	if config.IsEmpty() || !(config.Contains(configKeyDynTypeId) && config.Contains(configKeyDynInitConfig)) {
-	//		return true
-	//	}
-	//	typeId := config.String(configKeyDynTypeId)
-	//	if config.BooleanOrDefault(configKeyDynDisable, false) {
-	//		logger.Infof("Aware is DISABLED, typeId: %s", typeId)
-	//		return true
-	//	}
-	//	factory, ok := ext.GetFactory(typeId)
-	//	if !ok {
-	//		logger.Warnf("TypeFactory not found, typeId: %s", typeId)
-	//		return true
-	//	}
-	//	ns := configNsPrefixComponent + typeId
-	//	out = append(out, AwareConfig{
-	//		Name:      name,
-	//		TypeId:    typeId,
-	//		Namespace: ns,
-	//		Config:    ext.ConfigurationFactory()(ns, config.Map(configKeyDynInitConfig)),
-	//		Factory:   factory,
-	//	})
-	//	return true
-	//})
-	return out
+	for id := range viper.GetStringMap("FILTER") {
+		config := viper.Sub("FILTER." + id)
+		if !config.IsSet(dynConfigKeyTypeId) {
+			logger.Infof("Filter[%] config without typeId", id)
+			continue
+		}
+		typeId := config.GetString(dynConfigKeyTypeId)
+		if config.GetBool(dynConfigKeyDisable) {
+			logger.Infof("Filter is DISABLED, typeId: %s, id: %s", typeId, id)
+			continue
+		}
+		factory, ok := ext.GetFactory(typeId)
+		if !ok {
+			return nil, fmt.Errorf("FilterFactory not found, typeId: %s, name: %s", typeId, id)
+		}
+		out = append(out, AwareConfig{
+			Id:      id,
+			TypeId:  typeId,
+			Factory: factory,
+			Config:  flux.NewConfiguration(config),
+		})
+	}
+	return out, nil
 }

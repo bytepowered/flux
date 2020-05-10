@@ -37,10 +37,9 @@ trace-enable = false
 # JWT验证配置
 
 ## Dubbo协议
-[JsonWebTokenVerification]
+[FILTER.JWT_VERIFICATION_DUBBO]
 disable = false
 type-id = "JwtVerificationFilter"
-[JsonWebTokenVerification.InitConfig]
 # Http请求中Token的Header键名。默认: Authorization。支持域：[query, form, path, header, attr]，默认header
 jwt-lookup-token = "header:Authorization"
 jwt-issuer-key = "iss"
@@ -50,7 +49,7 @@ upstream-uri = "foo.bar.JWTService"
 upstream-method = "getPrivateJwtSecret"
 
 # Http后端JWT验证配置
-[HttpJsonWebTokenVerification]
+[FILTER.JWT_VERIFICATION_HTTP]
 disable = false
 type-id = "JwtVerificationFilter"
 [HttpJsonWebTokenVerification.InitConfig]
@@ -63,10 +62,9 @@ upstream-method = "POST"
 
 
 # 访问权限验证
-[PermissionVerification]
+[FILTER.PERM_VERIFICATION_HTTP]
 disable = false
 type-id = "PermissionVerificationFilter"
-[PermissionVerification.InitConfig]
 # 访问Subject在JWT数据中的Key
 subject-jwt-key = "uid"
 # Optional: 指定权限验收Dubbo接口。

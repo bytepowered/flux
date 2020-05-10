@@ -30,7 +30,7 @@ type (
 	}
 	// Initializer 用于介入服务停止生命周期的Hook，通常与 Orderer 接口一起使用。
 	Initializer interface {
-		Init() error // 当服务初始化时，调用此函数
+		Init(configuration Configuration) error // 当服务初始化时，调用此函数
 	}
 	// Orderer 用于定义顺序
 	Orderer interface {

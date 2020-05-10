@@ -28,7 +28,7 @@ func init() {
 	ext.SetExchangeDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())
 	ext.SetExchange(flux.ProtoDubbo, dubbo.NewDubboExchange())
 	ext.SetExchangeDecoder(flux.ProtoDubbo, dubbo.NewDubboExchangeDecoder())
-	// filters
+	// dynamic filter factories
 	ext.SetFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
 	ext.SetFactory(filter.TypeIdRateLimitFilter, filter.RateLimitFilterFactory)

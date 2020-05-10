@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/flux/remoting"
@@ -30,13 +31,13 @@ type ZkRetriever struct {
 	timeout     time.Duration
 }
 
-func (r *ZkRetriever) InitWith(config pkg.Configuration) error {
-	if !config.Has("address") {
+func (r *ZkRetriever) InitWith(config flux.Configuration) error {
+	if !config.IsSetKeys("address") {
 		return errors.New("registry.address is required, was empty")
 	}
-	addr := config.GetStringOr("address", "zookeeper:2181")
+	addr := config.GetStringDefault("address", "zookeeper:2181")
 	r.servers = strings.Split(addr, ",")
-	tov := config.GetStringOr("timeout", "30s")
+	tov := config.GetStringDefault("timeout", "30s")
 	if to, err := time.ParseDuration(tov); nil != err {
 		return fmt.Errorf("invalid timeout(duration): %s, err: %w", tov, err)
 	} else {
