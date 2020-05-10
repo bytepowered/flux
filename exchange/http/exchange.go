@@ -18,6 +18,10 @@ var (
 	ErrDecoderNotFound = &flux.InvokeError{StatusCode: flux.StatusServerError, Message: "DUBBO:DECODER_NOT_FOUND"}
 )
 
+const (
+	ExchangeNamespaceHttp = "EXCHANGE.HTTP"
+)
+
 func NewHttpExchange() *exchange {
 	return &exchange{
 		httpClient: &http.Client{

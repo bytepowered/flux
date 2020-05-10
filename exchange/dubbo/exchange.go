@@ -25,6 +25,10 @@ const (
 	ResponseKeyHttpBody    = "@net.bytepowered.flux.http-body"
 )
 
+const (
+	ExchangeNamespaceDubbo = "EXCHANGE.DUBBO"
+)
+
 var (
 	ErrInvalidHeaders = errors.New("DUBBO_RPC:INVALID_HEADERS")
 	ErrInvalidStatus  = errors.New("DUBBO_RPC:INVALID_STATUS")
@@ -57,7 +61,7 @@ func NewDubboExchange() flux.Exchange {
 }
 
 func (ex *exchange) Init() error {
-	config := pkg.NewConfigurationWith("DubboExchange")
+	config := pkg.NewConfigurationWith(ExchangeNamespaceDubbo)
 	logger.Infof("Dubbo Exchange initializing")
 	ex.traceEnabled = config.GetBoolOr("trace-enable", false)
 	gDecoderConfig = DecoderConfig{

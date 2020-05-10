@@ -1,5 +1,5 @@
 # 网关Http服务器配置
-[HttpServer]
+[HTTPSERVER]
 address = "0.0.0.0"
 port = 8080
 body-limit = "100K"
@@ -10,16 +10,16 @@ tls-key-file = ""
 # debug-auth-username = "yongjia.chen"
 # debug-auth-password = "yongjiaxxl"
 
-# Endpoint元数据配置中心
-[Registry]
+# REGISTRY: 元数据配置中心
+[REGISTRY]
 # 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
 registry-id = "active"
 # ZK服务配置中心地址，支持,分多个地址列表
 address = "tx.devserver.net:2181"
 root-path = "/flux-metadata"
 
-# DubboExange配置参数
-[DubboExchange]
+# Dubbo Exange 配置参数
+[EXCHANGE.DUBBO]
 cluster = "failover"
 # 日志开关；如果开启则打印Dubbo调用细节
 trace-enable = false
@@ -27,6 +27,12 @@ trace-enable = false
 decoder-key-code = "@net.bytepowered.flux.http-status"
 decoder-key-header = "@net.bytepowered.flux.http-headers"
 decoder-key-body = "@net.bytepowered.flux.http-body"
+
+# Http Exchange 配置参数
+[EXCHANGE.HTTP]
+timeout = "10s"
+# 日志开关；如果开启则打印Dubbo调用细节
+trace-enable = false
 
 # JWT验证配置
 
@@ -69,7 +75,3 @@ upstream-proto = "HTTP"
 upstream-host = "http://bytepowered.net"
 upstream-uri = "/jwt/permission"
 upstream-method = "POST"
-
-# 日志配置
-[Logger]
-level = "debug"
