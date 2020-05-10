@@ -13,7 +13,7 @@ version-header = "X-Version"
 # REGISTRY: 元数据配置中心
 [REGISTRY]
 # 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
-registry-id = "active"
+registry-id = "zookeeper"
 # ZK服务配置中心地址，支持,分多个地址列表
 address = "tx.devserver.net:2181"
 root-path = "/flux-metadata"

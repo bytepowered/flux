@@ -4,7 +4,7 @@ import "github.com/spf13/viper"
 
 func NewConfigurationOf(namespace string) Configuration {
 	v := viper.Sub(namespace)
-	if v != nil {
+	if v == nil {
 		v = viper.New()
 	}
 	return Configuration{Viper: v}
