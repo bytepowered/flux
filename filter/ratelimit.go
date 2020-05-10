@@ -3,6 +3,7 @@ package filter
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/lakego"
 	"golang.org/x/time/rate"
 	"net/http"
@@ -38,15 +39,16 @@ type RateLimitFilter struct {
 	limiters lakego.Cache
 }
 
-func (r *RateLimitFilter) Init(config flux.Configuration) error {
-	rateDuration, err := time.ParseDuration(config.StringOrDefault(keyConfigLimitRateKey, "1m"))
+func (r *RateLimitFilter) Init() error {
+	config := pkg.NewConfigurationWith(TypeIdRateLimitFilter)
+	rateDuration, err := time.ParseDuration(config.GetStringOr(keyConfigLimitRateKey, "1m"))
 	if err != nil {
 		return err
 	}
 	r.config = &RateLimitConfig{
-		lookupId:  config.StringOrDefault(keyConfigLimitLookupId, flux.XJwtSubject),
+		lookupId:  config.GetStringOr(keyConfigLimitLookupId, flux.XJwtSubject),
 		limitRate: rateDuration,
-		limitSize: int(config.Int64OrDefault(keyConfigLimitSizeKey, 1000)),
+		limitSize: config.GetIntOr(keyConfigLimitSizeKey, 1000),
 	}
 	logger.Infof("JWT filter initializing, config: %+v", r.config)
 	// RateLimit缓存大小

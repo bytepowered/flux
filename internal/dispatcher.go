@@ -7,7 +7,6 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	"strings"
 	"time"
 )
 
@@ -24,12 +23,12 @@ func NewDispatcher() *FxDispatcher {
 	}
 }
 
-func (d *FxDispatcher) Init(globals flux.Configuration) error {
+func (d *FxDispatcher) Init() error {
 	logger.Infof("Dispatcher initialing")
 	// 组件生命周期回调钩子
-	initRegisterHook := func(ref interface{}, config flux.Configuration) error {
+	initRegisterHook := func(ref interface{}) error {
 		if init, ok := ref.(flux.Initializer); ok {
-			if err := init.Init(config); nil != err {
+			if err := init.Init(); nil != err {
 				return err
 			}
 		}
@@ -38,39 +37,33 @@ func (d *FxDispatcher) Init(globals flux.Configuration) error {
 	}
 	// 静态注册的单实例内核组件
 	// Registry
-	registryConfig := ext.ConfigurationFactory()(configNsPrefixRegistry, globals.Map(flux.KeyConfigRootRegistry))
-	if activeRegistry, err := registryActiveWith(registryConfig); nil != err {
+	if registry, err := findActiveRegistry(); nil != err {
 		return err
 	} else {
-		d.activeRegistry = activeRegistry
-		if err := initRegisterHook(activeRegistry, registryConfig); nil != err {
+		d.activeRegistry = registry
+		if err := initRegisterHook(registry); nil != err {
 			return err
 		}
 	}
 	// Exchanges
-	exchangeConfig := flux.NewMapConfiguration(globals.Map(flux.KeyConfigRootExchanges))
 	for proto, ex := range ext.Exchanges() {
-		ns := configNsPrefixExchangeProto + proto
-		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, ns)
-		protoConfig := ext.ConfigurationFactory()(ns, exchangeConfig.Map(strings.ToUpper(proto)))
-		if err := initRegisterHook(ex, protoConfig); nil != err {
+		logger.Infof("Load exchange, proto: %s, inst.type: %T", proto, ex)
+		if err := initRegisterHook(ex); nil != err {
 			return err
 		}
 	}
 	// Filters
 	for _, filter := range append(ext.GlobalFilters(), ext.ScopedFilters()...) {
-		ns := configNsPrefixComponent + filter.TypeId()
-		filterConfig := ext.ConfigurationFactory()(ns, globals.Map(filter.TypeId()))
-		logger.Infof("Load filter, filter.type: %T, config.ns: %s", filter, ns)
-		if err := initRegisterHook(filter, filterConfig); nil != err {
+		logger.Infof("Load filter, filter.type: %T", filter)
+		if err := initRegisterHook(filter); nil != err {
 			return err
 		}
 	}
 	// 加载和注册，动态多实例组件
-	for _, item := range dynloadConfig(globals) {
+	for _, item := range dynloadConfig() {
 		aware := item.Factory()
-		logger.Infof("Load aware, name: %s, type: %s, aware.type: %T, config.ns: %s", item.Name, item.TypeId, aware, item.ConfigNs)
-		if err := initRegisterHook(aware, item.Config); nil != err {
+		logger.Infof("Load aware, name: %s, type: %s, aware.type: %T", item.Name, item.TypeId, aware)
+		if err := initRegisterHook(aware); nil != err {
 			return err
 		}
 		// 目前只支持Filter动态注册
@@ -154,8 +147,9 @@ func (d *FxDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.
 	return fi
 }
 
-func registryActiveWith(config flux.Configuration) (flux.Registry, error) {
-	registryId := config.StringOrDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
+func findActiveRegistry() (flux.Registry, error) {
+	config := pkg.NewConfigurationWith("Registry")
+	registryId := config.GetStringOr("registry-id", ext.RegistryIdDefault)
 	logger.Infof("Active registry, id: %s", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
 		return nil, fmt.Errorf("RegistryFactory not found, id: %s", registryId)

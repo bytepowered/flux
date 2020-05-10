@@ -44,8 +44,8 @@ type DecoderConfig struct {
 
 // 集成DubboRPC框架的Exchange
 type exchange struct {
-	config       flux.Configuration // 配置数据
-	traceEnabled bool               // 日志打印
+	config       pkg.Configuration
+	traceEnabled bool // 日志打印
 	referenceMap map[string]*dubbogo.ReferenceConfig
 	referenceMu  sync.RWMutex
 }
@@ -56,20 +56,16 @@ func NewDubboExchange() flux.Exchange {
 	}
 }
 
-func (ex *exchange) Init(config flux.Configuration) error {
+func (ex *exchange) Init() error {
+	config := pkg.NewConfigurationWith("DubboExchange")
 	logger.Infof("Dubbo Exchange initializing")
-	ex.config = config
-	ex.traceEnabled = config.BooleanOrDefault("trace-enable", false)
+	ex.traceEnabled = config.GetBoolOr("trace-enable", false)
 	gDecoderConfig = DecoderConfig{
-		KeyCode:   config.StringOrDefault("decoder-key-code", ResponseKeyHttpStatus),
-		KeyHeader: config.StringOrDefault("decoder-key-header", ResponseKeyHttpHeaders),
-		KeyBody:   config.StringOrDefault("decoder-key-body", ResponseKeyHttpBody),
+		KeyCode:   config.GetStringOr("decoder-key-code", ResponseKeyHttpStatus),
+		KeyHeader: config.GetStringOr("decoder-key-header", ResponseKeyHttpHeaders),
+		KeyBody:   config.GetStringOr("decoder-key-body", ResponseKeyHttpBody),
 	}
-	if ex.config.IsEmpty() {
-		return errors.New("dubbo-exchange config not found")
-	} else {
-		return nil
-	}
+	return nil
 }
 
 func (ex *exchange) Exchange(ctx flux.Context) *flux.InvokeError {

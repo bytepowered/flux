@@ -10,6 +10,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/pkg"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/random"
@@ -70,11 +71,6 @@ type FluxServer struct {
 	contextPool       sync.Pool
 	snowflakeId       *snowflake.Node
 	pipelines         []ContextPipelineFunc
-	globals           flux.Configuration
-}
-
-func LoadHttpServerConfig(globals flux.Configuration) flux.Configuration {
-	return ext.ConfigurationFactory()("flux.http", globals.Map(ConfigHttpRootName))
 }
 
 func NewFluxServer() *FluxServer {
@@ -90,9 +86,9 @@ func NewFluxServer() *FluxServer {
 }
 
 // Prepare Call before init and startup
-func (fs *FluxServer) Prepare(globals flux.Configuration, hooks ...flux.PrepareHook) error {
+func (fs *FluxServer) Prepare(hooks ...flux.PrepareHook) error {
 	for _, prepare := range append(ext.PrepareHooks(), hooks...) {
-		if err := prepare(globals); nil != err {
+		if err := prepare(); nil != err {
 			return err
 		}
 	}
@@ -100,11 +96,10 @@ func (fs *FluxServer) Prepare(globals flux.Configuration, hooks ...flux.PrepareH
 }
 
 // Init : Call before startup
-func (fs *FluxServer) Init(globals flux.Configuration) error {
-	fs.globals = globals
+func (fs *FluxServer) Init() error {
 	// Http server
-	httpConfig := LoadHttpServerConfig(fs.globals)
-	fs.httpVersionHeader = httpConfig.StringOrDefault(ConfigHttpVersionHeader, DefaultHttpVersionHeader)
+	config := pkg.NewConfigurationWith(ConfigHttpRootName)
+	fs.httpVersionHeader = config.GetStringOr(ConfigHttpVersionHeader, DefaultHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
 	fs.httpServer.HidePort = true
@@ -113,10 +108,10 @@ func (fs *FluxServer) Init(globals flux.Configuration) error {
 	fs.AddHttpInterceptor(middleware.CORS())
 	fs.AddHttpInterceptor(fs.prepareRequest())
 	// Http debug features
-	if httpConfig.BooleanOrDefault(ConfigHttpDebugEnable, false) {
-		fs.debugFeatures(httpConfig)
+	if config.GetBoolOr(ConfigHttpDebugEnable, false) {
+		fs.debugFeatures(config)
 	}
-	return fs.dispatcher.Init(globals)
+	return fs.dispatcher.Init()
 }
 
 // Startup server
@@ -135,10 +130,10 @@ func (fs *FluxServer) Startup(version flux.BuildInfo) error {
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	httpConfig := LoadHttpServerConfig(fs.globals)
-	address := fmt.Sprintf("%s:%d", httpConfig.String("address"), httpConfig.Int64("port"))
-	certFile := httpConfig.String(ConfigHttpTlsCertFile)
-	keyFile := httpConfig.String(ConfigHttpTlsKeyFile)
+	httpConfig := pkg.NewConfigurationWith(ConfigHttpRootName)
+	address := fmt.Sprintf("%s:%d", httpConfig.GetStringOr("address", "0.0.0.0"), httpConfig.GetIntOr("port", 8080))
+	certFile := httpConfig.GetString(ConfigHttpTlsCertFile)
+	keyFile := httpConfig.GetString(ConfigHttpTlsKeyFile)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
 		return fs.httpServer.StartTLS(address, certFile, keyFile)
@@ -299,10 +294,9 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 	}
 }
 
-func (fs *FluxServer) debugFeatures(httpConfig flux.Configuration) {
-	baFactory := ext.ConfigurationFactory()("flux.http.basic-auth", httpConfig.Map("BasicAuth"))
-	username := baFactory.StringOrDefault("username", "fluxgo")
-	password := baFactory.StringOrDefault("password", random.String(8))
+func (fs *FluxServer) debugFeatures(configuration pkg.Configuration) {
+	username := configuration.GetStringOr("username", "fluxgo")
+	password := configuration.GetStringOr("password", random.String(8))
 	logger.Infof("Http debug feature: <Enabled>, basic-auth: username=%s, password=%s", username, password)
 	authMiddleware := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
 		return u == username && p == password, nil

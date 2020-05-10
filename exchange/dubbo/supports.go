@@ -5,6 +5,7 @@ import (
 	"github.com/apache/dubbo-go/protocol/dubbo"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/pkg"
 	"time"
 )
 
@@ -40,7 +41,7 @@ func argToMap(arg flux.Argument) map[string]interface{} {
 	return m
 }
 
-func newReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.ReferenceConfig {
+func newReference(endpoint *flux.Endpoint, config pkg.Configuration) *dubbogo.ReferenceConfig {
 	ifaceName := endpoint.UpstreamUri
 	timeout := getConfig(endpoint.RpcTimeout, "timeout", config, "3000")
 	retries := getConfig(endpoint.RpcRetries, "retries", config, "0")
@@ -49,7 +50,7 @@ func newReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.R
 		Version:        endpoint.RpcVersion,
 		Group:          endpoint.RpcGroup,
 		RequestTimeout: timeout,
-		Cluster:        config.StringOrDefault("cluster", "failover"),
+		Cluster:        config.GetStringOr("cluster", "failover"),
 		Retries:        retries,
 		Protocol:       dubbo.DUBBO,
 		Generic:        true,
@@ -61,9 +62,9 @@ func newReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.R
 	return reference
 }
 
-func getConfig(specifiedValue string, configKey string, configs flux.Configuration, defValue string) string {
+func getConfig(specifiedValue string, configKey string, config pkg.Configuration, defValue string) string {
 	if "" != specifiedValue {
 		return specifiedValue
 	}
-	return configs.StringOrDefault(configKey, defValue)
+	return config.GetStringOr(configKey, defValue)
 }

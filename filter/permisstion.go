@@ -62,33 +62,34 @@ func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.Filt
 	}
 }
 
-func (p *PermissionVerificationFilter) Init(config flux.Configuration) error {
-	p.disabled = config.BooleanOrDefault(keyConfigDisabled, false)
+func (p *PermissionVerificationFilter) Init() error {
+	config := pkg.NewConfigurationWith(TypeIdPermissionVerification)
+	p.disabled = config.GetBoolOr(keyConfigDisabled, false)
 	if p.disabled {
 		logger.Infof("Permission filter was DISABLED!!")
 		return nil
 	}
-	if !config.IsEmpty() && p.provider == nil {
+	if config.Has(keyConfigUpstreamProtocol, keyConfigUpstreamUri, keyConfigUpstreamMethod) && p.provider == nil {
 		p.provider = func() PermissionVerificationFunc {
-			upProto := config.String(keyConfigUpstreamProtocol)
-			upHost := config.String(keyConfigUpstreamHost)
-			upUri := config.String(keyConfigUpstreamUri)
-			upMethod := config.String(keyConfigUpstreamMethod)
-			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", upProto, upMethod, upHost, upHost)
+			proto := config.GetString(keyConfigUpstreamProtocol)
+			host := config.GetString(keyConfigUpstreamHost)
+			uri := config.GetString(keyConfigUpstreamUri)
+			method := config.GetString(keyConfigUpstreamMethod)
+			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", proto, method, host, host)
 			return func(subjectId, method, pattern string) (bool, error) {
-				switch strings.ToUpper(upProto) {
+				switch strings.ToUpper(proto) {
 				case flux.ProtoDubbo:
-					return _loadPermByExchange(flux.ProtoDubbo, upHost, upMethod, upUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtoDubbo, host, method, uri, subjectId, method, pattern)
 				case flux.ProtoHttp:
-					return _loadPermByExchange(flux.ProtoHttp, upHost, upMethod, upUri, subjectId, method, pattern)
+					return _loadPermByExchange(flux.ProtoHttp, host, method, uri, subjectId, method, pattern)
 				default:
-					return false, fmt.Errorf("unknown verification protocol: %s", upProto)
+					return false, fmt.Errorf("unknown verification protocol: %s", proto)
 				}
 			}
 		}()
 	}
 	logger.Infof("Permission filter initializing, config: %+v", config)
-	permCacheExpiration := config.Int64OrDefault(keyConfigCacheExpiration, defValueCacheExpiration)
+	permCacheExpiration := config.GetInt64Or(keyConfigCacheExpiration, defValueCacheExpiration)
 	p.permCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(permCacheExpiration)))
 	return nil
 }

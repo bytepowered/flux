@@ -6,6 +6,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/flux/remoting"
 	"github.com/bytepowered/flux/remoting/zookeeper"
 )
@@ -35,9 +36,10 @@ func (r *zkRegistry) Id() string {
 	return "zookeeper"
 }
 
-func (r *zkRegistry) Init(config flux.Configuration) error {
-	r.zkRootPath = config.StringOrDefault("root-path", zkRegistryRootNodePath)
-	return r.retriever.Init(config)
+func (r *zkRegistry) Init() error {
+	config := pkg.NewConfigurationWith("Registry")
+	r.zkRootPath = config.GetStringOr("root-path", zkRegistryRootNodePath)
+	return r.retriever.InitWith(config)
 }
 
 // 监听Metadata配置变化

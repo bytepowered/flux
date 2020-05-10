@@ -12,10 +12,6 @@ import (
 )
 
 func init() {
-	// Configuration factory
-	ext.SetConfigurationFactory(func(ns string, m map[string]interface{}) flux.Configuration {
-		return flux.NewMapConfiguration(m)
-	})
 	// 参数查找函数
 	ext.SetArgumentLookupFunc(internal.DefaultArgumentValueLookupFunc)
 	// Serializer

@@ -2,7 +2,6 @@ package flux
 
 type (
 	EventType int
-	MapReader Configuration
 )
 
 // 路由元数据事件类型

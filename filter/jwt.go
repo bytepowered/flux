@@ -52,23 +52,24 @@ type JwtVerificationFilter struct {
 	certKeyCache lakego.Cache
 }
 
-func (j *JwtVerificationFilter) Init(config flux.Configuration) error {
-	j.disabled = config.BooleanOrDefault(keyConfigDisabled, false)
+func (j *JwtVerificationFilter) Init() error {
+	config := pkg.NewConfigurationWith(TypeIdJWTVerification)
+	j.disabled = config.GetBoolOr(keyConfigDisabled, false)
 	if j.disabled {
 		logger.Infof("JWT filter is DISABLED !!")
 		return nil
 	}
 	j.config = JwtConfig{
-		lookupToken: config.StringOrDefault(keyConfigJwtLookupToken, keyHeaderAuthorization),
-		issuerKey:   config.StringOrDefault(keyConfigJwtIssuerKey, "iss"),
-		subjectKey:  config.StringOrDefault(keyConfigJwtSubjectKey, "sub"),
-		upProto:     config.String(keyConfigUpstreamProtocol),
-		upUri:       config.String(keyConfigUpstreamUri),
-		upMethod:    config.String(keyConfigUpstreamMethod),
+		lookupToken: config.GetStringOr(keyConfigJwtLookupToken, keyHeaderAuthorization),
+		issuerKey:   config.GetStringOr(keyConfigJwtIssuerKey, "iss"),
+		subjectKey:  config.GetStringOr(keyConfigJwtSubjectKey, "sub"),
+		upProto:     config.GetString(keyConfigUpstreamProtocol),
+		upUri:       config.GetString(keyConfigUpstreamUri),
+		upMethod:    config.GetString(keyConfigUpstreamMethod),
 	}
-	logger.Infof("JWT filter initializing, config: %+v", j.config)
+	logger.Infof("JWT filter initializing, config: %v", j.config)
 	// Key缓存大小
-	cacheExpiration := config.Int64OrDefault(keyConfigCacheExpiration, defValueCacheExpiration)
+	cacheExpiration := config.GetInt64Or(keyConfigCacheExpiration, defValueCacheExpiration)
 	j.certKeyCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(cacheExpiration)))
 	return nil
 }

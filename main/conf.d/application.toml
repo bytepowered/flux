@@ -9,17 +9,18 @@ tls-cret-file = ""
 tls-key-file = ""
 [HttpServer.BasicAuth]
 username = "yongjia.chen"
+# password = "yongjiaxxl"
 
 # Endpoint元数据配置中心
 [Registry]
 # 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
-registry = "active"
+registry-id = "active"
 # ZK服务配置中心地址，支持,分多个地址列表
 address = "tx.devserver.net:2181"
 root-path = "/flux-metadata"
 
 # DubboExange配置参数
-[Exchanges.DUBBO]
+[DubboExchange]
 cluster = "failover"
 # 日志开关；如果开启则打印Dubbo调用细节
 trace-enable = false
