@@ -94,10 +94,10 @@ func (fs *FluxServer) Prepare(hooks ...flux.PrepareHook) error {
 	return nil
 }
 
-// Init : Call before startup
-func (fs *FluxServer) Init() error {
+// Initial : Call before startup
+func (fs *FluxServer) Initial() error {
 	// Http server
-	config := flux.NewNamespaceConfiguration(ConfigHttpRootName)
+	config := flux.NewConfigurationOf(ConfigHttpRootName)
 	fs.httpVersionHeader = config.GetStringDefault(ConfigHttpVersionHeader, DefaultHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
@@ -129,7 +129,7 @@ func (fs *FluxServer) Startup(version flux.BuildInfo) error {
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	httpConfig := flux.NewNamespaceConfiguration(ConfigHttpRootName)
+	httpConfig := flux.NewConfigurationOf(ConfigHttpRootName)
 	address := fmt.Sprintf("%s:%d", httpConfig.GetStringDefault("address", "0.0.0.0"), httpConfig.GetIntDefault("port", 8080))
 	certFile := httpConfig.GetString(ConfigHttpTlsCertFile)
 	keyFile := httpConfig.GetString(ConfigHttpTlsKeyFile)

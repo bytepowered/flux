@@ -36,7 +36,7 @@ func AddGlobalFilter(v interface{}) {
 func AddFilter(v interface{}) {
 	f, ok := v.(flux.Filter)
 	if !ok || nil == f {
-		GetLogger().Panicf("Not a Filter: type=%s, v=%+v", reflect.TypeOf(v), v)
+		GetLogger().Panicf("Not a Filter: type=%T, v=%+v", v, v)
 	}
 	_scopedFilter = append(_scopedFilter, filterWrapper{filter: f, order: orderOf(v)})
 	sort.Sort(filterArray(_scopedFilter))

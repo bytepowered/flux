@@ -2,7 +2,7 @@ package flux
 
 import "github.com/spf13/viper"
 
-func NewNamespaceConfiguration(namespace string) Configuration {
+func NewConfigurationOf(namespace string) Configuration {
 	return Configuration{Viper: viper.Sub(namespace)}
 }
 

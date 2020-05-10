@@ -49,7 +49,7 @@ func (d *FxDispatcher) Initial() error {
 	for proto, ex := range ext.Exchanges() {
 		ns := "EXCHANGE." + proto
 		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, ns)
-		if err := initRegisterHook(ex, flux.NewNamespaceConfiguration(ns)); nil != err {
+		if err := initRegisterHook(ex, flux.NewConfigurationOf(ns)); nil != err {
 			return err
 		}
 	}
@@ -57,7 +57,7 @@ func (d *FxDispatcher) Initial() error {
 	for _, filter := range append(ext.GlobalFilters(), ext.ScopedFilters()...) {
 		ns := filter.TypeId()
 		logger.Infof("Load static filter, filter.type: %T, config.ns: %s", filter, ns)
-		if err := initRegisterHook(filter, flux.NewNamespaceConfiguration(ns)); nil != err {
+		if err := initRegisterHook(filter, flux.NewConfigurationOf(ns)); nil != err {
 			return err
 		}
 	}
@@ -152,7 +152,7 @@ func (d *FxDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.
 }
 
 func findActiveRegistry() (flux.Registry, flux.Configuration, error) {
-	config := flux.NewNamespaceConfiguration("Registry")
+	config := flux.NewConfigurationOf("Registry")
 	registryId := config.GetStringDefault("registry-id", ext.RegistryIdDefault)
 	logger.Infof("Active registry, id: %s", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {

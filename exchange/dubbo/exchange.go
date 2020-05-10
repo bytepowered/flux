@@ -60,8 +60,7 @@ func NewDubboExchange() flux.Exchange {
 	}
 }
 
-func (ex *exchange) Init() error {
-	config := flux.NewNamespaceConfiguration(ExchangeNamespaceDubbo)
+func (ex *exchange) Init(config flux.Configuration) error {
 	logger.Infof("Dubbo Exchange initializing")
 	ex.traceEnabled = config.GetBoolDefault("trace-enable", false)
 	gDecoderConfig = DecoderConfig{
