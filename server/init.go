@@ -12,10 +12,12 @@ import (
 )
 
 func init() {
-	// Config factory
+	// Configuration factory
 	ext.SetConfigurationFactory(func(ns string, m map[string]interface{}) flux.Configuration {
 		return flux.NewMapConfiguration(m)
 	})
+	// 参数查找函数
+	ext.SetArgumentLookupFunc(internal.DefaultArgumentValueLookupFunc)
 	// Serializer
 	serializer := internal.NewJsonSerializer()
 	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
@@ -36,5 +38,5 @@ func init() {
 	ext.SetFactory(filter.TypeIdRateLimitFilter, filter.RateLimitFilterFactory)
 	ext.SetFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
 	// global filters
-	ext.AddGlobalFilter(filter.NewParameterParsingFilter())
+	ext.AddGlobalFilter(filter.NewArgumentValueLookupFilter())
 }
