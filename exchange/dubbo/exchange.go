@@ -77,7 +77,7 @@ func (ex *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
 }
 
 func (ex *exchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.InvokeError) {
-	types, args := assemble(target.Arguments)
+	types, values := _assembleFunc(target.Arguments)
 	reference := ex.lookup(target)
 	goctx := context.Background()
 	if nil != fxctx {
@@ -88,11 +88,11 @@ func (ex *exchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface
 		if fxctx != nil {
 			attrs = fxctx.AttrValues()
 		}
-		logger.Infof("Dubbo invoke, service:<%s$%s>, args.type:[%v], args.value:[%v], attrs: %v",
-			target.UpstreamUri, target.UpstreamMethod, types, args, attrs)
+		logger.Infof("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %v, attrs: %v",
+			target.UpstreamUri, target.UpstreamMethod, types, values, attrs)
 	}
-	if resp, err := reference.GetRPCService().(*dubbogo.GenericService).
-		Invoke(goctx, []interface{}{target.UpstreamMethod, types, args}); err != nil {
+	args := []interface{}{target.UpstreamMethod, types, values}
+	if resp, err := reference.GetRPCService().(*dubbogo.GenericService).Invoke(goctx, args); err != nil {
 		logger.Infof("Dubbo rpc error, service: %s, method: %s, err: %s", target.UpstreamUri, target.UpstreamMethod, err)
 		return nil, &flux.InvokeError{
 			StatusCode: flux.StatusBadGateway,
@@ -111,7 +111,7 @@ func (ex *exchange) lookup(endpoint *flux.Endpoint) *dubbogo.ReferenceConfig {
 	if ref, ok := ex.referenceMap[interfaceName]; ok {
 		return ref
 	} else {
-		newRef := newReference(endpoint, ex.config)
+		newRef := NewReference(endpoint, ex.config)
 		ex.referenceMap[interfaceName] = newRef
 		return newRef
 	}

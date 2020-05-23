@@ -1,6 +1,7 @@
 package dubbo
 
 import (
+	hessian "github.com/apache/dubbo-go-hessian2"
 	dubbogo "github.com/apache/dubbo-go/config"
 	"github.com/apache/dubbo-go/protocol/dubbo"
 	"github.com/bytepowered/flux"
@@ -12,40 +13,49 @@ import (
 // DubboReference配置函数，可外部化配置Dubbo Reference
 type OptionFunc func(*flux.Endpoint, flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
 
+// 参数封装函数
+type AssembleFunc func(arguments []flux.Argument) (types interface{}, values interface{})
+
 var (
-	_options = make([]OptionFunc, 0)
+	_optionFuncs               = make([]OptionFunc, 0)
+	_assembleFunc AssembleFunc = AssembleArguments
 )
 
 // 添加DubboReference配置函数
 func AddOptionFunc(opts ...OptionFunc) {
-	_options = append(_options, opts...)
+	_optionFuncs = append(_optionFuncs, opts...)
 }
 
-func assemble(arguments []flux.Argument) (types []string, values []interface{}) {
+// 外部化配置参数封装函数
+func SetAssembleFunc(f AssembleFunc) {
+	_assembleFunc = f
+}
+
+func AssembleArguments(arguments []flux.Argument) (interface{}, interface{}) {
 	size := len(arguments)
-	types = make([]string, size)
-	values = make([]interface{}, size)
+	types := make([]string, size)
+	values := make([]hessian.Object, size)
 	for i, arg := range arguments {
 		types[i] = arg.TypeClass
 		if flux.ArgumentTypePrimitive == arg.Type {
-			values[i] = arg.HttpValue.Value()
+			values[i] = arg.HttpValue.Value().(hessian.Object)
 		} else if flux.ArgumentTypeComplex == arg.Type {
-			values[i] = mapping(arg)
+			values[i] = ToMapClass(arg)
 		} else {
 			logger.Warnf("Unsupported parameter type: %s", arg.Type)
 		}
 	}
-	return
+	return types, values
 }
 
-func mapping(arg flux.Argument) map[string]interface{} {
+func ToMapClass(arg flux.Argument) map[string]interface{} {
 	m := make(map[string]interface{}, 1+len(arg.Fields))
 	m["class"] = arg.TypeClass
 	for _, field := range arg.Fields {
 		if flux.ArgumentTypePrimitive == field.Type {
 			m[field.Name] = field.HttpValue.Value()
 		} else if flux.ArgumentTypeComplex == arg.Type {
-			m[field.Name] = mapping(field)
+			m[field.Name] = ToMapClass(field)
 		} else {
 			logger.Warnf("Unsupported parameter type: %s", arg.Type)
 		}
@@ -53,7 +63,7 @@ func mapping(arg flux.Argument) map[string]interface{} {
 	return m
 }
 
-func newReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.ReferenceConfig {
+func NewReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.ReferenceConfig {
 	ifaceName := endpoint.UpstreamUri
 	timeout := getConfig(endpoint.RpcTimeout, "timeout", config, "3000")
 	retries := getConfig(endpoint.RpcRetries, "retries", config, "0")
@@ -70,7 +80,7 @@ func newReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.R
 		Generic:        true,
 	}
 	// Options
-	for _, optfun := range _options {
+	for _, optfun := range _optionFuncs {
 		if nil == optfun {
 			continue
 		}
