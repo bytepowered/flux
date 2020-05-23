@@ -27,10 +27,9 @@ const (
 )
 
 var (
-	ErrInvalidHeaders   = errors.New("DUBBO_RPC:INVALID_HEADERS")
-	ErrInvalidStatus    = errors.New("DUBBO_RPC:INVALID_STATUS")
-	ErrAssembleNotFound = errors.New("DUBBO_RPC:ASSEMBLE_NOT_FOUND")
-	ErrMessageInvoke    = "DUBBO_RPC:INVOKE"
+	ErrInvalidHeaders = errors.New("DUBBO_RPC:INVALID_HEADERS")
+	ErrInvalidStatus  = errors.New("DUBBO_RPC:INVALID_STATUS")
+	ErrMessageInvoke  = "DUBBO_RPC:INVOKE"
 )
 
 // DubboReference配置函数，可外部化配置Dubbo Reference
@@ -53,6 +52,7 @@ type DubboExchange struct {
 
 func NewDubboExchange() flux.Exchange {
 	return &DubboExchange{
+		referenceMap: make(map[string]*dubbogo.ReferenceConfig),
 		OptionFuncs:  make([]OptionFunc, 0),
 		AssembleFunc: assembleHessianValues,
 	}
@@ -65,16 +65,17 @@ func (ex *DubboExchange) Configuration() flux.Configuration {
 func (ex *DubboExchange) Init(config flux.Configuration) error {
 	logger.Infof("Dubbo Exchange initializing")
 	ex.configuration = config
-	ex.configuration.Set(configKeyReferenceDelay, time.Millisecond*30)
+	ex.configuration.SetDefault(configKeyReferenceDelay, time.Millisecond*30)
 	ex.traceEnable = config.GetBoolDefault(configKeyTraceEnable, false)
 	if nil == ex.referenceMap {
 		ex.referenceMap = make(map[string]*dubbogo.ReferenceConfig)
 	}
+	// Set default impl if not present
 	if nil == ex.OptionFuncs {
 		ex.OptionFuncs = make([]OptionFunc, 0)
 	}
 	if nil == ex.AssembleFunc {
-		return ErrAssembleNotFound
+		ex.AssembleFunc = assembleHessianValues
 	}
 	return nil
 }

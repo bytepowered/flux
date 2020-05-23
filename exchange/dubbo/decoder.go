@@ -10,32 +10,36 @@ import (
 )
 
 const (
-	ResponseKeyStatus  = "@net.bytepowered.flux.http-status"
-	ResponseKeyHeaders = "@net.bytepowered.flux.http-headers"
-	ResponseKeyBody    = "@net.bytepowered.flux.http-body"
+	ResponseKeyStatusCode = "@net.bytepowered.flux.http-status"
+	ResponseKeyHeaders    = "@net.bytepowered.flux.http-headers"
+	ResponseKeyBody       = "@net.bytepowered.flux.http-body"
 )
 
-func NewDubboExchangeDecoder() flux.ExchangeDecoder {
+func NewDubboExchangeDecoderWithKeys(codeKey, headerKey, bodyKey string) flux.ExchangeDecoder {
 	return func(ctx flux.Context, input interface{}) (statusCode int, header http.Header, body flux.Object, err error) {
 		header = make(http.Header)
 		if mapValues, ok := input.(map[interface{}]interface{}); ok {
 			// Header
-			header, err = ReadHeaderObject(ResponseKeyHeaders, mapValues)
+			header, err = ReadHeaderObject(headerKey, mapValues)
 			if nil != err {
 				return flux.StatusServerError, header, nil, err
 			}
 			// StatusCode
-			statusCode, err = ReadStatusCode(ResponseKeyStatus, mapValues)
+			statusCode, err = ReadStatusCode(codeKey, mapValues)
 			if nil != err {
 				return flux.StatusServerError, header, nil, err
 			}
 			// Body
-			body = ReadBodyObject(ResponseKeyBody, mapValues)
+			body = ReadBodyObject(bodyKey, mapValues)
 			return statusCode, header, body, nil
 		} else {
 			return flux.StatusOK, header, input, nil
 		}
 	}
+}
+
+func NewDubboExchangeDecoder() flux.ExchangeDecoder {
+	return NewDubboExchangeDecoderWithKeys(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
 }
 
 func ReadBodyObject(key string, values map[interface{}]interface{}) hessian.Object {
