@@ -9,22 +9,28 @@ import (
 	"reflect"
 )
 
+const (
+	ResponseKeyStatus  = "@net.bytepowered.flux.http-status"
+	ResponseKeyHeaders = "@net.bytepowered.flux.http-headers"
+	ResponseKeyBody    = "@net.bytepowered.flux.http-body"
+)
+
 func NewDubboExchangeDecoder() flux.ExchangeDecoder {
 	return func(ctx flux.Context, input interface{}) (statusCode int, header http.Header, body flux.Object, err error) {
 		header = make(http.Header)
 		if mapValues, ok := input.(map[interface{}]interface{}); ok {
 			// Header
-			header, err = ReadHeader(gDecoderConfig.KeyHeader, mapValues)
+			header, err = ReadHeaderObject(ResponseKeyHeaders, mapValues)
 			if nil != err {
 				return flux.StatusServerError, header, nil, err
 			}
 			// StatusCode
-			statusCode, err = ReadStatusCode(gDecoderConfig.KeyCode, mapValues)
+			statusCode, err = ReadStatusCode(ResponseKeyStatus, mapValues)
 			if nil != err {
 				return flux.StatusServerError, header, nil, err
 			}
 			// Body
-			body = ReadBodyObject(gDecoderConfig.KeyBody, mapValues)
+			body = ReadBodyObject(ResponseKeyBody, mapValues)
 			return statusCode, header, body, nil
 		} else {
 			return flux.StatusOK, header, input, nil
@@ -53,7 +59,7 @@ func ReadStatusCode(key string, values map[interface{}]interface{}) (int, error)
 	}
 }
 
-func ReadHeader(key string, values map[interface{}]interface{}) (http.Header, error) {
+func ReadHeaderObject(key string, values map[interface{}]interface{}) (http.Header, error) {
 	hkv, ok := values[key]
 	if !ok {
 		return make(http.Header), nil

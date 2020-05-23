@@ -6,41 +6,11 @@ import (
 	"github.com/apache/dubbo-go/protocol/dubbo"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
-	"time"
 )
 
-// DubboReference配置函数，可外部化配置Dubbo Reference
-type ReferenceOptionFunc func(*flux.Endpoint, flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
-
-// 参数封装函数，可外部化配置为其它协议的值对象
-type ArgumentAssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
-
-var (
-	_refOptionFuncs  = make([]ReferenceOptionFunc, 0)
-	_argAssembleFunc ArgumentAssembleFunc
-)
-
-// 添加DubboReference配置函数
-func AddReferenceOptionFunc(opts ...ReferenceOptionFunc) {
-	_refOptionFuncs = append(_refOptionFuncs, opts...)
-}
-
-// 外部化配置参数封装函数
-func SetArgumentAssembleFunc(f ArgumentAssembleFunc) {
-	_argAssembleFunc = f
-}
-
-func GetArgumentAssembleFunc() ArgumentAssembleFunc {
-	return _argAssembleFunc
-}
-
-func init() {
-	// 默认将参数值转换为Hession2对象
-	SetArgumentAssembleFunc(ArgumentAssembleHessian)
-}
-
-func ArgumentAssembleHessian(arguments []flux.Argument) ([]string, interface{}) {
+// Dubbo默认参数封装处理：转换成hession协议对象。
+// 注意：不能使用 interface{} 值类型。在Dubbogo 1.5.1 / hessian2 v1.6.1中，序列化值类型会被识别为 Ljava.util.List
+func assembleHessianValues(arguments []flux.Argument) ([]string, interface{}) {
 	size := len(arguments)
 	types := make([]string, size)
 	values := make([]hessian.Object, size)
@@ -88,17 +58,6 @@ func NewReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.R
 		Protocol:       dubbo.DUBBO,
 		Generic:        true,
 	}
-	// Options
-	for _, optfun := range _refOptionFuncs {
-		if nil == optfun {
-			continue
-		}
-		const msg = "Dubbo option-func return nil reference"
-		reference = pkg.RequireNotNil(optfun(endpoint, config, reference), msg).(*dubbogo.ReferenceConfig)
-	}
-	reference.GenericLoad(ifaceName)
-	<-time.After(time.Millisecond * 50)
-	logger.Infof("Create dubbo reference-config, iface: %s, LOADED OK", ifaceName)
 	return reference
 }
 
