@@ -11,36 +11,45 @@ import (
 )
 
 // DubboReference配置函数，可外部化配置Dubbo Reference
-type OptionFunc func(*flux.Endpoint, flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
+type ReferenceOptionFunc func(*flux.Endpoint, flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
 
-// 参数封装函数
-type AssembleFunc func(arguments []flux.Argument) (types interface{}, values interface{})
+// 参数封装函数，可外部化配置为其它协议的值对象
+type ArgumentAssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
 
 var (
-	_optionFuncs               = make([]OptionFunc, 0)
-	_assembleFunc AssembleFunc = AssembleArguments
+	_refOptionFuncs  = make([]ReferenceOptionFunc, 0)
+	_argAssembleFunc ArgumentAssembleFunc
 )
 
 // 添加DubboReference配置函数
-func AddOptionFunc(opts ...OptionFunc) {
-	_optionFuncs = append(_optionFuncs, opts...)
+func AddReferenceOptionFunc(opts ...ReferenceOptionFunc) {
+	_refOptionFuncs = append(_refOptionFuncs, opts...)
 }
 
 // 外部化配置参数封装函数
-func SetAssembleFunc(f AssembleFunc) {
-	_assembleFunc = f
+func SetArgumentAssembleFunc(f ArgumentAssembleFunc) {
+	_argAssembleFunc = f
 }
 
-func AssembleArguments(arguments []flux.Argument) (interface{}, interface{}) {
+func GetArgumentAssembleFunc() ArgumentAssembleFunc {
+	return _argAssembleFunc
+}
+
+func init() {
+	// 默认将参数值转换为Hession2对象
+	SetArgumentAssembleFunc(ArgumentAssembleHessian)
+}
+
+func ArgumentAssembleHessian(arguments []flux.Argument) ([]string, interface{}) {
 	size := len(arguments)
 	types := make([]string, size)
 	values := make([]hessian.Object, size)
 	for i, arg := range arguments {
 		types[i] = arg.TypeClass
 		if flux.ArgumentTypePrimitive == arg.Type {
-			values[i] = arg.HttpValue.Value().(hessian.Object)
+			values[i] = arg.HttpValue.Value()
 		} else if flux.ArgumentTypeComplex == arg.Type {
-			values[i] = ToMapClass(arg)
+			values[i] = ComplexToMap(arg)
 		} else {
 			logger.Warnf("Unsupported parameter type: %s", arg.Type)
 		}
@@ -48,14 +57,14 @@ func AssembleArguments(arguments []flux.Argument) (interface{}, interface{}) {
 	return types, values
 }
 
-func ToMapClass(arg flux.Argument) map[string]interface{} {
+func ComplexToMap(arg flux.Argument) map[string]interface{} {
 	m := make(map[string]interface{}, 1+len(arg.Fields))
 	m["class"] = arg.TypeClass
 	for _, field := range arg.Fields {
 		if flux.ArgumentTypePrimitive == field.Type {
 			m[field.Name] = field.HttpValue.Value()
 		} else if flux.ArgumentTypeComplex == arg.Type {
-			m[field.Name] = ToMapClass(field)
+			m[field.Name] = ComplexToMap(field)
 		} else {
 			logger.Warnf("Unsupported parameter type: %s", arg.Type)
 		}
@@ -80,7 +89,7 @@ func NewReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.R
 		Generic:        true,
 	}
 	// Options
-	for _, optfun := range _optionFuncs {
+	for _, optfun := range _refOptionFuncs {
 		if nil == optfun {
 			continue
 		}
@@ -88,7 +97,7 @@ func NewReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.R
 		reference = pkg.RequireNotNil(optfun(endpoint, config, reference), msg).(*dubbogo.ReferenceConfig)
 	}
 	reference.GenericLoad(ifaceName)
-	<-time.After(time.Millisecond * 100)
+	<-time.After(time.Millisecond * 50)
 	logger.Infof("Create dubbo reference-config, iface: %s, LOADED OK", ifaceName)
 	return reference
 }

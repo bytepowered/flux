@@ -77,7 +77,7 @@ func (ex *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
 }
 
 func (ex *exchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.InvokeError) {
-	types, values := _assembleFunc(target.Arguments)
+	types, values := GetArgumentAssembleFunc()(target.Arguments)
 	reference := ex.lookup(target)
 	goctx := context.Background()
 	if nil != fxctx {
@@ -88,7 +88,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface
 		if fxctx != nil {
 			attrs = fxctx.AttrValues()
 		}
-		logger.Infof("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %v, attrs: %v",
+		logger.Infof("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %+v, attrs: %v",
 			target.UpstreamUri, target.UpstreamMethod, types, values, attrs)
 	}
 	args := []interface{}{target.UpstreamMethod, types, values}
