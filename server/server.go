@@ -410,8 +410,8 @@ func (*FluxServer) AddGlobalFilter(filter flux.Filter) {
 	ext.AddGlobalFilter(filter)
 }
 
-func (*FluxServer) AddFilter(filter flux.Filter) {
-	ext.AddFilter(filter)
+func (*FluxServer) AddSelectiveFilter(filter flux.Filter) {
+	ext.AddSelectiveFilter(filter)
 }
 
 func (*FluxServer) SetLogger(logger flux.Logger) {

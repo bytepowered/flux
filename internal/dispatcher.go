@@ -54,7 +54,7 @@ func (d *FxDispatcher) Initial() error {
 		}
 	}
 	// Static Filters
-	for _, filter := range append(ext.GlobalFilters(), ext.ScopedFilters()...) {
+	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
 		ns := filter.TypeId()
 		logger.Infof("Load static filter, filter.type: %T, config.ns: %s", filter, ns)
 		if err := initRegisterHook(filter, flux.NewConfigurationOf(ns)); nil != err {
@@ -73,7 +73,7 @@ func (d *FxDispatcher) Initial() error {
 			return err
 		}
 		if filter, ok := filter.(flux.Filter); ok {
-			ext.AddFilter(filter)
+			ext.AddSelectiveFilter(filter)
 		}
 	}
 	return nil
@@ -121,7 +121,7 @@ func (d *FxDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 	selectFilters := make([]flux.Filter, 0)
 	for _, selector := range ext.FindSelectors(ctx.RequestHost()) {
 		for _, typeId := range selector.Select(ctx).Filters {
-			if f, ok := ext.GetFilter(typeId); ok {
+			if f, ok := ext.GetSelectiveFilter(typeId); ok {
 				selectFilters = append(selectFilters, f)
 			} else {
 				logger.Warnf("Filter not found on selector, filter.typeId: %s", typeId)
