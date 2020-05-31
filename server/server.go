@@ -116,8 +116,13 @@ func (fs *FluxServer) Initial() error {
 
 // Startup server
 func (fs *FluxServer) Startup(version flux.BuildInfo) error {
+	return fs.StartupWith(version, flux.NewConfigurationOf(ConfigHttpRootName))
+}
+
+// Startup server
+func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig flux.Configuration) error {
 	fs.checkInit()
-	logger.Info(Banner)
+	logger.Info(httpConfig.GetStringDefault("banner", Banner))
 	logger.Infof(VersionFormat, version.CommitId, version.Version, version.Date)
 	if err := fs.dispatcher.Startup(); nil != err {
 		return err
@@ -130,7 +135,6 @@ func (fs *FluxServer) Startup(version flux.BuildInfo) error {
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	httpConfig := flux.NewConfigurationOf(ConfigHttpRootName)
 	address := fmt.Sprintf("%s:%d", httpConfig.GetStringDefault("address", "0.0.0.0"), httpConfig.GetIntDefault("port", 8080))
 	certFile := httpConfig.GetString(ConfigHttpTlsCertFile)
 	keyFile := httpConfig.GetString(ConfigHttpTlsKeyFile)
