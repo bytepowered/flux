@@ -53,15 +53,20 @@ func (d *FxDispatcher) Initial() error {
 			return err
 		}
 	}
-	// Static Filters
+	// 手动注册的单实例Filters
 	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
 		ns := filter.TypeId()
 		logger.Infof("Load static filter, filter.type: %T, config.ns: %s", filter, ns)
-		if err := initRegisterHook(filter, flux.NewConfigurationOf(ns)); nil != err {
+		config := flux.NewConfigurationOf(ns)
+		if _isDisabled(config) {
+			logger.Infof("StaticFilter set DISABLED, filterId: %s", ns)
+			continue
+		}
+		if err := initRegisterHook(filter, config); nil != err {
 			return err
 		}
 	}
-	// 加载和注册，动态多实例组件
+	// 加载和注册，动态多实例Filter
 	dynFilters, err := dynamicFilters()
 	if nil != err {
 		return err
@@ -69,6 +74,10 @@ func (d *FxDispatcher) Initial() error {
 	for _, item := range dynFilters {
 		filter := item.Factory()
 		logger.Infof("Load dynamic filter, filterId: %s, typeId: %s, filter.type: %T", item.Id, item.TypeId, filter)
+		if _isDisabled(item.Config) {
+			logger.Infof("DynamicFilter set DISABLED, filterId: %s", item.TypeId)
+			continue
+		}
 		if err := initRegisterHook(filter, item.Config); nil != err {
 			return err
 		}
@@ -149,6 +158,10 @@ func (d *FxDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.
 		fi = filters[i].Invoke(fi)
 	}
 	return fi
+}
+
+func _isDisabled(config flux.Configuration) bool {
+	return config.GetBool("disable") || config.GetBool("disabled")
 }
 
 func findActiveRegistry() (flux.Registry, flux.Configuration, error) {
