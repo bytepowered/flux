@@ -1,6 +1,9 @@
 package flux
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
+	"time"
+)
 
 func NewConfigurationOf(namespace string) Configuration {
 	v := viper.Sub(namespace)
@@ -48,6 +51,11 @@ func (c Configuration) GetIntDefault(key string, def int) int {
 func (c Configuration) GetInt64Default(key string, def int64) int64 {
 	c.setDefaultIfAbsent(key, def)
 	return c.GetInt64(key)
+}
+
+func (c Configuration) GetDurationDefault(key string, def time.Duration) time.Duration {
+	c.setDefaultIfAbsent(key, def)
+	return c.GetDuration(key)
 }
 
 func (c Configuration) setDefaultIfAbsent(key string, def interface{}) {
