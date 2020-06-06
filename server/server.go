@@ -12,7 +12,6 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/random"
 	"io"
 	"io/ioutil"
 	https "net/http"
@@ -63,12 +62,12 @@ type ContextPipelineFunc func(echo.Context, flux.Context)
 type FluxServer struct {
 	httpServer        *echo.Echo
 	visits            *expvar.Int
-	httpAdaptWriter   internal.FxHttpWriter
+	httpAdaptWriter   internal.HttpWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
 	dispatcher        *internal.FxDispatcher
 	endpointMvMap     map[string]*internal.MultiVersionEndpoint
-	contextPool       sync.Pool
+	contextWrappers   sync.Pool
 	snowflakeId       *snowflake.Node
 	pipelines         []ContextPipelineFunc
 }
@@ -76,12 +75,12 @@ type FluxServer struct {
 func NewFluxServer() *FluxServer {
 	id, _ := snowflake.NewNode(1)
 	return &FluxServer{
-		visits:        expvar.NewInt("visits"),
-		dispatcher:    internal.NewDispatcher(),
-		endpointMvMap: make(map[string]*internal.MultiVersionEndpoint),
-		contextPool:   sync.Pool{New: internal.NewFxContext},
-		pipelines:     make([]ContextPipelineFunc, 0),
-		snowflakeId:   id,
+		visits:          expvar.NewInt("visits"),
+		dispatcher:      internal.NewDispatcher(),
+		endpointMvMap:   make(map[string]*internal.MultiVersionEndpoint),
+		contextWrappers: sync.Pool{New: internal.NewFxContext},
+		pipelines:       make([]ContextPipelineFunc, 0),
+		snowflakeId:     id,
 	}
 }
 
@@ -193,19 +192,19 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 	}
 }
 
-func (fs *FluxServer) acquire(c echo.Context, endpoint *flux.Endpoint) *internal.FxContext {
-	requestId := c.Request().Header.Get(DefaultHttpRequestIdHeader)
+func (fs *FluxServer) acquire(echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
+	requestId := echo.Request().Header.Get(DefaultHttpRequestIdHeader)
 	if "" == requestId {
 		requestId = fs.snowflakeId.Generate().Base64()
 	}
-	ctx := fs.contextPool.Get().(*internal.FxContext)
-	ctx.Reattach(requestId, c, endpoint)
+	ctx := fs.contextWrappers.Get().(*internal.ContextWrapper)
+	ctx.Reattach(requestId, echo, endpoint)
 	return ctx
 }
 
-func (fs *FluxServer) release(c *internal.FxContext) {
-	c.Release()
-	fs.contextPool.Put(c)
+func (fs *FluxServer) release(context *internal.ContextWrapper) {
+	context.Release()
+	fs.contextWrappers.Put(context)
 }
 
 func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
@@ -263,7 +262,7 @@ func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
 	var requestId string
 	var headers https.Header
-	if fc, ok := ctx.Get(_echoAttrRoutedContext).(*internal.FxContext); ok {
+	if fc, ok := ctx.Get(_echoAttrRoutedContext).(*internal.ContextWrapper); ok {
 		requestId = fc.RequestId()
 		headers = fc.ResponseWriter().Headers()
 	} else {
@@ -299,26 +298,6 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 		fs.endpointMvMap[routeKey] = mve
 		return mve, true
 	}
-}
-
-func (fs *FluxServer) debugFeatures(configuration flux.Configuration) {
-	username := configuration.GetStringDefault("debug-auth-username", "fluxgo")
-	password := configuration.GetStringDefault("debug-auth-password", random.String(8))
-	logger.Infof("Http debug feature: [ENABLED], Auth: BasicAuth, username: %s, password: %s", username, password)
-	auth := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
-		return u == username && p == password, nil
-	})
-	debugHandler := echo.WrapHandler(https.DefaultServeMux)
-	fs.httpServer.GET(DebugPathVars, debugHandler, auth)
-	fs.httpServer.GET(DebugPathPprof, debugHandler, auth)
-	fs.httpServer.GET(DebugPathEndpoints, func(c echo.Context) error {
-		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
-		if data, err := decoder.Marshal(queryEndpoints(fs.endpointMvMap, c)); nil != err {
-			return err
-		} else {
-			return c.JSONBlob(flux.StatusOK, data)
-		}
-	}, auth)
 }
 
 func (*FluxServer) prepareRequest() echo.MiddlewareFunc {

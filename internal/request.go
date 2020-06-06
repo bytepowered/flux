@@ -6,44 +6,44 @@ import (
 	"net/http"
 )
 
-type FxRequest struct {
-	ctx echo.Context
+type RequestWrapReader struct {
+	context echo.Context
 }
 
-func (r *FxRequest) ParamInQuery(name string) string {
+func (r *RequestWrapReader) ParamInQuery(name string) string {
 	return r.QueryValue(name)
 }
 
-func (r *FxRequest) ParamInPath(name string) string {
+func (r *RequestWrapReader) ParamInPath(name string) string {
 	return r.PathValue(name)
 }
 
-func (r *FxRequest) ParamInForm(name string) string {
+func (r *RequestWrapReader) ParamInForm(name string) string {
 	return r.FormValue(name)
 }
 
-func (r *FxRequest) Header(name string) string {
+func (r *RequestWrapReader) Header(name string) string {
 	return r.HeaderValue(name)
 }
 
-func (r *FxRequest) QueryValue(name string) string {
-	return r.ctx.QueryParam(name)
+func (r *RequestWrapReader) QueryValue(name string) string {
+	return r.context.QueryParam(name)
 }
 
-func (r *FxRequest) PathValue(name string) string {
-	return r.ctx.Param(name)
+func (r *RequestWrapReader) PathValue(name string) string {
+	return r.context.Param(name)
 }
 
-func (r *FxRequest) FormValue(name string) string {
-	return r.ctx.FormValue(name)
+func (r *RequestWrapReader) FormValue(name string) string {
+	return r.context.FormValue(name)
 }
 
-func (r *FxRequest) HeaderValue(name string) string {
-	return r.ctx.Request().Header.Get(name)
+func (r *RequestWrapReader) HeaderValue(name string) string {
+	return r.context.Request().Header.Get(name)
 }
 
-func (r *FxRequest) CookieValue(name string) string {
-	c, e := r.ctx.Cookie(name)
+func (r *RequestWrapReader) CookieValue(name string) string {
+	c, e := r.context.Cookie(name)
 	if e == echo.ErrCookieNotFound {
 		return ""
 	} else if nil != c {
@@ -53,34 +53,34 @@ func (r *FxRequest) CookieValue(name string) string {
 	}
 }
 
-func (r *FxRequest) Headers() http.Header {
-	return r.ctx.Request().Header.Clone()
+func (r *RequestWrapReader) Headers() http.Header {
+	return r.context.Request().Header.Clone()
 }
 
-func (r *FxRequest) Cookie(name string) string {
+func (r *RequestWrapReader) Cookie(name string) string {
 	return r.CookieValue(name)
 }
 
-func (r *FxRequest) RemoteAddress() string {
-	return r.ctx.RealIP()
+func (r *RequestWrapReader) RemoteAddress() string {
+	return r.context.RealIP()
 }
 
-func (r *FxRequest) HttpRequest() *http.Request {
-	return r.ctx.Request()
+func (r *RequestWrapReader) HttpRequest() *http.Request {
+	return r.context.Request()
 }
 
-func (r *FxRequest) HttpBody() (io.ReadCloser, error) {
-	return r.ctx.Request().GetBody()
+func (r *RequestWrapReader) HttpBody() (io.ReadCloser, error) {
+	return r.context.Request().GetBody()
 }
 
-func (r *FxRequest) reattach(echo echo.Context) {
-	r.ctx = echo
+func (r *RequestWrapReader) reattach(echo echo.Context) {
+	r.context = echo
 }
 
-func (r *FxRequest) reset() {
-	r.ctx = nil
+func (r *RequestWrapReader) reset() {
+	r.context = nil
 }
 
-func newRequestReader() *FxRequest {
-	return &FxRequest{}
+func newRequestReader() *RequestWrapReader {
+	return &RequestWrapReader{}
 }

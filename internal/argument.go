@@ -21,9 +21,9 @@ func DefaultArgumentValueLookupFunc(arg flux.Argument, ctx flux.Context) (interf
 	case flux.ScopeForm:
 		return request.FormValue(arg.HttpKey), nil
 	case flux.ScopeAttrs:
-		return ctx.AttrValues(), nil
+		return ctx.Attributes(), nil
 	case flux.ScopeAttr:
-		value, _ := ctx.AttrValue(arg.HttpKey)
+		value, _ := ctx.GetAttribute(arg.HttpKey)
 		return value, nil
 	case flux.ScopeAuto:
 		fallthrough
@@ -36,7 +36,7 @@ func DefaultArgumentValueLookupFunc(arg flux.Argument, ctx flux.Context) (interf
 			return v, nil
 		} else if v := request.HeaderValue(arg.HttpKey); "" != v {
 			return v, nil
-		} else if v, _ := ctx.AttrValue(arg.HttpKey); "" != v {
+		} else if v, _ := ctx.GetAttribute(arg.HttpKey); "" != v {
 			return v, nil
 		} else {
 			return nil, nil

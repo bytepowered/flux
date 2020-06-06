@@ -8,101 +8,101 @@ import (
 )
 
 // Context接口实现
-type FxContext struct {
-	echo         echo.Context
-	endpoint     *flux.Endpoint
-	requestId    string
-	attrValues   *sync.Map
-	scopedValues *sync.Map
-	response     *FxResponse
-	request      *FxRequest
+type ContextWrapper struct {
+	echo       echo.Context
+	endpoint   *flux.Endpoint
+	requestId  string
+	attributes *sync.Map
+	values     *sync.Map
+	response   *ResponseWrapWriter
+	request    *RequestWrapReader
 }
 
 func NewFxContext() interface{} {
-	return &FxContext{
+	return &ContextWrapper{
 		response: newResponseWriter(),
 		request:  newRequestReader(),
 	}
 }
 
-func (c *FxContext) RequestReader() flux.RequestReader {
+func (c *ContextWrapper) RequestReader() flux.RequestReader {
 	return c.request
 }
 
-func (c *FxContext) ResponseWriter() flux.ResponseWriter {
+func (c *ContextWrapper) ResponseWriter() flux.ResponseWriter {
 	return c.response
 }
 
-func (c *FxContext) Endpoint() flux.Endpoint {
+func (c *ContextWrapper) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *FxContext) RequestMethod() string {
+func (c *ContextWrapper) RequestMethod() string {
 	return c.echo.Request().Method
 }
 
-func (c *FxContext) RequestUri() string {
+func (c *ContextWrapper) RequestUri() string {
 	return c.echo.Request().RequestURI
 }
 
-func (c *FxContext) RequestPath() string {
+func (c *ContextWrapper) RequestPath() string {
 	return c.echo.Request().URL.Path
 }
 
-func (c *FxContext) RequestId() string {
+func (c *ContextWrapper) RequestId() string {
 	return c.requestId
 }
 
-func (c *FxContext) RequestHost() string {
+func (c *ContextWrapper) RequestHost() string {
 	return c.echo.Request().Host
 }
 
-func (c *FxContext) AttrValues() flux.StringMap {
-	m := make(flux.StringMap)
-	c.attrValues.Range(func(key, value interface{}) bool {
-		m[key.(string)] = value
+func (c *ContextWrapper) Attributes() map[string]interface{} {
+	copied := make(map[string]interface{})
+	c.attributes.Range(func(key, value interface{}) bool {
+		copied[key.(string)] = value
 		return true
 	})
-	return m
+	return copied
 }
 
-func (c *FxContext) SetAttrValue(name string, value interface{}) {
-	c.attrValues.Store(name, value)
+func (c *ContextWrapper) SetAttribute(name string, value interface{}) {
+	c.attributes.Store(name, value)
 }
 
-func (c *FxContext) AttrValue(name string) (interface{}, bool) {
-	v, ok := c.attrValues.Load(name)
+func (c *ContextWrapper) GetAttribute(name string) (interface{}, bool) {
+	v, ok := c.attributes.Load(name)
 	return v, ok
 }
 
-func (c *FxContext) SetScopedValue(name string, value interface{}) {
-	c.scopedValues.Store(name, value)
+func (c *ContextWrapper) SetValue(name string, value interface{}) {
+	c.values.Store(name, value)
 }
 
-func (c *FxContext) ScopedValue(name string) (interface{}, bool) {
-	v, ok := c.scopedValues.Load(name)
+func (c *ContextWrapper) GetValue(name string) (interface{}, bool) {
+	v, ok := c.values.Load(name)
 	return v, ok
 }
 
-func (c *FxContext) Reattach(requestId string, echo echo.Context, endpoint *flux.Endpoint) {
+func (c *ContextWrapper) Reattach(requestId string, echo echo.Context, endpoint *flux.Endpoint) {
 	httpRequest := echo.Request()
 	c.echo = echo
 	c.request.reattach(echo)
 	c.endpoint = endpoint
 	c.requestId = requestId
-	c.attrValues = new(sync.Map)
-	c.scopedValues = new(sync.Map)
-	c.SetAttrValue(flux.XRequestTime, time.Now().Unix())
-	c.SetAttrValue(flux.XRequestId, c.requestId)
-	c.SetAttrValue(flux.XRequestHost, httpRequest.Host)
-	c.SetAttrValue(flux.XRequestAgent, "flux/gateway")
+	c.attributes = new(sync.Map)
+	c.values = new(sync.Map)
+	c.SetAttribute(flux.XRequestTime, time.Now().Unix())
+	c.SetAttribute(flux.XRequestId, c.requestId)
+	c.SetAttribute(flux.XRequestHost, httpRequest.Host)
+	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 }
 
-func (c *FxContext) Release() {
+func (c *ContextWrapper) Release() {
 	c.echo = nil
 	c.endpoint = nil
-	c.attrValues = nil
-	c.scopedValues = nil
+	c.attributes = nil
+	c.values = nil
 	c.request.reset()
 	c.response.reset()
 }

@@ -89,7 +89,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	// 在测试场景中，fluxContext可能为nil
 	attrs := make(flux.StringMap)
 	if nil != fxctx {
-		attrs = fxctx.AttrValues()
+		attrs = fxctx.Attributes()
 	}
 	if ex.traceEnable {
 		logger.Infof("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %+v, attrs: %v",

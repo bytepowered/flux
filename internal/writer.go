@@ -11,9 +11,9 @@ import (
 	"net/http"
 )
 
-type FxHttpWriter int
+type HttpWriter int
 
-func (a FxHttpWriter) WriteError(resp *echo.Response, reqId string, outHeader http.Header, invokeError *flux.InvokeError) error {
+func (a HttpWriter) WriteError(resp *echo.Response, reqId string, outHeader http.Header, invokeError *flux.InvokeError) error {
 	_setupResponse(resp, reqId, outHeader, invokeError.StatusCode)
 	data := map[string]string{
 		"requestId": reqId,
@@ -26,7 +26,7 @@ func (a FxHttpWriter) WriteError(resp *echo.Response, reqId string, outHeader ht
 	return _serializeWith(_httpSerializer(), resp, data)
 }
 
-func (a FxHttpWriter) WriteResponse(c *FxContext) error {
+func (a HttpWriter) WriteResponse(c *ContextWrapper) error {
 	resp := _setupResponse(c.echo.Response(), c.RequestId(), c.ResponseWriter().Headers(), c.response.status)
 	body := c.response.Body()
 	if r, ok := body.(io.Reader); ok {

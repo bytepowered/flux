@@ -27,27 +27,27 @@ type Context interface {
 	// RequestId 返回当前请求的唯一ID
 	RequestId() string
 
-	// AttrValues 返回所有Attributes
-	AttrValues() StringMap
-
-	// AttrValue 获取指定name的Attribute，返回值和是否存在标识
-	AttrValue(name string) (interface{}, bool)
-
-	// SetAttrValue 向Context添加Attribute。
-	SetAttrValue(name string, value interface{})
-
-	// ScopedValue 获取当前请求范围的值
-	ScopedValue(name string) (interface{}, bool)
-
-	// SetScopedValue 设置当前请求范围的KV
-	SetScopedValue(name string, value interface{})
-
-	// Endpoint 返回请求路由定义的元数据
-	Endpoint() Endpoint
-
 	// ResponseWriter 返回响应数据接口
 	ResponseWriter() ResponseWriter
 
 	// RequestReader 返回请求数据接口
 	RequestReader() RequestReader
+
+	// Endpoint 返回请求路由定义的元数据
+	Endpoint() Endpoint
+
+	// Attributes 返回所有Attributes键值对
+	Attributes() map[string]interface{}
+
+	// GetAttribute 获取指定name的Attribute，返回值和是否存在标识
+	GetAttribute(name string) (interface{}, bool)
+
+	// SetAttribute 向Context添加Attribute键值对。
+	SetAttribute(name string, value interface{})
+
+	// GetValue 获取当前请求范围的值
+	GetValue(name string) (interface{}, bool)
+
+	// SetValue 设置当前请求范围的KV
+	SetValue(name string, value interface{})
 }

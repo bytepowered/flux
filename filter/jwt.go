@@ -97,11 +97,11 @@ func (j *JwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvok
 			return err
 		} else {
 			// Claims to scoped
-			ctx.SetScopedValue(KeyScopedValueJwtClaims, claims)
+			ctx.SetValue(KeyScopedValueJwtClaims, claims)
 			// JWT Storage
-			ctx.SetAttrValue(flux.XJwtToken, tokenString)
-			ctx.SetAttrValue(flux.XJwtIssuer, claims[j.config.issuerKey])
-			ctx.SetAttrValue(flux.XJwtSubject, claims[j.config.subjectKey])
+			ctx.SetAttribute(flux.XJwtToken, tokenString)
+			ctx.SetAttribute(flux.XJwtIssuer, claims[j.config.issuerKey])
+			ctx.SetAttribute(flux.XJwtSubject, claims[j.config.subjectKey])
 			return next(ctx)
 		}
 	}

@@ -22,7 +22,7 @@ func (e *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
 func (e *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.InvokeError) {
 	return map[string]interface{}{
 		"endpoint": target,
-		"attrs":    ctx.AttrValues(),
+		"attrs":    ctx.Attributes(),
 		"headers":  ctx.RequestReader().Headers(),
 	}, nil
 }

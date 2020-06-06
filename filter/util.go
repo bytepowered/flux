@@ -28,7 +28,7 @@ func LookupValue(lookup string, ctx flux.Context) interface{} {
 	case "header":
 		return req.HeaderValue(parts[1])
 	case "attr":
-		v, _ := ctx.AttrValue(parts[1])
+		v, _ := ctx.GetAttribute(parts[1])
 		return v
 	default:
 		return nil

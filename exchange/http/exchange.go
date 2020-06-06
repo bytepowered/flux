@@ -51,7 +51,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 	} else {
 		// Header透传以及传递AttrValues
 		newRequest.Header = httpRequest.Header.Clone()
-		for k, v := range ctx.AttrValues() {
+		for k, v := range ctx.Attributes() {
 			newRequest.Header.Set(k, cast.ToString(v))
 		}
 	}
