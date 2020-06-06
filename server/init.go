@@ -12,6 +12,8 @@ import (
 )
 
 func init() {
+	// Default logger factory
+	ext.SetLoggerFactory(DefaultLoggerFactory)
 	// 参数查找函数
 	ext.SetArgumentLookupFunc(internal.DefaultArgumentValueLookupFunc)
 	// Serializer

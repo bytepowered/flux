@@ -1,20 +1,25 @@
 package ext
 
 import (
+	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/pkg"
 )
 
 var (
-	_fluxLogger flux.Logger
+	_loggerFactory flux.LoggerFactory
 )
 
-// SetLogger ...
-func SetLogger(logger flux.Logger) {
-	_fluxLogger = pkg.RequireNotNil(logger, "Logger is nil").(flux.Logger)
+func SetLoggerFactory(f flux.LoggerFactory) {
+	_loggerFactory = pkg.RequireNotNil(f, "LoggerFactory is nil").(flux.LoggerFactory)
 }
 
-// GetLogger ...
-func GetLogger() flux.Logger {
-	return _fluxLogger
+// NewLoggerWith
+func NewLoggerWith(values context.Context) flux.Logger {
+	return _loggerFactory(values)
+}
+
+// NewLogger ...
+func NewLogger() flux.Logger {
+	return NewLoggerWith(context.TODO())
 }

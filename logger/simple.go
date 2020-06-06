@@ -1,53 +1,64 @@
 package logger
 
-import "github.com/bytepowered/flux/ext"
+import (
+	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/ext"
+)
+
+var (
+	_simLogger flux.Logger
+)
+
+func InitSimpleLogger() {
+	_simLogger = ext.NewLogger()
+}
 
 // Info ...
 func Info(args ...interface{}) {
-	ext.GetLogger().Info(args...)
+	_simLogger.Info(args...)
 }
 
 // Warn ...
 func Warn(args ...interface{}) {
-	ext.GetLogger().Warn(args...)
+	_simLogger.Warn(args...)
 }
 
 // Error ...
 func Error(args ...interface{}) {
-	ext.GetLogger().Error(args...)
+	_simLogger.Error(args...)
 }
 
 // Debug ...
 func Debug(args ...interface{}) {
-	ext.GetLogger().Debug(args...)
+	_simLogger.Debug(args...)
 }
 
 // Debug ...
 func Panic(args ...interface{}) {
-	ext.GetLogger().Panic(args...)
+	_simLogger.Panic(args...)
 }
 
 // Infof ...
 func Infof(fmt string, args ...interface{}) {
-	ext.GetLogger().Infof(fmt, args...)
+	_simLogger.Infof(fmt, args...)
 }
 
 // Warnf ...
 func Warnf(fmt string, args ...interface{}) {
-	ext.GetLogger().Warnf(fmt, args...)
+	_simLogger.Warnf(fmt, args...)
 }
 
 // Errorf ...
 func Errorf(fmt string, args ...interface{}) {
-	ext.GetLogger().Errorf(fmt, args...)
+	_simLogger.Errorf(fmt, args...)
 }
 
 // Debugf ...
 func Debugf(fmt string, args ...interface{}) {
-	ext.GetLogger().Debugf(fmt, args...)
+	_simLogger.Debugf(fmt, args...)
 }
 
 // Debugf ...
 func Panicf(fmt string, args ...interface{}) {
-	ext.GetLogger().Panicf(fmt, args...)
+	_simLogger.Panicf(fmt, args...)
 }

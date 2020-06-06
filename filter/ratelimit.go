@@ -56,7 +56,7 @@ func (r *RateLimitFilter) Init(config flux.Configuration) error {
 
 func (r *RateLimitFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 	return func(ctx flux.Context) *flux.InvokeError {
-		id := LookupValue(r.config.lookupId, ctx)
+		id := flux.LookupValue(r.config.lookupId, ctx)
 		limit, _ := r.limiters.GetOrLoad(id, func(_ lakego.Key) (lakego.Value, error) {
 			return rate.NewLimiter(rate.Every(r.config.limitRate), r.config.limitSize), nil
 		})

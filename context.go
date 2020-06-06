@@ -1,5 +1,7 @@
 package flux
 
+import "strings"
+
 const (
 	XRequestId    = "X-Request-Id"
 	XRequestTime  = "X-Request-Time"
@@ -50,4 +52,36 @@ type Context interface {
 
 	// SetValue 设置当前请求范围的KV
 	SetValue(name string, value interface{})
+}
+
+// LookupValue 搜索Lookup指定域的值。支持：
+// 1. query:<name>
+// 2. form:<name>
+// 3. path:<name>
+// 4. header:<name>
+// 5. attr:<name>
+func LookupValue(lookup string, ctx Context) interface{} {
+	if "" == lookup || nil == ctx {
+		return nil
+	}
+	req := ctx.RequestReader()
+	parts := strings.Split(lookup, ":")
+	if len(parts) == 1 {
+		return req.HeaderValue(parts[0])
+	}
+	switch strings.ToLower(parts[0]) {
+	case "query":
+		return req.QueryValue(parts[1])
+	case "form":
+		return req.FormValue(parts[1])
+	case "path":
+		return req.PathValue(parts[1])
+	case "header":
+		return req.HeaderValue(parts[1])
+	case "attr":
+		v, _ := ctx.GetAttribute(parts[1])
+		return v
+	default:
+		return nil
+	}
 }

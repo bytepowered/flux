@@ -208,33 +208,33 @@ func (fs *FluxServer) release(context *internal.ContextWrapper) {
 }
 
 func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
-	return func(c echo.Context) error {
+	return func(echo echo.Context) error {
 		defer func() {
 			if err := recover(); err != nil {
 				logger.Error(err)
 			}
 		}()
 		fs.visits.Add(1)
-		httpRequest := c.Request()
+		httpRequest := echo.Request()
 		// Multi version selection
 		version := httpRequest.Header.Get(fs.httpVersionHeader)
 		endpoint, found := mvEndpoint.Get(version)
-		newCtx := fs.acquire(c, endpoint)
+		ctx := fs.acquire(echo, endpoint)
 		// Context exchange: Echo <-> Flux
 		for _, pipe := range fs.pipelines {
-			pipe(c, newCtx)
+			pipe(echo, ctx)
 		}
-		c.Set(_echoAttrRoutedContext, newCtx)
-		defer fs.release(newCtx)
-		logger.Infof("Received request, id: %s, method: %s, uri: %s, endpoint.ver(%s)",
-			newCtx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
+		echo.Set(_echoAttrRoutedContext, ctx)
+		defer fs.release(ctx)
+		logger.Trace(ctx.RequestId()).Infof("Received request, id: %s, method: %s, uri: %s, endpoint.ver(%s)",
+			ctx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
 		if !found {
 			return errEndpointVersionNotFound
 		}
-		if err := fs.dispatcher.Dispatch(newCtx); nil != err {
+		if err := fs.dispatcher.Dispatch(ctx); nil != err {
 			return err
 		} else {
-			return fs.httpAdaptWriter.WriteResponse(newCtx)
+			return fs.httpAdaptWriter.WriteResponse(ctx)
 		}
 	}
 }
@@ -395,10 +395,6 @@ func (*FluxServer) AddGlobalFilter(filter flux.Filter) {
 
 func (*FluxServer) AddSelectiveFilter(filter flux.Filter) {
 	ext.AddSelectiveFilter(filter)
-}
-
-func (*FluxServer) SetLogger(logger flux.Logger) {
-	ext.SetLogger(logger)
 }
 
 func (*FluxServer) SetRegistryFactory(protoName string, factory ext.RegistryFactory) {

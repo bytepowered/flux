@@ -1,7 +1,11 @@
 package server
 
 import (
+	"context"
+	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/logger"
 	"github.com/pkg/errors"
+	"github.com/spf13/cast"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -14,30 +18,38 @@ const (
 	EnvKeyApplicationLogConfFile = "APP_LOG_CONF_FILE"
 )
 
-func InitLoggerDefault() (*zap.SugaredLogger, error) {
-	return InitLogger("")
+var (
+	_defZapConfig = zap.NewProductionConfig()
+)
+
+func DefaultLoggerFactory(values context.Context) flux.Logger {
+	sugar := NewZapLogger(&_defZapConfig)
+	if traceId := values.Value(logger.TraceId); nil != traceId {
+		sugar = sugar.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+	}
+	return sugar
 }
 
-func InitLogger(file string) (*zap.SugaredLogger, error) {
+func LoadLoggerConfig(file string) (zap.Config, error) {
+	config := zap.Config{}
 	if file == "" {
 		file = os.Getenv(EnvKeyApplicationLogConfFile)
 	}
 	if file == "" {
-		return NewZapLogger(nil), errors.New("log configure file name is nil")
+		return config, errors.New("log configure file name is nil")
 	}
 	if path.Ext(file) != ".yml" {
-		return NewZapLogger(nil), errors.Errorf("log configure file name{%s} suffix must be .yml", file)
+		return config, errors.Errorf("log configure file name{%s} suffix must be .yml", file)
 	}
 	confFileStream, err := ioutil.ReadFile(file)
 	if err != nil {
-		return NewZapLogger(nil), errors.Errorf("ioutil.ReadFile(file:%s) = error:%v", file, err)
+		return config, errors.Errorf("ioutil.ReadFile(file:%s) = error:%v", file, err)
 	}
-	conf := &zap.Config{}
-	err = yaml.Unmarshal(confFileStream, conf)
+	err = yaml.Unmarshal(confFileStream, &config)
 	if err != nil {
-		return NewZapLogger(nil), errors.Errorf("[Unmarshal]init _defaultLogger error: %v", err)
+		return config, errors.Errorf("[Unmarshal]init _defaultLogger error: %v", err)
 	}
-	return NewZapLogger(conf), nil
+	return config, nil
 }
 
 func NewZapLogger(conf *zap.Config) *zap.SugaredLogger {

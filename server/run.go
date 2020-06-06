@@ -5,7 +5,10 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/spf13/cast"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
@@ -16,15 +19,18 @@ const (
 )
 
 func InitDefaultLogger() {
-	zLogger, err := InitLoggerDefault()
-	if err != nil && zLogger != nil {
-		zLogger.Panic("FluxServer logger init:", err)
-	} else {
-		ext.SetLogger(zLogger)
+	config, err := LoadLoggerConfig("")
+	if nil != err {
+		panic(err)
 	}
-	if nil == zLogger {
-		panic("logger is nil")
-	}
+	ext.SetLoggerFactory(func(values context.Context) flux.Logger {
+		sugar := NewZapLogger(&config)
+		if traceId := values.Value(logger.TraceId); nil != traceId {
+			sugar = sugar.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+		}
+		return sugar
+	})
+	logger.InitSimpleLogger()
 }
 
 func InitConfiguration(envKey string) {
@@ -61,7 +67,7 @@ func Run(ver flux.BuildInfo) {
 	<-quit
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := fx.Shutdown(ctx); nil != err {
+	if err := fx.Shutdown(ctx); nil != err && err != http.ErrServerClosed {
 		logger.Error(err)
 	}
 }

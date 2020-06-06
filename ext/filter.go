@@ -26,7 +26,7 @@ var (
 func AddGlobalFilter(v interface{}) {
 	f, ok := v.(flux.Filter)
 	if !ok || nil == f {
-		GetLogger().Panicf("Not a Filter: type=%s, v=%+v", reflect.TypeOf(v), v)
+		NewLogger().Panicf("Not a Filter: type=%s, v=%+v", reflect.TypeOf(v), v)
 	}
 	_globalFilter = append(_globalFilter, filterWrapper{filter: f, order: orderOf(v)})
 	sort.Sort(filterArray(_globalFilter))
@@ -36,7 +36,7 @@ func AddGlobalFilter(v interface{}) {
 func AddSelectiveFilter(v interface{}) {
 	f, ok := v.(flux.Filter)
 	if !ok || nil == f {
-		GetLogger().Panicf("Not a Filter: type=%T, v=%+v", v, v)
+		NewLogger().Panicf("Not a Filter: type=%T, v=%+v", v, v)
 	}
 	_selectiveFilter = append(_selectiveFilter, filterWrapper{filter: f, order: orderOf(v)})
 	sort.Sort(filterArray(_selectiveFilter))
