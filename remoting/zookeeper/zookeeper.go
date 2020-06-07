@@ -3,7 +3,6 @@ package zookeeper
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
@@ -35,19 +34,14 @@ func (r *ZkRetriever) InitWith(config flux.Configuration) error {
 	if !config.IsSetKeys("address") {
 		return errors.New("registry.address is required, was empty")
 	}
-	addr := config.GetStringDefault("address", "zookeeper:2181")
+	addr := config.GetString("address")
 	r.servers = strings.Split(addr, ",")
-	tov := config.GetStringDefault("timeout", "30s")
-	if to, err := time.ParseDuration(tov); nil != err {
-		return fmt.Errorf("invalid timeout(duration): %s, err: %w", tov, err)
-	} else {
-		r.timeout = to
-	}
+	r.timeout = config.GetDurationDefault("timeout", time.Second*10)
 	return nil
 }
 
 func (r *ZkRetriever) Startup() error {
-	logger.Infof("Retriever startup, servers: %s", r.servers)
+	logger.Infof("ZkRetriver startup, servers: %s", r.servers)
 	conn, _, err := zk.Connect(r.servers, r.timeout, zk.WithLogger(new(zkLogger)))
 	if err != nil {
 		return err
@@ -61,7 +55,7 @@ func (r *ZkRetriever) Shutdown(ctx context.Context) error {
 	case <-r.quit:
 		return nil
 	default:
-		logger.Infof("Retriever shutdown, address: %s", r.servers)
+		logger.Infof("ZkRetriver shutdown, address: %s", r.servers)
 		close(r.quit)
 	}
 	return nil

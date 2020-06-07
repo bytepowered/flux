@@ -31,10 +31,6 @@ func ZookeeperRegistryFactory() flux.Registry {
 	}
 }
 
-func (r *zkRegistry) Id() string {
-	return "zookeeper"
-}
-
 func (r *zkRegistry) Init(config flux.Configuration) error {
 	r.zkRootPath = config.GetStringDefault("root-path", zkRegistryRootNodePath)
 	return r.retriever.InitWith(config)
