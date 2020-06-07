@@ -36,6 +36,10 @@ func (c *Configuration) Get(key string) interface{} {
 	return v
 }
 
+func (c *Configuration) Set(key string, value interface{}) {
+	c.ref.Set(key, value)
+}
+
 func (c *Configuration) SetGlobalAlias(alias map[string]string) {
 	c.globalAlias = alias
 }
