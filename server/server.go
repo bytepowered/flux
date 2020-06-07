@@ -34,6 +34,8 @@ const (
 	ConfigHttpRootName      = "HttpServer"
 	ConfigHttpVersionHeader = "version-header"
 	ConfigHttpDebugEnable   = "debug-enable"
+	ConfigHttpAddress       = "address"
+	ConfigHttpPort          = "port"
 	ConfigHttpTlsCertFile   = "tls-cert-file"
 	ConfigHttpTlsKeyFile    = "tls-key-file"
 )
@@ -52,6 +54,12 @@ var (
 	errEndpointVersionNotFound = &flux.InvokeError{
 		StatusCode: flux.StatusNotFound,
 		Message:    "ENDPOINT_VERSION_NOT_FOUND",
+	}
+	httpDefaults = map[string]interface{}{
+		ConfigHttpVersionHeader: DefaultHttpVersionHeader,
+		ConfigHttpDebugEnable:   false,
+		ConfigHttpAddress:       "0.0.0.0",
+		ConfigHttpPort:          8080,
 	}
 )
 
@@ -98,7 +106,8 @@ func (fs *FluxServer) Prepare(hooks ...flux.PrepareHook) error {
 func (fs *FluxServer) Initial() error {
 	// Http server
 	config := flux.NewConfigurationOf(ConfigHttpRootName)
-	fs.httpVersionHeader = config.GetStringDefault(ConfigHttpVersionHeader, DefaultHttpVersionHeader)
+	config.SetDefaults(httpDefaults)
+	fs.httpVersionHeader = config.GetString(ConfigHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
 	fs.httpServer.HidePort = true
@@ -107,7 +116,7 @@ func (fs *FluxServer) Initial() error {
 	fs.AddHttpInterceptor(middleware.CORS())
 	fs.AddHttpInterceptor(fs.prepareRequest())
 	// Http debug features
-	if config.GetBoolDefault(ConfigHttpDebugEnable, false) {
+	if config.GetBool(ConfigHttpDebugEnable) {
 		fs.debugFeatures(config)
 	}
 	return fs.dispatcher.Initial()
@@ -119,9 +128,9 @@ func (fs *FluxServer) Startup(version flux.BuildInfo) error {
 }
 
 // Startup server
-func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig flux.Configuration) error {
+func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
 	fs.checkInit()
-	logger.Info(httpConfig.GetStringDefault("banner", Banner))
+	logger.Info(Banner)
 	logger.Infof(VersionFormat, version.CommitId, version.Version, version.Date)
 	if err := fs.dispatcher.Startup(); nil != err {
 		return err
@@ -134,7 +143,8 @@ func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig flux.Config
 		go fs.handleHttpRouteEvent(eventCh)
 	}
 	// Start http server at last
-	address := fmt.Sprintf("%s:%d", httpConfig.GetStringDefault("address", "0.0.0.0"), httpConfig.GetIntDefault("port", 8080))
+	httpConfig.SetDefaults(httpDefaults)
+	address := fmt.Sprintf("%s:%d", httpConfig.GetString("address"), httpConfig.GetInt("port"))
 	certFile := httpConfig.GetString(ConfigHttpTlsCertFile)
 	keyFile := httpConfig.GetString(ConfigHttpTlsKeyFile)
 	if certFile != "" && keyFile != "" {

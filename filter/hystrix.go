@@ -43,14 +43,21 @@ type HystrixFilter struct {
 	marks  sync.Map
 }
 
-func (r *HystrixFilter) Init(config flux.Configuration) error {
+func (r *HystrixFilter) Init(config *flux.Configuration) error {
 	logger.Infof("Hystrix filter initializing")
+	config.SetDefaults(map[string]interface{}{
+		keyConfigHystrixRequestVolumeThreshold: 20,
+		keyConfigHystrixErrorPercentThreshold:  50,
+		keyConfigHystrixSleepWindow:            500,
+		keyConfigHystrixMaxRequest:             10,
+		keyConfigHystrixTimeout:                1000,
+	})
 	r.config = &HystrixConfig{
-		Timeout:                int(config.GetInt64Default(keyConfigHystrixTimeout, 1000)),
-		MaxConcurrentRequests:  int(config.GetInt64Default(keyConfigHystrixMaxRequest, 10)),
-		RequestVolumeThreshold: int(config.GetInt64Default(keyConfigHystrixRequestVolumeThreshold, 20)),
-		SleepWindow:            int(config.GetInt64Default(keyConfigHystrixSleepWindow, 5000)),
-		ErrorPercentThreshold:  int(config.GetInt64Default(keyConfigHystrixErrorPercentThreshold, 50)),
+		Timeout:                int(config.GetInt64(keyConfigHystrixTimeout)),
+		MaxConcurrentRequests:  int(config.GetInt64(keyConfigHystrixMaxRequest)),
+		RequestVolumeThreshold: int(config.GetInt64(keyConfigHystrixRequestVolumeThreshold)),
+		SleepWindow:            int(config.GetInt64(keyConfigHystrixSleepWindow)),
+		ErrorPercentThreshold:  int(config.GetInt64(keyConfigHystrixErrorPercentThreshold)),
 	}
 	return nil
 }

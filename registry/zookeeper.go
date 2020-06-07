@@ -8,6 +8,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/remoting"
 	"github.com/bytepowered/flux/remoting/zookeeper"
+	"time"
 )
 
 const (
@@ -31,8 +32,19 @@ func ZookeeperRegistryFactory() flux.Registry {
 	}
 }
 
-func (r *zkRegistry) Init(config flux.Configuration) error {
-	r.zkRootPath = config.GetStringDefault("root-path", zkRegistryRootNodePath)
+func (r *zkRegistry) Init(config *flux.Configuration) error {
+	config.SetDefaults(map[string]interface{}{
+		"root-path": zkRegistryRootNodePath,
+		"timeout":   time.Second * 10,
+	})
+	config.SetGlobalAlias(map[string]string{
+		"host":     "zookeeper.host",
+		"port":     "zookeeper.port",
+		"address":  "zookeeper.address",
+		"password": "zookeeper.password",
+		"database": "zookeeper.database",
+	})
+	r.zkRootPath = config.GetString("root-path")
 	return r.retriever.InitWith(config)
 }
 

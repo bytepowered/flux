@@ -62,14 +62,18 @@ func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.Filt
 	}
 }
 
-func (p *PermissionVerificationFilter) Init(config flux.Configuration) error {
-	p.disabled = config.GetBoolDefault(keyConfigDisabled, false)
+func (p *PermissionVerificationFilter) Init(config *flux.Configuration) error {
+	config.SetDefaults(map[string]interface{}{
+		keyConfigDisabled:        false,
+		keyConfigCacheExpiration: defValueCacheExpiration,
+	})
+	p.disabled = config.GetBool(keyConfigDisabled)
 	if p.disabled {
 		logger.Infof("Permission filter was DISABLED!!")
 		return nil
 	}
 	logger.Infof("Permission filter initializing")
-	if config.IsSetKeys(keyConfigUpstreamProtocol, keyConfigUpstreamUri, keyConfigUpstreamMethod) && p.provider == nil {
+	if config.IsSet(keyConfigUpstreamProtocol, keyConfigUpstreamUri, keyConfigUpstreamMethod) && p.provider == nil {
 		p.provider = func() PermissionVerificationFunc {
 			proto := config.GetString(keyConfigUpstreamProtocol)
 			host := config.GetString(keyConfigUpstreamHost)
@@ -88,7 +92,7 @@ func (p *PermissionVerificationFilter) Init(config flux.Configuration) error {
 			}
 		}()
 	}
-	permCacheExpiration := config.GetInt64Default(keyConfigCacheExpiration, defValueCacheExpiration)
+	permCacheExpiration := config.GetInt64(keyConfigCacheExpiration)
 	p.permCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(permCacheExpiration)))
 	return nil
 }

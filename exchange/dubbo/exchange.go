@@ -33,7 +33,7 @@ var (
 )
 
 // DubboReference配置函数，可外部化配置Dubbo Reference
-type OptionFunc func(*flux.Endpoint, flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
+type OptionFunc func(*flux.Endpoint, *flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
 
 // 参数封装函数，可外部化配置为其它协议的值对象
 type AssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
@@ -45,7 +45,7 @@ type DubboExchange struct {
 	AssembleFunc AssembleFunc
 	// 内部私有
 	traceEnable   bool
-	configuration flux.Configuration
+	configuration *flux.Configuration
 	referenceMap  map[string]*dubbogo.ReferenceConfig
 	referenceMu   sync.RWMutex
 }
@@ -58,15 +58,21 @@ func NewDubboExchange() flux.Exchange {
 	}
 }
 
-func (ex *DubboExchange) Configuration() flux.Configuration {
+func (ex *DubboExchange) Configuration() *flux.Configuration {
 	return ex.configuration
 }
 
-func (ex *DubboExchange) Init(config flux.Configuration) error {
+func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	logger.Infof("Dubbo Exchange initializing")
+	config.SetDefaults(map[string]interface{}{
+		configKeyReferenceDelay: time.Millisecond * 30,
+		configKeyTraceEnable:    false,
+		"timeout":               "3000",
+		"retries":               "1",
+		"cluster":               "default",
+	})
 	ex.configuration = config
-	ex.configuration.SetDefault(configKeyReferenceDelay, time.Millisecond*30)
-	ex.traceEnable = config.GetBoolDefault(configKeyTraceEnable, false)
+	ex.traceEnable = config.GetBool(configKeyTraceEnable)
 	if nil == ex.referenceMap {
 		ex.referenceMap = make(map[string]*dubbogo.ReferenceConfig)
 	}

@@ -10,9 +10,13 @@ import (
 	https "net/http"
 )
 
-func (fs *FluxServer) debugFeatures(configuration flux.Configuration) {
-	username := configuration.GetStringDefault("debug-auth-username", "fluxgo")
-	password := configuration.GetStringDefault("debug-auth-password", random.String(8))
+func (fs *FluxServer) debugFeatures(config *flux.Configuration) {
+	config.SetDefaults(map[string]interface{}{
+		"debug-auth-username": "fluxgo",
+		"debug-auth-password": random.String(8),
+	})
+	username := config.GetString("debug-auth-username")
+	password := config.GetString("debug-auth-password")
 	logger.Infof("Http debug feature: [ENABLED], Auth: BasicAuth, username: %s, password: %s", username, password)
 	auth := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
 		return u == username && p == password, nil

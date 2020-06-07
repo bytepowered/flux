@@ -26,7 +26,7 @@ func NewDispatcher() *FxDispatcher {
 func (d *FxDispatcher) Initial() error {
 	logger.Infof("Dispatcher initialing")
 	// 组件生命周期回调钩子
-	initRegisterHook := func(ref interface{}, config flux.Configuration) error {
+	initRegisterHook := func(ref interface{}, config *flux.Configuration) error {
 		if init, ok := ref.(flux.Initializer); ok {
 			if err := init.Init(config); nil != err {
 				return err
@@ -160,13 +160,14 @@ func (d *FxDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.
 	return fi
 }
 
-func _isDisabled(config flux.Configuration) bool {
+func _isDisabled(config *flux.Configuration) bool {
 	return config.GetBool("disable") || config.GetBool("disabled")
 }
 
-func findActiveRegistry() (flux.Registry, flux.Configuration, error) {
+func findActiveRegistry() (flux.Registry, *flux.Configuration, error) {
 	config := flux.NewConfigurationOf(flux.KeyConfigRootRegistry)
-	registryId := config.GetStringDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
+	config.SetDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
+	registryId := config.GetString(flux.KeyConfigRegistryId)
 	logger.Infof("Active registry, id: %s", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
 		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)

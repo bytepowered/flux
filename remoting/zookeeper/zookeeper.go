@@ -30,13 +30,14 @@ type ZkRetriever struct {
 	timeout     time.Duration
 }
 
-func (r *ZkRetriever) InitWith(config flux.Configuration) error {
-	if !config.IsSetKeys("address") {
-		return errors.New("registry.address is required, was empty")
-	}
+func (r *ZkRetriever) InitWith(config *flux.Configuration) error {
 	addr := config.GetString("address")
-	r.servers = strings.Split(addr, ",")
-	r.timeout = config.GetDurationDefault("timeout", time.Second*10)
+	if "" == addr {
+		r.servers = []string{config.GetString("host") + ":" + config.GetString("port")}
+	} else {
+		r.servers = strings.Split(addr, ",")
+	}
+	r.timeout = config.GetDuration("timeout")
 	return nil
 }
 

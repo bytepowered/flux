@@ -16,7 +16,7 @@ const (
 type AwareConfig struct {
 	Id      string
 	TypeId  string
-	Config  flux.Configuration
+	Config  *flux.Configuration
 	Factory flux.Factory
 }
 

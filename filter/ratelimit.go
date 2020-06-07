@@ -38,16 +38,18 @@ type RateLimitFilter struct {
 	limiters lakego.Cache
 }
 
-func (r *RateLimitFilter) Init(config flux.Configuration) error {
-	rateDuration, err := time.ParseDuration(config.GetStringDefault(keyConfigLimitRateKey, "1m"))
-	if err != nil {
-		return err
-	}
+func (r *RateLimitFilter) Init(config *flux.Configuration) error {
+	config.SetDefaults(map[string]interface{}{
+		keyConfigCacheExpiration: defValueCacheExpiration,
+		keyConfigLimitRateKey:    time.Minute,
+		keyConfigLimitLookupId:   flux.XJwtSubject,
+		keyConfigLimitSizeKey:    1000,
+	})
 	logger.Infof("RateLimit filter initializing")
 	r.config = &RateLimitConfig{
-		lookupId:  config.GetStringDefault(keyConfigLimitLookupId, flux.XJwtSubject),
-		limitRate: rateDuration,
-		limitSize: config.GetIntDefault(keyConfigLimitSizeKey, 1000),
+		lookupId:  config.GetString(keyConfigLimitLookupId),
+		limitRate: config.GetDuration(keyConfigLimitRateKey),
+		limitSize: config.GetInt(keyConfigLimitSizeKey),
 	}
 	// RateLimit缓存大小
 	r.limiters = lakego.NewSimple()

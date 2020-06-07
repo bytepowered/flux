@@ -42,28 +42,18 @@ func ComplexToMap(arg flux.Argument) map[string]interface{} {
 	return m
 }
 
-func NewReference(endpoint *flux.Endpoint, config flux.Configuration) *dubbogo.ReferenceConfig {
+func NewReference(endpoint *flux.Endpoint, config *flux.Configuration) *dubbogo.ReferenceConfig {
 	ifaceName := endpoint.UpstreamUri
-	timeout := getConfig(endpoint.RpcTimeout, "timeout", config, "3000")
-	retries := getConfig(endpoint.RpcRetries, "retries", config, "0")
-	cluster := config.GetStringDefault("cluster", "failover")
 	logger.Infof("Create dubbo reference-config, iface: %s, PREPARING", ifaceName)
 	reference := &dubbogo.ReferenceConfig{
 		InterfaceName:  ifaceName,
 		Version:        endpoint.RpcVersion,
 		Group:          endpoint.RpcGroup,
-		RequestTimeout: timeout,
-		Cluster:        cluster,
-		Retries:        retries,
+		RequestTimeout: config.GetString("timeout"),
+		Cluster:        config.GetString("cluster"),
+		Retries:        config.GetString("retries"),
 		Protocol:       dubbo.DUBBO,
 		Generic:        true,
 	}
 	return reference
-}
-
-func getConfig(specifiedValue string, configKey string, config flux.Configuration, defValue string) string {
-	if "" != specifiedValue {
-		return specifiedValue
-	}
-	return config.GetStringDefault(configKey, defValue)
 }

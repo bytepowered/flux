@@ -14,9 +14,13 @@ version-header = "X-Version"
 [REGISTRY]
 # 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
 registry-id = "zookeeper"
-# ZK服务配置中心地址，支持,分多个地址列表
-address = "tx.devserver.net:2181"
 root-path = "/flux-metadata"
+
+[ZOOKEEPER]
+# ZK服务配置中心地址，支持,分多个地址列表
+# address = "tx.devserver.net:2181"
+host = "tx.devserver.net"
+port = 2181
 
 # Dubbo Exange 配置参数
 [EXCHANGE.DUBBO]
