@@ -29,27 +29,27 @@ func GetDefaultResolver() ValueResolver {
 }
 
 var (
-	stringResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
+	stringResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return cast.ToString(value), nil
-	})
-	integerResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
+	}).ResolveFunc
+	integerResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return cast.ToIntE(value)
-	})
-	longResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
+	}).ResolveFunc
+	longResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return cast.ToInt64E(value)
-	})
-	float32Resolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
+	}).ResolveFunc
+	float32Resolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat32E(value)
-	})
-	float64Resolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
+	}).ResolveFunc
+	float64Resolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat64E(value)
-	})
-	booleanResolver = ValueResolver(func(_ string, _ []string, value interface{}) (interface{}, error) {
+	}).ResolveFunc
+	booleanResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return cast.ToBool(value), nil
-	})
-	mapResolver = ValueResolver(func(_ string, genericTypes []string, value interface{}) (interface{}, error) {
+	}).ResolveFunc
+	mapResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return _toMap(value)
-	})
+	}).ResolveFunc
 	listResolver = ValueResolver(func(_ string, genericTypes []string, value interface{}) (interface{}, error) {
 		return _toList(genericTypes, value)
 	})

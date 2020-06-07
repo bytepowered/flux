@@ -12,3 +12,9 @@ const (
 )
 
 type ValueResolver func(typeName string, genericTypes []string, value interface{}) (interface{}, error)
+
+type SimpleValueResolver func(value interface{}) (interface{}, error)
+
+func (s SimpleValueResolver) ResolveFunc(_ string, _ []string, value interface{}) (interface{}, error) {
+	return s(value)
+}
