@@ -69,7 +69,8 @@ type ContextPipelineFunc func(echo.Context, flux.Context)
 // FluxServer
 type FluxServer struct {
 	httpServer        *echo.Echo
-	visits            *expvar.Int
+	httpConfig        *flux.Configuration
+	httpVisits        *expvar.Int
 	httpAdaptWriter   internal.HttpWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
@@ -83,13 +84,18 @@ type FluxServer struct {
 func NewFluxServer() *FluxServer {
 	id, _ := snowflake.NewNode(1)
 	return &FluxServer{
-		visits:          expvar.NewInt("visits"),
+		httpVisits:      expvar.NewInt("visits"),
 		dispatcher:      internal.NewDispatcher(),
 		endpointMvMap:   make(map[string]*internal.MultiVersionEndpoint),
 		contextWrappers: sync.Pool{New: internal.NewFxContext},
 		pipelines:       make([]ContextPipelineFunc, 0),
 		snowflakeId:     id,
 	}
+}
+
+// HttpConfig return Http server configuration
+func (fs *FluxServer) HttpConfig() *flux.Configuration {
+	return fs.httpConfig
 }
 
 // Prepare Call before init and startup
@@ -102,33 +108,47 @@ func (fs *FluxServer) Prepare(hooks ...flux.PrepareHook) error {
 	return nil
 }
 
-// Initial : Call before startup
 func (fs *FluxServer) Initial() error {
+	return fs.InitServer()
+}
+
+// InitServer : Call before startup
+func (fs *FluxServer) InitServer() error {
 	// Http server
-	config := flux.NewConfigurationOf(ConfigHttpRootName)
-	config.SetDefaults(httpDefaults)
-	fs.httpVersionHeader = config.GetString(ConfigHttpVersionHeader)
+	fs.httpConfig = flux.NewConfigurationOf(ConfigHttpRootName)
+	fs.httpConfig.SetDefaults(httpDefaults)
+	fs.httpVersionHeader = fs.httpConfig.GetString(ConfigHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
 	fs.httpServer.HidePort = true
 	fs.httpServer.HTTPErrorHandler = fs.httpErrorAdapting
 	// Http拦截器
-	fs.AddHttpInterceptor(middleware.CORS())
+	if !fs.httpConfig.GetBool("cors-disable") {
+		fs.AddHttpInterceptor(middleware.CORS())
+	}
 	fs.AddHttpInterceptor(fs.prepareRequest())
 	// Http debug features
-	if config.GetBool(ConfigHttpDebugEnable) {
-		fs.debugFeatures(config)
+	if fs.httpConfig.GetBool(ConfigHttpDebugEnable) {
+		fs.debugFeatures(fs.httpConfig)
 	}
 	return fs.dispatcher.Initial()
 }
 
-// Startup server
 func (fs *FluxServer) Startup(version flux.BuildInfo) error {
-	return fs.StartupWith(version, flux.NewConfigurationOf(ConfigHttpRootName))
+	return fs.StartServe(version)
 }
 
-// Startup server
+// StartServe server
+func (fs *FluxServer) StartServe(version flux.BuildInfo) error {
+	return fs.StartServeWith(version, fs.httpConfig)
+}
+
 func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
+	return fs.StartServeWith(version, httpConfig)
+}
+
+// StartServeWith server
+func (fs *FluxServer) StartServeWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
 	fs.checkInit()
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, version.CommitId, version.Version, version.Date)
@@ -224,7 +244,7 @@ func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) 
 				logger.Error(err)
 			}
 		}()
-		fs.visits.Add(1)
+		fs.httpVisits.Add(1)
 		httpRequest := echo.Request()
 		// Multi version selection
 		version := httpRequest.Header.Get(fs.httpVersionHeader)
@@ -343,7 +363,7 @@ func (*FluxServer) prepareRequest() echo.MiddlewareFunc {
 
 func (fs *FluxServer) checkInit() {
 	if fs.httpServer == nil {
-		logger.Panicf("Call must after init()")
+		logger.Panicf("Call must after InitServer()")
 	}
 }
 

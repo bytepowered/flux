@@ -54,15 +54,15 @@ func Run(ver flux.BuildInfo) {
 	if err := fx.Prepare(); nil != err {
 		logger.Panic("FluxServer prepare:", err)
 	}
-	if err := fx.Initial(); nil != err {
+	if err := fx.InitServer(); nil != err {
 		logger.Panic("FluxServer init:", err)
 	}
 	go func() {
-		if err := fx.Startup(ver); nil != err {
+		if err := fx.StartServe(ver); nil != err {
 			logger.Error(err)
 		}
 	}()
-	quit := make(chan os.Signal)
+	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
