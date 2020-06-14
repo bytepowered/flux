@@ -10,22 +10,6 @@ type RequestWrapReader struct {
 	context echo.Context
 }
 
-func (r *RequestWrapReader) ParamInQuery(name string) string {
-	return r.QueryValue(name)
-}
-
-func (r *RequestWrapReader) ParamInPath(name string) string {
-	return r.PathValue(name)
-}
-
-func (r *RequestWrapReader) ParamInForm(name string) string {
-	return r.FormValue(name)
-}
-
-func (r *RequestWrapReader) Header(name string) string {
-	return r.HeaderValue(name)
-}
-
 func (r *RequestWrapReader) QueryValue(name string) string {
 	return r.context.QueryParam(name)
 }
@@ -55,10 +39,6 @@ func (r *RequestWrapReader) CookieValue(name string) string {
 
 func (r *RequestWrapReader) Headers() http.Header {
 	return r.context.Request().Header.Clone()
-}
-
-func (r *RequestWrapReader) Cookie(name string) string {
-	return r.CookieValue(name)
 }
 
 func (r *RequestWrapReader) RemoteAddress() string {

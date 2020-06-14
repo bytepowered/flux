@@ -7,33 +7,9 @@ import (
 
 // RequestReader 定义请求参数读取接口
 type RequestReader interface {
-	// 获取Http请求的Query参数
-	//
-	// Deprecated : See QueryValue(name)
-	ParamInQuery(name string) string
-
-	// 获取Http请求的Path参数
-	//
-	// Deprecated : See PathValue(name)
-	ParamInPath(name string) string
-
-	// 获取Http请求的Form参数
-	//
-	// Deprecated : See FormValue(name)
-	ParamInForm(name string) string
-
-	// 获取Http请求的Header参数
-	//
-	// Deprecated : See HeaderValue(name)
-	Header(name string) string
 
 	// 获取Http请求的全部Header
 	Headers() http.Header
-
-	// 获取Http请求Cookie参数
-	//
-	// Deprecated : See HeaderValue(name)
-	Cookie(name string) string
 
 	// 获取Http请求的Query参数
 	QueryValue(name string) string
