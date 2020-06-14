@@ -20,14 +20,15 @@ const (
 
 var (
 	_defZapConfig = zap.NewProductionConfig()
+	_defZapLogger = NewZapLogger(&_defZapConfig)
 )
 
 func DefaultLoggerFactory(values context.Context) flux.Logger {
-	sugar := NewZapLogger(&_defZapConfig)
+	newLogger := _defZapLogger
 	if traceId := values.Value(logger.TraceId); nil != traceId {
-		sugar = sugar.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+		newLogger = newLogger.With(zap.String(logger.TraceId, cast.ToString(traceId)))
 	}
-	return sugar
+	return newLogger
 }
 
 func LoadLoggerConfig(file string) (zap.Config, error) {
