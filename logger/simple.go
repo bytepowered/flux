@@ -9,8 +9,12 @@ var (
 	_simLogger flux.Logger
 )
 
+func SetSimpleLogger(logger flux.Logger) {
+	_simLogger = logger
+}
+
 func InitSimpleLogger() {
-	_simLogger = ext.NewLogger()
+	SetSimpleLogger(ext.NewLogger())
 }
 
 // Info ...
