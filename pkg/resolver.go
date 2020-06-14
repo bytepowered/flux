@@ -33,16 +33,16 @@ var (
 		return cast.ToString(value), nil
 	}).ResolveFunc
 	integerResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToIntE(value)
+		return cast.ToInt(value), nil
 	}).ResolveFunc
 	longResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToInt64E(value)
+		return cast.ToInt64(value), nil
 	}).ResolveFunc
 	float32Resolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToFloat32E(value)
+		return cast.ToFloat32(value), nil
 	}).ResolveFunc
 	float64Resolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToFloat64E(value)
+		return cast.ToFloat64(value), nil
 	}).ResolveFunc
 	booleanResolver = SimpleValueResolver(func(value interface{}) (interface{}, error) {
 		return cast.ToBool(value), nil
