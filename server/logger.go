@@ -2,15 +2,15 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"os"
-	"path"
+	"reflect"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 
 var (
 	_defZapConfig = zap.NewProductionConfig()
-	_defZapLogger = NewZapLogger(&_defZapConfig)
+	_defZapLogger = NewZapLogger(_defZapConfig)
 )
 
 func DefaultLoggerFactory(values context.Context) flux.Logger {
@@ -32,34 +32,40 @@ func DefaultLoggerFactory(values context.Context) flux.Logger {
 }
 
 func LoadLoggerConfig(file string) (zap.Config, error) {
-	config := zap.Config{}
 	if file == "" {
 		file = os.Getenv(EnvKeyApplicationLogConfFile)
 	}
+	config := _defZapConfig
 	if file == "" {
 		return config, errors.New("log configure file name is nil")
 	}
-	if path.Ext(file) != ".yml" {
-		return config, errors.Errorf("log configure file name{%s} suffix must be .yml", file)
+	v := viper.New()
+	v.SetConfigFile(file)
+	if err := v.ReadInConfig(); nil != err {
+		return config, fmt.Errorf("read logger config, path: %s, err: %w", file, err)
 	}
-	confFileStream, err := ioutil.ReadFile(file)
-	if err != nil {
-		return config, errors.Errorf("ioutil.ReadFile(file:%s) = error:%v", file, err)
-	}
-	err = yaml.Unmarshal(confFileStream, &config)
-	if err != nil {
-		return config, errors.Errorf("[Unmarshal]init _defaultLogger error: %v", err)
+	// AtomicLevel转换
+	if err := v.Unmarshal(&config, viper.DecodeHook(stringToAtomicLevel)); nil != err {
+		return config, fmt.Errorf("unmarshal logger config, path: %s, err: %w", file, err)
 	}
 	return config, nil
 }
 
-func NewZapLogger(conf *zap.Config) *zap.SugaredLogger {
-	var zLogConfig zap.Config
-	if conf != nil {
-		zLogConfig = *conf
-	} else {
-		zLogConfig = zap.NewDevelopmentConfig()
+func NewZapLogger(config zap.Config) *zap.SugaredLogger {
+	zLogger, err := config.Build()
+	if nil != err {
+		panic(err)
 	}
-	zLogger, _ := zLogConfig.Build()
 	return zLogger.Sugar()
+}
+
+func stringToAtomicLevel(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+	if f != reflect.String {
+		return data, nil
+	}
+	if t != reflect.TypeOf(zap.AtomicLevel{}).Kind() {
+		return data, nil
+	}
+	al := zap.NewAtomicLevel()
+	return al, al.UnmarshalText([]byte(data.(string)))
 }

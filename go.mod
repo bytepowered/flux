@@ -3,7 +3,6 @@ module github.com/bytepowered/flux
 go 1.14
 
 require (
-	github.com/BurntSushi/toml v0.3.1
 	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5
 	github.com/apache/dubbo-go v1.5.0
 	github.com/apache/dubbo-go-hessian2 v1.6.1
@@ -22,5 +21,5 @@ require (
 	github.com/spf13/viper v1.7.1
 	go.uber.org/zap v1.15.0
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

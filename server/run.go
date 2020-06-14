@@ -23,14 +23,14 @@ func InitDefaultLogger() {
 	if nil != err {
 		panic(err)
 	}
+	sugar := NewZapLogger(config)
+	logger.SetSimpleLogger(sugar)
 	ext.SetLoggerFactory(func(values context.Context) flux.Logger {
-		sugar := NewZapLogger(&config)
 		if traceId := values.Value(logger.TraceId); nil != traceId {
 			sugar = sugar.With(zap.String(logger.TraceId, cast.ToString(traceId)))
 		}
 		return sugar
 	})
-	logger.InitSimpleLogger()
 }
 
 func InitConfiguration(envKey string) {
