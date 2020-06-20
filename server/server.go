@@ -126,7 +126,7 @@ func (fs *FluxServer) InitServer() error {
 	if !fs.httpConfig.GetBool("cors-disable") {
 		fs.AddHttpInterceptor(middleware.CORS())
 	}
-	fs.AddHttpInterceptor(fs.prepareRequest())
+	fs.AddHttpInterceptor(fs.requestPrepare())
 	// Http debug features
 	if fs.httpConfig.GetBool(ConfigHttpDebugEnable) {
 		fs.debugFeatures(fs.httpConfig)
@@ -149,7 +149,7 @@ func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Confi
 
 // StartServeWith server
 func (fs *FluxServer) StartServeWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
-	fs.checkInit()
+	fs.ensure()
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, version.CommitId, version.Version, version.Date)
 	if err := fs.dispatcher.Startup(); nil != err {
@@ -210,7 +210,7 @@ func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 			if isNew {
 				logger.Infof("HTTP router: [%s] %s", event.HttpMethod, pattern)
-				fs.httpServer.Add(event.HttpMethod, pattern, fs.generateRouter(vEndpoint))
+				fs.httpServer.Add(event.HttpMethod, pattern, fs.newHttpRouter(vEndpoint))
 			}
 		case flux.EndpointEventUpdated:
 			logger.Infof("Endpoint update: [%s@%s] %s", eEndpoint.Version, event.HttpMethod, pattern)
@@ -237,19 +237,19 @@ func (fs *FluxServer) release(context *internal.ContextWrapper) {
 	fs.contextWrappers.Put(context)
 }
 
-func (fs *FluxServer) generateRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
+func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
 	return func(echo echo.Context) error {
-		defer func() {
-			if err := recover(); err != nil {
-				logger.Error(err)
-			}
-		}()
 		fs.httpVisits.Add(1)
 		httpRequest := echo.Request()
 		// Multi version selection
 		version := httpRequest.Header.Get(fs.httpVersionHeader)
 		endpoint, found := mvEndpoint.Get(version)
 		ctx := fs.acquire(echo, endpoint)
+		defer func(requestId string) {
+			if err := recover(); err != nil {
+				logger.Trace(requestId).Error(err)
+			}
+		}(ctx.RequestId())
 		// Context exchange: Echo <-> Flux
 		for _, pipe := range fs.pipelines {
 			pipe(echo, ctx)
@@ -330,7 +330,7 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 	}
 }
 
-func (*FluxServer) prepareRequest() echo.MiddlewareFunc {
+func (*FluxServer) requestPrepare() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Body缓存，允许通过 GetBody 多次读取Body
@@ -361,39 +361,35 @@ func (*FluxServer) prepareRequest() echo.MiddlewareFunc {
 	}
 }
 
-func (fs *FluxServer) checkInit() {
+func (fs *FluxServer) ensure() *FluxServer {
 	if fs.httpServer == nil {
 		logger.Panicf("Call must after InitServer()")
 	}
+	return fs
 }
 
 // HttpServer 返回Http服务器实例
 func (fs *FluxServer) HttpServer() *echo.Echo {
-	fs.checkInit()
-	return fs.httpServer
+	return fs.ensure().httpServer
 }
 
 // AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
 func (fs *FluxServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
-	fs.checkInit()
-	fs.httpServer.Pre(m)
+	fs.ensure().httpServer.Pre(m)
 }
 
 // AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
 func (fs *FluxServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
-	fs.checkInit()
-	fs.httpServer.Use(m)
+	fs.ensure().httpServer.Use(m)
 }
 
 // AddHttpHandler 添加Http处理接口。
 func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
-	fs.checkInit()
-	fs.httpServer.Add(method, pattern, h, m...)
+	fs.ensure().httpServer.Add(method, pattern, h, m...)
 }
 
 // SetHttpNotFoundHandler 设置Http路由失败的处理接口
 func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
-	fs.checkInit()
 	echo.NotFoundHandler = nfh
 }
 
