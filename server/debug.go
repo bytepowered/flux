@@ -17,7 +17,7 @@ func (fs *FluxServer) debugFeatures(config *flux.Configuration) {
 	})
 	username := config.GetString("debug-auth-username")
 	password := config.GetString("debug-auth-password")
-	logger.Infof("Http debug feature: [ENABLED], Auth: BasicAuth, username: %s, password: %s", username, password)
+	logger.Infow("Http debug feature: [ENABLED], Auth: BasicAuth", "username", username, "password", password)
 	auth := middleware.BasicAuth(func(u string, p string, c echo.Context) (bool, error) {
 		return u == username && p == password, nil
 	})

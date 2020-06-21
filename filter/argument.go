@@ -52,7 +52,8 @@ func resolve(lookupFunc ext.ArgumentLookupFunc, arguments []flux.Argument, ctx f
 				return fmt.Errorf("argument lookup error: http.key=%s, class=%s[%s], error=%s", p.HttpKey, p.TypeClass, p.TypeGeneric, err)
 			}
 			if v, err := _resolve(p.TypeClass, p.TypeGeneric, value); nil != err {
-				logger.Trace(ctx.RequestId()).Warnf("解析参数值错误, class: %s, generic: %s, value: %+v, err: ", p.TypeClass, p.TypeGeneric, value, err)
+				logger.Trace(ctx.RequestId()).Warnw("Failed to resolve argument",
+					"class", p.TypeClass, "generic", p.TypeGeneric, "value", value, "error", err)
 				return fmt.Errorf("argument resolve error: http.key=%s, class=%s[%s], error=%s", p.HttpKey, p.TypeClass, p.TypeGeneric, err)
 			} else {
 				p.HttpValue.SetValue(v)
@@ -62,7 +63,8 @@ func resolve(lookupFunc ext.ArgumentLookupFunc, arguments []flux.Argument, ctx f
 				return err
 			}
 		} else {
-			logger.Trace(ctx.RequestId()).Warnf("未支持的参数类型, class: %s[%s], type: %s", p.TypeClass, p.TypeGeneric, p.Type)
+			logger.Trace(ctx.RequestId()).Warnw("Unsupported argument type",
+				"class", p.TypeClass, "generic", p.TypeGeneric, "type", p.Type)
 		}
 	}
 	return nil

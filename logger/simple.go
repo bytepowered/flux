@@ -61,3 +61,28 @@ func Debugf(fmt string, args ...interface{}) {
 func Panicf(fmt string, args ...interface{}) {
 	_simLogger.Panicf(fmt, args...)
 }
+
+// Infof ...
+func Infow(msg string, keysAndValues ...interface{}) {
+	_simLogger.Infow(msg, keysAndValues...)
+}
+
+// Warnf ...
+func Warnw(msg string, keysAndValues ...interface{}) {
+	_simLogger.Warnw(msg, keysAndValues...)
+}
+
+// Errorf ...
+func Errorw(msg string, keysAndValues ...interface{}) {
+	_simLogger.Errorw(msg, keysAndValues...)
+}
+
+// Debugf ...
+func Debugw(msg string, keysAndValues ...interface{}) {
+	_simLogger.Debugw(msg, keysAndValues...)
+}
+
+// Debugf ...
+func Panicw(msg string, keysAndValues ...interface{}) {
+	_simLogger.Panicw(msg, keysAndValues...)
+}

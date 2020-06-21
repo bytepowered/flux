@@ -42,7 +42,7 @@ func (r *ZkRetriever) InitWith(config *flux.Configuration) error {
 }
 
 func (r *ZkRetriever) Startup() error {
-	logger.Infof("ZkRetriver startup, servers: %s", r.servers)
+	logger.Infow("ZkRetriver startup", "server", r.servers)
 	conn, _, err := zk.Connect(r.servers, r.timeout, zk.WithLogger(new(zkLogger)))
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (r *ZkRetriever) Shutdown(ctx context.Context) error {
 	case <-r.quit:
 		return nil
 	default:
-		logger.Infof("ZkRetriver shutdown, address: %s", r.servers)
+		logger.Infow("ZkRetriver shutdown", "server", r.servers)
 		close(r.quit)
 	}
 	return nil
@@ -92,7 +92,7 @@ func (r *ZkRetriever) WatchNodeData(groupId, nodeKey string, dataChangedListener
 
 func (r *ZkRetriever) setupListener(groupId, nodeKey string, listener remoting.NodeChangedListener) (bool, error) {
 	if groupId != "" {
-		logger.Warnf("Zookeeper not support groupId: %s", groupId)
+		logger.Warnw("Zookeeper not support groupId", "groupId", groupId)
 	}
 	if nodeKey == "" {
 		return false, errors.New("invalid node key: empty")
@@ -112,9 +112,9 @@ func (r *ZkRetriever) setupListener(groupId, nodeKey string, listener remoting.N
 }
 
 func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
-	logger.Infof("Start watching zk node children(%s)", dirKey)
+	logger.Infow("Start watching zk node children", "path", dirKey)
 	defer func() {
-		logger.Errorf("Stop watching zk node children(%s), purge listeners", dirKey)
+		logger.Errorf("Stop watching zk node children, purge listeners", "path", dirKey)
 		r.listenerMu.Lock()
 		delete(r.listenerMap, dirKey)
 		r.listenerMu.Unlock()
@@ -134,7 +134,7 @@ func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
 	for {
 		newChildren, _, w, err := r.conn.ChildrenW(dirKey)
 		if nil != err {
-			logger.Errorf("watching zk node children(%s), err: %s", dirKey, err)
+			logger.Errorw("Watching zk node children,", "path", dirKey, "error", err)
 			return
 		}
 		// New: notify
@@ -159,7 +159,7 @@ func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
 			if zkEvent.Type == zk.EventNodeChildrenChanged {
 				newChildren, _, err := r.conn.Children(zkEvent.Path)
 				if nil != err {
-					logger.Errorf("zk get children, path: %s, err: %s", dirKey, err)
+					logger.Errorw("get children data", "path", dirKey, "error", err)
 					return
 				}
 				// Add

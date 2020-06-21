@@ -133,7 +133,7 @@ func (d *FxDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 			if f, ok := ext.GetSelectiveFilter(typeId); ok {
 				selectFilters = append(selectFilters, f)
 			} else {
-				logger.Trace(ctx.RequestId()).Warnf("Filter not found on selector, filter.typeId: %s", typeId)
+				logger.Trace(ctx.RequestId()).Warnw("Filter not found on selector", "typeId", typeId)
 			}
 		}
 	}
@@ -168,7 +168,7 @@ func findActiveRegistry() (flux.Registry, *flux.Configuration, error) {
 	config := flux.NewConfigurationOf(flux.KeyConfigRootRegistry)
 	config.SetDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
 	registryId := config.GetString(flux.KeyConfigRegistryId)
-	logger.Infof("Active registry, id: %s", registryId)
+	logger.Infow("Active registry", "registryId", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
 		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
 	} else {

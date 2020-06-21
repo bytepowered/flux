@@ -17,6 +17,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/spf13/cast"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -63,7 +64,7 @@ func (ex *DubboExchange) Configuration() *flux.Configuration {
 }
 
 func (ex *DubboExchange) Init(config *flux.Configuration) error {
-	logger.Infof("Dubbo Exchange initializing")
+	logger.Info("Dubbo Exchange initializing")
 	config.SetDefaults(map[string]interface{}{
 		configKeyReferenceDelay: time.Millisecond * 30,
 		configKeyTraceEnable:    false,
@@ -73,7 +74,7 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	})
 	ex.configuration = config
 	ex.traceEnable = config.GetBool(configKeyTraceEnable)
-	logger.Infof("Dubbo Exchange request trace enable: %s", ex.traceEnable)
+	logger.Infow("Dubbo Exchange request trace", "enable", ex.traceEnable)
 	if nil == ex.referenceMap {
 		ex.referenceMap = make(map[string]*dubbogo.ReferenceConfig)
 	}
@@ -99,8 +100,13 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		attachments = fxctx.Attributes()
 	}
 	if ex.traceEnable {
-		logger.Infof("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %+v, attachments: %v",
-			target.UpstreamUri, target.UpstreamMethod, types, values, attachments)
+		//logger.Info("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %+v, attachments: %v",
+		//	target.UpstreamUri, target.UpstreamMethod, types, values, attachments)
+		logger.Info("Dubbo invoking",
+			zap.String("service", target.UpstreamUri+"."+target.UpstreamMethod),
+			zap.Strings("value.types", types),
+			zap.Reflect("attachments", attachments),
+		)
 	}
 	args := []interface{}{target.UpstreamMethod, types, values}
 	reference := ex.lookupReference(target)

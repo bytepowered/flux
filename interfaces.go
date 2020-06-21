@@ -42,16 +42,25 @@ type (
 
 // 日志Logger接口定义
 type Logger interface {
+	// uses fmt.Sprint to construct and log a message.
 	Info(args ...interface{})
 	Warn(args ...interface{})
 	Error(args ...interface{})
 	Debug(args ...interface{})
 	Panic(args ...interface{})
+	// uses fmt.Sprintf to log a templated message.
 	Infof(fmt string, args ...interface{})
 	Warnf(fmt string, args ...interface{})
 	Errorf(fmt string, args ...interface{})
 	Debugf(fmt string, args ...interface{})
 	Panicf(fmt string, args ...interface{})
+	// logs a message with some additional context. The variadic key-value
+	// pairs are treated as they are in With.
+	Infow(msg string, keyAndValues ...interface{})
+	Warnw(msg string, keyAndValues ...interface{})
+	Errorw(msg string, keyAndValues ...interface{})
+	Debugw(msg string, keyAndValues ...interface{})
+	Panicw(msg string, keyAndValues ...interface{})
 }
 
 type LoggerFactory func(values context.Context) Logger

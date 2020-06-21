@@ -44,7 +44,7 @@ type HystrixFilter struct {
 }
 
 func (r *HystrixFilter) Init(config *flux.Configuration) error {
-	logger.Infof("Hystrix filter initializing")
+	logger.Info("Hystrix filter initializing")
 	config.SetDefaults(map[string]interface{}{
 		keyConfigHystrixRequestVolumeThreshold: 20,
 		keyConfigHystrixErrorPercentThreshold:  50,

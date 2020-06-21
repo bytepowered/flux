@@ -78,7 +78,7 @@ func (ex *exchange) Assemble(endpoint *flux.Endpoint, inReq *http.Request) (*htt
 	if nil != err {
 		return nil, fmt.Errorf("get body by func, err: %w", err)
 	}
-	defer pkg.CloseSilently(reader)
+	defer pkg.SilentlyCloseFunc(reader)
 	var newBodyReader io.Reader = reader
 	if len(inParams) > 0 {
 		// 如果Endpoint定义了参数，即表示限定参数传递

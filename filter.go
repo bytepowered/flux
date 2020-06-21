@@ -13,6 +13,14 @@ func (e *InvokeError) Error() string {
 	return fmt.Sprintf("InvokeError: StatusCode=%d, Message=%s, Error=%s", e.StatusCode, e.Message, e.Internal)
 }
 
+func NewInvokeError(code int, msg string, err error) *InvokeError {
+	return &InvokeError{
+		StatusCode: code,
+		Message:    msg,
+		Internal:   err,
+	}
+}
+
 // FilterInvoker 定义一个处理方法
 type FilterInvoker func(Context) *InvokeError
 

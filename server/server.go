@@ -198,22 +198,22 @@ func (fs *FluxServer) handleEndpointRegisterEvent(events <-chan flux.EndpointEve
 			// Allowed
 		default:
 			// http.MethodConnect, and Others
-			logger.Errorf("Unsupported http method: %s, ignore", eEndpoint.HttpMethod)
+			logger.Errorw("Ignore unsupported http method:", "method", eEndpoint.HttpMethod)
 			continue
 		}
 		switch event.EventType {
 		case flux.EndpointEventAdded:
-			logger.Infof("Endpoint new: [%s@%s] %s", eEndpoint.Version, event.HttpMethod, pattern)
+			logger.Infow("New endpoint", "version", eEndpoint.Version, "method", event.HttpMethod, "pattern", pattern)
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 			if isNew {
-				logger.Infof("HTTP router: [%s] %s", event.HttpMethod, pattern)
+				logger.Infow("New http routing", "method", event.HttpMethod, "pattern", pattern)
 				fs.httpServer.Add(event.HttpMethod, pattern, fs.newHttpRouter(vEndpoint))
 			}
 		case flux.EndpointEventUpdated:
-			logger.Infof("Endpoint update: [%s@%s] %s", eEndpoint.Version, event.HttpMethod, pattern)
+			logger.Infow("Update endpoint", "version", eEndpoint.Version, "method", event.HttpMethod, "pattern", pattern)
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 		case flux.EndpointEventRemoved:
-			logger.Infof("Endpoint removed: [%s] %s", event.HttpMethod, pattern)
+			logger.Infow("Delete endpoint", "method", event.HttpMethod, "pattern", pattern)
 			vEndpoint.Delete(eEndpoint.Version)
 		}
 	}
@@ -244,7 +244,7 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 		ctx := fs.acquire(echo, endpoint)
 		defer func(requestId string) {
 			if err := recover(); err != nil {
-				logger.Trace(requestId).Error(err)
+				logger.Trace(requestId).Errorw("Http request unexpected error", "error", err)
 			}
 		}(ctx.RequestId())
 		// Context exchange: Echo <-> Flux
@@ -253,8 +253,11 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 		}
 		echo.Set(_echoAttrRoutedContext, ctx)
 		defer fs.release(ctx)
-		logger.Trace(ctx.RequestId()).Infof("Received request, id: %s, method: %s, uri: %s, endpoint.ver(%s)",
-			ctx.RequestId(), httpRequest.Method, httpRequest.RequestURI, version)
+		logger.Trace(ctx.RequestId()).Info("Http routing request",
+			"id", ctx.RequestId(),
+			"method", httpRequest.Method,
+			"uri", httpRequest.RequestURI,
+			"ver", version)
 		if !found {
 			return errEndpointVersionNotFound
 		}
@@ -280,11 +283,7 @@ func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
 				msg = mstr
 			}
 		}
-		iErr = &flux.InvokeError{
-			StatusCode: code,
-			Message:    msg,
-			Internal:   inErr,
-		}
+		iErr = flux.NewInvokeError(code, msg, inErr)
 	}
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
 	var requestId string

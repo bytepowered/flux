@@ -26,13 +26,13 @@ func dynamicFilters() ([]AwareConfig, error) {
 	for id := range viper.GetStringMap("FILTER") {
 		v := viper.Sub("FILTER." + id)
 		if v == nil || !v.IsSet(dynConfigKeyTypeId) {
-			logger.Infof("Filter[%] configuration is empty or without typeId", id)
+			logger.Infow("Filter configuration is empty or without typeId", "typeId", id)
 			continue
 		}
 		config := flux.NewConfiguration(v)
 		typeId := config.GetString(dynConfigKeyTypeId)
 		if config.GetBool(dynConfigKeyDisable) {
-			logger.Infof("Filter is DISABLED, typeId: %s, id: %s", typeId, id)
+			logger.Infow("Filter is DISABLED", "typeId", typeId, "id", id)
 			continue
 		}
 		factory, ok := ext.GetFactory(typeId)

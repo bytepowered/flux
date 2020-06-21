@@ -6,6 +6,7 @@ import (
 	"github.com/apache/dubbo-go/protocol/dubbo"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
+	"go.uber.org/zap"
 )
 
 // Dubbo默认参数封装处理：转换成hession协议对象。
@@ -21,7 +22,7 @@ func assembleHessianValues(arguments []flux.Argument) ([]string, interface{}) {
 		} else if flux.ArgumentTypeComplex == arg.Type {
 			values[i] = ComplexToMap(arg)
 		} else {
-			logger.Warnf("Unsupported parameter type: %s", arg.Type)
+			logger.Warn("Unsupported parameter", zap.String("type", arg.Type))
 		}
 	}
 	return types, values
@@ -36,7 +37,7 @@ func ComplexToMap(arg flux.Argument) map[string]interface{} {
 		} else if flux.ArgumentTypeComplex == arg.Type {
 			m[field.Name] = ComplexToMap(field)
 		} else {
-			logger.Warnf("Unsupported parameter type: %s", arg.Type)
+			logger.Warn("Unsupported parameter", zap.String("type", arg.Type))
 		}
 	}
 	return m
@@ -44,7 +45,7 @@ func ComplexToMap(arg flux.Argument) map[string]interface{} {
 
 func NewReference(endpoint *flux.Endpoint, config *flux.Configuration) *dubbogo.ReferenceConfig {
 	ifaceName := endpoint.UpstreamUri
-	logger.Infof("Create dubbo reference-config, iface: %s, PREPARING", ifaceName)
+	logger.Infow("Create dubbo reference-config", "service", ifaceName)
 	reference := &dubbogo.ReferenceConfig{
 		InterfaceName:  ifaceName,
 		Version:        endpoint.RpcVersion,

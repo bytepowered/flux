@@ -53,7 +53,7 @@ func ReadBodyObject(key string, values map[interface{}]interface{}) hessian.Obje
 func ReadStatusCode(key string, values map[interface{}]interface{}) (int, error) {
 	if status, ok := values[key]; ok {
 		if code, err := cast.ToIntE(status); nil != err {
-			logger.Warnf("Invalid rpc response status, type: %s, value: %+v", reflect.TypeOf(status), status)
+			logger.Warnw("Invalid rpc response status", "type", reflect.TypeOf(status), "status", status)
 			return 0, ErrInvalidStatus
 		} else {
 			return code, nil
@@ -85,7 +85,7 @@ func ReadHeaderObject(key string, values map[interface{}]interface{}) (http.Head
 		}
 		return omap, nil
 	}
-	logger.Warnf("Invalid rpc response headers, type: %s, value: %+v", reflect.TypeOf(hkv), hkv)
+	logger.Warnw("Invalid rpc response headers", "type", reflect.TypeOf(hkv), "value", hkv)
 	return nil, ErrInvalidHeaders
 }
 

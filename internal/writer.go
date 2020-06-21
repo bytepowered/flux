@@ -31,7 +31,7 @@ func (a HttpWriter) WriteResponse(c *ContextWrapper) error {
 	body := c.response.Body()
 	if r, ok := body.(io.Reader); ok {
 		if c, ok := r.(io.Closer); ok {
-			defer pkg.CloseSilently(c)
+			defer pkg.SilentlyCloseFunc(c)
 		}
 		if data, err := ioutil.ReadAll(r); nil != err {
 			return err

@@ -2,8 +2,10 @@ package pkg
 
 import "io"
 
-func CloseSilently(c io.Closer) {
-	_ = c.Close()
+func SilentlyCloseFunc(c io.Closer) func() {
+	return func() {
+		_ = c.Close()
+	}
 }
 
 func Silently(_ interface{}) {

@@ -48,7 +48,7 @@ func InitConfiguration(envKey string) {
 	viper.AddConfigPath("./conf.d")
 	logger.Infof("Using config, file: %s, Env: %s", file, env)
 	if err := viper.ReadInConfig(); nil != err {
-		logger.Panicf("Fatal config error, path: %s, err: ", file, err)
+		logger.Panicw("Fatal config error", "path", file, "error", err)
 	}
 }
 

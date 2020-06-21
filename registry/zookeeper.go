@@ -55,17 +55,17 @@ func (r *zkRegistry) WatchEvents(outboundEvents chan<- flux.EndpointEvent) error
 			return fmt.Errorf("init metadata node: %w", err)
 		}
 	}
-	logger.Infof("Zookeeper watching metadata node: %s", r.zkRootPath)
+	logger.Infow("Zookeeper watching metadata node", "path", r.zkRootPath)
 	nodeChangeListener := func(event remoting.NodeEvent) {
 		if evt, ok := toFluxEvent(event.Data, event.EventType); ok {
 			outboundEvents <- evt
 		}
 	}
 	err := r.retriever.WatchChildren("", r.zkRootPath, func(event remoting.NodeEvent) {
-		logger.Infof("Receive child change: %s", event)
+		logger.Infow("Receive child change event", "event", event)
 		if event.EventType == remoting.EventTypeChildAdd {
 			if err := r.retriever.WatchNodeData("", event.Path, nodeChangeListener); nil != err {
-				logger.Warn("Watch node data:", err)
+				logger.Warnw("Watch node data", "error", err)
 			}
 		}
 	})
