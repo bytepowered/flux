@@ -148,11 +148,10 @@ func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Confi
 }
 
 // StartServeWith server
-func (fs *FluxServer) StartServeWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
-	fs.ensure()
+func (fs *FluxServer) StartServeWith(info flux.BuildInfo, config *flux.Configuration) error {
 	logger.Info(Banner)
-	logger.Infof(VersionFormat, version.CommitId, version.Version, version.Date)
-	if err := fs.dispatcher.Startup(); nil != err {
+	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
+	if err := fs.ensure().dispatcher.Startup(); nil != err {
 		return err
 	}
 	eventCh := make(chan flux.EndpointEvent, 2)
@@ -160,13 +159,11 @@ func (fs *FluxServer) StartServeWith(version flux.BuildInfo, httpConfig *flux.Co
 	if err := fs.dispatcher.WatchRegistry(eventCh); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
-		go fs.handleHttpRouteEvent(eventCh)
+		go fs.handleEndpointRegisterEvent(eventCh)
 	}
-	// Start http server at last
-	httpConfig.SetDefaults(httpDefaults)
-	address := fmt.Sprintf("%s:%d", httpConfig.GetString("address"), httpConfig.GetInt("port"))
-	certFile := httpConfig.GetString(ConfigHttpTlsCertFile)
-	keyFile := httpConfig.GetString(ConfigHttpTlsKeyFile)
+	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
+	certFile := config.GetString(ConfigHttpTlsCertFile)
+	keyFile := config.GetString(ConfigHttpTlsKeyFile)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
 		return fs.httpServer.StartTLS(address, certFile, keyFile)
@@ -187,7 +184,7 @@ func (fs *FluxServer) Shutdown(ctx context.Context) error {
 	return fs.dispatcher.Shutdown(ctx)
 }
 
-func (fs *FluxServer) handleHttpRouteEvent(events <-chan flux.EndpointEvent) {
+func (fs *FluxServer) handleEndpointRegisterEvent(events <-chan flux.EndpointEvent) {
 	for event := range events {
 		pattern := fs.toHttpServerPattern(event.HttpPattern)
 		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
