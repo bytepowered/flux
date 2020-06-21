@@ -73,6 +73,7 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	})
 	ex.configuration = config
 	ex.traceEnable = config.GetBool(configKeyTraceEnable)
+	logger.Infof("Dubbo Exchange request trace enable: %s", ex.traceEnable)
 	if nil == ex.referenceMap {
 		ex.referenceMap = make(map[string]*dubbogo.ReferenceConfig)
 	}
@@ -134,6 +135,7 @@ func (ex *DubboExchange) lookupReference(endpoint *flux.Endpoint) *dubbogo.Refer
 			ref = pkg.RequireNotNil(opt(endpoint, ex.configuration, ref), msg).(*dubbogo.ReferenceConfig)
 		}
 	}
+	logger.Infof("Create dubbo reference-config, iface: %s, LOADING", interfaceName)
 	ref.GenericLoad(interfaceName)
 	t := ex.configuration.GetDuration(configKeyReferenceDelay)
 	if t == 0 {
