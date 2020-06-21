@@ -94,19 +94,23 @@ func (ex *DubboExchange) Exchange(ctx flux.Context) *flux.InvokeError {
 func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.InvokeError) {
 	types, values := ex.AssembleFunc(target.Arguments)
 	// 在测试场景中，fluxContext可能为nil
-	attrs := make(flux.StringMap)
+	attachments := make(map[string]interface{})
 	if nil != fxctx {
-		attrs = fxctx.Attributes()
+		attachments = fxctx.Attributes()
 	}
 	if ex.traceEnable {
-		logger.Infof("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %+v, attrs: %v",
-			target.UpstreamUri, target.UpstreamMethod, types, values, attrs)
+		logger.Infof("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %+v, attachments: %v",
+			target.UpstreamUri, target.UpstreamMethod, types, values, attachments)
 	}
 	args := []interface{}{target.UpstreamMethod, types, values}
 	reference := ex.lookupReference(target)
 	goctx := context.Background()
 	if nil != fxctx {
-		goctx = context.WithValue(goctx, constant.AttachmentKey, cast.ToStringMap(attrs))
+		strmap, err := cast.ToStringMapE(attachments)
+		if nil != err {
+			return nil, &flux.InvokeError{StatusCode: flux.StatusServerError, Message: ErrMessageInvoke, Internal: err}
+		}
+		goctx = context.WithValue(goctx, constant.AttachmentKey, strmap)
 	}
 	if resp, err := reference.GetRPCService().(*dubbogo.GenericService).Invoke(goctx, args); err != nil {
 		logger.Infof("Dubbo rpc error, service: %s, method: %s, err: %s", target.UpstreamUri, target.UpstreamMethod, err)

@@ -2,9 +2,6 @@ package flux
 
 import "context"
 
-// StringMap 定义一个KV字典
-type StringMap map[string]interface{}
-
 // An Object
 type Object interface{}
 
