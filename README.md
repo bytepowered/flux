@@ -1,4 +1,6 @@
-# FluxGo
+# Flux : MicroService Gateway for Dubbo/gRpc/Http
+
+Flux Gateway 是一个基于 Golang 原生开发的微服务网关，支持Dubbo、HTTP以及gRPC等协议。
 
 ## Config
 
