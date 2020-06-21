@@ -106,11 +106,13 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	reference := ex.lookupReference(target)
 	goctx := context.Background()
 	if nil != fxctx {
-		strmap, err := cast.ToStringMapE(attachments)
+		// Note: must be map[string]string
+		// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
+		ssmap, err := cast.ToStringMapStringE(attachments)
 		if nil != err {
 			return nil, &flux.InvokeError{StatusCode: flux.StatusServerError, Message: ErrMessageInvoke, Internal: err}
 		}
-		goctx = context.WithValue(goctx, constant.AttachmentKey, strmap)
+		goctx = context.WithValue(goctx, constant.AttachmentKey, ssmap)
 	}
 	if resp, err := reference.GetRPCService().(*dubbogo.GenericService).Invoke(goctx, args); err != nil {
 		logger.Infof("Dubbo rpc error, service: %s, method: %s, err: %s", target.UpstreamUri, target.UpstreamMethod, err)
