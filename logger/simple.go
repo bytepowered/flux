@@ -2,7 +2,6 @@ package logger
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/ext"
 )
 
 var (
@@ -11,10 +10,6 @@ var (
 
 func SetSimpleLogger(logger flux.Logger) {
 	_simLogger = logger
-}
-
-func InitSimpleLogger() {
-	SetSimpleLogger(ext.NewLogger())
 }
 
 // Info ...

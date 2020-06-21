@@ -25,9 +25,13 @@ func InitDefaultLogger() {
 	}
 	sugar := NewZapLogger(config)
 	logger.SetSimpleLogger(sugar)
+	zap.ReplaceGlobals(sugar.Desugar())
 	ext.SetLoggerFactory(func(values context.Context) flux.Logger {
+		if nil == values {
+			return sugar
+		}
 		if traceId := values.Value(logger.TraceId); nil != traceId {
-			sugar = sugar.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+			return sugar.With(zap.String(logger.TraceId, cast.ToString(traceId)))
 		}
 		return sugar
 	})
