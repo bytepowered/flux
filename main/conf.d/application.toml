@@ -10,7 +10,7 @@ version-header = "X-Version"
 #debug-auth-username = "yongjia.chen"
 #debug-auth-password = "yongjiaxxl"
 
-# REGISTRY: 元数据配置中心
+# REGISTRY: 网关元数据配置中心
 [REGISTRY]
 # 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
 registry-id = "zookeeper"
@@ -29,6 +29,14 @@ cluster = "failover"
 trace-enable = false
 # DuoobReference 初始化等待延时
 reference-delay = "30ms"
+# Dubbo注册中心列表
+[EXCHANGE.DUBBO.REGISTRY]
+id = "default"
+protocol = "zookeeper"
+timeout = "3s"
+address = "localhost:2181"
+username = "yongjia"
+password = "abc123"
 
 # Http Exchange 配置参数
 [EXCHANGE.HTTP]

@@ -9,6 +9,7 @@ import (
 	_ "github.com/apache/dubbo-go/common/proxy/proxy_factory"
 	dubbogo "github.com/apache/dubbo-go/config"
 	_ "github.com/apache/dubbo-go/filter/filter_impl"
+	"github.com/apache/dubbo-go/protocol/dubbo"
 	_ "github.com/apache/dubbo-go/registry/nacos"
 	_ "github.com/apache/dubbo-go/registry/protocol"
 	_ "github.com/apache/dubbo-go/registry/zookeeper"
@@ -17,7 +18,6 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/spf13/cast"
-	"go.uber.org/zap"
 	"sync"
 	"time"
 )
@@ -33,11 +33,33 @@ var (
 	ErrMessageInvoke  = "DUBBO_RPC:INVOKE"
 )
 
+var (
+	registryGlobalAlias = map[string]string{
+		"id":       "dubbo.registry.id",
+		"protocol": "dubbo.registry.protocol",
+		"group":    "dubbo.registry.protocol",
+		"timeout":  "dubbo.registry.timeout",
+		"address":  "dubbo.registry.address",
+		"username": "dubbo.registry.username",
+		"password": "dubbo.registry.password",
+	}
+)
+
 // DubboReference配置函数，可外部化配置Dubbo Reference
 type OptionFunc func(*flux.Endpoint, *flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
 
 // 参数封装函数，可外部化配置为其它协议的值对象
 type AssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
+
+// GetRegistryAlias
+func GetRegistryGlobalAlias() map[string]string {
+	return registryGlobalAlias
+}
+
+// SetRegistryGlobalAlias
+func SetRegistryGlobalAlias(alias map[string]string) {
+	registryGlobalAlias = alias
+}
 
 // 集成DubboRPC框架的Exchange
 type DubboExchange struct {
@@ -47,13 +69,11 @@ type DubboExchange struct {
 	// 内部私有
 	traceEnable   bool
 	configuration *flux.Configuration
-	referenceMap  map[string]*dubbogo.ReferenceConfig
 	referenceMu   sync.RWMutex
 }
 
 func NewDubboExchange() flux.Exchange {
 	return &DubboExchange{
-		referenceMap: make(map[string]*dubbogo.ReferenceConfig),
 		OptionFuncs:  make([]OptionFunc, 0),
 		AssembleFunc: assembleHessianValues,
 	}
@@ -71,13 +91,11 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 		"timeout":               "3000",
 		"retries":               "1",
 		"cluster":               "default",
+		"protocol":              dubbo.DUBBO,
 	})
 	ex.configuration = config
 	ex.traceEnable = config.GetBool(configKeyTraceEnable)
 	logger.Infow("Dubbo Exchange request trace", "enable", ex.traceEnable)
-	if nil == ex.referenceMap {
-		ex.referenceMap = make(map[string]*dubbogo.ReferenceConfig)
-	}
 	// Set default impl if not present
 	if nil == ex.OptionFuncs {
 		ex.OptionFuncs = make([]OptionFunc, 0)
@@ -85,6 +103,15 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	if nil == ex.AssembleFunc {
 		ex.AssembleFunc = assembleHessianValues
 	}
+	// 修改默认Consumer配置
+	consumerc := dubbogo.GetConsumerConfig()
+	// 支持定义Registry
+	registry := ex.configuration.Sub("registry")
+	registry.SetGlobalAlias(GetRegistryGlobalAlias())
+	if id, registryc := newConsumerRegistry(registry); id != "" && nil != registryc {
+		consumerc.Registries[id] = registryc
+	}
+	dubbogo.SetConsumerConfig(consumerc)
 	return nil
 }
 
@@ -100,16 +127,12 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		attachments = fxctx.Attributes()
 	}
 	if ex.traceEnable {
-		//logger.Info("Dubbo invoke, service:<%s$%s>, value.types: %v, values: %+v, attachments: %v",
-		//	target.UpstreamUri, target.UpstreamMethod, types, values, attachments)
-		logger.Info("Dubbo invoking",
-			zap.String("service", target.UpstreamUri+"."+target.UpstreamMethod),
-			zap.Strings("value.types", types),
-			zap.Reflect("attachments", attachments),
+		logger.Infow("Dubbo invoking",
+			"service", target.UpstreamUri+"."+target.UpstreamMethod, "value.types", types, "attachments", attachments,
 		)
 	}
 	args := []interface{}{target.UpstreamMethod, types, values}
-	reference := ex.lookupReference(target)
+	service := ex.lookupService(target)
 	goctx := context.Background()
 	if nil != fxctx {
 		// Note: must be map[string]string
@@ -120,8 +143,9 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		}
 		goctx = context.WithValue(goctx, constant.AttachmentKey, ssmap)
 	}
-	if resp, err := reference.GetRPCService().(*dubbogo.GenericService).Invoke(goctx, args); err != nil {
-		logger.Infof("Dubbo rpc error, service: %s, method: %s, err: %s", target.UpstreamUri, target.UpstreamMethod, err)
+	if resp, err := service.Invoke(goctx, args); err != nil {
+		logger.Infow("Dubbo rpc error",
+			"interface", target.UpstreamUri, "method", target.UpstreamMethod, "error", err)
 		return nil, &flux.InvokeError{
 			StatusCode: flux.StatusBadGateway,
 			Message:    ErrMessageInvoke,
@@ -132,14 +156,14 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	}
 }
 
-func (ex *DubboExchange) lookupReference(endpoint *flux.Endpoint) *dubbogo.ReferenceConfig {
+func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubbogo.GenericService {
 	ex.referenceMu.Lock()
 	defer ex.referenceMu.Unlock()
-	interfaceName := endpoint.UpstreamUri
-	if ref, ok := ex.referenceMap[interfaceName]; ok {
-		return ref
+	refid := "flux.consumer#" + endpoint.UpstreamUri
+	if ref := dubbogo.GetConsumerService(refid); nil != ref {
+		return ref.(*dubbogo.GenericService)
 	}
-	ref := NewReference(endpoint, ex.configuration)
+	ref := NewReference(refid, endpoint, ex.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
 	for _, opt := range ex.OptionFuncs {
@@ -147,14 +171,36 @@ func (ex *DubboExchange) lookupReference(endpoint *flux.Endpoint) *dubbogo.Refer
 			ref = pkg.RequireNotNil(opt(endpoint, ex.configuration, ref), msg).(*dubbogo.ReferenceConfig)
 		}
 	}
-	logger.Infof("Create dubbo reference-config, iface: %s, LOADING", interfaceName)
-	ref.GenericLoad(interfaceName)
+	logger.Infow("Create dubbo reference-config, referring", "refid", refid, "service", endpoint.UpstreamUri)
+	genericService := dubbogo.NewGenericService(refid)
+	dubbogo.SetConsumerService(genericService)
+	ref.Refer(genericService)
+	ref.Implement(genericService)
 	t := ex.configuration.GetDuration(configKeyReferenceDelay)
 	if t == 0 {
 		t = time.Millisecond * 30
 	}
 	<-time.After(t)
-	logger.Infof("Create dubbo reference-config, iface: %s, LOADED OK", interfaceName)
-	ex.referenceMap[interfaceName] = ref
-	return ref
+	logger.Infow("Create dubbo reference-config, ok", "refid", refid, "service", endpoint.UpstreamUri)
+	return genericService
+}
+
+func newConsumerRegistry(config *flux.Configuration) (string, *dubbogo.RegistryConfig) {
+	if !config.IsSet("id") {
+		return "", nil
+	}
+	return config.GetString("id"), &dubbogo.RegistryConfig{
+		Protocol:   config.GetString("protocol"),
+		TimeoutStr: config.GetString("timeout"),
+		Group:      config.GetString("group"),
+		TTL:        config.GetString("ttl"),
+		Address:    config.GetString("address"),
+		Username:   config.GetString("username"),
+		Password:   config.GetString("password"),
+		Simplified: config.GetBool("simplified"),
+		Preferred:  config.GetBool("preferred"),
+		Zone:       config.GetString("zone"),
+		Weight:     config.GetInt64("weight"),
+		Params:     config.GetStringMapString("params"),
+	}
 }

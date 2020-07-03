@@ -16,12 +16,6 @@ application:
   environment : "dev"
 
 registries :
-#  "default":
-#    protocol: "zookeeper"
-#    timeout	: "10s"
-#    address: "tx.devserver.net:2181"
-#    username: ""
-#    password: ""
   "txcloud":
     protocol: "zookeeper"
     timeout: "3s"
