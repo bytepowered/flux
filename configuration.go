@@ -29,6 +29,16 @@ type Configuration struct {
 	globalAlias map[string]string // 全局配置别名；
 }
 
+// Reference 返回Viper实例
+func (c *Configuration) Reference() *viper.Viper {
+	return c.ref
+}
+
+// Sub 获取当前实例的子级配置对象
+func (c *Configuration) Sub(name string) *Configuration {
+	return NewConfiguration(c.ref.Sub(name))
+}
+
 // Get 查找指定Key的配置值。
 // 从当前NS查询不到配置时，如果配置了key与globalAlias的另外映射，则会尝试从全局配置中再次查找。
 // 与Viper的Alias不同的是，Configuration的GlobalAlias是作用于局部命名空间下的别名映射。当然，这不影响原有Viper的Alias功能。
