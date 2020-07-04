@@ -28,9 +28,10 @@ const (
 )
 
 var (
-	ErrInvalidHeaders = errors.New("DUBBO_RPC:INVALID_HEADERS")
-	ErrInvalidStatus  = errors.New("DUBBO_RPC:INVALID_STATUS")
-	ErrMessageInvoke  = "DUBBO_RPC:INVOKE"
+	ErrInvalidHeaders  = errors.New("DUEXRPC:INVALID_HEADERS")
+	ErrInvalidStatus   = errors.New("DUEXRPC:INVALID_STATUS")
+	ErrMessageInvoke   = "DUEXRPC:INVOKE"
+	ErrMessageAssemble = "DUEXRPC:ASSEMBLE"
 )
 
 var (
@@ -124,11 +125,14 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	types, values := ex.AssembleFunc(target.Arguments)
 	// 在测试场景中，fluxContext可能为nil
 	attachments := make(map[string]interface{})
+	traceId := "no-trace-id"
 	if nil != fxctx {
 		attachments = fxctx.Attributes()
+		traceId = fxctx.RequestId()
 	}
+	trace := logger.Trace(traceId)
 	if ex.traceEnable {
-		logger.Infow("Dubbo invoking",
+		trace.Infow("Dubbo invoking",
 			"service", target.UpstreamUri+"."+target.UpstreamMethod, "value.types", types, "attachments", attachments,
 		)
 	}
@@ -140,18 +144,14 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 		ssmap, err := cast.ToStringMapStringE(attachments)
 		if nil != err {
-			return nil, &flux.InvokeError{StatusCode: flux.StatusServerError, Message: ErrMessageInvoke, Internal: err}
+			return nil, flux.NewInvokeError(flux.StatusServerError, ErrMessageAssemble, err)
 		}
 		goctx = context.WithValue(goctx, constant.AttachmentKey, ssmap)
 	}
 	if resp, err := service.Invoke(goctx, args); err != nil {
-		logger.Infow("Dubbo rpc error",
-			"interface", target.UpstreamUri, "method", target.UpstreamMethod, "error", err)
-		return nil, &flux.InvokeError{
-			StatusCode: flux.StatusBadGateway,
-			Message:    ErrMessageInvoke,
-			Internal:   err,
-		}
+		trace.Errorw("Dubbo rpc error", "interface", target.UpstreamUri, "method", target.UpstreamMethod)
+		trace.Error("Dubbo rpc error", err)
+		return nil, flux.NewInvokeError(flux.StatusBadGateway, ErrMessageInvoke, err)
 	} else {
 		return resp, nil
 	}

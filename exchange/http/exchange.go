@@ -15,14 +15,6 @@ import (
 	"time"
 )
 
-var (
-	ErrDecoderNotFound = &flux.InvokeError{StatusCode: flux.StatusServerError, Message: "DUBBO:DECODER_NOT_FOUND"}
-)
-
-const (
-	ExchangeNamespaceHttp = "EXCHANGE.HTTP"
-)
-
 func NewHttpExchange() *exchange {
 	return &exchange{
 		httpClient: &http.Client{
@@ -43,11 +35,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 	httpRequest := ctx.RequestReader().HttpRequest()
 	newRequest, err := ex.Assemble(target, httpRequest)
 	if nil != err {
-		return nil, &flux.InvokeError{
-			StatusCode: flux.StatusServerError,
-			Message:    "HTTP:INVALID_REQUEST",
-			Internal:   err,
-		}
+		return nil, flux.NewInvokeError(flux.StatusServerError, "HTTPEX:ASSEMBLE", err)
 	} else {
 		// Header透传以及传递AttrValues
 		newRequest.Header = httpRequest.Header.Clone()
@@ -57,9 +45,9 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 	}
 	resp, err := ex.httpClient.Do(newRequest)
 	if nil != err {
-		msg := "HTTP:REMOTE_ERROR"
+		msg := "HTTPEX:REMOTE_ERROR"
 		if uErr, ok := err.(*url.Error); ok {
-			msg = fmt.Sprintf("HTTP:REMOTE_ERROR:%s", uErr.Error())
+			msg = fmt.Sprintf("HTTPEX:REMOTE_ERROR:%s", uErr.Error())
 		}
 		return nil, &flux.InvokeError{
 			StatusCode: flux.StatusServerError,
