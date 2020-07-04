@@ -259,8 +259,12 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 		logger.Trace(ctx.RequestId()).Infow("Http routing request",
 			"id", ctx.RequestId(),
 			"method", httpRequest.Method,
-			"uri", httpRequest.RequestURI,
-			"ver", version)
+			"request-uri", httpRequest.RequestURI,
+			"request-path", httpRequest.URL.Path,
+			"headers", httpRequest.Header,
+			"version(:"+fs.httpVersionHeader+")", version,
+			"endpoint", *endpoint,
+		)
 		if !found {
 			return errEndpointVersionNotFound
 		}
