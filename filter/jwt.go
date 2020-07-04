@@ -62,10 +62,10 @@ func (j *JwtVerificationFilter) Init(config *flux.Configuration) error {
 	})
 	j.disabled = config.GetBool(keyConfigDisabled)
 	if j.disabled {
-		logger.Infof("JWT filter is DISABLED !!")
+		logger.Info("JWT filter is DISABLED")
 		return nil
 	}
-	logger.Infof("JWT filter initializing")
+	logger.Info("JWT filter initializing")
 	j.config = JwtConfig{
 		lookupToken: config.GetString(keyConfigJwtLookupToken),
 		issuerKey:   config.GetString(keyConfigJwtIssuerKey),

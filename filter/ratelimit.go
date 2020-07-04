@@ -45,7 +45,7 @@ func (r *RateLimitFilter) Init(config *flux.Configuration) error {
 		keyConfigLimitLookupId:   flux.XJwtSubject,
 		keyConfigLimitSizeKey:    1000,
 	})
-	logger.Infof("RateLimit filter initializing")
+	logger.Info("RateLimit filter initializing")
 	r.config = &RateLimitConfig{
 		lookupId:  config.GetString(keyConfigLimitLookupId),
 		limitRate: config.GetDuration(keyConfigLimitRateKey),

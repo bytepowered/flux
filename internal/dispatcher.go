@@ -74,9 +74,9 @@ func (d *FxDispatcher) Initial() error {
 	}
 	for _, item := range dynFilters {
 		filter := item.Factory()
-		logger.Infof("Load dynamic-filter", "filter-id", item.Id, "type-id", item.TypeId, "type", filter)
+		logger.Infow("Load dynamic-filter", "filter-id", item.Id, "type-id", item.TypeId, "type", reflect.TypeOf(filter))
 		if _isDisabled(item.Config) {
-			logger.Infof("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
+			logger.Infow("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
 			continue
 		}
 		if err := initRegisterHook(filter, item.Config); nil != err {

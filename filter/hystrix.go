@@ -76,7 +76,7 @@ func (r *HystrixFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 			return next(ctx)
 		}, func(err error) error {
 			_, ok := err.(hystrix.CircuitError)
-			logger.Trace(ctx.RequestId()).Debugf("Hystrix check, errors: %v, service: %v; %s", err, ok, serviceKey)
+			logger.Trace(ctx.RequestId()).Debugw("Hystrix check", "ok", ok, "service", serviceKey, "error", err)
 			return err
 		})
 		if nil == err {
