@@ -160,11 +160,11 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubbogo.GenericService {
 	ex.referenceMu.Lock()
 	defer ex.referenceMu.Unlock()
-	refid := "flux.consumer#" + endpoint.UpstreamUri
-	if ref := dubbogo.GetConsumerService(refid); nil != ref {
+	id := endpoint.UpstreamUri
+	if ref := dubbogo.GetConsumerService(id); nil != ref {
 		return ref.(*dubbogo.GenericService)
 	}
-	ref := NewReference(refid, endpoint, ex.configuration)
+	ref := NewReference(id, endpoint, ex.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
 	for _, opt := range ex.OptionFuncs {
@@ -172,8 +172,8 @@ func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubbogo.Generic
 			ref = pkg.RequireNotNil(opt(endpoint, ex.configuration, ref), msg).(*dubbogo.ReferenceConfig)
 		}
 	}
-	logger.Infow("Create dubbo reference-config, referring", "refid", refid, "service", endpoint.UpstreamUri)
-	genericService := dubbogo.NewGenericService(refid)
+	logger.Infow("Create dubbo reference-config, referring", "service-id", id, "interface", endpoint.UpstreamUri)
+	genericService := dubbogo.NewGenericService(id)
 	dubbogo.SetConsumerService(genericService)
 	ref.Refer(genericService)
 	ref.Implement(genericService)
@@ -182,7 +182,7 @@ func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubbogo.Generic
 		t = time.Millisecond * 30
 	}
 	<-time.After(t)
-	logger.Infow("Create dubbo reference-config, ok", "refid", refid, "service", endpoint.UpstreamUri)
+	logger.Infow("Create dubbo reference-config, ok", "service-id", id, "interface", endpoint.UpstreamUri)
 	return genericService
 }
 
