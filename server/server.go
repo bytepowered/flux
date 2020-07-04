@@ -256,22 +256,21 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 		}
 		echo.Set(_echoAttrRoutedContext, ctx)
 		defer fs.release(ctx)
-		logger.Trace(ctx.RequestId()).Infow("Http routing request",
-			"id", ctx.RequestId(),
-			"method", httpRequest.Method,
-			"request-uri", httpRequest.RequestURI,
-			"request-path", httpRequest.URL.Path,
-			"headers", httpRequest.Header,
-			"version(:"+fs.httpVersionHeader+")", version,
-			"endpoint", *endpoint,
-		)
 		if !found {
+			logger.Trace(ctx.RequestId()).Infow("DISPATCHER:ENDPOINT_NOT_FOUND",
+				"method", httpRequest.Method, "uri", httpRequest.RequestURI, "path", httpRequest.URL.Path, "version", version,
+			)
 			return errEndpointVersionNotFound
-		}
-		if err := fs.dispatcher.Dispatch(ctx); nil != err {
-			return err
 		} else {
-			return fs.httpAdaptWriter.WriteResponse(ctx)
+			logger.Trace(ctx.RequestId()).Infow("DISPATCHER:ENDPOINT_ROUTING",
+				"method", httpRequest.Method, "uri", httpRequest.RequestURI, "path", httpRequest.URL.Path, "version", version,
+				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
+			)
+			if err := fs.dispatcher.Dispatch(ctx); nil != err {
+				return err
+			} else {
+				return fs.httpAdaptWriter.WriteResponse(ctx)
+			}
 		}
 	}
 }
