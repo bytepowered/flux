@@ -114,7 +114,7 @@ func (r *ZkRetriever) setupListener(groupId, nodeKey string, listener remoting.N
 func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
 	logger.Infow("Start watching zk node children", "path", dirKey)
 	defer func() {
-		logger.Errorf("Stop watching zk node children, purge listeners", "path", dirKey)
+		logger.Errorw("Stop watching zk node children, purge listeners", "path", dirKey)
 		r.listenerMu.Lock()
 		delete(r.listenerMap, dirKey)
 		r.listenerMu.Unlock()
@@ -154,8 +154,7 @@ func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
 			return
 
 		case zkEvent := <-w.EvtCh:
-			logger.Debugf("Receive zk child event{type:%s, server:%s, path:%s, state:%d-%s, err:%s}",
-				zkEvent.Type, zkEvent.Server, zkEvent.Path, zkEvent.State, zkEvent.State, zkEvent.Err)
+			logger.Debugw("Receive zk child event", "event", zkEvent)
 			if zkEvent.Type == zk.EventNodeChildrenChanged {
 				newChildren, _, err := r.conn.Children(zkEvent.Path)
 				if nil != err {
@@ -188,9 +187,9 @@ func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
 }
 
 func (r *ZkRetriever) watchDataNodeChanged(nodePath string) {
-	logger.Infof("Start watching zk node data(%s)", nodePath)
+	logger.Infow("Start watching zk node data", "path", nodePath)
 	defer func() {
-		logger.Errorf("Stop watching zk node data(%s), purge listeners", nodePath)
+		logger.Errorw("Stop watching zk node data, purge listeners", "path", nodePath)
 		r.listenerMu.Lock()
 		delete(r.listenerMap, nodePath)
 		r.listenerMu.Unlock()
@@ -199,7 +198,7 @@ func (r *ZkRetriever) watchDataNodeChanged(nodePath string) {
 	for {
 		_, _, w, err := r.conn.ExistsW(nodePath)
 		if nil != err {
-			logger.Errorf("Watching zk node data(%s), err: %s", nodePath, err)
+			logger.Errorw("Watching zk node data", "path", nodePath, "error", err)
 			return
 		}
 		if !inited {
@@ -215,8 +214,7 @@ func (r *ZkRetriever) watchDataNodeChanged(nodePath string) {
 			return
 
 		case zkEvent := <-w.EvtCh:
-			logger.Debugf("Receive zk data event{type:%s, server:%s, path:%s, state:%d-%s, err:%s}",
-				zkEvent.Type, zkEvent.Server, zkEvent.Path, zkEvent.State, zkEvent.State, zkEvent.Err)
+			logger.Debugw("Receive zk data event", "event", zkEvent)
 			var (
 				eventType remoting.EventType
 				eventData []byte
@@ -227,12 +225,12 @@ func (r *ZkRetriever) watchDataNodeChanged(nodePath string) {
 			if !ok || 0 == len(listeners) {
 				continue
 			}
-			const msgErrGetNodeData = "zk get node data, path:%s, err: %s"
+			const msgErrGetNodeData = "zk get node data"
 			switch zkEvent.Type {
 			case zk.EventNodeDataChanged:
 				data, _, err := r.conn.Get(zkEvent.Path)
 				if nil != err {
-					logger.Errorf(msgErrGetNodeData, nodePath, err)
+					logger.Errorw(msgErrGetNodeData, "path", nodePath, "error", err)
 					return
 				}
 				eventType = remoting.EventTypeNodeUpdate
@@ -240,7 +238,7 @@ func (r *ZkRetriever) watchDataNodeChanged(nodePath string) {
 			case zk.EventNodeCreated:
 				data, _, err := r.conn.Get(zkEvent.Path)
 				if nil != err {
-					logger.Errorf(msgErrGetNodeData, nodePath, err)
+					logger.Errorf(msgErrGetNodeData, "path", nodePath, "error", err)
 					return
 				}
 				eventType = remoting.EventTypeNodeAdd
@@ -266,6 +264,6 @@ func (r *ZkRetriever) watchDataNodeChanged(nodePath string) {
 
 type zkLogger int
 
-func (zkLogger) Printf(format string, a ...interface{}) {
-	logger.Debugf(format, a...)
+func (zkLogger) Printf(format string, args ...interface{}) {
+	logger.Debugf(format, args...)
 }
