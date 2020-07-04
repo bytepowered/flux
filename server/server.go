@@ -256,7 +256,7 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 		}
 		echo.Set(_echoAttrRoutedContext, ctx)
 		defer fs.release(ctx)
-		logger.Trace(ctx.RequestId()).Info("Http routing request",
+		logger.Trace(ctx.RequestId()).Infow("Http routing request",
 			"id", ctx.RequestId(),
 			"method", httpRequest.Method,
 			"uri", httpRequest.RequestURI,
@@ -305,7 +305,7 @@ func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
 		outErr = fs.httpAdaptWriter.WriteError(ctx.Response(), requestId, headers, iErr)
 	}
 	if nil != outErr {
-		logger.Errorf("Error responding(%s): ", requestId, outErr)
+		logger.Trace(requestId).Errorf("Error responding", outErr)
 	}
 }
 
