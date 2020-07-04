@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	https "net/http"
 	_ "net/http/pprof"
+	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -244,7 +245,9 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 		ctx := fs.acquire(echo, endpoint)
 		defer func(requestId string) {
 			if err := recover(); err != nil {
-				logger.Trace(requestId).Errorw("Http request unexpected error", "error", err)
+				tl := logger.Trace(requestId)
+				tl.Errorw("Http request unexpected error", "error", err)
+				tl.Error(string(debug.Stack()))
 			}
 		}(ctx.RequestId())
 		// Context exchange: Echo <-> Flux
