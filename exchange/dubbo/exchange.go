@@ -117,6 +117,15 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	return nil
 }
 
+func (ex *DubboExchange) Startup() error {
+	return nil
+}
+
+func (ex *DubboExchange) Shutdown(_ context.Context) error {
+	dubbogo.BeforeShutdown()
+	return nil
+}
+
 func (ex *DubboExchange) Exchange(ctx flux.Context) *flux.InvokeError {
 	return internal.InvokeExchanger(ctx, ex)
 }
