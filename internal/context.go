@@ -7,9 +7,11 @@ import (
 	"time"
 )
 
+var _ flux.Context = new(ContextWrapper)
+
 // Context接口实现
 type ContextWrapper struct {
-	echo       echo.Context
+	context    echo.Context
 	endpoint   *flux.Endpoint
 	requestId  string
 	attributes *sync.Map
@@ -18,7 +20,7 @@ type ContextWrapper struct {
 	request    *RequestWrapReader
 }
 
-func NewFxContext() interface{} {
+func NewContextWrapper() interface{} {
 	return &ContextWrapper{
 		response: newResponseWriter(),
 		request:  newRequestReader(),
@@ -38,15 +40,15 @@ func (c *ContextWrapper) Endpoint() flux.Endpoint {
 }
 
 func (c *ContextWrapper) RequestMethod() string {
-	return c.echo.Request().Method
+	return c.context.Request().Method
 }
 
 func (c *ContextWrapper) RequestUri() string {
-	return c.echo.Request().RequestURI
+	return c.context.Request().RequestURI
 }
 
 func (c *ContextWrapper) RequestPath() string {
-	return c.echo.Request().URL.Path
+	return c.context.Request().URL.Path
 }
 
 func (c *ContextWrapper) RequestId() string {
@@ -54,7 +56,7 @@ func (c *ContextWrapper) RequestId() string {
 }
 
 func (c *ContextWrapper) RequestHost() string {
-	return c.echo.Request().Host
+	return c.context.Request().Host
 }
 
 func (c *ContextWrapper) Attributes() map[string]interface{} {
@@ -84,22 +86,25 @@ func (c *ContextWrapper) GetValue(name string) (interface{}, bool) {
 	return v, ok
 }
 
-func (c *ContextWrapper) Reattach(requestId string, echo echo.Context, endpoint *flux.Endpoint) {
-	httpRequest := echo.Request()
-	c.echo = echo
-	c.request.reattach(echo)
+func (c *ContextWrapper) HttpContext() echo.Context {
+	return c.context
+}
+
+func (c *ContextWrapper) Reattach(requestId string, context echo.Context, endpoint *flux.Endpoint) {
+	c.context = context
+	c.request.reattach(context)
 	c.endpoint = endpoint
 	c.requestId = requestId
 	c.attributes = new(sync.Map)
 	c.values = new(sync.Map)
 	c.SetAttribute(flux.XRequestTime, time.Now().Unix())
 	c.SetAttribute(flux.XRequestId, c.requestId)
-	c.SetAttribute(flux.XRequestHost, httpRequest.Host)
+	c.SetAttribute(flux.XRequestHost, context.Request().Host)
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 }
 
 func (c *ContextWrapper) Release() {
-	c.echo = nil
+	c.context = nil
 	c.endpoint = nil
 	c.attributes = nil
 	c.values = nil

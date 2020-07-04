@@ -1,24 +1,12 @@
 package flux
 
-import "net/http"
-
-const (
-	StatusOK           = http.StatusOK
-	StatusBadRequest   = http.StatusBadRequest
-	StatusNotFound     = http.StatusNotFound
-	StatusUnauthorized = http.StatusUnauthorized
-	StatusAccessDenied = http.StatusForbidden
-	StatusServerError  = http.StatusInternalServerError
-	StatusBadGateway   = http.StatusBadGateway
+import (
+	"github.com/labstack/echo/v4"
+	"net/http"
 )
 
-// ResponseWriter 是写入响应数据的接口
-type ResponseWriter interface {
-	SetStatusCode(status int) ResponseWriter       // SetStatusCode 设置Http响应状态码
-	StatusCode() int                               // StatusCode 获取Http响应状态码
-	AddHeader(name, value string) ResponseWriter   // AddHeader 添加Header
-	SetHeaders(headers http.Header) ResponseWriter // SetHeaders 设置全部Headers
-	Headers() http.Header                          // Header 获取设置的Headers
-	SetBody(body interface{}) ResponseWriter       // SetBody 设置数据响应体
-	Body() interface{}                             // Body 设置响应数据体
+// HttpResponseWriter 实现将错误消息和响应数据写入Response实例
+type HttpResponseWriter interface {
+	WriteError(response *echo.Response, requestId string, header http.Header, error *InvokeError) error
+	WriteData(response *echo.Response, requestId string, header http.Header, status int, body interface{}) error
 }

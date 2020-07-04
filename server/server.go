@@ -52,11 +52,14 @@ const (
 )
 
 var (
-	errEndpointVersionNotFound = &flux.InvokeError{
+	ErrEndpointVersionNotFound = &flux.InvokeError{
 		StatusCode: flux.StatusNotFound,
 		Message:    "ENDPOINT_VERSION_NOT_FOUND",
 	}
-	httpDefaults = map[string]interface{}{
+)
+
+var (
+	HttpServerConfigDefaults = map[string]interface{}{
 		ConfigHttpVersionHeader: DefaultHttpVersionHeader,
 		ConfigHttpDebugEnable:   false,
 		ConfigHttpAddress:       "0.0.0.0",
@@ -64,7 +67,7 @@ var (
 	}
 )
 
-// Context pipeline
+// ContextPipelineFunc
 type ContextPipelineFunc func(echo.Context, flux.Context)
 
 // FluxServer
@@ -72,7 +75,7 @@ type FluxServer struct {
 	httpServer        *echo.Echo
 	httpConfig        *flux.Configuration
 	httpVisits        *expvar.Int
-	httpAdaptWriter   internal.HttpWriter
+	httpWriter        flux.HttpResponseWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
 	dispatcher        *internal.FxDispatcher
@@ -86,9 +89,10 @@ func NewFluxServer() *FluxServer {
 	id, _ := snowflake.NewNode(1)
 	return &FluxServer{
 		httpVisits:      expvar.NewInt("visits"),
+		httpWriter:      new(internal.DefaultHttpResponseWriter),
 		dispatcher:      internal.NewDispatcher(),
 		endpointMvMap:   make(map[string]*internal.MultiVersionEndpoint),
-		contextWrappers: sync.Pool{New: internal.NewFxContext},
+		contextWrappers: sync.Pool{New: internal.NewContextWrapper},
 		pipelines:       make([]ContextPipelineFunc, 0),
 		snowflakeId:     id,
 	}
@@ -117,17 +121,17 @@ func (fs *FluxServer) Initial() error {
 func (fs *FluxServer) InitServer() error {
 	// Http server
 	fs.httpConfig = flux.NewConfigurationOf(ConfigHttpRootName)
-	fs.httpConfig.SetDefaults(httpDefaults)
+	fs.httpConfig.SetDefaults(HttpServerConfigDefaults)
 	fs.httpVersionHeader = fs.httpConfig.GetString(ConfigHttpVersionHeader)
 	fs.httpServer = echo.New()
 	fs.httpServer.HideBanner = true
 	fs.httpServer.HidePort = true
-	fs.httpServer.HTTPErrorHandler = fs.httpErrorAdapting
+	fs.httpServer.HTTPErrorHandler = fs.handleServerErrors
 	// Http拦截器
 	if !fs.httpConfig.GetBool("cors-disable") {
 		fs.AddHttpInterceptor(middleware.CORS())
 	}
-	fs.AddHttpInterceptor(fs.requestPrepare())
+	fs.AddHttpInterceptor(fs.httpRequestPrepare())
 	// Http debug features
 	if fs.httpConfig.GetBool(ConfigHttpDebugEnable) {
 		fs.debugFeatures(fs.httpConfig)
@@ -260,7 +264,7 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 			logger.Trace(ctx.RequestId()).Infow("DISPATCHER:ENDPOINT_NOT_FOUND",
 				"method", httpRequest.Method, "uri", httpRequest.RequestURI, "path", httpRequest.URL.Path, "version", version,
 			)
-			return errEndpointVersionNotFound
+			return ErrEndpointVersionNotFound
 		} else {
 			logger.Trace(ctx.RequestId()).Infow("DISPATCHER:ENDPOINT_ROUTING",
 				"method", httpRequest.Method, "uri", httpRequest.RequestURI, "path", httpRequest.URL.Path, "version", version,
@@ -269,27 +273,28 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 			if err := fs.dispatcher.Dispatch(ctx); nil != err {
 				return err
 			} else {
-				return fs.httpAdaptWriter.WriteResponse(ctx)
+				return fs.httpWriter.WriteData(ctx.HttpContext().Response(), ctx.RequestId(),
+					ctx.ResponseWriter().Headers(), ctx.ResponseWriter().StatusCode(), ctx.ResponseWriter().Body())
 			}
 		}
 	}
 }
 
-// httpErrorAdapting EchoHttp状态错误处理函数。Err包含网关内部错误，以及Http框架原生错误
-func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
-	iErr, isie := inErr.(*flux.InvokeError)
+// handleServerErrors EchoHttp状态错误处理函数。Err包含网关内部错误，以及Http框架原生错误
+func (fs *FluxServer) handleServerErrors(err error, ctx echo.Context) {
+	inverr, isie := err.(*flux.InvokeError)
 	// 解析非Flux.InvokeError的消息
 	if !isie {
-		code := https.StatusInternalServerError
+		statusCode := https.StatusInternalServerError
 		msg := "INTERNAL:SERVER_ERROR"
-		if he, ishe := inErr.(*echo.HTTPError); ishe {
-			code = he.Code
+		if he, ishe := err.(*echo.HTTPError); ishe {
+			statusCode = he.Code
 			msg = he.Error()
 			if mstr, isms := he.Message.(string); isms {
 				msg = mstr
 			}
 		}
-		iErr = flux.NewInvokeError(code, msg, inErr)
+		inverr = flux.NewInvokeError(statusCode, msg, err)
 	}
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
 	var requestId string
@@ -300,15 +305,14 @@ func (fs *FluxServer) httpErrorAdapting(inErr error, ctx echo.Context) {
 	} else {
 		requestId = "ID:NON_CONTEXT"
 	}
-	var outErr error
+	var oerr error
 	if ctx.Request().Method == https.MethodHead {
-		ctx.Response().Header().Set("X-Error-Message", iErr.Message)
-		outErr = ctx.NoContent(iErr.StatusCode)
+		oerr = ctx.NoContent(inverr.StatusCode)
 	} else {
-		outErr = fs.httpAdaptWriter.WriteError(ctx.Response(), requestId, headers, iErr)
+		oerr = fs.httpWriter.WriteError(ctx.Response(), requestId, headers, inverr)
 	}
-	if nil != outErr {
-		logger.Trace(requestId).Errorf("Error responding", outErr)
+	if nil != oerr {
+		logger.Trace(requestId).Error("Error responding", oerr)
 	}
 }
 
@@ -332,7 +336,7 @@ func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersio
 	}
 }
 
-func (*FluxServer) requestPrepare() echo.MiddlewareFunc {
+func (*FluxServer) httpRequestPrepare() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Body缓存，允许通过 GetBody 多次读取Body
@@ -395,9 +399,14 @@ func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
 	echo.NotFoundHandler = nfh
 }
 
+// SetHttpNotFoundHandler 设置Http响应数据写入的处理接口
+func (fs *FluxServer) SetHttpResponseWriter(writer flux.HttpResponseWriter) {
+	fs.httpWriter = writer
+}
+
 // AddLifecycleHook 添加生命周期Hook接口：Startuper/Shutdowner接口
-func (fs *FluxServer) AddLifecycleHook(lifecycleHook interface{}) {
-	fs.dispatcher.AddLifecycleHook(lifecycleHook)
+func (fs *FluxServer) AddLifecycleHook(hook interface{}) {
+	fs.dispatcher.AddLifecycleHook(hook)
 }
 
 // AddContextPipeline 添加Http与Flux的Context桥接函数

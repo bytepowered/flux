@@ -11,24 +11,29 @@ import (
 	"net/http"
 )
 
-type HttpWriter int
+var _ flux.HttpResponseWriter = new(DefaultHttpResponseWriter)
 
-func (a HttpWriter) WriteError(resp *echo.Response, reqId string, outHeader http.Header, invokeError *flux.InvokeError) error {
-	_setupResponse(resp, reqId, outHeader, invokeError.StatusCode)
-	data := map[string]string{
-		"requestId": reqId,
-		"status":    "error",
-		"message":   invokeError.Message,
-	}
-	if nil != invokeError.Internal {
-		data["error"] = invokeError.Internal.Error()
-	}
-	return _serializeWith(_httpSerializer(), resp, data)
+type DefaultHttpResponseWriter struct {
 }
 
-func (a HttpWriter) WriteResponse(c *ContextWrapper) error {
-	resp := _setupResponse(c.echo.Response(), c.RequestId(), c.ResponseWriter().Headers(), c.response.status)
-	body := c.response.Body()
+func (a *DefaultHttpResponseWriter) WriteError(response *echo.Response,
+	requestId string, header http.Header, err *flux.InvokeError) error {
+	setupResponse(response, requestId, header, err.StatusCode)
+	data := map[string]string{
+		"request-id": requestId,
+		"status":     "error",
+		"message":    err.Message,
+	}
+	if nil != err.Internal {
+		data["error"] = err.Internal.Error()
+	}
+	return serialize(getHttpSerializer(), response, data)
+}
+
+func (a *DefaultHttpResponseWriter) WriteData(
+	response *echo.Response,
+	requestId string, header http.Header, status int, body interface{}) error {
+	resp := setupResponse(response, requestId, header, status)
 	if r, ok := body.(io.Reader); ok {
 		if c, ok := r.(io.Closer); ok {
 			defer pkg.SilentlyCloseFunc(c)
@@ -36,14 +41,14 @@ func (a HttpWriter) WriteResponse(c *ContextWrapper) error {
 		if data, err := ioutil.ReadAll(r); nil != err {
 			return err
 		} else {
-			return _serializeWith(_httpSerializer(), resp, data)
+			return serialize(getHttpSerializer(), resp, data)
 		}
 	} else {
-		return _serializeWith(_httpSerializer(), resp, body)
+		return serialize(getHttpSerializer(), resp, body)
 	}
 }
 
-func _serializeWith(encoder flux.Serializer, resp *echo.Response, data interface{}) error {
+func serialize(encoder flux.Serializer, resp *echo.Response, data interface{}) error {
 	if bytes, err := encoder.Marshal(data); nil != err {
 		return &flux.InvokeError{
 			StatusCode: flux.StatusServerError,
@@ -51,15 +56,15 @@ func _serializeWith(encoder flux.Serializer, resp *echo.Response, data interface
 			Internal:   err,
 		}
 	} else {
-		return _writeToHttp(resp, bytes)
+		return writeToHttp(resp, bytes)
 	}
 }
 
-func _httpSerializer() flux.Serializer {
+func getHttpSerializer() flux.Serializer {
 	return ext.GetSerializer(ext.TypeNameSerializerDefault)
 }
 
-func _writeToHttp(resp *echo.Response, bytes []byte) error {
+func writeToHttp(resp *echo.Response, bytes []byte) error {
 	_, err := resp.Write(bytes)
 	if nil != err {
 		return fmt.Errorf("write http response: %w", err)
@@ -67,14 +72,14 @@ func _writeToHttp(resp *echo.Response, bytes []byte) error {
 	return err
 }
 
-func _setupResponse(resp *echo.Response, reqId string, outHeader http.Header, status int) *echo.Response {
+func setupResponse(resp *echo.Response, reqId string, oheader http.Header, status int) *echo.Response {
 	resp.Status = status
 	headers := resp.Header()
 	headers.Set(echo.HeaderServer, "FluxGo")
 	headers.Set(echo.HeaderXRequestID, reqId)
 	headers.Set("Content-Type", "application/json;charset=utf-8")
 	// 允许Override默认Header
-	for k, v := range outHeader {
+	for k, v := range oheader {
 		for _, iv := range v {
 			headers.Add(k, iv)
 		}
