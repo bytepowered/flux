@@ -108,8 +108,8 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	// 支持定义Registry
 	registry := ex.configuration.Sub("registry")
 	registry.SetGlobalAlias(GetRegistryGlobalAlias())
-	if id, registryc := newConsumerRegistry(registry); id != "" && nil != registryc {
-		consumerc.Registries[id] = registryc
+	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
+		consumerc.Registries[id] = rconfig
 	}
 	dubbogo.SetConsumerConfig(consumerc)
 	return nil
@@ -186,9 +186,10 @@ func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubbogo.Generic
 }
 
 func newConsumerRegistry(config *flux.Configuration) (string, *dubbogo.RegistryConfig) {
-	if !config.IsSet("id") {
+	if !config.IsSet("protocol", "address") {
 		return "", nil
 	}
+	config.SetDefault("id", "default")
 	return config.GetString("id"), &dubbogo.RegistryConfig{
 		Protocol:   config.GetString("protocol"),
 		TimeoutStr: config.GetString("timeout"),
