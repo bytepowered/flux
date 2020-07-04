@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"reflect"
 	"time"
 )
 
@@ -48,7 +49,7 @@ func (d *FxDispatcher) Initial() error {
 	// Exchanges
 	for proto, ex := range ext.Exchanges() {
 		ns := "EXCHANGE." + proto
-		logger.Infof("Load exchange, proto: %s, inst.type: %T, config.ns: %s", proto, ex, ns)
+		logger.Infow("Load exchange", "proto", proto, "type", reflect.TypeOf(ex), "config-ns", ns)
 		if err := initRegisterHook(ex, flux.NewConfigurationOf(ns)); nil != err {
 			return err
 		}
@@ -56,10 +57,10 @@ func (d *FxDispatcher) Initial() error {
 	// 手动注册的单实例Filters
 	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
 		ns := filter.TypeId()
-		logger.Infof("Load static filter, filter.type: %T, config.ns: %s", filter, ns)
+		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
 		config := flux.NewConfigurationOf(ns)
 		if _isDisabled(config) {
-			logger.Infof("StaticFilter set DISABLED, filterId: %s", ns)
+			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
 			continue
 		}
 		if err := initRegisterHook(filter, config); nil != err {
@@ -73,9 +74,9 @@ func (d *FxDispatcher) Initial() error {
 	}
 	for _, item := range dynFilters {
 		filter := item.Factory()
-		logger.Infof("Load dynamic filter, filterId: %s, typeId: %s, filter.type: %T", item.Id, item.TypeId, filter)
+		logger.Infof("Load dynamic-filter", "filter-id", item.Id, "type-id", item.TypeId, "type", filter)
 		if _isDisabled(item.Config) {
-			logger.Infof("DynamicFilter set DISABLED, filterId: %s", item.TypeId)
+			logger.Infof("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
 			continue
 		}
 		if err := initRegisterHook(filter, item.Config); nil != err {
@@ -133,7 +134,7 @@ func (d *FxDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 			if f, ok := ext.GetSelectiveFilter(typeId); ok {
 				selectFilters = append(selectFilters, f)
 			} else {
-				logger.Trace(ctx.RequestId()).Warnw("Filter not found on selector", "typeId", typeId)
+				logger.Trace(ctx.RequestId()).Warnw("Filter not found on selector", "type-id", typeId)
 			}
 		}
 	}
@@ -168,7 +169,7 @@ func findActiveRegistry() (flux.Registry, *flux.Configuration, error) {
 	config := flux.NewConfigurationOf(flux.KeyConfigRootRegistry)
 	config.SetDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
 	registryId := config.GetString(flux.KeyConfigRegistryId)
-	logger.Infow("Active registry", "registryId", registryId)
+	logger.Infow("Active metadata registry", "registry-id", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
 		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
 	} else {
