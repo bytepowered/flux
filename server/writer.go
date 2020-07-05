@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
+	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -12,37 +13,22 @@ import (
 )
 
 var (
-	_                  flux.HttpResponseWriter = new(HttpServerResponseWriter)
-	httpErrorAssembler InvokeErrorAssembler
+	_ flux.HttpResponseWriter = new(HttpServerResponseWriter)
 )
-
-func init() {
-	SetHttpErrorAssembler(func(ctx echo.Context, err *flux.InvokeError) map[string]string {
-		ssmap := map[string]string{
-			"status":  "error",
-			"message": err.Message,
-		}
-		if nil != err.Internal {
-			ssmap["error"] = err.Internal.Error()
-		}
-		return ssmap
-	})
-}
-
-// InvokeErrorAssembler 将Error转换成响应结构体
-type InvokeErrorAssembler func(echo.Context, *flux.InvokeError) map[string]string
-
-// SetHttpErrorAssembler 设置HttpError错误组装成Map响应结构体的处理函数
-func SetHttpErrorAssembler(f InvokeErrorAssembler) {
-	httpErrorAssembler = f
-}
 
 // HttpServerResponseWriter 默认Http服务响应数据Writer
 type HttpServerResponseWriter int
 
 func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string, header http.Header, err *flux.InvokeError) error {
 	SetupResponseDefaults(ctx.Response(), requestId, header, err.StatusCode)
-	bytes, err := SerializeWith(GetHttpDefaultSerializer(), httpErrorAssembler(ctx, err))
+	resp := map[string]string{
+		"status":  "error",
+		"message": err.Message,
+	}
+	if nil != err.Internal {
+		resp["error"] = err.Internal.Error()
+	}
+	bytes, err := SerializeWith(GetHttpDefaultSerializer(), resp)
 	if nil != err {
 		return err
 	}
@@ -51,26 +37,33 @@ func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string
 
 func (a *HttpServerResponseWriter) WriteBody(ctx echo.Context, requestId string, header http.Header, status int, body interface{}) error {
 	SetupResponseDefaults(ctx.Response(), requestId, header, status)
+	var output []byte
 	if r, ok := body.(io.Reader); ok {
 		if c, ok := r.(io.Closer); ok {
 			defer pkg.SilentlyCloseFunc(c)
 		}
-		if data, err := ioutil.ReadAll(r); nil != err {
+		if bytes, err := ioutil.ReadAll(r); nil != err {
 			return err
 		} else {
-			bytes, err := SerializeWith(GetHttpDefaultSerializer(), data)
-			if nil != err {
-				return err
-			}
-			return WriteToHttpChannel(ctx.Response(), bytes)
+			output = bytes
 		}
 	} else {
-		bytes, err := SerializeWith(GetHttpDefaultSerializer(), body)
-		if nil != err {
+		if bytes, err := SerializeWith(GetHttpDefaultSerializer(), body); nil != err {
 			return err
+		} else {
+			output = bytes
 		}
-		return WriteToHttpChannel(ctx.Response(), bytes)
 	}
+	// 异步地打印响应日志信息
+	go func() {
+		logger.Trace(requestId).Infow("Http response", "data", string(output))
+	}()
+	// 写入Http响应发生的错误，没必要向上抛出Error错误处理。
+	// 因为已无法通过WriteError写到客户端
+	if err := WriteToHttpChannel(ctx.Response(), output); nil != err {
+		logger.Trace(requestId).Errorw("Http response", "data", string(output), "error", err)
+	}
+	return nil
 }
 
 func SerializeWith(serializer flux.Serializer, data interface{}) ([]byte, *flux.InvokeError) {
