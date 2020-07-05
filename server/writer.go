@@ -12,12 +12,12 @@ import (
 )
 
 var (
-	_                     flux.HttpResponseWriter = new(HttpServerResponseWriter)
-	httpErrorAssembleFunc InvokeErrorAssembleFunc
+	_                  flux.HttpResponseWriter = new(HttpServerResponseWriter)
+	httpErrorAssembler InvokeErrorAssembler
 )
 
 func init() {
-	SetHttpErrorAssembleFunc(func(err *flux.InvokeError) map[string]string {
+	SetHttpErrorAssembler(func(ctx echo.Context, err *flux.InvokeError) map[string]string {
 		ssmap := map[string]string{
 			"status":  "error",
 			"message": err.Message,
@@ -29,12 +29,12 @@ func init() {
 	})
 }
 
-// InvokeErrorAssembleFunc 将Error转换成响应结构体
-type InvokeErrorAssembleFunc func(*flux.InvokeError) map[string]string
+// InvokeErrorAssembler 将Error转换成响应结构体
+type InvokeErrorAssembler func(echo.Context, *flux.InvokeError) map[string]string
 
-// SetHttpErrorAssembleFunc 设置HttpError错误组装成Map响应结构体的处理函数
-func SetHttpErrorAssembleFunc(f InvokeErrorAssembleFunc) {
-	httpErrorAssembleFunc = f
+// SetHttpErrorAssembler 设置HttpError错误组装成Map响应结构体的处理函数
+func SetHttpErrorAssembler(f InvokeErrorAssembler) {
+	httpErrorAssembler = f
 }
 
 // HttpServerResponseWriter 默认Http服务响应数据Writer
@@ -42,7 +42,7 @@ type HttpServerResponseWriter int
 
 func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string, header http.Header, err *flux.InvokeError) error {
 	SetupResponseDefaults(ctx.Response(), requestId, header, err.StatusCode)
-	bytes, err := SerializeWith(GetHttpDefaultSerializer(), httpErrorAssembleFunc(err))
+	bytes, err := SerializeWith(GetHttpDefaultSerializer(), httpErrorAssembler(ctx, err))
 	if nil != err {
 		return err
 	}
