@@ -40,17 +40,17 @@ func SetHttpErrorAssembleFunc(f InvokeErrorAssembleFunc) {
 // HttpServerResponseWriter 默认Http服务响应数据Writer
 type HttpServerResponseWriter int
 
-func (a *HttpServerResponseWriter) WriteError(response *echo.Response, requestId string, header http.Header, err *flux.InvokeError) error {
-	SetupResponseDefaults(response, requestId, header, err.StatusCode)
+func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string, header http.Header, err *flux.InvokeError) error {
+	SetupResponseDefaults(ctx.Response(), requestId, header, err.StatusCode)
 	bytes, err := SerializeWith(GetHttpDefaultSerializer(), httpErrorAssembleFunc(err))
 	if nil != err {
 		return err
 	}
-	return WriteToHttpChannel(response, bytes)
+	return WriteToHttpChannel(ctx.Response(), bytes)
 }
 
-func (a *HttpServerResponseWriter) WriteBody(response *echo.Response, requestId string, header http.Header, status int, body interface{}) error {
-	SetupResponseDefaults(response, requestId, header, status)
+func (a *HttpServerResponseWriter) WriteBody(ctx echo.Context, requestId string, header http.Header, status int, body interface{}) error {
+	SetupResponseDefaults(ctx.Response(), requestId, header, status)
 	if r, ok := body.(io.Reader); ok {
 		if c, ok := r.(io.Closer); ok {
 			defer pkg.SilentlyCloseFunc(c)
@@ -62,14 +62,14 @@ func (a *HttpServerResponseWriter) WriteBody(response *echo.Response, requestId 
 			if nil != err {
 				return err
 			}
-			return WriteToHttpChannel(response, bytes)
+			return WriteToHttpChannel(ctx.Response(), bytes)
 		}
 	} else {
 		bytes, err := SerializeWith(GetHttpDefaultSerializer(), body)
 		if nil != err {
 			return err
 		}
-		return WriteToHttpChannel(response, bytes)
+		return WriteToHttpChannel(ctx.Response(), bytes)
 	}
 }
 

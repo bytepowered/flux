@@ -11,20 +11,20 @@ import (
 	"time"
 )
 
-type FxDispatcher struct {
+type ServerDispatcher struct {
 	activeRegistry flux.Registry
 	hooksStartup   []flux.Startuper
 	hooksShutdown  []flux.Shutdowner
 }
 
-func NewDispatcher() *FxDispatcher {
-	return &FxDispatcher{
+func NewDispatcher() *ServerDispatcher {
+	return &ServerDispatcher{
 		hooksStartup:  make([]flux.Startuper, 0),
 		hooksShutdown: make([]flux.Shutdowner, 0),
 	}
 }
 
-func (d *FxDispatcher) Initial() error {
+func (d *ServerDispatcher) Initial() error {
 	logger.Infof("Dispatcher initialing")
 	// 组件生命周期回调钩子
 	initRegisterHook := func(ref interface{}, config *flux.Configuration) error {
@@ -89,7 +89,7 @@ func (d *FxDispatcher) Initial() error {
 	return nil
 }
 
-func (d *FxDispatcher) AddLifecycleHook(hook interface{}) {
+func (d *ServerDispatcher) AddLifecycleHook(hook interface{}) {
 	if startup, ok := hook.(flux.Startuper); ok {
 		d.hooksStartup = append(d.hooksStartup, startup)
 	}
@@ -98,7 +98,7 @@ func (d *FxDispatcher) AddLifecycleHook(hook interface{}) {
 	}
 }
 
-func (d *FxDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
+func (d *ServerDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
 	// Debug echo registry
 	if pkg.IsEnv(pkg.EnvDev) {
 		if f, ok := ext.GetRegistryFactory(ext.RegistryIdEcho); ok {
@@ -108,7 +108,7 @@ func (d *FxDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
 	return d.activeRegistry.WatchEvents(events)
 }
 
-func (d *FxDispatcher) Startup() error {
+func (d *ServerDispatcher) Startup() error {
 	for _, startup := range sortedStartup(d.hooksStartup) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -117,7 +117,7 @@ func (d *FxDispatcher) Startup() error {
 	return nil
 }
 
-func (d *FxDispatcher) Shutdown(ctx context.Context) error {
+func (d *ServerDispatcher) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(d.hooksShutdown) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -126,7 +126,7 @@ func (d *FxDispatcher) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (d *FxDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
+func (d *ServerDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 	globalFilters := ext.GlobalFilters()
 	selectFilters := make([]flux.Filter, 0)
 	for _, selector := range ext.FindSelectors(ctx.RequestHost()) {
@@ -154,7 +154,7 @@ func (d *FxDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 	}, append(globalFilters, selectFilters...)...)(ctx)
 }
 
-func (d *FxDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
+func (d *ServerDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		fi = filters[i].Invoke(fi)
 	}

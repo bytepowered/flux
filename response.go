@@ -7,6 +7,6 @@ import (
 
 // HttpResponseWriter 实现将错误消息和响应数据写入Response实例
 type HttpResponseWriter interface {
-	WriteError(response *echo.Response, requestId string, header http.Header, error *InvokeError) error
-	WriteBody(response *echo.Response, requestId string, header http.Header, status int, body interface{}) error
+	WriteError(ctx echo.Context, requestId string, header http.Header, error *InvokeError) error
+	WriteBody(ctx echo.Context, requestId string, header http.Header, status int, body interface{}) error
 }

@@ -78,7 +78,7 @@ type FluxServer struct {
 	httpWriter        flux.HttpResponseWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
-	dispatcher        *internal.FxDispatcher
+	dispatcher        *internal.ServerDispatcher
 	mvEndpointMap     map[string]*internal.MultiVersionEndpoint
 	contextWrappers   sync.Pool
 	snowflakeId       *snowflake.Node
@@ -275,7 +275,7 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 				return err
 			}
 			rw := ctx.ResponseWriter()
-			return fs.httpWriter.WriteBody(ctx.HttpContext().Response(), ctx.RequestId(),
+			return fs.httpWriter.WriteBody(ctx.HttpContext(), ctx.RequestId(),
 				rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}
@@ -310,7 +310,7 @@ func (fs *FluxServer) handleServerError(err error, ctx echo.Context) {
 	if ctx.Request().Method == https.MethodHead {
 		oerr = ctx.NoContent(inverr.StatusCode)
 	} else {
-		oerr = fs.httpWriter.WriteError(ctx.Response(), requestId, headers, inverr)
+		oerr = fs.httpWriter.WriteError(ctx, requestId, headers, inverr)
 	}
 	if nil != oerr {
 		logger.Trace(requestId).Error("Error responding", oerr)
