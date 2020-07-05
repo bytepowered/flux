@@ -25,8 +25,7 @@ func (fs *FluxServer) debugFeatures(config *flux.Configuration) {
 	fs.httpServer.GET(DebugPathVars, debugHandler, auth)
 	fs.httpServer.GET(DebugPathPprof, debugHandler, auth)
 	fs.httpServer.GET(DebugPathEndpoints, func(c echo.Context) error {
-		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
-		if data, err := decoder.Marshal(queryEndpoints(fs.endpointMvMap, c)); nil != err {
+		if data, err := ext.GetSerializer(ext.TypeNameSerializerJson).Marshal(queryEndpoints(fs.mvEndpointMap, c)); nil != err {
 			return err
 		} else {
 			return c.JSONBlob(flux.StatusOK, data)
