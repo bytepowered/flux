@@ -35,7 +35,12 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 	httpRequest := ctx.RequestReader().HttpRequest()
 	newRequest, err := ex.Assemble(target, httpRequest)
 	if nil != err {
-		return nil, flux.NewInvokeError(flux.StatusServerError, "HTTPEX:ASSEMBLE", err)
+		return nil, &flux.InvokeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    "HTTPEX:ASSEMBLE",
+			Internal:   err,
+		}
 	} else {
 		// Header透传以及传递AttrValues
 		newRequest.Header = httpRequest.Header.Clone()
@@ -51,6 +56,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 		}
 		return nil, &flux.InvokeError{
 			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayExchange,
 			Message:    msg,
 			Internal:   err,
 		}

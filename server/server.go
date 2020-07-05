@@ -54,6 +54,7 @@ const (
 var (
 	ErrEndpointVersionNotFound = &flux.InvokeError{
 		StatusCode: flux.StatusNotFound,
+		ErrorCode:  flux.ErrorCodeGatewayEndpoint,
 		Message:    "ENDPOINT_VERSION_NOT_FOUND",
 	}
 )
@@ -295,7 +296,12 @@ func (fs *FluxServer) handleServerError(err error, ctx echo.Context) {
 				msg = mstr
 			}
 		}
-		inverr = flux.NewInvokeError(statusCode, msg, err)
+		inverr = &flux.InvokeError{
+			StatusCode: statusCode,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    msg,
+			Internal:   err,
+		}
 	}
 	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
 	var requestId string
@@ -346,6 +352,7 @@ func (*FluxServer) httpRequestPrepare() echo.MiddlewareFunc {
 			if nil != err {
 				return &flux.InvokeError{
 					StatusCode: flux.StatusBadRequest,
+					ErrorCode:  flux.ErrorCodeGatewayInternal,
 					Message:    "REQUEST:BODY_PREPARE",
 					Internal:   fmt.Errorf("read req-body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 				}
@@ -358,6 +365,7 @@ func (*FluxServer) httpRequestPrepare() echo.MiddlewareFunc {
 			if err := request.ParseForm(); nil != err {
 				return &flux.InvokeError{
 					StatusCode: flux.StatusBadRequest,
+					ErrorCode:  flux.ErrorCodeGatewayInternal,
 					Message:    "REQUEST:FORM_PARSING",
 					Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 				}

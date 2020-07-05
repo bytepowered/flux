@@ -143,6 +143,7 @@ func (d *ServerDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 		if exchange, ok := ext.GetExchange(protoName); !ok {
 			return &flux.InvokeError{
 				StatusCode: flux.StatusNotFound,
+				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL: %s", protoName)}
 		} else {
 			start := time.Now()

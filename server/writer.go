@@ -77,6 +77,7 @@ func SerializeWith(serializer flux.Serializer, data interface{}) ([]byte, *flux.
 	if bytes, err := serializer.Marshal(data); nil != err {
 		return nil, &flux.InvokeError{
 			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "RESPONSE:MARSHALING",
 			Internal:   err,
 		}

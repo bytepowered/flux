@@ -23,10 +23,12 @@ const (
 var (
 	ErrorAuthorizationHeaderRequired = &flux.InvokeError{
 		StatusCode: flux.StatusUnauthorized,
+		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "JWT:REQUIRES_TOKEN",
 	}
 	ErrorIllegalToken = &flux.InvokeError{
 		StatusCode: flux.StatusUnauthorized,
+		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "JWT:ILLEGAL_TOKEN",
 	}
 )

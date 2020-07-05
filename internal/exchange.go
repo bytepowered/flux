@@ -6,7 +6,11 @@ import (
 )
 
 var (
-	ErrExchangeDecoderNotFound = &flux.InvokeError{StatusCode: flux.StatusServerError, Message: "EXCHANGE:DECODER_NOT_FOUND"}
+	ErrExchangeDecoderNotFound = &flux.InvokeError{
+		StatusCode: flux.StatusServerError,
+		ErrorCode:  flux.ErrorCodeGatewayInternal,
+		Message:    "EXCHANGE:DECODER_NOT_FOUND",
+	}
 )
 
 func InvokeExchanger(ctx flux.Context, exchange flux.Exchange) *flux.InvokeError {

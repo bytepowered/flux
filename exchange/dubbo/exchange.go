@@ -153,14 +153,24 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 		ssmap, err := cast.ToStringMapStringE(attachments)
 		if nil != err {
-			return nil, flux.NewInvokeError(flux.StatusServerError, ErrMessageAssemble, err)
+			return nil, &flux.InvokeError{
+				StatusCode: flux.StatusServerError,
+				ErrorCode:  flux.ErrorCodeGatewayInternal,
+				Message:    ErrMessageAssemble,
+				Internal:   err,
+			}
 		}
 		goctx = context.WithValue(goctx, constant.AttachmentKey, ssmap)
 	}
 	if resp, err := service.Invoke(goctx, args); err != nil {
 		trace.Errorw("Dubbo rpc error", "interface", target.UpstreamUri, "method", target.UpstreamMethod)
 		trace.Error("Dubbo rpc error", err)
-		return nil, flux.NewInvokeError(flux.StatusBadGateway, ErrMessageInvoke, err)
+		return nil, &flux.InvokeError{
+			StatusCode: flux.StatusBadGateway,
+			ErrorCode:  flux.ErrorCodeGatewayExchange,
+			Message:    ErrMessageInvoke,
+			Internal:   err,
+		}
 	} else {
 		return resp, nil
 	}

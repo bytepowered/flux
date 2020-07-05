@@ -88,6 +88,7 @@ func (r *HystrixFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 		}
 		return &flux.InvokeError{
 			StatusCode: http.StatusBadGateway,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    msg,
 			Internal:   err,
 		}

@@ -32,6 +32,7 @@ func (ArgumentValueLookupFilter) Invoke(next flux.FilterInvoker) flux.FilterInvo
 		if err := resolve(lookupFunc, ctx.Endpoint().Arguments, ctx); nil != err {
 			return &flux.InvokeError{
 				StatusCode: flux.StatusBadRequest,
+				ErrorCode:  flux.ErrorCodeRequestInvalid,
 				Message:    "PARAMETERS:LOOKUP",
 				Internal:   err,
 			}

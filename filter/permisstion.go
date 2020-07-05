@@ -18,10 +18,12 @@ const (
 var (
 	ErrPermissionSubjectNotFound = &flux.InvokeError{
 		StatusCode: flux.StatusBadRequest,
+		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "PERMISSION:SUBJECT_NOT_FOUND",
 	}
 	ErrPermissionSubjectAccessDenied = &flux.InvokeError{
 		StatusCode: flux.StatusAccessDenied,
+		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "PERMISSION:SUBJECT_ACCESS_DENIED",
 	}
 )

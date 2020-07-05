@@ -67,6 +67,7 @@ func (r *RateLimitFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 		} else {
 			return &flux.InvokeError{
 				StatusCode: http.StatusTooManyRequests,
+				ErrorCode:  flux.ErrorCodeRequestInvalid,
 				Message:    "RATE:OVER_LIMIT",
 			}
 		}
