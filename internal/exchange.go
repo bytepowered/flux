@@ -29,8 +29,9 @@ func InvokeExchanger(ctx flux.Context, exchange flux.Exchange) *flux.InvokeError
 		return nil
 	} else {
 		return &flux.InvokeError{
-			StatusCode: code,
-			Message:    err.Error(),
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    "EXCHANGE:DECODE_RESPONSE",
 			Internal:   err,
 		}
 	}
