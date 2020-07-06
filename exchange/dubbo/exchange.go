@@ -144,7 +144,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	serviceTag := target.UpstreamUri + "." + target.UpstreamMethod
 	if ex.traceEnable {
 		trace.Infow("Dubbo invoking",
-			"service", serviceTag, "value.types", types, "attachments", attachments,
+			"service", serviceTag, "arguments.type", types, "attachments", attachments,
 		)
 	}
 	args := []interface{}{target.UpstreamMethod, types, values}
@@ -175,9 +175,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		}
 	} else {
 		if ex.traceEnable {
-			trace.Infow("Dubbo invoked: OK",
-				"service", serviceTag, "return.type", reflect.TypeOf(resp), "return.value", resp,
-			)
+			trace.Infow("Dubbo invoked: OK", "service", serviceTag, "return.type", reflect.TypeOf(resp))
 		}
 		return resp, nil
 	}
