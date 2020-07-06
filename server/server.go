@@ -251,7 +251,7 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 		defer func(requestId string) {
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
-				tl.Errorw("Http request unexpected error", "error", err)
+				tl.Errorw("Server dispatch: unexpected error", "error", err)
 				tl.Error(string(debug.Stack()))
 			}
 		}(ctx.RequestId())
@@ -319,7 +319,7 @@ func (fs *FluxServer) handleServerError(err error, ctx echo.Context) {
 		oerr = fs.httpWriter.WriteError(ctx, requestId, headers, inverr)
 	}
 	if nil != oerr {
-		logger.Trace(requestId).Error("Error responding", oerr)
+		logger.Trace(requestId).Error("Server dispatch: error responding", oerr)
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/spf13/cast"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -140,9 +141,10 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		traceId = fxctx.RequestId()
 	}
 	trace := logger.Trace(traceId)
+	serviceTag := target.UpstreamUri + "." + target.UpstreamMethod
 	if ex.traceEnable {
 		trace.Infow("Dubbo invoking",
-			"service", target.UpstreamUri+"."+target.UpstreamMethod, "value.types", types, "attachments", attachments,
+			"service", serviceTag, "value.types", types, "attachments", attachments,
 		)
 	}
 	args := []interface{}{target.UpstreamMethod, types, values}
@@ -163,7 +165,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		goctx = context.WithValue(goctx, constant.AttachmentKey, ssmap)
 	}
 	if resp, err := service.Invoke(goctx, args); err != nil {
-		trace.Errorw("Dubbo rpc error", "interface", target.UpstreamUri, "method", target.UpstreamMethod)
+		trace.Errorw("Dubbo rpc error", "service", serviceTag)
 		trace.Error("Dubbo rpc error", err)
 		return nil, &flux.InvokeError{
 			StatusCode: flux.StatusBadGateway,
@@ -172,6 +174,11 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 			Internal:   err,
 		}
 	} else {
+		if ex.traceEnable {
+			trace.Infow("Dubbo invoked: OK",
+				"service", serviceTag, "return.type", reflect.TypeOf(resp), "return.value", resp,
+			)
+		}
 		return resp, nil
 	}
 }
