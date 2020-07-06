@@ -138,7 +138,14 @@ func (d *ServerDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 			}
 		}
 	}
-	return d.walk(func(ctx flux.Context) *flux.InvokeError {
+	// Metrics
+	metrics := make(map[string]string)
+	defer func() {
+		for k, v := range metrics {
+			ctx.ResponseWriter().AddHeader(k, v)
+		}
+	}()
+	return d.walk(metrics, func(ctx flux.Context) *flux.InvokeError {
 		protoName := ctx.Endpoint().Protocol
 		if exchange, ok := ext.GetExchange(protoName); !ok {
 			return &flux.InvokeError{
@@ -148,18 +155,19 @@ func (d *ServerDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 		} else {
 			start := time.Now()
 			ret := exchange.Exchange(ctx)
-			elapsed := time.Now().Sub(start)
-			ctx.ResponseWriter().AddHeader("X-Exchange-Elapsed", elapsed.String())
+			metrics["X-Metric-Exchange"] = time.Since(start).String()
 			return ret
 		}
 	}, append(globalFilters, selectFilters...)...)(ctx)
 }
 
-func (d *ServerDispatcher) walk(fi flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
+func (d *ServerDispatcher) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
-		fi = filters[i].Invoke(fi)
+		start := time.Now()
+		next = filters[i].Invoke(next)
+		metrics["X-Metric-"+filters[i].TypeId()] = time.Since(start).String()
 	}
-	return fi
+	return next
 }
 
 func _isDisabled(config *flux.Configuration) bool {

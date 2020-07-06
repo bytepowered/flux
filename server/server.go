@@ -47,10 +47,6 @@ const (
 	DebugPathEndpoints = "/debug/endpoints"
 )
 
-const (
-	_echoAttrRoutedContext = "$inner.flux.context"
-)
-
 var (
 	ErrEndpointVersionNotFound = &flux.InvokeError{
 		StatusCode: flux.StatusNotFound,
@@ -243,9 +239,9 @@ func (fs *FluxServer) release(context *internal.ContextWrapper) {
 func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
 	return func(echo echo.Context) error {
 		fs.httpVisits.Add(1)
-		httpRequest := echo.Request()
+		request := echo.Request()
 		// Multi version selection
-		version := httpRequest.Header.Get(fs.httpVersionHeader)
+		version := request.Header.Get(fs.httpVersionHeader)
 		endpoint, found := mvEndpoint.Get(version)
 		ctx := fs.acquire(echo, endpoint)
 		defer func(requestId string) {
@@ -255,71 +251,39 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 				tl.Error(string(debug.Stack()))
 			}
 		}(ctx.RequestId())
-		// Context exchange: Echo <-> Flux
-		for _, pipe := range fs.pipelines {
-			pipe(echo, ctx)
-		}
-		echo.Set(_echoAttrRoutedContext, ctx)
 		defer fs.release(ctx)
 		trace := logger.Trace(ctx.RequestId())
 		if !found {
 			trace.Infow("Server dispatch: <ENDPOINT_NOT_FOUND>",
-				"method", httpRequest.Method, "uri", httpRequest.RequestURI, "path", httpRequest.URL.Path, "version", version,
+				"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 			)
-			return ErrEndpointVersionNotFound
+			return fs.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), ErrEndpointVersionNotFound)
+		}
+		// Context exchange: Echo <-> Flux
+		for _, pipe := range fs.pipelines {
+			pipe(echo, ctx)
+		}
+		trace.Infow("Server dispatch: routing",
+			"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
+			"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
+		)
+		rw := ctx.ResponseWriter()
+		if err := fs.dispatcher.Dispatch(ctx); nil != err {
+			return fs.httpWriter.WriteError(echo, ctx.RequestId(), rw.Headers(), err)
 		} else {
-			trace.Infow("Server dispatch: routing",
-				"method", httpRequest.Method, "uri", httpRequest.RequestURI, "path", httpRequest.URL.Path, "version", version,
-				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
-			)
-			if err := fs.dispatcher.Dispatch(ctx); nil != err {
-				return err
-			}
-			rw := ctx.ResponseWriter()
-			return fs.httpWriter.WriteBody(ctx.HttpContext(), ctx.RequestId(),
-				rw.Headers(), rw.StatusCode(), rw.Body())
+			return fs.httpWriter.WriteBody(echo, ctx.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}
 }
 
-// handleServerError EchoHttp状态错误处理函数。Err包含网关内部错误，以及Http框架原生错误
+// handleServerError EchoHttp状态错误处理函数。
 func (fs *FluxServer) handleServerError(err error, ctx echo.Context) {
-	inverr, ok := err.(*flux.InvokeError)
-	// 解析非Flux.InvokeError的消息
-	if !ok {
-		statusCode := https.StatusInternalServerError
-		msg := "INTERNAL:SERVER_ERROR"
-		if he, ishe := err.(*echo.HTTPError); ishe {
-			statusCode = he.Code
-			msg = he.Error()
-			if mstr, isms := he.Message.(string); isms {
-				msg = mstr
-			}
-		}
-		inverr = &flux.InvokeError{
-			StatusCode: statusCode,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    msg,
-			Internal:   err,
-		}
-	}
-	// 统一异常处理：flux.context仅当找到路由匹配元数据才存在
-	var requestId string
-	var headers https.Header
-	if fc, ok := ctx.Get(_echoAttrRoutedContext).(*internal.ContextWrapper); ok {
-		requestId = fc.RequestId()
-		headers = fc.ResponseWriter().Headers()
-	} else {
-		requestId = "ID:NON_CONTEXT"
-	}
-	var oerr error
-	if ctx.Request().Method == https.MethodHead {
-		oerr = ctx.NoContent(inverr.StatusCode)
-	} else {
-		oerr = fs.httpWriter.WriteError(ctx, requestId, headers, inverr)
-	}
-	if nil != oerr {
-		logger.Trace(requestId).Error("Server dispatch: error responding", oerr)
+	logger.Errorw("Server http unexpected error", "error", err)
+	if err := ctx.JSON(https.StatusInternalServerError, map[string]string{
+		"status": "error",
+		"error":  err.Error(),
+	}); nil != err {
+		logger.Errorw("Server http response error", "error", err)
 	}
 }
 
