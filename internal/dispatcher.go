@@ -13,15 +13,10 @@ import (
 
 type ServerDispatcher struct {
 	activeRegistry flux.Registry
-	hooksStartup   []flux.Startuper
-	hooksShutdown  []flux.Shutdowner
 }
 
 func NewDispatcher() *ServerDispatcher {
-	return &ServerDispatcher{
-		hooksStartup:  make([]flux.Startuper, 0),
-		hooksShutdown: make([]flux.Shutdowner, 0),
-	}
+	return &ServerDispatcher{}
 }
 
 func (d *ServerDispatcher) Initial() error {
@@ -33,7 +28,7 @@ func (d *ServerDispatcher) Initial() error {
 				return err
 			}
 		}
-		d.AddLifecycleHook(ref)
+		ext.AddLifecycleHook(ref)
 		return nil
 	}
 	// 静态注册的单实例内核组件
@@ -89,15 +84,6 @@ func (d *ServerDispatcher) Initial() error {
 	return nil
 }
 
-func (d *ServerDispatcher) AddLifecycleHook(hook interface{}) {
-	if startup, ok := hook.(flux.Startuper); ok {
-		d.hooksStartup = append(d.hooksStartup, startup)
-	}
-	if shutdown, ok := hook.(flux.Shutdowner); ok {
-		d.hooksShutdown = append(d.hooksShutdown, shutdown)
-	}
-}
-
 func (d *ServerDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
 	// Debug echo registry
 	if pkg.IsEnv(pkg.EnvDev) {
@@ -109,7 +95,7 @@ func (d *ServerDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error
 }
 
 func (d *ServerDispatcher) Startup() error {
-	for _, startup := range sortedStartup(d.hooksStartup) {
+	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
 		}
@@ -118,7 +104,7 @@ func (d *ServerDispatcher) Startup() error {
 }
 
 func (d *ServerDispatcher) Shutdown(ctx context.Context) error {
-	for _, shutdown := range sortedShutdown(d.hooksShutdown) {
+	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
 		}

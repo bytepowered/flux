@@ -55,7 +55,7 @@ func InitConfiguration(envKey string) {
 
 func Run(ver flux.BuildInfo) {
 	InitConfiguration(EnvKeyDeployEnv)
-	fx := NewFluxServer()
+	fx := NewHttpServer()
 	if err := fx.Prepare(); nil != err {
 		logger.Panic("Server prepare:", err)
 	}

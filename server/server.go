@@ -64,8 +64,8 @@ var (
 	}
 )
 
-// ContextPipelineFunc
-type ContextPipelineFunc func(echo.Context, flux.Context)
+// HttpContextPipelineFunc
+type HttpContextPipelineFunc func(echo.Context, flux.Context)
 
 // Server
 type HttpServer struct {
@@ -79,10 +79,10 @@ type HttpServer struct {
 	mvEndpointMap     map[string]*internal.MultiVersionEndpoint
 	contextWrappers   sync.Pool
 	snowflakeId       *snowflake.Node
-	pipelines         []ContextPipelineFunc
+	pipelines         []HttpContextPipelineFunc
 }
 
-func NewFluxServer() *HttpServer {
+func NewHttpServer() *HttpServer {
 	id, _ := snowflake.NewNode(1)
 	return &HttpServer{
 		httpVisits:      expvar.NewInt("visits"),
@@ -90,7 +90,7 @@ func NewFluxServer() *HttpServer {
 		dispatcher:      internal.NewDispatcher(),
 		mvEndpointMap:   make(map[string]*internal.MultiVersionEndpoint),
 		contextWrappers: sync.Pool{New: internal.NewContextWrapper},
-		pipelines:       make([]ContextPipelineFunc, 0),
+		pipelines:       make([]HttpContextPipelineFunc, 0),
 		snowflakeId:     id,
 	}
 }
@@ -101,8 +101,8 @@ func (s *HttpServer) HttpConfig() *flux.Configuration {
 }
 
 // Prepare Call before init and startup
-func (s *HttpServer) Prepare(hooks ...flux.PrepareHook) error {
-	for _, prepare := range append(ext.PrepareHooks(), hooks...) {
+func (s *HttpServer) Prepare(hooks ...flux.PrepareHookFunc) error {
+	for _, prepare := range append(ext.GetPrepareHooks(), hooks...) {
 		if err := prepare(); nil != err {
 			return err
 		}
@@ -385,12 +385,7 @@ func (s *HttpServer) SetHttpResponseWriter(writer flux.HttpResponseWriter) {
 	s.httpWriter = writer
 }
 
-// AddLifecycleHook 添加生命周期Hook接口：Startuper/Shutdowner接口
-func (s *HttpServer) AddLifecycleHook(hook interface{}) {
-	s.dispatcher.AddLifecycleHook(hook)
-}
-
-// AddContextPipeline 添加Http与Flux的Context桥接函数
-func (s *HttpServer) AddContextPipeline(bridgeFunc ContextPipelineFunc) {
-	s.pipelines = append(s.pipelines, bridgeFunc)
+// AddHttpContextPipeline 添加Http与Flux的Context桥接函数
+func (s *HttpServer) AddHttpContextPipeline(f HttpContextPipelineFunc) {
+	s.pipelines = append(s.pipelines, f)
 }
