@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	context "context"
 	"expvar"
 	"fmt"
@@ -12,8 +11,6 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"io"
-	"io/ioutil"
 	https "net/http"
 	_ "net/http/pprof"
 	"runtime/debug"
@@ -128,7 +125,7 @@ func (s *HttpServer) InitServer() error {
 	if !s.httpConfig.GetBool("cors-disable") {
 		s.AddHttpInterceptor(middleware.CORS())
 	}
-	s.AddHttpInterceptor(s.httpRequestPrepare())
+	s.AddHttpInterceptor(RepeatableBody)
 	// Http debug features
 	if s.httpConfig.GetBool(ConfigHttpDebugEnable) {
 		s.debugFeatures(s.httpConfig)
@@ -312,39 +309,6 @@ func (s *HttpServer) getVersionEndpoint(routeKey string) (*internal.MultiVersion
 		mve = internal.NewMultiVersionEndpoint()
 		s.mvEndpointMap[routeKey] = mve
 		return mve, true
-	}
-}
-
-func (*HttpServer) httpRequestPrepare() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			// Body缓存，允许通过 GetBody 多次读取Body
-			request := c.Request()
-			data, err := ioutil.ReadAll(request.Body)
-			if nil != err {
-				return &flux.InvokeError{
-					StatusCode: flux.StatusBadRequest,
-					ErrorCode:  flux.ErrorCodeGatewayInternal,
-					Message:    "REQUEST:BODY_PREPARE",
-					Internal:   fmt.Errorf("read req-body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
-				}
-			}
-			request.GetBody = func() (io.ReadCloser, error) {
-				return ioutil.NopCloser(bytes.NewBuffer(data)), nil
-			}
-			// 恢复Body，但ParseForm解析后，request.Body无法重读，需要通过GetBody
-			request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-			if err := request.ParseForm(); nil != err {
-				return &flux.InvokeError{
-					StatusCode: flux.StatusBadRequest,
-					ErrorCode:  flux.ErrorCodeGatewayInternal,
-					Message:    "REQUEST:FORM_PARSING",
-					Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
-				}
-			} else {
-				return next(c)
-			}
-		}
 	}
 }
 
