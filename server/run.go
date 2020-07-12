@@ -57,10 +57,10 @@ func Run(ver flux.BuildInfo) {
 	InitConfiguration(EnvKeyDeployEnv)
 	fx := NewFluxServer()
 	if err := fx.Prepare(); nil != err {
-		logger.Panic("FluxServer prepare:", err)
+		logger.Panic("Server prepare:", err)
 	}
 	if err := fx.InitServer(); nil != err {
-		logger.Panic("FluxServer init:", err)
+		logger.Panic("Server init:", err)
 	}
 	go func() {
 		if err := fx.StartServe(ver); nil != err {

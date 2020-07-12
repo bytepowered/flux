@@ -67,9 +67,9 @@ var (
 // ContextPipelineFunc
 type ContextPipelineFunc func(echo.Context, flux.Context)
 
-// FluxServer
-type FluxServer struct {
-	httpServer        *echo.Echo
+// Server
+type HttpServer struct {
+	server            *echo.Echo
 	httpConfig        *flux.Configuration
 	httpVisits        *expvar.Int
 	httpWriter        flux.HttpResponseWriter
@@ -82,9 +82,9 @@ type FluxServer struct {
 	pipelines         []ContextPipelineFunc
 }
 
-func NewFluxServer() *FluxServer {
+func NewFluxServer() *HttpServer {
 	id, _ := snowflake.NewNode(1)
-	return &FluxServer{
+	return &HttpServer{
 		httpVisits:      expvar.NewInt("visits"),
 		httpWriter:      new(HttpServerResponseWriter),
 		dispatcher:      internal.NewDispatcher(),
@@ -96,12 +96,12 @@ func NewFluxServer() *FluxServer {
 }
 
 // HttpConfig return Http server configuration
-func (fs *FluxServer) HttpConfig() *flux.Configuration {
-	return fs.httpConfig
+func (s *HttpServer) HttpConfig() *flux.Configuration {
+	return s.httpConfig
 }
 
 // Prepare Call before init and startup
-func (fs *FluxServer) Prepare(hooks ...flux.PrepareHook) error {
+func (s *HttpServer) Prepare(hooks ...flux.PrepareHook) error {
 	for _, prepare := range append(ext.PrepareHooks(), hooks...) {
 		if err := prepare(); nil != err {
 			return err
@@ -110,87 +110,87 @@ func (fs *FluxServer) Prepare(hooks ...flux.PrepareHook) error {
 	return nil
 }
 
-func (fs *FluxServer) Initial() error {
-	return fs.InitServer()
+func (s *HttpServer) Initial() error {
+	return s.InitServer()
 }
 
 // InitServer : Call before startup
-func (fs *FluxServer) InitServer() error {
+func (s *HttpServer) InitServer() error {
 	// Http server
-	fs.httpConfig = flux.NewConfigurationOf(ConfigHttpRootName)
-	fs.httpConfig.SetDefaults(HttpServerConfigDefaults)
-	fs.httpVersionHeader = fs.httpConfig.GetString(ConfigHttpVersionHeader)
-	fs.httpServer = echo.New()
-	fs.httpServer.HideBanner = true
-	fs.httpServer.HidePort = true
-	fs.httpServer.HTTPErrorHandler = fs.handleServerError
+	s.httpConfig = flux.NewConfigurationOf(ConfigHttpRootName)
+	s.httpConfig.SetDefaults(HttpServerConfigDefaults)
+	s.httpVersionHeader = s.httpConfig.GetString(ConfigHttpVersionHeader)
+	s.server = echo.New()
+	s.server.HideBanner = true
+	s.server.HidePort = true
+	s.server.HTTPErrorHandler = s.handleServerError
 	// Http拦截器
-	if !fs.httpConfig.GetBool("cors-disable") {
-		fs.AddHttpInterceptor(middleware.CORS())
+	if !s.httpConfig.GetBool("cors-disable") {
+		s.AddHttpInterceptor(middleware.CORS())
 	}
-	fs.AddHttpInterceptor(fs.httpRequestPrepare())
+	s.AddHttpInterceptor(s.httpRequestPrepare())
 	// Http debug features
-	if fs.httpConfig.GetBool(ConfigHttpDebugEnable) {
-		fs.debugFeatures(fs.httpConfig)
+	if s.httpConfig.GetBool(ConfigHttpDebugEnable) {
+		s.debugFeatures(s.httpConfig)
 	}
-	return fs.dispatcher.Initial()
+	return s.dispatcher.Initial()
 }
 
-func (fs *FluxServer) Startup(version flux.BuildInfo) error {
-	return fs.StartServe(version)
+func (s *HttpServer) Startup(version flux.BuildInfo) error {
+	return s.StartServe(version)
 }
 
 // StartServe server
-func (fs *FluxServer) StartServe(version flux.BuildInfo) error {
-	return fs.StartServeWith(version, fs.httpConfig)
+func (s *HttpServer) StartServe(version flux.BuildInfo) error {
+	return s.StartServeWith(version, s.httpConfig)
 }
 
-func (fs *FluxServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
-	return fs.StartServeWith(version, httpConfig)
+func (s *HttpServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
+	return s.StartServeWith(version, httpConfig)
 }
 
 // StartServeWith server
-func (fs *FluxServer) StartServeWith(info flux.BuildInfo, config *flux.Configuration) error {
+func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configuration) error {
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
-	if err := fs.ensure().dispatcher.Startup(); nil != err {
+	if err := s.ensure().dispatcher.Startup(); nil != err {
 		return err
 	}
 	eventCh := make(chan flux.EndpointEvent, 2)
 	defer close(eventCh)
-	if err := fs.dispatcher.WatchRegistry(eventCh); nil != err {
+	if err := s.dispatcher.WatchRegistry(eventCh); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
-		go fs.handleEndpointRegisterEvent(eventCh)
+		go s.handleEndpointRegisterEvent(eventCh)
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
 	certFile := config.GetString(ConfigHttpTlsCertFile)
 	keyFile := config.GetString(ConfigHttpTlsKeyFile)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
-		return fs.httpServer.StartTLS(address, certFile, keyFile)
+		return s.server.StartTLS(address, certFile, keyFile)
 	} else {
 		logger.Infof("HttpServer starting: %s", address)
-		return fs.httpServer.Start(address)
+		return s.server.Start(address)
 	}
 }
 
 // Shutdown to cleanup resources
-func (fs *FluxServer) Shutdown(ctx context.Context) error {
+func (s *HttpServer) Shutdown(ctx context.Context) error {
 	logger.Info("HttpServer shutdown...")
 	// Stop http server
-	if err := fs.httpServer.Shutdown(ctx); nil != err {
+	if err := s.server.Shutdown(ctx); nil != err {
 		return err
 	}
 	// Stop dispatcher
-	return fs.dispatcher.Shutdown(ctx)
+	return s.dispatcher.Shutdown(ctx)
 }
 
-func (fs *FluxServer) handleEndpointRegisterEvent(events <-chan flux.EndpointEvent) {
+func (s *HttpServer) handleEndpointRegisterEvent(events <-chan flux.EndpointEvent) {
 	for event := range events {
-		pattern := fs.toHttpServerPattern(event.HttpPattern)
+		pattern := s.toHttpServerPattern(event.HttpPattern)
 		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
-		vEndpoint, isNew := fs.getVersionEndpoint(routeKey)
+		vEndpoint, isNew := s.getVersionEndpoint(routeKey)
 		// Check http method
 		event.Endpoint.HttpMethod = strings.ToUpper(event.Endpoint.HttpMethod)
 		eEndpoint := event.Endpoint
@@ -209,7 +209,7 @@ func (fs *FluxServer) handleEndpointRegisterEvent(events <-chan flux.EndpointEve
 			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
 			if isNew {
 				logger.Infow("New http routing", "method", event.HttpMethod, "pattern", pattern)
-				fs.httpServer.Add(event.HttpMethod, pattern, fs.newHttpRouter(vEndpoint))
+				s.server.Add(event.HttpMethod, pattern, s.newRequestRouter(vEndpoint))
 			}
 		case flux.EndpointEventUpdated:
 			logger.Infow("Update endpoint", "version", eEndpoint.Version, "method", event.HttpMethod, "pattern", pattern)
@@ -221,29 +221,29 @@ func (fs *FluxServer) handleEndpointRegisterEvent(events <-chan flux.EndpointEve
 	}
 }
 
-func (fs *FluxServer) acquire(echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
+func (s *HttpServer) acquire(echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
 	requestId := echo.Request().Header.Get(DefaultHttpRequestIdHeader)
 	if "" == requestId {
-		requestId = fs.snowflakeId.Generate().Base64()
+		requestId = s.snowflakeId.Generate().Base64()
 	}
-	ctx := fs.contextWrappers.Get().(*internal.ContextWrapper)
+	ctx := s.contextWrappers.Get().(*internal.ContextWrapper)
 	ctx.Reattach(requestId, echo, endpoint)
 	return ctx
 }
 
-func (fs *FluxServer) release(context *internal.ContextWrapper) {
+func (s *HttpServer) release(context *internal.ContextWrapper) {
 	context.Release()
-	fs.contextWrappers.Put(context)
+	s.contextWrappers.Put(context)
 }
 
-func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
+func (s *HttpServer) newRequestRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
 	return func(echo echo.Context) error {
-		fs.httpVisits.Add(1)
+		s.httpVisits.Add(1)
 		request := echo.Request()
 		// Multi version selection
-		version := request.Header.Get(fs.httpVersionHeader)
+		version := request.Header.Get(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.Get(version)
-		ctx := fs.acquire(echo, endpoint)
+		ctx := s.acquire(echo, endpoint)
 		defer func(requestId string) {
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
@@ -251,33 +251,34 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 				tl.Error(string(debug.Stack()))
 			}
 		}(ctx.RequestId())
-		defer fs.release(ctx)
+		echo.Response().Header().Set(flux.XRequestId, ctx.RequestId())
+		defer s.release(ctx)
 		trace := logger.Trace(ctx.RequestId())
 		if !found {
 			trace.Infow("Server dispatch: <ENDPOINT_NOT_FOUND>",
 				"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 			)
-			return fs.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), ErrEndpointVersionNotFound)
+			return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), ErrEndpointVersionNotFound)
 		}
 		// Context exchange: Echo <-> Flux
-		for _, pipe := range fs.pipelines {
-			pipe(echo, ctx)
+		for _, pf := range s.pipelines {
+			pf(echo, ctx)
 		}
 		trace.Infow("Server dispatch: routing",
 			"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 			"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
 		)
 		rw := ctx.ResponseWriter()
-		if err := fs.dispatcher.Dispatch(ctx); nil != err {
-			return fs.httpWriter.WriteError(echo, ctx.RequestId(), rw.Headers(), err)
+		if err := s.dispatcher.Dispatch(ctx); nil != err {
+			return s.httpWriter.WriteError(echo, ctx.RequestId(), rw.Headers(), err)
 		} else {
-			return fs.httpWriter.WriteBody(echo, ctx.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
+			return s.httpWriter.WriteBody(echo, ctx.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}
 }
 
 // handleServerError EchoHttp状态错误处理函数。
-func (fs *FluxServer) handleServerError(err error, ctx echo.Context) {
+func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
 	// Http中间件等返回InvokeError错误
 	inverr, ok := err.(*flux.InvokeError)
 	if !ok {
@@ -289,12 +290,12 @@ func (fs *FluxServer) handleServerError(err error, ctx echo.Context) {
 		}
 	}
 	id := ctx.Response().Header().Get(flux.XRequestId)
-	if err := fs.httpWriter.WriteError(ctx, id, https.Header{}, inverr); nil != err {
+	if err := s.httpWriter.WriteError(ctx, id, https.Header{}, inverr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }
 
-func (fs *FluxServer) toHttpServerPattern(uri string) string {
+func (s *HttpServer) toHttpServerPattern(uri string) string {
 	// /api/{userId} -> /api/:userId
 	replaced := strings.Replace(uri, "}", "", -1)
 	if len(replaced) < len(uri) {
@@ -304,17 +305,17 @@ func (fs *FluxServer) toHttpServerPattern(uri string) string {
 	}
 }
 
-func (fs *FluxServer) getVersionEndpoint(routeKey string) (*internal.MultiVersionEndpoint, bool) {
-	if mve, ok := fs.mvEndpointMap[routeKey]; ok {
+func (s *HttpServer) getVersionEndpoint(routeKey string) (*internal.MultiVersionEndpoint, bool) {
+	if mve, ok := s.mvEndpointMap[routeKey]; ok {
 		return mve, false
 	} else {
 		mve = internal.NewMultiVersionEndpoint()
-		fs.mvEndpointMap[routeKey] = mve
+		s.mvEndpointMap[routeKey] = mve
 		return mve, true
 	}
 }
 
-func (*FluxServer) httpRequestPrepare() echo.MiddlewareFunc {
+func (*HttpServer) httpRequestPrepare() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Body缓存，允许通过 GetBody 多次读取Body
@@ -347,77 +348,49 @@ func (*FluxServer) httpRequestPrepare() echo.MiddlewareFunc {
 	}
 }
 
-func (fs *FluxServer) ensure() *FluxServer {
-	if fs.httpServer == nil {
+func (s *HttpServer) ensure() *HttpServer {
+	if s.server == nil {
 		logger.Panicf("Call must after InitServer()")
 	}
-	return fs
+	return s
 }
 
 // HttpServer 返回Http服务器实例
-func (fs *FluxServer) HttpServer() *echo.Echo {
-	return fs.ensure().httpServer
+func (s *HttpServer) HttpServer() *echo.Echo {
+	return s.ensure().server
 }
 
 // AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
-func (fs *FluxServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
-	fs.ensure().httpServer.Pre(m)
+func (s *HttpServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
+	s.ensure().server.Pre(m)
 }
 
 // AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
-func (fs *FluxServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
-	fs.ensure().httpServer.Use(m)
+func (s *HttpServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
+	s.ensure().server.Use(m)
 }
 
 // AddHttpHandler 添加Http处理接口。
-func (fs *FluxServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
-	fs.ensure().httpServer.Add(method, pattern, h, m...)
+func (s *HttpServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
+	s.ensure().server.Add(method, pattern, h, m...)
 }
 
 // SetHttpNotFoundHandler 设置Http路由失败的处理接口
-func (fs *FluxServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
+func (s *HttpServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
 	echo.NotFoundHandler = nfh
 }
 
 // SetHttpNotFoundHandler 设置Http响应数据写入的处理接口
-func (fs *FluxServer) SetHttpResponseWriter(writer flux.HttpResponseWriter) {
-	fs.httpWriter = writer
+func (s *HttpServer) SetHttpResponseWriter(writer flux.HttpResponseWriter) {
+	s.httpWriter = writer
 }
 
 // AddLifecycleHook 添加生命周期Hook接口：Startuper/Shutdowner接口
-func (fs *FluxServer) AddLifecycleHook(hook interface{}) {
-	fs.dispatcher.AddLifecycleHook(hook)
+func (s *HttpServer) AddLifecycleHook(hook interface{}) {
+	s.dispatcher.AddLifecycleHook(hook)
 }
 
 // AddContextPipeline 添加Http与Flux的Context桥接函数
-func (fs *FluxServer) AddContextPipeline(bridgeFunc ContextPipelineFunc) {
-	fs.pipelines = append(fs.pipelines, bridgeFunc)
-}
-
-func (*FluxServer) AddPrepareHook(ph flux.PrepareHook) {
-	ext.AddPrepareHook(ph)
-}
-
-func (*FluxServer) SetExchange(protoName string, exchange flux.Exchange) {
-	ext.SetExchange(protoName, exchange)
-}
-
-func (*FluxServer) SetFactory(typeName string, f flux.Factory) {
-	ext.SetFactory(typeName, f)
-}
-
-func (*FluxServer) AddGlobalFilter(filter flux.Filter) {
-	ext.AddGlobalFilter(filter)
-}
-
-func (*FluxServer) AddSelectiveFilter(filter flux.Filter) {
-	ext.AddSelectiveFilter(filter)
-}
-
-func (*FluxServer) SetRegistryFactory(protoName string, factory ext.RegistryFactory) {
-	ext.SetRegistryFactory(protoName, factory)
-}
-
-func (*FluxServer) SetSerializer(typeName string, serializer flux.Serializer) {
-	ext.SetSerializer(typeName, serializer)
+func (s *HttpServer) AddContextPipeline(bridgeFunc ContextPipelineFunc) {
+	s.pipelines = append(s.pipelines, bridgeFunc)
 }

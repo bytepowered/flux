@@ -10,7 +10,7 @@ import (
 	https "net/http"
 )
 
-func (fs *FluxServer) debugFeatures(config *flux.Configuration) {
+func (s *HttpServer) debugFeatures(config *flux.Configuration) {
 	config.SetDefaults(map[string]interface{}{
 		"debug-auth-username": "fluxgo",
 		"debug-auth-password": random.String(8),
@@ -22,10 +22,10 @@ func (fs *FluxServer) debugFeatures(config *flux.Configuration) {
 		return u == username && p == password, nil
 	})
 	debugHandler := echo.WrapHandler(https.DefaultServeMux)
-	fs.httpServer.GET(DebugPathVars, debugHandler, auth)
-	fs.httpServer.GET(DebugPathPprof, debugHandler, auth)
-	fs.httpServer.GET(DebugPathEndpoints, func(c echo.Context) error {
-		if data, err := ext.GetSerializer(ext.TypeNameSerializerJson).Marshal(queryEndpoints(fs.mvEndpointMap, c)); nil != err {
+	s.server.GET(DebugPathVars, debugHandler, auth)
+	s.server.GET(DebugPathPprof, debugHandler, auth)
+	s.server.GET(DebugPathEndpoints, func(c echo.Context) error {
+		if data, err := ext.GetSerializer(ext.TypeNameSerializerJson).Marshal(queryEndpoints(s.mvEndpointMap, c)); nil != err {
 			return err
 		} else {
 			return c.JSONBlob(flux.StatusOK, data)
