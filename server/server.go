@@ -278,11 +278,18 @@ func (fs *FluxServer) newHttpRouter(mvEndpoint *internal.MultiVersionEndpoint) e
 
 // handleServerError EchoHttp状态错误处理函数。
 func (fs *FluxServer) handleServerError(err error, ctx echo.Context) {
-	logger.Errorw("Server http unexpected error", "error", err)
-	if err := ctx.JSON(https.StatusInternalServerError, map[string]string{
-		"status": "error",
-		"error":  err.Error(),
-	}); nil != err {
+	// Http中间件等返回InvokeError错误
+	inverr, ok := err.(*flux.InvokeError)
+	if !ok {
+		inverr = &flux.InvokeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    err.Error(),
+			Internal:   err,
+		}
+	}
+	id := ctx.Response().Header().Get(flux.XRequestId)
+	if err := fs.httpWriter.WriteError(ctx, id, https.Header{}, inverr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }
