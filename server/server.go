@@ -257,7 +257,7 @@ func (s *HttpServer) newRequestRouter(mvEndpoint *internal.MultiVersionEndpoint)
 			)
 			return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), ErrEndpointVersionNotFound)
 		}
-		// Context exchange: Echo <-> Flux
+		// Context exchange
 		for _, pf := range s.pipelines {
 			pf(echo, ctx)
 		}
@@ -265,10 +265,18 @@ func (s *HttpServer) newRequestRouter(mvEndpoint *internal.MultiVersionEndpoint)
 			"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 			"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
 		)
-		rw := ctx.ResponseWriter()
+		// Resolve arguments
+		arguments := ctx.Endpoint().Arguments
+		if shouldResolve(ctx, arguments) {
+			if err := resolveArguments(ext.GetArgumentResolveFunc(), arguments, ctx); nil != err {
+				return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), err)
+			}
+		}
+		// Dispatch and response
 		if err := s.dispatcher.Dispatch(ctx); nil != err {
-			return s.httpWriter.WriteError(echo, ctx.RequestId(), rw.Headers(), err)
+			return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), err)
 		} else {
+			rw := ctx.ResponseWriter()
 			return s.httpWriter.WriteBody(echo, ctx.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}

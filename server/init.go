@@ -35,6 +35,4 @@ func init() {
 	ext.SetFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
 	ext.SetFactory(filter.TypeIdRateLimitFilter, filter.RateLimitFilterFactory)
 	ext.SetFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
-	// global filters
-	ext.AddGlobalFilter(filter.NewArgumentValueLookupFilter())
 }

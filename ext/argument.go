@@ -8,18 +8,18 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义化参数值查找逻辑。
 var (
-	_argumentLookupFunc ArgumentLookupFunc
+	_argumentResolveFunc ArgumentLookupFunc
 )
 
 // ArgumentLookupFunc 参数值查找函数
 type ArgumentLookupFunc func(argument flux.Argument, context flux.Context) (interface{}, error)
 
 func SetArgumentLookupFunc(fun ArgumentLookupFunc) {
-	_argumentLookupFunc = pkg.RequireNotNil(fun, "ArgumentLookupFunc is nil").(ArgumentLookupFunc)
+	_argumentResolveFunc = pkg.RequireNotNil(fun, "ArgumentLookupFunc is nil").(ArgumentLookupFunc)
 }
 
-func GetArgumentLookupFunc() ArgumentLookupFunc {
-	return _argumentLookupFunc
+func GetArgumentResolveFunc() ArgumentLookupFunc {
+	return _argumentResolveFunc
 }
 
 //// 构建参数值对象工具函数
