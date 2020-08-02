@@ -94,11 +94,6 @@ func NewHttpServer() *HttpServer {
 	}
 }
 
-// HttpConfig return Http server configuration
-func (s *HttpServer) HttpConfig() *flux.Configuration {
-	return s.httpConfig
-}
-
 // Prepare Call before init and startup
 func (s *HttpServer) Prepare(hooks ...flux.PrepareHookFunc) error {
 	for _, prepare := range append(ext.GetPrepareHooks(), hooks...) {
@@ -155,12 +150,12 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 	if err := s.ensure().dispatcher.Startup(); nil != err {
 		return err
 	}
-	eventCh := make(chan flux.EndpointEvent, 2)
-	defer close(eventCh)
-	if err := s.dispatcher.WatchRegistry(eventCh); nil != err {
+	events := make(chan flux.EndpointEvent, 2)
+	defer close(events)
+	if err := s.dispatcher.WatchRegistry(events); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
-		go s.handleEndpointRegisterEvent(eventCh)
+		go s.handleEndpointRegister(events)
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
 	certFile := config.GetString(ConfigHttpTlsCertFile)
@@ -185,155 +180,9 @@ func (s *HttpServer) Shutdown(ctx context.Context) error {
 	return s.dispatcher.Shutdown(ctx)
 }
 
-func (s *HttpServer) handleEndpointRegisterEvent(events <-chan flux.EndpointEvent) {
-	for event := range events {
-		pattern := s.toHttpServerPattern(event.HttpPattern)
-		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
-		vEndpoint, isNew := s.getVersionEndpoint(routeKey)
-		// Check http method
-		event.Endpoint.HttpMethod = strings.ToUpper(event.Endpoint.HttpMethod)
-		eEndpoint := event.Endpoint
-		switch eEndpoint.HttpMethod {
-		case https.MethodGet, https.MethodPost, https.MethodDelete, https.MethodPut,
-			https.MethodHead, https.MethodOptions, https.MethodPatch, https.MethodTrace:
-			// Allowed
-		default:
-			// http.MethodConnect, and Others
-			logger.Errorw("Ignore unsupported http method:", "method", eEndpoint.HttpMethod)
-			continue
-		}
-		switch event.EventType {
-		case flux.EndpointEventAdded:
-			logger.Infow("New endpoint", "version", eEndpoint.Version, "method", event.HttpMethod, "pattern", pattern)
-			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
-			if isNew {
-				logger.Infow("New http routing", "method", event.HttpMethod, "pattern", pattern)
-				s.server.Add(event.HttpMethod, pattern, s.newRequestRouter(vEndpoint))
-			}
-		case flux.EndpointEventUpdated:
-			logger.Infow("Update endpoint", "version", eEndpoint.Version, "method", event.HttpMethod, "pattern", pattern)
-			vEndpoint.Update(eEndpoint.Version, &eEndpoint)
-		case flux.EndpointEventRemoved:
-			logger.Infow("Delete endpoint", "method", event.HttpMethod, "pattern", pattern)
-			vEndpoint.Delete(eEndpoint.Version)
-		}
-	}
-}
-
-func (s *HttpServer) acquire(echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
-	requestId := echo.Request().Header.Get(DefaultHttpRequestIdHeader)
-	if "" == requestId {
-		requestId = s.snowflakeId.Generate().Base64()
-	}
-	ctx := s.contextWrappers.Get().(*internal.ContextWrapper)
-	ctx.Reattach(requestId, echo, endpoint)
-	return ctx
-}
-
-func (s *HttpServer) release(context *internal.ContextWrapper) {
-	context.Release()
-	s.contextWrappers.Put(context)
-}
-
-func (s *HttpServer) newRequestRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
-	routingLogEnable := s.httpConfig.GetBool(ConfigHttpRoutingLogEnable)
-	return func(echo echo.Context) error {
-		s.httpVisits.Add(1)
-		request := echo.Request()
-		// Multi version selection
-		version := request.Header.Get(s.httpVersionHeader)
-		endpoint, found := mvEndpoint.Get(version)
-		ctx := s.acquire(echo, endpoint)
-		defer func(requestId string) {
-			if err := recover(); err != nil {
-				tl := logger.Trace(requestId)
-				tl.Errorw("Server dispatch: unexpected error", "error", err)
-				tl.Error(string(debug.Stack()))
-			}
-		}(ctx.RequestId())
-		echo.Response().Header().Set(flux.XRequestId, ctx.RequestId())
-		defer s.release(ctx)
-		trace := logger.Trace(ctx.RequestId())
-		_WriteError := func(inverr *flux.InvokeError) error {
-			return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), inverr)
-		}
-		if !found {
-			if routingLogEnable {
-				trace.Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
-					"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
-				)
-			}
-			return _WriteError(ErrEndpointVersionNotFound)
-		}
-		// Context exchange
-		for _, pf := range s.pipelines {
-			pf(echo, ctx)
-		}
-		if routingLogEnable {
-			trace.Infow("HttpServer routing: DISPATCHING",
-				"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
-				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
-			)
-		}
-		// Resolve argRef
-		if shouldResolve(ctx, ctx.EndpointArguments()) {
-			if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
-				return _WriteError(err)
-			}
-		}
-		// Dispatch and response
-		if err := s.dispatcher.Dispatch(ctx); nil != err {
-			return _WriteError(err)
-		} else {
-			rw := ctx.ResponseWriter()
-			return s.httpWriter.WriteBody(echo, ctx.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
-		}
-	}
-}
-
-// handleServerError EchoHttp状态错误处理函数。
-func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
-	// Http中间件等返回InvokeError错误
-	inverr, ok := err.(*flux.InvokeError)
-	if !ok {
-		inverr = &flux.InvokeError{
-			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    err.Error(),
-			Internal:   err,
-		}
-	}
-	id := ctx.Response().Header().Get(flux.XRequestId)
-	if err := s.httpWriter.WriteError(ctx, id, https.Header{}, inverr); nil != err {
-		logger.Errorw("Server http response error", "error", err)
-	}
-}
-
-func (s *HttpServer) toHttpServerPattern(uri string) string {
-	// /api/{userId} -> /api/:userId
-	replaced := strings.Replace(uri, "}", "", -1)
-	if len(replaced) < len(uri) {
-		return strings.Replace(replaced, "{", ":", -1)
-	} else {
-		return uri
-	}
-}
-
-func (s *HttpServer) getVersionEndpoint(routeKey string) (*internal.MultiVersionEndpoint, bool) {
-	if mve, ok := s.mvEndpointMap[routeKey]; ok {
-		return mve, false
-	} else {
-		mve = internal.NewMultiVersionEndpoint()
-		s.mvEndpointMap[routeKey] = mve
-		return mve, true
-	}
-}
-
-func (s *HttpServer) ensure() *HttpServer {
-	if s.server == nil {
-		logger.Panicf("Call must after InitServer()")
-	}
-	return s
+// HttpConfig return Http server configuration
+func (s *HttpServer) HttpConfig() *flux.Configuration {
+	return s.httpConfig
 }
 
 // HttpServer 返回Http服务器实例
@@ -369,4 +218,163 @@ func (s *HttpServer) SetHttpResponseWriter(writer flux.HttpResponseWriter) {
 // AddHttpContextPipeline 添加Http与Flux的Context桥接函数
 func (s *HttpServer) AddHttpContextPipeline(f HttpContextPipelineFunc) {
 	s.pipelines = append(s.pipelines, f)
+}
+
+func (s *HttpServer) handleEndpointRegister(events <-chan flux.EndpointEvent) {
+	for event := range events {
+		pattern := toHttpServerPattern(event.HttpPattern)
+		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
+		multi, isNew := s.getMultiVersionEndpoint(routeKey)
+		// Check http method
+		event.Endpoint.HttpMethod = strings.ToUpper(event.Endpoint.HttpMethod)
+		if !isAllowMethod(event.Endpoint.HttpMethod) {
+			continue
+		}
+		// Refresh endpoint
+		endpoint := event.Endpoint
+		switch event.EventType {
+		case flux.EndpointEventAdded:
+			logger.Infow("New endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", pattern)
+			multi.Update(endpoint.Version, &endpoint)
+			if isNew {
+				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", pattern)
+				s.server.Add(event.HttpMethod, pattern, s.newHttpRouteHandler(multi))
+			}
+		case flux.EndpointEventUpdated:
+			logger.Infow("Update endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", pattern)
+			multi.Update(endpoint.Version, &endpoint)
+		case flux.EndpointEventRemoved:
+			logger.Infow("Delete endpoint", "method", event.HttpMethod, "pattern", pattern)
+			multi.Delete(endpoint.Version)
+		}
+	}
+}
+
+func (s *HttpServer) acquire(echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
+	requestId := echo.Request().Header.Get(DefaultHttpRequestIdHeader)
+	if "" == requestId {
+		requestId = s.snowflakeId.Generate().Base64()
+	}
+	ctx := s.contextWrappers.Get().(*internal.ContextWrapper)
+	ctx.Reattach(requestId, echo, endpoint)
+	return ctx
+}
+
+func (s *HttpServer) release(context *internal.ContextWrapper) {
+	context.Release()
+	s.contextWrappers.Put(context)
+}
+
+func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
+	routingLogEnable := s.httpConfig.GetBool(ConfigHttpRoutingLogEnable)
+	return func(echo echo.Context) error {
+		s.httpVisits.Add(1)
+		request := echo.Request()
+		// Multi version selection
+		version := request.Header.Get(s.httpVersionHeader)
+		endpoint, found := mvEndpoint.FindByVersion(version)
+		ctx := s.acquire(echo, endpoint)
+		defer func(requestId string) {
+			if err := recover(); err != nil {
+				tl := logger.Trace(requestId)
+				tl.Errorw("Server dispatch: unexpected error", "error", err)
+				tl.Error(string(debug.Stack()))
+			}
+		}(ctx.RequestId())
+		echo.Response().Header().Set(flux.XRequestId, ctx.RequestId())
+		defer s.release(ctx)
+		trace := logger.Trace(ctx.RequestId())
+		_writeError := func(inverr *flux.InvokeError) error {
+			return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), inverr)
+		}
+		if !found {
+			if routingLogEnable {
+				trace.Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
+					"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
+				)
+			}
+			return _writeError(ErrEndpointVersionNotFound)
+		}
+		// Context exchange
+		for _, pf := range s.pipelines {
+			pf(echo, ctx)
+		}
+		if routingLogEnable {
+			trace.Infow("HttpServer routing: DISPATCHING",
+				"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
+				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
+			)
+		}
+		// Resolve argRef
+		if shouldResolve(ctx, ctx.EndpointArguments()) {
+			if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
+				return _writeError(err)
+			}
+		}
+		// Dispatch and response
+		if err := s.dispatcher.Dispatch(ctx); nil != err {
+			return _writeError(err)
+		} else {
+			rw := ctx.ResponseWriter()
+			return s.httpWriter.WriteBody(echo, ctx.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
+		}
+	}
+}
+
+// handleServerError EchoHttp状态错误处理函数。
+func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
+	// Http中间件等返回InvokeError错误
+	inverr, ok := err.(*flux.InvokeError)
+	if !ok {
+		inverr = &flux.InvokeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    err.Error(),
+			Internal:   err,
+		}
+	}
+	id := ctx.Response().Header().Get(flux.XRequestId)
+	if err := s.httpWriter.WriteError(ctx, id, https.Header{}, inverr); nil != err {
+		logger.Errorw("Server http response error", "error", err)
+	}
+}
+
+func (s *HttpServer) getMultiVersionEndpoint(routeKey string) (*internal.MultiVersionEndpoint, bool) {
+	if mve, ok := s.mvEndpointMap[routeKey]; ok {
+		return mve, false
+	} else {
+		mve = internal.NewMultiVersionEndpoint()
+		s.mvEndpointMap[routeKey] = mve
+		return mve, true
+	}
+}
+
+func (s *HttpServer) ensure() *HttpServer {
+	if s.server == nil {
+		logger.Panicf("Call must after InitServer()")
+	}
+	return s
+}
+
+func toHttpServerPattern(uri string) string {
+	// /api/{userId} -> /api/:userId
+	replaced := strings.Replace(uri, "}", "", -1)
+	if len(replaced) < len(uri) {
+		return strings.Replace(replaced, "{", ":", -1)
+	} else {
+		return uri
+	}
+}
+
+func isAllowMethod(method string) bool {
+	switch method {
+	case https.MethodGet, https.MethodPost, https.MethodDelete, https.MethodPut,
+		https.MethodHead, https.MethodOptions, https.MethodPatch, https.MethodTrace:
+		// Allowed
+		return true
+	default:
+		// http.MethodConnect, and Others
+		logger.Errorw("Ignore unsupported http method:", "method", method)
+		return false
+	}
 }

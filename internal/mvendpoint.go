@@ -35,7 +35,8 @@ func (m *MultiVersionEndpoint) UpstreamUri() string {
 	return m.latest.UpstreamUri
 }
 
-func (m *MultiVersionEndpoint) Get(version string) (*flux.Endpoint, bool) {
+// Find find endpoint by version
+func (m *MultiVersionEndpoint) FindByVersion(version string) (*flux.Endpoint, bool) {
 	m.rwmu.RLock()
 	defer m.rwmu.RUnlock()
 	if "" == version {
