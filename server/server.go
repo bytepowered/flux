@@ -78,6 +78,8 @@ type HttpServer struct {
 	contextWrappers   sync.Pool
 	snowflakeId       *snowflake.Node
 	pipelines         []HttpContextPipelineFunc
+	stateStarted      chan struct{}
+	stateStopped      chan struct{}
 }
 
 func NewHttpServer() *HttpServer {
@@ -89,6 +91,8 @@ func NewHttpServer() *HttpServer {
 		contextWrappers: sync.Pool{New: internal.NewContextWrapper},
 		pipelines:       make([]HttpContextPipelineFunc, 0),
 		snowflakeId:     id,
+		stateStarted:    make(chan struct{}),
+		stateStopped:    make(chan struct{}),
 	}
 }
 
@@ -167,6 +171,7 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
 	certFile := config.GetString(HttpServerConfigKeyTlsCertFile)
 	keyFile := config.GetString(HttpServerConfigKeyTlsKeyFile)
+	close(s.stateStarted)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
 		return s.server.StartTLS(address, certFile, keyFile)
@@ -179,12 +184,23 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 // Shutdown to cleanup resources
 func (s *HttpServer) Shutdown(ctx context.Context) error {
 	logger.Info("HttpServer shutdown...")
+	defer close(s.stateStopped)
 	// Stop http server
 	if err := s.server.Shutdown(ctx); nil != err {
 		return err
 	}
 	// Stop routeEngine
 	return s.routeEngine.Shutdown(ctx)
+}
+
+// StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。
+func (s *HttpServer) StateStarted() <-chan struct{} {
+	return s.stateStarted
+}
+
+// StateStopped 返回一个Channel。当服务停止后完成时，此Channel将被关闭。
+func (s *HttpServer) StateStopped() <-chan struct{} {
+	return s.stateStopped
 }
 
 // HttpConfig return Http server configuration
