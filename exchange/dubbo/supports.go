@@ -2,8 +2,8 @@ package dubbo
 
 import (
 	"context"
-	hessian "github.com/apache/dubbo-go-hessian2"
-	dubbogo "github.com/apache/dubbo-go/config"
+	"github.com/apache/dubbo-go-hessian2"
+	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"go.uber.org/zap"
@@ -43,9 +43,9 @@ func ComplexToMap(arg flux.Argument) map[string]interface{} {
 	return m
 }
 
-func NewReference(refid string, endpoint *flux.Endpoint, config *flux.Configuration) *dubbogo.ReferenceConfig {
+func NewReference(refid string, endpoint *flux.Endpoint, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("Create dubbo reference-config", "service", endpoint.UpstreamUri)
-	ref := dubbogo.NewReferenceConfig(refid, context.Background())
+	ref := dubgo.NewReferenceConfig(refid, context.Background())
 	ref.InterfaceName = endpoint.UpstreamUri
 	ref.Version = endpoint.RpcVersion
 	ref.Group = endpoint.RpcGroup

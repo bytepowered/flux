@@ -125,7 +125,7 @@ func (s *HttpServer) InitServer() error {
 	if !s.httpConfig.GetBool("cors-disable") {
 		s.AddHttpInterceptor(middleware.CORS())
 	}
-	s.AddHttpInterceptor(RepeatableBody)
+	s.AddHttpInterceptor(RepeatableHttpBody)
 	// Http debug features
 	if s.httpConfig.GetBool(ConfigHttpDebugEnable) {
 		s.debugFeatures(s.httpConfig)

@@ -7,7 +7,7 @@ import (
 	_ "github.com/apache/dubbo-go/cluster/loadbalance"
 	"github.com/apache/dubbo-go/common/constant"
 	_ "github.com/apache/dubbo-go/common/proxy/proxy_factory"
-	dubbogo "github.com/apache/dubbo-go/config"
+	dubgo "github.com/apache/dubbo-go/config"
 	_ "github.com/apache/dubbo-go/filter/filter_impl"
 	"github.com/apache/dubbo-go/protocol/dubbo"
 	_ "github.com/apache/dubbo-go/registry/nacos"
@@ -48,7 +48,7 @@ var (
 )
 
 // DubboReference配置函数，可外部化配置Dubbo Reference
-type OptionFunc func(*flux.Endpoint, *flux.Configuration, *dubbogo.ReferenceConfig) *dubbogo.ReferenceConfig
+type OptionFunc func(*flux.Endpoint, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 
 // 参数封装函数，可外部化配置为其它协议的值对象
 type AssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
@@ -106,7 +106,7 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 		ex.AssembleFunc = assembleHessianValues
 	}
 	// 修改默认Consumer配置
-	consumerc := dubbogo.GetConsumerConfig()
+	consumerc := dubgo.GetConsumerConfig()
 	// 支持定义Registry
 	registry := ex.configuration.Sub("registry")
 	registry.SetGlobalAlias(GetRegistryGlobalAlias())
@@ -114,7 +114,7 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 		consumerc.Registries[id] = rconfig
 		logger.Infow("Dubbo exchange setup registry", "id", id, "config", rconfig)
 	}
-	dubbogo.SetConsumerConfig(consumerc)
+	dubgo.SetConsumerConfig(consumerc)
 	return nil
 }
 
@@ -123,7 +123,7 @@ func (ex *DubboExchange) Startup() error {
 }
 
 func (ex *DubboExchange) Shutdown(_ context.Context) error {
-	dubbogo.BeforeShutdown()
+	dubgo.BeforeShutdown()
 	return nil
 }
 
@@ -181,24 +181,24 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	}
 }
 
-func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubbogo.GenericService {
+func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubgo.GenericService {
 	ex.referenceMu.Lock()
 	defer ex.referenceMu.Unlock()
 	id := endpoint.UpstreamUri
-	if ref := dubbogo.GetConsumerService(id); nil != ref {
-		return ref.(*dubbogo.GenericService)
+	if ref := dubgo.GetConsumerService(id); nil != ref {
+		return ref.(*dubgo.GenericService)
 	}
 	ref := NewReference(id, endpoint, ex.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
 	for _, opt := range ex.OptionFuncs {
 		if nil != opt {
-			ref = pkg.RequireNotNil(opt(endpoint, ex.configuration, ref), msg).(*dubbogo.ReferenceConfig)
+			ref = pkg.RequireNotNil(opt(endpoint, ex.configuration, ref), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("Create dubbo reference-config, referring", "service-id", id, "interface", endpoint.UpstreamUri)
-	genericService := dubbogo.NewGenericService(id)
-	dubbogo.SetConsumerService(genericService)
+	genericService := dubgo.NewGenericService(id)
+	dubgo.SetConsumerService(genericService)
 	ref.Refer(genericService)
 	ref.Implement(genericService)
 	t := ex.configuration.GetDuration(configKeyReferenceDelay)
@@ -210,11 +210,11 @@ func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubbogo.Generic
 	return genericService
 }
 
-func newConsumerRegistry(config *flux.Configuration) (string, *dubbogo.RegistryConfig) {
+func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryConfig) {
 	if !config.IsSet("id", "protocol") {
 		return "", nil
 	}
-	return config.GetString("id"), &dubbogo.RegistryConfig{
+	return config.GetString("id"), &dubgo.RegistryConfig{
 		Protocol:   config.GetString("protocol"),
 		TimeoutStr: config.GetString("timeout"),
 		Group:      config.GetString("group"),

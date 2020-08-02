@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	dubbogo "github.com/apache/dubbo-go/config"
+	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
@@ -68,7 +68,7 @@ func Run(ver flux.BuildInfo) {
 		}
 	}()
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, dubbogo.ShutdownSignals...)
+	signal.Notify(quit, dubgo.ShutdownSignals...)
 	<-quit
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

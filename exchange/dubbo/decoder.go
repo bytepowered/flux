@@ -1,7 +1,7 @@
 package dubbo
 
 import (
-	hessian "github.com/apache/dubbo-go-hessian2"
+	"github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"github.com/spf13/cast"

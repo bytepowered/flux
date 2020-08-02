@@ -125,7 +125,7 @@ func (d *ServerDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 		}
 	}
 	// Metrics
-	metrics := make(map[string]string)
+	metrics := make(map[string]string, len(globalFilters)+len(selectFilters)+1)
 	defer func() {
 		for k, v := range metrics {
 			ctx.ResponseWriter().AddHeader(k, v)
