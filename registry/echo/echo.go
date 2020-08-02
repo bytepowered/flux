@@ -1,4 +1,4 @@
-package registry
+package echo
 
 import (
 	"github.com/bytepowered/flux"

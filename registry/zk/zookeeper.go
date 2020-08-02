@@ -1,4 +1,4 @@
-package registry
+package zk
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/remoting"
-	"github.com/bytepowered/flux/remoting/zookeeper"
+	"github.com/bytepowered/flux/remoting/zk"
 	"time"
 )
 
@@ -20,19 +20,19 @@ var (
 	_defaultInvalidFluxEvent = flux.EndpointEvent{}
 )
 
-// zkRegistry 基于ZK节点树实现的Endpoint元数据注册中心
-type zkRegistry struct {
+// ZookeeperRegistry 基于ZK节点树实现的Endpoint元数据注册中心
+type ZookeeperRegistry struct {
 	zkRootPath string
-	retriever  *zookeeper.ZkRetriever
+	retriever  *zk.ZookeeperRetriever
 }
 
 func ZookeeperRegistryFactory() flux.Registry {
-	return &zkRegistry{
-		retriever: zookeeper.NewZkRetriever(),
+	return &ZookeeperRegistry{
+		retriever: zk.NewZkRetriever(),
 	}
 }
 
-func (r *zkRegistry) Init(config *flux.Configuration) error {
+func (r *ZookeeperRegistry) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		"root-path": zkRegistryRootNodePath,
 		"timeout":   time.Second * 10,
@@ -49,7 +49,7 @@ func (r *zkRegistry) Init(config *flux.Configuration) error {
 }
 
 // 监听Metadata配置变化
-func (r *zkRegistry) WatchEvents(outboundEvents chan<- flux.EndpointEvent) error {
+func (r *ZookeeperRegistry) WatchEvents(outboundEvents chan<- flux.EndpointEvent) error {
 	if exists, _ := r.retriever.Exists(r.zkRootPath); !exists {
 		if err := r.retriever.Create(r.zkRootPath); nil != err {
 			return fmt.Errorf("init metadata node: %w", err)
@@ -72,12 +72,12 @@ func (r *zkRegistry) WatchEvents(outboundEvents chan<- flux.EndpointEvent) error
 	return err
 }
 
-func (r *zkRegistry) Startup() error {
+func (r *ZookeeperRegistry) Startup() error {
 	logger.Info("Startup registry")
 	return r.retriever.Startup()
 }
 
-func (r *zkRegistry) Shutdown(ctx context.Context) error {
+func (r *ZookeeperRegistry) Shutdown(ctx context.Context) error {
 	logger.Info("Shutdown registry")
 	return r.retriever.Shutdown(ctx)
 }

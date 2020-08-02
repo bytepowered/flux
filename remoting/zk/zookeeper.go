@@ -1,4 +1,4 @@
-package zookeeper
+package zk
 
 import (
 	"context"
@@ -14,14 +14,14 @@ import (
 	"time"
 )
 
-func NewZkRetriever() *ZkRetriever {
-	return &ZkRetriever{
+func NewZkRetriever() *ZookeeperRetriever {
+	return &ZookeeperRetriever{
 		listenerMap: make(map[string][]remoting.NodeChangedListener),
 		quit:        make(chan struct{}),
 	}
 }
 
-type ZkRetriever struct {
+type ZookeeperRetriever struct {
 	conn        *zk.Conn
 	listenerMap map[string][]remoting.NodeChangedListener
 	listenerMu  sync.RWMutex
@@ -30,7 +30,7 @@ type ZkRetriever struct {
 	timeout     time.Duration
 }
 
-func (r *ZkRetriever) InitWith(config *flux.Configuration) error {
+func (r *ZookeeperRetriever) InitWith(config *flux.Configuration) error {
 	addr := config.GetString("address")
 	if "" == addr {
 		r.servers = []string{config.GetString("host") + ":" + config.GetString("port")}
@@ -41,7 +41,7 @@ func (r *ZkRetriever) InitWith(config *flux.Configuration) error {
 	return nil
 }
 
-func (r *ZkRetriever) Startup() error {
+func (r *ZookeeperRetriever) Startup() error {
 	logger.Infow("ZkRetriver startup", "server", r.servers)
 	conn, _, err := zk.Connect(r.servers, r.timeout, zk.WithLogger(new(zkLogger)))
 	if err != nil {
@@ -51,7 +51,7 @@ func (r *ZkRetriever) Startup() error {
 	return nil
 }
 
-func (r *ZkRetriever) Shutdown(ctx context.Context) error {
+func (r *ZookeeperRetriever) Shutdown(ctx context.Context) error {
 	select {
 	case <-r.quit:
 		return nil
@@ -62,17 +62,17 @@ func (r *ZkRetriever) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *ZkRetriever) Exists(path string) (bool, error) {
+func (r *ZookeeperRetriever) Exists(path string) (bool, error) {
 	b, _, err := r.conn.Exists(path)
 	return b, err
 }
 
-func (r *ZkRetriever) Create(path string) error {
+func (r *ZookeeperRetriever) Create(path string) error {
 	_, err := r.conn.Create(path, []byte{}, 0, zk.WorldACL(zk.PermAll))
 	return err
 }
 
-func (r *ZkRetriever) WatchChildren(groupId, dirKey string, childChangedListener remoting.NodeChangedListener) error {
+func (r *ZookeeperRetriever) WatchChildren(groupId, dirKey string, childChangedListener remoting.NodeChangedListener) error {
 	if init, err := r.setupListener(groupId, dirKey, childChangedListener); nil != err {
 		return err
 	} else if init {
@@ -81,7 +81,7 @@ func (r *ZkRetriever) WatchChildren(groupId, dirKey string, childChangedListener
 	return nil
 }
 
-func (r *ZkRetriever) WatchNodeData(groupId, nodeKey string, dataChangedListener remoting.NodeChangedListener) error {
+func (r *ZookeeperRetriever) WatchNodeData(groupId, nodeKey string, dataChangedListener remoting.NodeChangedListener) error {
 	if init, err := r.setupListener(groupId, nodeKey, dataChangedListener); nil != err {
 		return err
 	} else if init {
@@ -90,7 +90,7 @@ func (r *ZkRetriever) WatchNodeData(groupId, nodeKey string, dataChangedListener
 	return nil
 }
 
-func (r *ZkRetriever) setupListener(groupId, nodeKey string, listener remoting.NodeChangedListener) (bool, error) {
+func (r *ZookeeperRetriever) setupListener(groupId, nodeKey string, listener remoting.NodeChangedListener) (bool, error) {
 	if groupId != "" {
 		logger.Warnw("Zookeeper not support groupId", "groupId", groupId)
 	}
@@ -111,7 +111,7 @@ func (r *ZkRetriever) setupListener(groupId, nodeKey string, listener remoting.N
 	}
 }
 
-func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
+func (r *ZookeeperRetriever) watchChildrenChanged(dirKey string) {
 	logger.Infow("Start watching zk node children", "path", dirKey)
 	defer func() {
 		logger.Errorw("Stop watching zk node children, purge listeners", "path", dirKey)
@@ -186,7 +186,7 @@ func (r *ZkRetriever) watchChildrenChanged(dirKey string) {
 	}
 }
 
-func (r *ZkRetriever) watchDataNodeChanged(nodePath string) {
+func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 	logger.Infow("Start watching zk node data", "path", nodePath)
 	defer func() {
 		logger.Errorw("Stop watching zk node data, purge listeners", "path", nodePath)

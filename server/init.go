@@ -8,7 +8,8 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
 	"github.com/bytepowered/flux/internal"
-	"github.com/bytepowered/flux/registry"
+	"github.com/bytepowered/flux/registry/echo"
+	"github.com/bytepowered/flux/registry/zk"
 )
 
 func init() {
@@ -17,20 +18,22 @@ func init() {
 	// 参数查找函数
 	ext.SetArgumentLookupFunc(internal.DefaultArgumentValueLookupFunc)
 	// Serializer
+	// Default: JSON
 	serializer := internal.NewJsonSerializer()
 	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
 	// Registry
-	ext.SetRegistryFactory(ext.RegistryIdDefault, registry.ZookeeperRegistryFactory)
-	ext.SetRegistryFactory(ext.RegistryIdZookeeper, registry.ZookeeperRegistryFactory)
-	ext.SetRegistryFactory(ext.RegistryIdEcho, registry.EchoRegistryFactory)
-	// exchanges
+	// Default: ZK
+	ext.SetRegistryFactory(ext.RegistryIdDefault, zk.ZookeeperRegistryFactory)
+	ext.SetRegistryFactory(ext.RegistryIdZookeeper, zk.ZookeeperRegistryFactory)
+	ext.SetRegistryFactory(ext.RegistryIdEcho, echo.EchoRegistryFactory)
+	// Exchanges
 	ext.SetExchange(flux.ProtoEcho, echoex.NewEchoExchange())
 	ext.SetExchange(flux.ProtoHttp, http.NewHttpExchange())
 	ext.SetExchangeDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())
 	ext.SetExchange(flux.ProtoDubbo, dubbo.NewDubboExchange())
 	ext.SetExchangeDecoder(flux.ProtoDubbo, dubbo.NewDubboExchangeDecoder())
-	// dynamic filter factories
+	// Dynamic factories
 	ext.SetFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
 	ext.SetFactory(filter.TypeIdRateLimitFilter, filter.RateLimitFilterFactory)
