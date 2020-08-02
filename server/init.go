@@ -8,7 +8,6 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
 	"github.com/bytepowered/flux/internal"
-	"github.com/bytepowered/flux/registry/echo"
 	"github.com/bytepowered/flux/registry/zk"
 )
 
@@ -26,7 +25,6 @@ func init() {
 	// Default: ZK
 	ext.SetRegistryFactory(ext.RegistryIdDefault, zk.ZookeeperRegistryFactory)
 	ext.SetRegistryFactory(ext.RegistryIdZookeeper, zk.ZookeeperRegistryFactory)
-	ext.SetRegistryFactory(ext.RegistryIdEcho, echo.EchoRegistryFactory)
 	// Exchanges
 	ext.SetExchange(flux.ProtoEcho, echoex.NewEchoExchange())
 	ext.SetExchange(flux.ProtoHttp, http.NewHttpExchange())

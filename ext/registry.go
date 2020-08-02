@@ -9,7 +9,6 @@ import (
 const (
 	RegistryIdDefault   = "active"
 	RegistryIdZookeeper = "zookeeper"
-	RegistryIdEcho      = "echo"
 )
 
 var (

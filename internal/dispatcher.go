@@ -6,7 +6,6 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"reflect"
 	"time"
 )
@@ -85,12 +84,6 @@ func (d *ServerDispatcher) Initial() error {
 }
 
 func (d *ServerDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
-	// Debug echo registry
-	if pkg.IsEnv(pkg.EnvDev) {
-		if f, ok := ext.GetRegistryFactory(ext.RegistryIdEcho); ok {
-			go func() { pkg.Silently(f().WatchEvents(events)) }()
-		}
-	}
 	return d.activeRegistry.WatchEvents(events)
 }
 
