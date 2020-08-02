@@ -270,7 +270,7 @@ func (s *HttpServer) newRequestRouter(mvEndpoint *internal.MultiVersionEndpoint)
 		)
 		// Resolve argRef
 		if shouldResolve(ctx, ctx.EndpointArguments()) {
-			if err := resolveArguments(ext.GetArgumentResolveFunc(), ctx.EndpointArguments(), ctx); nil != err {
+			if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
 				return _WriteError(err)
 			}
 		}
