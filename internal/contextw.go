@@ -39,6 +39,10 @@ func (c *ContextWrapper) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
+func (c *ContextWrapper) EndpointProtoName() string {
+	return c.endpoint.Protocol
+}
+
 func (c *ContextWrapper) RequestMethod() string {
 	return c.context.Request().Method
 }

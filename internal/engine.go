@@ -118,7 +118,7 @@ func (r *RouteEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	}()
 	// Walk filters
 	return r.walk(metrics, func(ctx flux.Context) *flux.StateError {
-		protoName := ctx.Endpoint().Protocol
+		protoName := ctx.EndpointProtoName()
 		if exchange, ok := ext.GetExchange(protoName); !ok {
 			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,
