@@ -42,7 +42,6 @@ const (
 	ProtoDubbo = "DUBBO"
 	ProtoGRPC  = "GRPC"
 	ProtoHttp  = "HTTP"
-	ProtoEcho  = "ECHO"
 )
 
 // Argument 定义Endpoint的参数结构元数据

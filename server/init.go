@@ -3,7 +3,6 @@ package server
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/exchange/dubbo"
-	"github.com/bytepowered/flux/exchange/echoex"
 	"github.com/bytepowered/flux/exchange/http"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
@@ -26,7 +25,6 @@ func init() {
 	ext.SetRegistryFactory(ext.RegistryIdDefault, zk.ZookeeperRegistryFactory)
 	ext.SetRegistryFactory(ext.RegistryIdZookeeper, zk.ZookeeperRegistryFactory)
 	// Exchanges
-	ext.SetExchange(flux.ProtoEcho, echoex.NewEchoExchange())
 	ext.SetExchange(flux.ProtoHttp, http.NewHttpExchange())
 	ext.SetExchangeDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())
 	ext.SetExchange(flux.ProtoDubbo, dubbo.NewDubboExchange())
