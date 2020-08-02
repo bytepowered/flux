@@ -29,13 +29,15 @@ const (
 )
 
 const (
-	ConfigHttpRootName      = "HttpServer"
-	ConfigHttpVersionHeader = "version-header"
-	ConfigHttpDebugEnable   = "debug-enable"
-	ConfigHttpAddress       = "address"
-	ConfigHttpPort          = "port"
-	ConfigHttpTlsCertFile   = "tls-cert-file"
-	ConfigHttpTlsKeyFile    = "tls-key-file"
+	ConfigHttpRootName         = "HttpServer"
+	ConfigHttpVersionHeader    = "version-header"
+	ConfigHttpDebugEnable      = "debug-enable"
+	ConfigHttpRoutingLogEnable = "routing-log-enable"
+	ConfigHttpCorsDisable      = "cors-disable"
+	ConfigHttpAddress          = "address"
+	ConfigHttpPort             = "port"
+	ConfigHttpTlsCertFile      = "tls-cert-file"
+	ConfigHttpTlsKeyFile       = "tls-key-file"
 )
 
 const (
@@ -122,7 +124,7 @@ func (s *HttpServer) InitServer() error {
 	s.server.HidePort = true
 	s.server.HTTPErrorHandler = s.handleServerError
 	// Http拦截器
-	if !s.httpConfig.GetBool("cors-disable") {
+	if !s.httpConfig.GetBool(ConfigHttpCorsDisable) {
 		s.AddHttpInterceptor(middleware.CORS())
 	}
 	s.AddHttpInterceptor(RepeatableHttpBody)
@@ -234,6 +236,7 @@ func (s *HttpServer) release(context *internal.ContextWrapper) {
 }
 
 func (s *HttpServer) newRequestRouter(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
+	routingLogEnable := s.httpConfig.GetBool(ConfigHttpRoutingLogEnable)
 	return func(echo echo.Context) error {
 		s.httpVisits.Add(1)
 		request := echo.Request()
@@ -255,19 +258,23 @@ func (s *HttpServer) newRequestRouter(mvEndpoint *internal.MultiVersionEndpoint)
 			return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), inverr)
 		}
 		if !found {
-			trace.Infow("Server dispatch: <ENDPOINT_NOT_FOUND>",
-				"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
-			)
+			if routingLogEnable {
+				trace.Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
+					"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
+				)
+			}
 			return _WriteError(ErrEndpointVersionNotFound)
 		}
 		// Context exchange
 		for _, pf := range s.pipelines {
 			pf(echo, ctx)
 		}
-		trace.Infow("Server dispatch: routing",
-			"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
-			"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
-		)
+		if routingLogEnable {
+			trace.Infow("HttpServer routing: DISPATCHING",
+				"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
+				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
+			)
+		}
 		// Resolve argRef
 		if shouldResolve(ctx, ctx.EndpointArguments()) {
 			if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
