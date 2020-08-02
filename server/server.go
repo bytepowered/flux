@@ -1,8 +1,7 @@
 package server
 
 import (
-	context "context"
-	"expvar"
+	"context"
 	"fmt"
 	"github.com/bwmarrin/snowflake"
 	"github.com/bytepowered/flux"
@@ -11,7 +10,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	https "net/http"
+	h2tp "net/http"
 	_ "net/http/pprof"
 	"runtime/debug"
 	"strings"
@@ -70,7 +69,6 @@ type HttpContextPipelineFunc func(echo.Context, flux.Context)
 type HttpServer struct {
 	server            *echo.Echo
 	httpConfig        *flux.Configuration
-	httpVisits        *expvar.Int
 	httpWriter        flux.HttpResponseWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
@@ -85,7 +83,6 @@ type HttpServer struct {
 func NewHttpServer() *HttpServer {
 	id, _ := snowflake.NewNode(1)
 	return &HttpServer{
-		httpVisits:      expvar.NewInt("visits"),
 		httpWriter:      new(HttpServerResponseWriter),
 		routeEngine:     internal.NewRouteEngine(),
 		mvEndpointMap:   make(map[string]*internal.MultiVersionEndpoint),
@@ -264,13 +261,19 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 	}
 }
 
-func (s *HttpServer) acquire(echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
-	requestId := echo.Request().Header.Get(DefaultHttpHeaderRequestId)
-	if "" == requestId {
-		requestId = s.snowflakeId.Generate().Base64()
+func (s *HttpServer) id(echo echo.Context) string {
+	id := echo.Request().Header.Get(DefaultHttpHeaderRequestId)
+	if "" == id {
+		id = s.snowflakeId.Generate().Base64()
 	}
+	echo.Request().Header.Set(DefaultHttpHeaderRequestId, id)
+	echo.Response().Header().Set(DefaultHttpHeaderRequestId, id)
+	return id
+}
+
+func (s *HttpServer) acquire(id string, echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
 	ctx := s.contextWrappers.Get().(*internal.ContextWrapper)
-	ctx.Reattach(requestId, echo, endpoint)
+	ctx.Reattach(id, echo, endpoint)
 	return ctx
 }
 
@@ -282,29 +285,28 @@ func (s *HttpServer) release(context *internal.ContextWrapper) {
 func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
 	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
 	return func(echo echo.Context) error {
-		s.httpVisits.Add(1)
 		request := echo.Request()
 		// Multi version selection
 		version := request.Header.Get(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.FindByVersion(version)
-		ctxw := s.acquire(echo, endpoint)
-		defer s.release(ctxw)
-		echo.Response().Header().Set(flux.XRequestId, ctxw.RequestId())
-		defer func(requestId string) {
+		requestId := s.id(echo)
+		defer func() {
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
 				tl.Errorw("Server dispatch: unexpected error", "error", err)
 				tl.Error(string(debug.Stack()))
 			}
-		}(ctxw.RequestId())
+		}()
 		if !found {
 			if requestLogEnable {
-				logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
+				logger.Trace(requestId).Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
 					"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 				)
 			}
-			return s.httpWriter.WriteError(echo, ctxw.RequestId(), ctxw.ResponseWriter().Headers(), ErrEndpointVersionNotFound)
+			return s.httpWriter.WriteError(echo, requestId, h2tp.Header{}, ErrEndpointVersionNotFound)
 		}
+		ctxw := s.acquire(requestId, echo, endpoint)
+		defer s.release(ctxw)
 		// Context exchange
 		for _, pf := range s.pipelines {
 			pf(echo, ctxw)
@@ -338,7 +340,7 @@ func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
 		}
 	}
 	id := ctx.Response().Header().Get(flux.XRequestId)
-	if err := s.httpWriter.WriteError(ctx, id, https.Header{}, serr); nil != err {
+	if err := s.httpWriter.WriteError(ctx, id, h2tp.Header{}, serr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }
@@ -384,8 +386,8 @@ func toHttpPattern(uri string) string {
 
 func isAllowMethod(method string) bool {
 	switch method {
-	case https.MethodGet, https.MethodPost, https.MethodDelete, https.MethodPut,
-		https.MethodHead, https.MethodOptions, https.MethodPatch, https.MethodTrace:
+	case h2tp.MethodGet, h2tp.MethodPost, h2tp.MethodDelete, h2tp.MethodPut,
+		h2tp.MethodHead, h2tp.MethodOptions, h2tp.MethodPatch, h2tp.MethodTrace:
 		// Allowed
 		return true
 	default:
