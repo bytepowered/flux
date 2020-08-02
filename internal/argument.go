@@ -61,7 +61,7 @@ func shouldResolve(ctx flux.Context, args []flux.Argument) bool {
 	return true
 }
 
-func resolveArguments(lookupFunc ext.ArgumentLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.InvokeError {
+func resolveArguments(lookupFunc ext.ArgumentLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
 	for _, arg := range arguments {
 		if flux.ArgumentTypePrimitive == arg.Type {
 			if err := resolve(lookupFunc, arg, ctx); nil != err {
@@ -79,12 +79,12 @@ func resolveArguments(lookupFunc ext.ArgumentLookupFunc, arguments []flux.Argume
 	return nil
 }
 
-func resolve(lookupFunc ext.ArgumentLookupFunc, arg flux.Argument, ctx flux.Context) *flux.InvokeError {
+func resolve(lookupFunc ext.ArgumentLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
 	value, err := lookupFunc(arg, ctx)
 	if nil != err {
 		logger.Trace(ctx.RequestId()).Warnw("Failed to lookup argument",
 			"http.key", arg.HttpKey, "arg.name", arg.Name, "error", err)
-		return &flux.InvokeError{
+		return &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "PARAMETERS:LOOKUP_VALUE",
@@ -99,7 +99,7 @@ func resolve(lookupFunc ext.ArgumentLookupFunc, arg flux.Argument, ctx flux.Cont
 		logger.Trace(ctx.RequestId()).Warnw("Failed to resolve argument",
 			"http.key", arg.HttpKey, "arg.name", arg.Name, "class", arg.TypeClass, "generic", arg.TypeGeneric,
 			"value", value, "error", err)
-		return &flux.InvokeError{
+		return &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "PARAMETERS:RESOLVE_VALUE",
@@ -107,5 +107,6 @@ func resolve(lookupFunc ext.ArgumentLookupFunc, arg flux.Argument, ctx flux.Cont
 		}
 	} else {
 		arg.HttpValue.SetValue(v)
+		return nil
 	}
 }

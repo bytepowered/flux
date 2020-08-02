@@ -16,7 +16,7 @@ func RepeatableHttpBody(next echo.HandlerFunc) echo.HandlerFunc {
 		request := c.Request()
 		data, err := ioutil.ReadAll(request.Body)
 		if nil != err {
-			return &flux.InvokeError{
+			return &flux.StateError{
 				StatusCode: flux.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    "REQUEST:BODY_PREPARE",
@@ -29,7 +29,7 @@ func RepeatableHttpBody(next echo.HandlerFunc) echo.HandlerFunc {
 		// 恢复Body，但ParseForm解析后，request.Body无法重读，需要通过GetBody
 		request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 		if err := request.ParseForm(); nil != err {
-			return &flux.InvokeError{
+			return &flux.StateError{
 				StatusCode: flux.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    "REQUEST:FORM_PARSING",

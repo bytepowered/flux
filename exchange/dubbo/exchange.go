@@ -127,11 +127,11 @@ func (ex *DubboExchange) Shutdown(_ context.Context) error {
 	return nil
 }
 
-func (ex *DubboExchange) Exchange(ctx flux.Context) *flux.InvokeError {
+func (ex *DubboExchange) Exchange(ctx flux.Context) *flux.StateError {
 	return internal.InvokeExchanger(ctx, ex)
 }
 
-func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.InvokeError) {
+func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.StateError) {
 	types, values := ex.AssembleFunc(target.Arguments)
 	// 在测试场景中，fluxContext可能为nil
 	attachments := make(map[string]interface{})
@@ -155,7 +155,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 		ssmap, err := cast.ToStringMapStringE(attachments)
 		if nil != err {
-			return nil, &flux.InvokeError{
+			return nil, &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    ErrMessageAssemble,
@@ -167,7 +167,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	if resp, err := service.Invoke(goctx, args); err != nil {
 		trace.Errorw("Dubbo rpc error", "service", serviceTag)
 		trace.Error("Dubbo rpc error", err)
-		return nil, &flux.InvokeError{
+		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayExchange,
 			Message:    ErrMessageInvoke,

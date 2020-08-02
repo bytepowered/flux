@@ -21,12 +21,12 @@ const (
 )
 
 var (
-	ErrorAuthorizationHeaderRequired = &flux.InvokeError{
+	ErrorAuthorizationHeaderRequired = &flux.StateError{
 		StatusCode: flux.StatusUnauthorized,
 		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "JWT:REQUIRES_TOKEN",
 	}
-	ErrorIllegalToken = &flux.InvokeError{
+	ErrorIllegalToken = &flux.StateError{
 		StatusCode: flux.StatusUnauthorized,
 		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "JWT:ILLEGAL_TOKEN",
@@ -94,7 +94,7 @@ func (j *JwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvok
 	if j.disabled {
 		return next
 	}
-	return func(ctx flux.Context) *flux.InvokeError {
+	return func(ctx flux.Context) *flux.StateError {
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
@@ -116,10 +116,10 @@ func (j *JwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvok
 	}
 }
 
-func (j *JwtVerificationFilter) decodeVerified(tokenValue string, ctx flux.Context) (jwt.MapClaims, *flux.InvokeError) {
+func (j *JwtVerificationFilter) decodeVerified(tokenValue string, ctx flux.Context) (jwt.MapClaims, *flux.StateError) {
 	token, err := jwt.Parse(tokenValue, j.jwtCertKeyFactory(ctx))
 	if nil != err {
-		return nil, &flux.InvokeError{
+		return nil, &flux.StateError{
 			StatusCode: flux.StatusUnauthorized,
 			Message:    "JWT:PARSING",
 			Internal:   err,

@@ -16,12 +16,12 @@ const (
 )
 
 var (
-	ErrPermissionSubjectNotFound = &flux.InvokeError{
+	ErrPermissionSubjectNotFound = &flux.StateError{
 		StatusCode: flux.StatusBadRequest,
 		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "PERMISSION:SUBJECT_NOT_FOUND",
 	}
-	ErrPermissionSubjectAccessDenied = &flux.InvokeError{
+	ErrPermissionSubjectAccessDenied = &flux.StateError{
 		StatusCode: flux.StatusAccessDenied,
 		ErrorCode:  flux.ErrorCodeRequestInvalid,
 		Message:    "PERMISSION:SUBJECT_ACCESS_DENIED",
@@ -52,7 +52,7 @@ func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.Filt
 	if p.disabled {
 		return next
 	}
-	return func(ctx flux.Context) *flux.InvokeError {
+	return func(ctx flux.Context) *flux.StateError {
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
@@ -107,7 +107,7 @@ func (*PermissionVerificationFilter) TypeId() string {
 	return TypeIdPermissionVerification
 }
 
-func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.InvokeError {
+func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.StateError {
 	jwtSubjectId, ok := ctx.GetAttribute(flux.XJwtSubject)
 	if !ok {
 		return ErrPermissionSubjectNotFound
@@ -126,7 +126,7 @@ func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.In
 			return ErrPermissionSubjectAccessDenied
 		}
 	} else {
-		return &flux.InvokeError{
+		return &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:LOAD_ACCESS",
 			Internal:   err,

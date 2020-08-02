@@ -57,7 +57,7 @@ func (r *RateLimitFilter) Init(config *flux.Configuration) error {
 }
 
 func (r *RateLimitFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
-	return func(ctx flux.Context) *flux.InvokeError {
+	return func(ctx flux.Context) *flux.StateError {
 		id := flux.LookupValue(r.config.lookupId, ctx)
 		limit, _ := r.limiters.GetOrLoad(id, func(_ lakego.Key) (lakego.Value, error) {
 			return rate.NewLimiter(rate.Every(r.config.limitRate), r.config.limitSize), nil
@@ -65,7 +65,7 @@ func (r *RateLimitFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 		if limit.(*rate.Limiter).Allow() {
 			return next(ctx)
 		} else {
-			return &flux.InvokeError{
+			return &flux.StateError{
 				StatusCode: http.StatusTooManyRequests,
 				ErrorCode:  flux.ErrorCodeRequestInvalid,
 				Message:    "RATE:OVER_LIMIT",

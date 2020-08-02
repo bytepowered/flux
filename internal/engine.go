@@ -11,40 +11,19 @@ import (
 )
 
 type RouteEngine struct {
-	registry flux.Registry
 }
 
 func NewRouteEngine() *RouteEngine {
 	return &RouteEngine{}
 }
 
-func (d *RouteEngine) Initial() error {
+func (r *RouteEngine) Initial() error {
 	logger.Infof("Dispatcher initialing")
-	// 组件生命周期回调钩子
-	initRegisterHook := func(ref interface{}, config *flux.Configuration) error {
-		if init, ok := ref.(flux.Initializer); ok {
-			if err := init.Init(config); nil != err {
-				return err
-			}
-		}
-		ext.AddLifecycleHook(ref)
-		return nil
-	}
-	// 静态注册的单实例内核组件
-	// Registry
-	if registry, config, err := findActiveRegistry(); nil != err {
-		return err
-	} else {
-		d.registry = registry
-		if err := initRegisterHook(registry, config); nil != err {
-			return err
-		}
-	}
 	// Exchanges
 	for proto, ex := range ext.Exchanges() {
 		ns := "EXCHANGE." + proto
 		logger.Infow("Load exchange", "proto", proto, "type", reflect.TypeOf(ex), "config-ns", ns)
-		if err := initRegisterHook(ex, flux.NewConfigurationOf(ns)); nil != err {
+		if err := r.InitialHook(ex, flux.NewConfigurationOf(ns)); nil != err {
 			return err
 		}
 	}
@@ -57,7 +36,7 @@ func (d *RouteEngine) Initial() error {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
 			continue
 		}
-		if err := initRegisterHook(filter, config); nil != err {
+		if err := r.InitialHook(filter, config); nil != err {
 			return err
 		}
 	}
@@ -73,7 +52,7 @@ func (d *RouteEngine) Initial() error {
 			logger.Infow("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
 			continue
 		}
-		if err := initRegisterHook(filter, item.Config); nil != err {
+		if err := r.InitialHook(filter, item.Config); nil != err {
 			return err
 		}
 		if filter, ok := filter.(flux.Filter); ok {
@@ -83,11 +62,17 @@ func (d *RouteEngine) Initial() error {
 	return nil
 }
 
-func (d *RouteEngine) WatchRegistry(events chan<- flux.EndpointEvent) error {
-	return d.registry.WatchEvents(events)
+func (r *RouteEngine) InitialHook(ref interface{}, config *flux.Configuration) error {
+	if init, ok := ref.(flux.Initializer); ok {
+		if err := init.Init(config); nil != err {
+			return err
+		}
+	}
+	ext.AddLifecycleHook(ref)
+	return nil
 }
 
-func (d *RouteEngine) Startup() error {
+func (r *RouteEngine) Startup() error {
 	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -96,7 +81,7 @@ func (d *RouteEngine) Startup() error {
 	return nil
 }
 
-func (d *RouteEngine) Shutdown(ctx context.Context) error {
+func (r *RouteEngine) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -105,7 +90,7 @@ func (d *RouteEngine) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (d *RouteEngine) Route(ctx *ContextWrapper) *flux.InvokeError {
+func (r *RouteEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	// Resolve arguments
 	if shouldResolve(ctx, ctx.EndpointArguments()) {
 		if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
@@ -132,10 +117,10 @@ func (d *RouteEngine) Route(ctx *ContextWrapper) *flux.InvokeError {
 		}
 	}()
 	// Walk filters
-	return d.walk(metrics, func(ctx flux.Context) *flux.InvokeError {
+	return r.walk(metrics, func(ctx flux.Context) *flux.StateError {
 		protoName := ctx.Endpoint().Protocol
 		if exchange, ok := ext.GetExchange(protoName); !ok {
-			return &flux.InvokeError{
+			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL: %s", protoName)}
@@ -148,7 +133,7 @@ func (d *RouteEngine) Route(ctx *ContextWrapper) *flux.InvokeError {
 	}, append(globalFilters, selectiveFilters...)...)(ctx)
 }
 
-func (d *RouteEngine) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
+func (r *RouteEngine) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		start := time.Now()
 		next = filters[i].Invoke(next)
@@ -159,16 +144,4 @@ func (d *RouteEngine) walk(metrics map[string]string, next flux.FilterInvoker, f
 
 func _isDisabled(config *flux.Configuration) bool {
 	return config.GetBool("disable") || config.GetBool("disabled")
-}
-
-func findActiveRegistry() (flux.Registry, *flux.Configuration, error) {
-	config := flux.NewConfigurationOf(flux.KeyConfigRootRegistry)
-	config.SetDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
-	registryId := config.GetString(flux.KeyConfigRegistryId)
-	logger.Infow("Active metadata registry", "registry-id", registryId)
-	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
-		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
-	} else {
-		return factory(), config, nil
-	}
 }

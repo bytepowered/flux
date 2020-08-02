@@ -19,7 +19,7 @@ var (
 // HttpServerResponseWriter 默认Http服务响应数据Writer
 type HttpServerResponseWriter int
 
-func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string, header http.Header, err *flux.InvokeError) error {
+func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string, header http.Header, err *flux.StateError) error {
 	SetupResponseDefaults(ctx.Response(), requestId, header, err.StatusCode)
 	resp := map[string]string{
 		"status":  "error",
@@ -68,9 +68,9 @@ func (a *HttpServerResponseWriter) WriteBody(ctx echo.Context, requestId string,
 	return nil
 }
 
-func SerializeWith(serializer flux.Serializer, data interface{}) ([]byte, *flux.InvokeError) {
+func SerializeWith(serializer flux.Serializer, data interface{}) ([]byte, *flux.StateError) {
 	if bytes, err := serializer.Marshal(data); nil != err {
-		return nil, &flux.InvokeError{
+		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "RESPONSE:MARSHALING",

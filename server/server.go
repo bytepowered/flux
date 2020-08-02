@@ -47,7 +47,7 @@ const (
 )
 
 var (
-	ErrEndpointVersionNotFound = &flux.InvokeError{
+	ErrEndpointVersionNotFound = &flux.StateError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeGatewayEndpoint,
 		Message:    "ENDPOINT_VERSION_NOT_FOUND",
@@ -75,6 +75,7 @@ type HttpServer struct {
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
 	routeEngine       *internal.RouteEngine
+	routerRegistry    flux.Registry
 	mvEndpointMap     map[string]*internal.MultiVersionEndpoint
 	contextWrappers   sync.Pool
 	snowflakeId       *snowflake.Node
@@ -127,6 +128,15 @@ func (s *HttpServer) InitServer() error {
 	if s.httpConfig.GetBool(HttpServerConfigKeyDebugEnable) {
 		s.debugFeatures(s.httpConfig)
 	}
+	// Http Registry
+	if registry, config, err := findRouterRegistry(); nil != err {
+		return err
+	} else {
+		if err := s.routeEngine.InitialHook(registry, config); nil != err {
+			return err
+		}
+		s.routerRegistry = registry
+	}
 	return s.routeEngine.Initial()
 }
 
@@ -152,10 +162,10 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 	}
 	events := make(chan flux.EndpointEvent, 2)
 	defer close(events)
-	if err := s.routeEngine.WatchRegistry(events); nil != err {
+	if err := s.watchRouterRegistry(events); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
-		go s.handleEndpointRegister(events)
+		go s.handleRouteRegistryEvent(events)
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
 	certFile := config.GetString(HttpServerConfigKeyTlsCertFile)
@@ -220,7 +230,11 @@ func (s *HttpServer) AddHttpContextPipeline(f HttpContextPipelineFunc) {
 	s.pipelines = append(s.pipelines, f)
 }
 
-func (s *HttpServer) handleEndpointRegister(events <-chan flux.EndpointEvent) {
+func (s *HttpServer) watchRouterRegistry(events chan<- flux.EndpointEvent) error {
+	return s.routerRegistry.WatchEvents(events)
+}
+
+func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) {
 	for event := range events {
 		pattern := toHttpPattern(event.HttpPattern)
 		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
@@ -314,9 +328,9 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 // handleServerError EchoHttp状态错误处理函数。
 func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
 	// Http中间件等返回InvokeError错误
-	inverr, ok := err.(*flux.InvokeError)
+	serr, ok := err.(*flux.StateError)
 	if !ok {
-		inverr = &flux.InvokeError{
+		serr = &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    err.Error(),
@@ -324,7 +338,7 @@ func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
 		}
 	}
 	id := ctx.Response().Header().Get(flux.XRequestId)
-	if err := s.httpWriter.WriteError(ctx, id, https.Header{}, inverr); nil != err {
+	if err := s.httpWriter.WriteError(ctx, id, https.Header{}, serr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }
@@ -344,6 +358,18 @@ func (s *HttpServer) ensure() *HttpServer {
 		logger.Panicf("Call must after InitServer()")
 	}
 	return s
+}
+
+func findRouterRegistry() (flux.Registry, *flux.Configuration, error) {
+	config := flux.NewConfigurationOf(flux.KeyConfigRootRegistry)
+	config.SetDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
+	registryId := config.GetString(flux.KeyConfigRegistryId)
+	logger.Infow("Active router registry", "registry-id", registryId)
+	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
+		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
+	} else {
+		return factory(), config, nil
+	}
 }
 
 func toHttpPattern(uri string) string {

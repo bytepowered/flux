@@ -63,7 +63,7 @@ func (r *HystrixFilter) Init(config *flux.Configuration) error {
 }
 
 func (r *HystrixFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
-	return func(ctx flux.Context) *flux.InvokeError {
+	return func(ctx flux.Context) *flux.StateError {
 		// 只处理Http协议，Dubbo协议内部自带熔断逻辑
 		ep := ctx.Endpoint()
 		if flux.ProtoHttp != ep.Protocol {
@@ -86,7 +86,7 @@ func (r *HystrixFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 		if ce, ok := err.(hystrix.CircuitError); ok {
 			msg = ce.Message
 		}
-		return &flux.InvokeError{
+		return &flux.StateError{
 			StatusCode: http.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    msg,

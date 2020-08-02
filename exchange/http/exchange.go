@@ -27,15 +27,15 @@ type exchange struct {
 	httpClient *http.Client
 }
 
-func (ex *exchange) Exchange(ctx flux.Context) *flux.InvokeError {
+func (ex *exchange) Exchange(ctx flux.Context) *flux.StateError {
 	return internal.InvokeExchanger(ctx, ex)
 }
 
-func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.InvokeError) {
+func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
 	httpRequest := ctx.RequestReader().HttpRequest()
 	newRequest, err := ex.Assemble(target, httpRequest)
 	if nil != err {
-		return nil, &flux.InvokeError{
+		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "HTTPEX:ASSEMBLE",
@@ -54,7 +54,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 		if uErr, ok := err.(*url.Error); ok {
 			msg = fmt.Sprintf("HTTPEX:REMOTE_ERROR:%s", uErr.Error())
 		}
-		return nil, &flux.InvokeError{
+		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayExchange,
 			Message:    msg,
