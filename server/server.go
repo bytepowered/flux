@@ -24,20 +24,20 @@ const (
 )
 
 const (
-	DefaultHttpVersionHeader   = "X-Version"
-	DefaultHttpRequestIdHeader = "X-Request-Id"
+	DefaultHttpHeaderVersion   = "X-Version"
+	DefaultHttpHeaderRequestId = "X-Request-Id"
 )
 
 const (
-	ConfigHttpRootName         = "HttpServer"
-	ConfigHttpVersionHeader    = "version-header"
-	ConfigHttpDebugEnable      = "debug-enable"
-	ConfigHttpRoutingLogEnable = "routing-log-enable"
-	ConfigHttpCorsDisable      = "cors-disable"
-	ConfigHttpAddress          = "address"
-	ConfigHttpPort             = "port"
-	ConfigHttpTlsCertFile      = "tls-cert-file"
-	ConfigHttpTlsKeyFile       = "tls-key-file"
+	HttpServerConfigRootName            = "HttpServer"
+	HttpServerConfigKeyVersionHeader    = "version-header"
+	HttpServerConfigKeyDebugEnable      = "debug-enable"
+	HttpServerConfigKeyRequestLogEnable = "request-log-enable"
+	HttpServerConfigKeyCorsDisable      = "cors-disable"
+	HttpServerConfigKeyAddress          = "address"
+	HttpServerConfigKeyPort             = "port"
+	HttpServerConfigKeyTlsCertFile      = "tls-cert-file"
+	HttpServerConfigKeyTlsKeyFile       = "tls-key-file"
 )
 
 const (
@@ -56,10 +56,10 @@ var (
 
 var (
 	HttpServerConfigDefaults = map[string]interface{}{
-		ConfigHttpVersionHeader: DefaultHttpVersionHeader,
-		ConfigHttpDebugEnable:   false,
-		ConfigHttpAddress:       "0.0.0.0",
-		ConfigHttpPort:          8080,
+		HttpServerConfigKeyVersionHeader: DefaultHttpHeaderVersion,
+		HttpServerConfigKeyDebugEnable:   false,
+		HttpServerConfigKeyAddress:       "0.0.0.0",
+		HttpServerConfigKeyPort:          8080,
 	}
 )
 
@@ -74,7 +74,7 @@ type HttpServer struct {
 	httpWriter        flux.HttpResponseWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
-	dispatcher        *internal.ServerDispatcher
+	routeEngine       *internal.RouteEngine
 	mvEndpointMap     map[string]*internal.MultiVersionEndpoint
 	contextWrappers   sync.Pool
 	snowflakeId       *snowflake.Node
@@ -86,7 +86,7 @@ func NewHttpServer() *HttpServer {
 	return &HttpServer{
 		httpVisits:      expvar.NewInt("visits"),
 		httpWriter:      new(HttpServerResponseWriter),
-		dispatcher:      internal.NewDispatcher(),
+		routeEngine:     internal.NewRouteEngine(),
 		mvEndpointMap:   make(map[string]*internal.MultiVersionEndpoint),
 		contextWrappers: sync.Pool{New: internal.NewContextWrapper},
 		pipelines:       make([]HttpContextPipelineFunc, 0),
@@ -111,23 +111,23 @@ func (s *HttpServer) Initial() error {
 // InitServer : Call before startup
 func (s *HttpServer) InitServer() error {
 	// Http server
-	s.httpConfig = flux.NewConfigurationOf(ConfigHttpRootName)
+	s.httpConfig = flux.NewConfigurationOf(HttpServerConfigRootName)
 	s.httpConfig.SetDefaults(HttpServerConfigDefaults)
-	s.httpVersionHeader = s.httpConfig.GetString(ConfigHttpVersionHeader)
+	s.httpVersionHeader = s.httpConfig.GetString(HttpServerConfigKeyVersionHeader)
 	s.server = echo.New()
 	s.server.HideBanner = true
 	s.server.HidePort = true
 	s.server.HTTPErrorHandler = s.handleServerError
 	// Http拦截器
-	if !s.httpConfig.GetBool(ConfigHttpCorsDisable) {
+	if !s.httpConfig.GetBool(HttpServerConfigKeyCorsDisable) {
 		s.AddHttpInterceptor(middleware.CORS())
 	}
 	s.AddHttpInterceptor(RepeatableHttpBody)
 	// Http debug features
-	if s.httpConfig.GetBool(ConfigHttpDebugEnable) {
+	if s.httpConfig.GetBool(HttpServerConfigKeyDebugEnable) {
 		s.debugFeatures(s.httpConfig)
 	}
-	return s.dispatcher.Initial()
+	return s.routeEngine.Initial()
 }
 
 func (s *HttpServer) Startup(version flux.BuildInfo) error {
@@ -147,19 +147,19 @@ func (s *HttpServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Config
 func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configuration) error {
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
-	if err := s.ensure().dispatcher.Startup(); nil != err {
+	if err := s.ensure().routeEngine.Startup(); nil != err {
 		return err
 	}
 	events := make(chan flux.EndpointEvent, 2)
 	defer close(events)
-	if err := s.dispatcher.WatchRegistry(events); nil != err {
+	if err := s.routeEngine.WatchRegistry(events); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
 		go s.handleEndpointRegister(events)
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
-	certFile := config.GetString(ConfigHttpTlsCertFile)
-	keyFile := config.GetString(ConfigHttpTlsKeyFile)
+	certFile := config.GetString(HttpServerConfigKeyTlsCertFile)
+	keyFile := config.GetString(HttpServerConfigKeyTlsKeyFile)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
 		return s.server.StartTLS(address, certFile, keyFile)
@@ -176,8 +176,8 @@ func (s *HttpServer) Shutdown(ctx context.Context) error {
 	if err := s.server.Shutdown(ctx); nil != err {
 		return err
 	}
-	// Stop dispatcher
-	return s.dispatcher.Shutdown(ctx)
+	// Stop routeEngine
+	return s.routeEngine.Shutdown(ctx)
 }
 
 // HttpConfig return Http server configuration
@@ -222,7 +222,7 @@ func (s *HttpServer) AddHttpContextPipeline(f HttpContextPipelineFunc) {
 
 func (s *HttpServer) handleEndpointRegister(events <-chan flux.EndpointEvent) {
 	for event := range events {
-		pattern := toHttpServerPattern(event.HttpPattern)
+		pattern := toHttpPattern(event.HttpPattern)
 		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
 		multi, isNew := s.getMultiVersionEndpoint(routeKey)
 		// Check http method
@@ -251,7 +251,7 @@ func (s *HttpServer) handleEndpointRegister(events <-chan flux.EndpointEvent) {
 }
 
 func (s *HttpServer) acquire(echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
-	requestId := echo.Request().Header.Get(DefaultHttpRequestIdHeader)
+	requestId := echo.Request().Header.Get(DefaultHttpHeaderRequestId)
 	if "" == requestId {
 		requestId = s.snowflakeId.Generate().Base64()
 	}
@@ -266,57 +266,47 @@ func (s *HttpServer) release(context *internal.ContextWrapper) {
 }
 
 func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
-	routingLogEnable := s.httpConfig.GetBool(ConfigHttpRoutingLogEnable)
+	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
 	return func(echo echo.Context) error {
 		s.httpVisits.Add(1)
 		request := echo.Request()
 		// Multi version selection
 		version := request.Header.Get(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.FindByVersion(version)
-		ctx := s.acquire(echo, endpoint)
+		ctxw := s.acquire(echo, endpoint)
+		defer s.release(ctxw)
+		echo.Response().Header().Set(flux.XRequestId, ctxw.RequestId())
 		defer func(requestId string) {
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
 				tl.Errorw("Server dispatch: unexpected error", "error", err)
 				tl.Error(string(debug.Stack()))
 			}
-		}(ctx.RequestId())
-		echo.Response().Header().Set(flux.XRequestId, ctx.RequestId())
-		defer s.release(ctx)
-		trace := logger.Trace(ctx.RequestId())
-		_writeError := func(inverr *flux.InvokeError) error {
-			return s.httpWriter.WriteError(echo, ctx.RequestId(), ctx.ResponseWriter().Headers(), inverr)
-		}
+		}(ctxw.RequestId())
 		if !found {
-			if routingLogEnable {
-				trace.Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
+			if requestLogEnable {
+				logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
 					"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 				)
 			}
-			return _writeError(ErrEndpointVersionNotFound)
+			return s.httpWriter.WriteError(echo, ctxw.RequestId(), ctxw.ResponseWriter().Headers(), ErrEndpointVersionNotFound)
 		}
 		// Context exchange
 		for _, pf := range s.pipelines {
-			pf(echo, ctx)
+			pf(echo, ctxw)
 		}
-		if routingLogEnable {
-			trace.Infow("HttpServer routing: DISPATCHING",
+		if requestLogEnable {
+			logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: DISPATCHING",
 				"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
 			)
 		}
-		// Resolve argRef
-		if shouldResolve(ctx, ctx.EndpointArguments()) {
-			if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
-				return _writeError(err)
-			}
-		}
-		// Dispatch and response
-		if err := s.dispatcher.Dispatch(ctx); nil != err {
-			return _writeError(err)
+		// Route and response
+		if err := s.routeEngine.Route(ctxw); nil != err {
+			return s.httpWriter.WriteError(echo, ctxw.RequestId(), ctxw.ResponseWriter().Headers(), err)
 		} else {
-			rw := ctx.ResponseWriter()
-			return s.httpWriter.WriteBody(echo, ctx.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
+			rw := ctxw.ResponseWriter()
+			return s.httpWriter.WriteBody(echo, ctxw.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}
 }
@@ -356,7 +346,7 @@ func (s *HttpServer) ensure() *HttpServer {
 	return s
 }
 
-func toHttpServerPattern(uri string) string {
+func toHttpPattern(uri string) string {
 	// /api/{userId} -> /api/:userId
 	replaced := strings.Replace(uri, "}", "", -1)
 	if len(replaced) < len(uri) {

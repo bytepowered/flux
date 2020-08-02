@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-type ServerDispatcher struct {
-	activeRegistry flux.Registry
+type RouteEngine struct {
+	registry flux.Registry
 }
 
-func NewDispatcher() *ServerDispatcher {
-	return &ServerDispatcher{}
+func NewRouteEngine() *RouteEngine {
+	return &RouteEngine{}
 }
 
-func (d *ServerDispatcher) Initial() error {
+func (d *RouteEngine) Initial() error {
 	logger.Infof("Dispatcher initialing")
 	// 组件生命周期回调钩子
 	initRegisterHook := func(ref interface{}, config *flux.Configuration) error {
@@ -35,7 +35,7 @@ func (d *ServerDispatcher) Initial() error {
 	if registry, config, err := findActiveRegistry(); nil != err {
 		return err
 	} else {
-		d.activeRegistry = registry
+		d.registry = registry
 		if err := initRegisterHook(registry, config); nil != err {
 			return err
 		}
@@ -83,11 +83,11 @@ func (d *ServerDispatcher) Initial() error {
 	return nil
 }
 
-func (d *ServerDispatcher) WatchRegistry(events chan<- flux.EndpointEvent) error {
-	return d.activeRegistry.WatchEvents(events)
+func (d *RouteEngine) WatchRegistry(events chan<- flux.EndpointEvent) error {
+	return d.registry.WatchEvents(events)
 }
 
-func (d *ServerDispatcher) Startup() error {
+func (d *RouteEngine) Startup() error {
 	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -96,7 +96,7 @@ func (d *ServerDispatcher) Startup() error {
 	return nil
 }
 
-func (d *ServerDispatcher) Shutdown(ctx context.Context) error {
+func (d *RouteEngine) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -105,25 +105,33 @@ func (d *ServerDispatcher) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (d *ServerDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
+func (d *RouteEngine) Route(ctx *ContextWrapper) *flux.InvokeError {
+	// Resolve arguments
+	if shouldResolve(ctx, ctx.EndpointArguments()) {
+		if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
+			return err
+		}
+	}
+	// Select filters
 	globalFilters := ext.GlobalFilters()
-	selectFilters := make([]flux.Filter, 0)
+	selectiveFilters := make([]flux.Filter, 0)
 	for _, selector := range ext.FindSelectors(ctx.RequestHost()) {
 		for _, typeId := range selector.Select(ctx).Filters {
 			if f, ok := ext.GetSelectiveFilter(typeId); ok {
-				selectFilters = append(selectFilters, f)
+				selectiveFilters = append(selectiveFilters, f)
 			} else {
 				logger.Trace(ctx.RequestId()).Warnw("Filter not found on selector", "type-id", typeId)
 			}
 		}
 	}
 	// Metrics
-	metrics := make(map[string]string, len(globalFilters)+len(selectFilters)+1)
+	metrics := make(map[string]string, len(globalFilters)+len(selectiveFilters)+1)
 	defer func() {
 		for k, v := range metrics {
 			ctx.ResponseWriter().AddHeader(k, v)
 		}
 	}()
+	// Walk filters
 	return d.walk(metrics, func(ctx flux.Context) *flux.InvokeError {
 		protoName := ctx.Endpoint().Protocol
 		if exchange, ok := ext.GetExchange(protoName); !ok {
@@ -137,10 +145,10 @@ func (d *ServerDispatcher) Dispatch(ctx flux.Context) *flux.InvokeError {
 			metrics["X-Metric-Exchange"] = time.Since(start).String()
 			return ret
 		}
-	}, append(globalFilters, selectFilters...)...)(ctx)
+	}, append(globalFilters, selectiveFilters...)...)(ctx)
 }
 
-func (d *ServerDispatcher) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
+func (d *RouteEngine) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		start := time.Now()
 		next = filters[i].Invoke(next)
