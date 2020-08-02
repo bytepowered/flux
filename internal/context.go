@@ -86,6 +86,10 @@ func (c *ContextWrapper) GetValue(name string) (interface{}, bool) {
 	return v, ok
 }
 
+func (c *ContextWrapper) EndpointArguments() []flux.Argument {
+	return c.endpoint.Arguments
+}
+
 func (c *ContextWrapper) HttpContext() echo.Context {
 	return c.context
 }
