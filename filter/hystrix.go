@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	keyConfigHystrixTimeout                = "hystrix-timeout"
-	keyConfigHystrixMaxRequest             = "hystrix-max-requests"
-	keyConfigHystrixRequestVolumeThreshold = "hystrix-request-volume-threshold"
-	keyConfigHystrixSleepWindow            = "hystrix-sleep-window"
-	keyConfigHystrixErrorPercentThreshold  = "hystrix-error-threshold"
+	HystrixConfigKeyTimeout                = "hystrix-timeout"
+	HystrixConfigKeyMaxRequest             = "hystrix-max-requests"
+	HystrixConfigKeyRequestVolumeThreshold = "hystrix-request-volume-threshold"
+	HystrixConfigKeySleepWindow            = "hystrix-sleep-window"
+	HystrixConfigKeyErrorPercentThreshold  = "hystrix-error-threshold"
 )
 
 const (
@@ -35,7 +35,6 @@ type HystrixConfig struct {
 	RequestVolumeThreshold int
 	SleepWindow            int
 	ErrorPercentThreshold  int
-	Error                  []string
 }
 
 type HystrixFilter struct {
@@ -46,18 +45,18 @@ type HystrixFilter struct {
 func (r *HystrixFilter) Init(config *flux.Configuration) error {
 	logger.Info("Hystrix filter initializing")
 	config.SetDefaults(map[string]interface{}{
-		keyConfigHystrixRequestVolumeThreshold: 20,
-		keyConfigHystrixErrorPercentThreshold:  50,
-		keyConfigHystrixSleepWindow:            500,
-		keyConfigHystrixMaxRequest:             10,
-		keyConfigHystrixTimeout:                1000,
+		HystrixConfigKeyRequestVolumeThreshold: 20,
+		HystrixConfigKeyErrorPercentThreshold:  50,
+		HystrixConfigKeySleepWindow:            500,
+		HystrixConfigKeyMaxRequest:             10,
+		HystrixConfigKeyTimeout:                1000,
 	})
 	r.config = &HystrixConfig{
-		Timeout:                int(config.GetInt64(keyConfigHystrixTimeout)),
-		MaxConcurrentRequests:  int(config.GetInt64(keyConfigHystrixMaxRequest)),
-		RequestVolumeThreshold: int(config.GetInt64(keyConfigHystrixRequestVolumeThreshold)),
-		SleepWindow:            int(config.GetInt64(keyConfigHystrixSleepWindow)),
-		ErrorPercentThreshold:  int(config.GetInt64(keyConfigHystrixErrorPercentThreshold)),
+		Timeout:                int(config.GetInt64(HystrixConfigKeyTimeout)),
+		MaxConcurrentRequests:  int(config.GetInt64(HystrixConfigKeyMaxRequest)),
+		RequestVolumeThreshold: int(config.GetInt64(HystrixConfigKeyRequestVolumeThreshold)),
+		SleepWindow:            int(config.GetInt64(HystrixConfigKeySleepWindow)),
+		ErrorPercentThreshold:  int(config.GetInt64(HystrixConfigKeyErrorPercentThreshold)),
 	}
 	return nil
 }
@@ -88,7 +87,7 @@ func (r *HystrixFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
 		}
 		return &flux.StateError{
 			StatusCode: http.StatusBadGateway,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			ErrorCode:  flux.ErrorCodeGatewayCircuited,
 			Message:    msg,
 			Internal:   err,
 		}

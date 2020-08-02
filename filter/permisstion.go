@@ -66,21 +66,21 @@ func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.Filt
 
 func (p *PermissionVerificationFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		keyConfigDisabled:        false,
-		keyConfigCacheExpiration: defValueCacheExpiration,
+		ConfigKeyDisabled:        false,
+		ConfigKeyCacheExpiration: defValueCacheExpiration,
 	})
-	p.disabled = config.GetBool(keyConfigDisabled)
+	p.disabled = config.GetBool(ConfigKeyDisabled)
 	if p.disabled {
 		logger.Infof("Permission filter was DISABLED!!")
 		return nil
 	}
 	logger.Infof("Permission filter initializing")
-	if config.IsSet(keyConfigUpstreamProtocol, keyConfigUpstreamUri, keyConfigUpstreamMethod) && p.provider == nil {
+	if config.IsSet(UpstreamConfigKeyProtocol, UpstreamConfigKeyUri, UpstreamConfigKeyMethod) && p.provider == nil {
 		p.provider = func() PermissionVerificationFunc {
-			proto := config.GetString(keyConfigUpstreamProtocol)
-			host := config.GetString(keyConfigUpstreamHost)
-			uri := config.GetString(keyConfigUpstreamUri)
-			method := config.GetString(keyConfigUpstreamMethod)
+			proto := config.GetString(UpstreamConfigKeyProtocol)
+			host := config.GetString(UpstreamConfigKeyHost)
+			uri := config.GetString(UpstreamConfigKeyUri)
+			method := config.GetString(UpstreamConfigKeyMethod)
 			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", proto, method, host, host)
 			return func(subjectId, method, pattern string) (bool, error) {
 				switch strings.ToUpper(proto) {
@@ -94,7 +94,7 @@ func (p *PermissionVerificationFilter) Init(config *flux.Configuration) error {
 			}
 		}()
 	}
-	permCacheExpiration := config.GetInt64(keyConfigCacheExpiration)
+	permCacheExpiration := config.GetInt64(ConfigKeyCacheExpiration)
 	p.permCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(permCacheExpiration)))
 	return nil
 }
@@ -134,14 +134,12 @@ func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.St
 	}
 }
 
-func _loadPermByExchange(proto string,
-	upsHost, upsMethod, upsUri string,
-	reqSubjectId, reqMethod, reqPattern string) (bool, error) {
+func _loadPermByExchange(proto string, host, method, uri string, reqSubjectId, reqMethod, reqPattern string) (bool, error) {
 	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
-		UpstreamHost:   upsHost,
-		UpstreamMethod: upsMethod,
-		UpstreamUri:    upsUri,
+		UpstreamHost:   host,
+		UpstreamMethod: method,
+		UpstreamUri:    uri,
 		Arguments: []flux.Argument{
 			ext.NewStringArgument("subjectId", reqSubjectId),
 			ext.NewStringArgument("method", reqMethod),

@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	keyConfigLimitLookupId = "limit-lookup"
-	keyConfigLimitRateKey  = "limit-rate"
-	keyConfigLimitSizeKey  = "limit-size"
+	LimitedConfigKeyLookupId = "limit-lookup"
+	LimitedConfigKeyRateKey  = "limit-rate"
+	LimitedConfigKeySizeKey  = "limit-size"
 )
 
 const (
@@ -40,16 +40,16 @@ type RateLimitFilter struct {
 
 func (r *RateLimitFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		keyConfigCacheExpiration: defValueCacheExpiration,
-		keyConfigLimitRateKey:    time.Minute,
-		keyConfigLimitLookupId:   flux.XJwtSubject,
-		keyConfigLimitSizeKey:    1000,
+		ConfigKeyCacheExpiration: defValueCacheExpiration,
+		LimitedConfigKeyRateKey:  time.Minute,
+		LimitedConfigKeyLookupId: flux.XJwtSubject,
+		LimitedConfigKeySizeKey:  1000,
 	})
 	logger.Info("RateLimit filter initializing")
 	r.config = &RateLimitConfig{
-		lookupId:  config.GetString(keyConfigLimitLookupId),
-		limitRate: config.GetDuration(keyConfigLimitRateKey),
-		limitSize: config.GetInt(keyConfigLimitSizeKey),
+		lookupId:  config.GetString(LimitedConfigKeyLookupId),
+		limitRate: config.GetDuration(LimitedConfigKeyRateKey),
+		limitSize: config.GetInt(LimitedConfigKeySizeKey),
 	}
 	// RateLimit缓存大小
 	r.limiters = lakego.NewSimple()

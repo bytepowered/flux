@@ -7,15 +7,15 @@ const (
 )
 
 const (
-	keyConfigCacheExpiration  = "cache-expiration"
-	keyConfigDisabled         = "disabled"
-	keyConfigUpstreamProtocol = "upstream-protocol"
-	keyConfigUpstreamHost     = "upstream-host"
-	keyConfigUpstreamUri      = "upstream-uri"
-	keyConfigUpstreamMethod   = "upstream-method"
-	keyConfigJwtSubjectKey    = "jwt-subject-key"
-	keyConfigJwtIssuerKey     = "jwt-issuer-key"
-	keyConfigJwtLookupToken   = "jwt-lookup-token"
+	ConfigKeyCacheExpiration  = "cache-expiration"
+	ConfigKeyDisabled         = "disabled"
+	UpstreamConfigKeyProtocol = "upstream-protocol"
+	UpstreamConfigKeyHost     = "upstream-host"
+	UpstreamConfigKeyUri      = "upstream-uri"
+	UpstreamConfigKeyMethod   = "upstream-method"
+	JwtConfigKeySubject       = "jwt-subject-key"
+	JwtConfigKeyIssuer        = "jwt-issuer-key"
+	JwtConfigKeyLookupToken   = "jwt-lookup-token"
 )
 
 const (

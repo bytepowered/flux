@@ -3,11 +3,12 @@ package flux
 import "fmt"
 
 const (
-	ErrorCodeGatewayInternal = "GATEWAY:INTERNAL"
-	ErrorCodeGatewayExchange = "GATEWAY:EXCHANGE"
-	ErrorCodeGatewayEndpoint = "GATEWAY:ENDPOINT"
-	ErrorCodeRequestInvalid  = "REQUEST:INVALID"
-	ErrorCodeRequestNotFound = "REQUEST:NOT_FOUND"
+	ErrorCodeGatewayInternal  = "GATEWAY:INTERNAL"
+	ErrorCodeGatewayExchange  = "GATEWAY:EXCHANGE"
+	ErrorCodeGatewayEndpoint  = "GATEWAY:ENDPOINT"
+	ErrorCodeGatewayCircuited = "GATEWAY:CIRCUITED"
+	ErrorCodeRequestInvalid   = "REQUEST:INVALID"
+	ErrorCodeRequestNotFound  = "REQUEST:NOT_FOUND"
 )
 
 // StateError 定义网关请求错误，它包含：状态码、消息、内部错误等元数据

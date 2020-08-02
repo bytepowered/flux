@@ -38,12 +38,12 @@ func JwtVerificationFilterFactory() interface{} {
 }
 
 type JwtConfig struct {
-	lookupToken string
-	subjectKey  string
-	issuerKey   string
-	upProto     string
-	upMethod    string
-	upUri       string
+	lookupToken    string
+	subjectKey     string
+	issuerKey      string
+	upstreamProto  string
+	upstreamMethod string
+	upstreamUri    string
 }
 
 // Jwt Filter，负责解码和验证Http请求的JWT令牌数据。
@@ -56,28 +56,28 @@ type JwtVerificationFilter struct {
 
 func (j *JwtVerificationFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		keyConfigJwtLookupToken:  keyHeaderAuthorization,
-		keyConfigCacheExpiration: defValueCacheExpiration,
-		keyConfigDisabled:        false,
-		keyConfigJwtIssuerKey:    "iss",
-		keyConfigJwtSubjectKey:   "sub",
+		ConfigKeyCacheExpiration: defValueCacheExpiration,
+		ConfigKeyDisabled:        false,
+		JwtConfigKeyLookupToken:  keyHeaderAuthorization,
+		JwtConfigKeyIssuer:       "iss",
+		JwtConfigKeySubject:      "sub",
 	})
-	j.disabled = config.GetBool(keyConfigDisabled)
+	j.disabled = config.GetBool(ConfigKeyDisabled)
 	if j.disabled {
 		logger.Info("JWT filter is DISABLED")
 		return nil
 	}
 	logger.Info("JWT filter initializing")
 	j.config = JwtConfig{
-		lookupToken: config.GetString(keyConfigJwtLookupToken),
-		issuerKey:   config.GetString(keyConfigJwtIssuerKey),
-		subjectKey:  config.GetString(keyConfigJwtSubjectKey),
-		upProto:     config.GetString(keyConfigUpstreamProtocol),
-		upUri:       config.GetString(keyConfigUpstreamUri),
-		upMethod:    config.GetString(keyConfigUpstreamMethod),
+		lookupToken:    config.GetString(JwtConfigKeyLookupToken),
+		issuerKey:      config.GetString(JwtConfigKeyIssuer),
+		subjectKey:     config.GetString(JwtConfigKeySubject),
+		upstreamProto:  config.GetString(UpstreamConfigKeyProtocol),
+		upstreamUri:    config.GetString(UpstreamConfigKeyUri),
+		upstreamMethod: config.GetString(UpstreamConfigKeyMethod),
 	}
 	// Key缓存大小
-	cacheExpiration := config.GetInt64(keyConfigCacheExpiration)
+	cacheExpiration := config.GetInt64(ConfigKeyCacheExpiration)
 	j.certKeyCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(cacheExpiration)))
 	return nil
 }
@@ -142,13 +142,13 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 		subject := cast.ToString(claims[j.config.subjectKey])
 		subjectCacheKey := fmt.Sprintf("%s.%s", issuer, subject)
 		return j.certKeyCache.GetOrLoad(subjectCacheKey, func(_ lakego.Key) (lakego.Value, error) {
-			switch strings.ToUpper(j.config.upProto) {
+			switch strings.ToUpper(j.config.upstreamProto) {
 			case flux.ProtoDubbo:
 				return j.loadJwtCertKey(flux.ProtoDubbo, issuer, subject, claims)
 			case flux.ProtoHttp:
 				return j.loadJwtCertKey(flux.ProtoHttp, issuer, subject, claims)
 			default:
-				return nil, fmt.Errorf("unknown verification protocol: %s", j.config.upProto)
+				return nil, fmt.Errorf("unknown verification protocol: %s", j.config.upstreamProto)
 			}
 		})
 	}
@@ -157,8 +157,8 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, error) {
 	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
-		UpstreamMethod: j.config.upMethod,
-		UpstreamUri:    j.config.upUri,
+		UpstreamMethod: j.config.upstreamMethod,
+		UpstreamUri:    j.config.upstreamUri,
 		Arguments: []flux.Argument{
 			ext.NewStringArgument("issuer", issuer),
 			ext.NewStringArgument("subject", subject),
