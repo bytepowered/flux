@@ -32,6 +32,5 @@ func init() {
 	// Dynamic factories
 	ext.SetFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
-	ext.SetFactory(filter.TypeIdRateLimitFilter, filter.RateLimitFilterFactory)
 	ext.SetFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
 }
