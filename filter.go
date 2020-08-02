@@ -23,8 +23,12 @@ func (e *StateError) Error() string {
 	return fmt.Sprintf("StateError: StatusCode=%d, ErrorCode=%s, Message=%s, Error=%s", e.StatusCode, e.ErrorCode, e.Message, e.Internal)
 }
 
-// FilterInvoker 定义一个处理方法
-type FilterInvoker func(Context) *StateError
+type (
+	// FilterInvoker 定义一个处理方法，处理请求Context；如果发生错误则返回 StateError。
+	FilterInvoker func(Context) *StateError
+	// FilterSkipper 定义一个函数，用于Filter执行中跳过某些处理。返回True跳过某些处理，见具体Filter的实现逻辑。
+	FilterSkipper func(Context) bool
+)
 
 // Filter 用于定义处理方法的顺序及内在业务逻辑
 type Filter interface {
