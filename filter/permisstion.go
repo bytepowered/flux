@@ -2,10 +2,10 @@ package filter
 
 import (
 	"fmt"
+	"github.com/bytepowered/cache"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/lakego"
 	"github.com/spf13/cast"
 	"strings"
 	"time"
@@ -29,7 +29,7 @@ var (
 )
 
 // 权限验证函数 检查SubjectId,Method,Patter是否具有权限
-type PermissionVerificationFunc func(subjectId, method, pattern string) (bool, error)
+type PermissionVerificationFunc func(subjectId, method, pattern string) (bool, *time.Duration, error)
 
 func PermissionVerificationFactory() interface{} {
 	return NewPermissionVerificationWith(nil)
@@ -45,7 +45,7 @@ func NewPermissionVerificationWith(provider PermissionVerificationFunc) flux.Fil
 type PermissionVerificationFilter struct {
 	disabled  bool
 	provider  PermissionVerificationFunc
-	permCache lakego.Cache
+	permCache cache.Cache
 }
 
 func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
@@ -66,8 +66,9 @@ func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.Filt
 
 func (p *PermissionVerificationFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		ConfigKeyDisabled:        false,
 		ConfigKeyCacheExpiration: defValueCacheExpiration,
+		ConfigKeyCacheSize:       defValueCacheSize,
+		ConfigKeyDisabled:        false,
 	})
 	p.disabled = config.GetBool(ConfigKeyDisabled)
 	if p.disabled {
@@ -82,20 +83,21 @@ func (p *PermissionVerificationFilter) Init(config *flux.Configuration) error {
 			uri := config.GetString(UpstreamConfigKeyUri)
 			method := config.GetString(UpstreamConfigKeyMethod)
 			logger.Infof("Permission filter config provider, proto:%s, method: %s, uri: %s%s", proto, method, host, host)
-			return func(subjectId, method, pattern string) (bool, error) {
+			return func(subjectId, method, pattern string) (bool, *time.Duration, error) {
 				switch strings.ToUpper(proto) {
 				case flux.ProtoDubbo:
 					return _loadPermByExchange(flux.ProtoDubbo, host, method, uri, subjectId, method, pattern)
 				case flux.ProtoHttp:
 					return _loadPermByExchange(flux.ProtoHttp, host, method, uri, subjectId, method, pattern)
 				default:
-					return false, fmt.Errorf("unknown verification protocol: %s", proto)
+					return false, cache.NoExpiration, fmt.Errorf("unknown verification protocol: %s", proto)
 				}
 			}
 		}()
 	}
-	permCacheExpiration := config.GetInt64(ConfigKeyCacheExpiration)
-	p.permCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(permCacheExpiration)))
+	expiration := time.Minute * time.Duration(config.GetInt64(ConfigKeyCacheExpiration))
+	size := config.GetInt(ConfigKeyCacheSize)
+	p.permCache = cache.New(size).Expiration(expiration).LRU().Build()
 	return nil
 }
 
@@ -115,7 +117,7 @@ func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.St
 	endpoint := ctx.Endpoint()
 	// 验证用户是否有权限访问API：(userSubId, method, uri-pattern)
 	permKey := fmt.Sprintf("%s@%s#%s", jwtSubjectId, endpoint.HttpMethod, endpoint.HttpPattern)
-	allowed, err := p.permCache.GetOrLoad(permKey, func(_ lakego.Key) (lakego.Value, error) {
+	allowed, err := p.permCache.GetOrLoad(permKey, func(key interface{}) (interface{}, *time.Duration, error) {
 		strSubId := cast.ToString(jwtSubjectId)
 		return p.provider(strSubId, endpoint.HttpMethod, endpoint.HttpPattern)
 	})
@@ -134,7 +136,7 @@ func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.St
 	}
 }
 
-func _loadPermByExchange(proto string, host, method, uri string, reqSubjectId, reqMethod, reqPattern string) (bool, error) {
+func _loadPermByExchange(proto string, host, method, uri string, reqSubjectId, reqMethod, reqPattern string) (bool, *time.Duration, error) {
 	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
 		UpstreamHost:   host,
@@ -146,8 +148,8 @@ func _loadPermByExchange(proto string, host, method, uri string, reqSubjectId, r
 			ext.NewStringArgument("pattern", reqPattern),
 		},
 	}, nil); nil != err {
-		return false, err
+		return false, cache.NoExpiration, err
 	} else {
-		return strings.Contains(cast.ToString(ret), "success"), nil
+		return strings.Contains(cast.ToString(ret), "success"), cache.NoExpiration, nil
 	}
 }

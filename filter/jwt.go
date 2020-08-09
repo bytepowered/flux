@@ -2,10 +2,10 @@ package filter
 
 import (
 	"fmt"
+	"github.com/bytepowered/cache"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/lakego"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/spf13/cast"
 	"strings"
@@ -51,12 +51,13 @@ type JwtConfig struct {
 type JwtVerificationFilter struct {
 	disabled     bool
 	config       JwtConfig
-	certKeyCache lakego.Cache
+	certKeyCache cache.Cache
 }
 
 func (j *JwtVerificationFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		ConfigKeyCacheExpiration: defValueCacheExpiration,
+		ConfigKeyCacheSize:       defValueCacheSize,
 		ConfigKeyDisabled:        false,
 		JwtConfigKeyLookupToken:  keyHeaderAuthorization,
 		JwtConfigKeyIssuer:       "iss",
@@ -77,8 +78,9 @@ func (j *JwtVerificationFilter) Init(config *flux.Configuration) error {
 		upstreamMethod: config.GetString(UpstreamConfigKeyMethod),
 	}
 	// Key缓存大小
-	cacheExpiration := config.GetInt64(ConfigKeyCacheExpiration)
-	j.certKeyCache = lakego.NewSimple(lakego.WithExpiration(time.Minute * time.Duration(cacheExpiration)))
+	expiration := time.Minute * time.Duration(config.GetInt64(ConfigKeyCacheExpiration))
+	size := config.GetInt(ConfigKeyCacheSize)
+	j.certKeyCache = cache.New(size).Expiration(expiration).LRU().Build()
 	return nil
 }
 
@@ -141,20 +143,20 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 		issuer := cast.ToString(claims[j.config.issuerKey])
 		subject := cast.ToString(claims[j.config.subjectKey])
 		subjectCacheKey := fmt.Sprintf("%s.%s", issuer, subject)
-		return j.certKeyCache.GetOrLoad(subjectCacheKey, func(_ lakego.Key) (lakego.Value, error) {
+		return j.certKeyCache.GetOrLoad(subjectCacheKey, func(key interface{}) (interface{}, *time.Duration, error) {
 			switch strings.ToUpper(j.config.upstreamProto) {
 			case flux.ProtoDubbo:
 				return j.loadJwtCertKey(flux.ProtoDubbo, issuer, subject, claims)
 			case flux.ProtoHttp:
 				return j.loadJwtCertKey(flux.ProtoHttp, issuer, subject, claims)
 			default:
-				return nil, fmt.Errorf("unknown verification protocol: %s", j.config.upstreamProto)
+				return nil, cache.NoExpiration, fmt.Errorf("unknown verification protocol: %s", j.config.upstreamProto)
 			}
 		})
 	}
 }
 
-func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, error) {
+func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, *time.Duration, error) {
 	exchange, _ := ext.GetExchange(proto)
 	if ret, err := exchange.Invoke(&flux.Endpoint{
 		UpstreamMethod: j.config.upstreamMethod,
@@ -165,8 +167,8 @@ func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject str
 			ext.NewHashMapArgument("claims", claims),
 		},
 	}, nil); nil != err {
-		return false, err
+		return false, cache.NoExpiration, err
 	} else {
-		return strings.Contains(cast.ToString(ret), "success"), nil
+		return strings.Contains(cast.ToString(ret), "success"), cache.NoExpiration, nil
 	}
 }

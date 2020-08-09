@@ -8,6 +8,7 @@ const (
 
 const (
 	ConfigKeyCacheExpiration  = "cache-expiration"
+	ConfigKeyCacheSize        = "cache-size"
 	ConfigKeyDisabled         = "disabled"
 	UpstreamConfigKeyProtocol = "upstream-protocol"
 	UpstreamConfigKeyHost     = "upstream-host"
@@ -24,4 +25,5 @@ const (
 
 const (
 	defValueCacheExpiration = 30
+	defValueCacheSize       = 1_0000
 )
