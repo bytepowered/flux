@@ -29,32 +29,29 @@ JWT验证通过后，JWTVerificationFilter会将Token对象，
 
 ```toml
 # JWT验证配置
-[JsonWebTokenVerification]
+[FILTER.JWT_VERIFICATION_DUBBO]
 disable = false
 type-id = "JwtVerificationFilter"
-[JsonWebTokenVerification.InitConfig]
-# 在Http请求中查找Token的Key定义。默认: header:Authorization。支持域：[query, form, path, header, attr]
+# Http请求中Token的Header键名。默认: Authorization。支持域：[query, form, path, header, attr]，默认header
 jwt-lookup-token = "header:Authorization"
 jwt-issuer-key = "iss"
 jwt-subject-key = "sub"
 upstream-protocol = "DUBBO"
-upstream-uri = "net.bytepowered.lingxiao.JWTCertService"
-upstream-method = "getCertKey"
+upstream-uri = "foo.bar.JWTService"
+upstream-method = "getPrivateJwtSecret"
 ```
 
 **示例: 基于Http协议的配置**
 
 ```toml
-[HttpJsonWebTokenVerification]
+[FILTER.JWT_VERIFICATION_HTTP]
 disable = false
 type-id = "JwtVerificationFilter"
-[HttpJsonWebTokenVerification.InitConfig]
 jwt-lookup-token = "Authorization"
 jwt-issuer-key = "iss"
 jwt-subject-key = "sub"
-upstream-proto = "HTTP"
-upstream-host = "http://foo.bar.com:8080"
-upstream-uri = "/jwt"
+upstream-protocol = "HTTP"
+upstream-uri = "http://foo.bar.com:8080/jwt"
 upstream-method = "POST"
 ```
 
