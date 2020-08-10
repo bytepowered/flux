@@ -10,7 +10,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	h2tp "net/http"
+	"net/http"
 	_ "net/http/pprof"
 	"runtime/debug"
 	"strings"
@@ -72,7 +72,7 @@ type HttpServer struct {
 	httpWriter        flux.HttpResponseWriter
 	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
-	routeEngine       *internal.RouteEngine
+	routerEngine      *internal.RouteEngine
 	routerRegistry    flux.Registry
 	mvEndpointMap     map[string]*internal.MultiVersionEndpoint
 	contextWrappers   sync.Pool
@@ -86,7 +86,7 @@ func NewHttpServer() *HttpServer {
 	id, _ := snowflake.NewNode(1)
 	return &HttpServer{
 		httpWriter:      new(HttpServerResponseWriter),
-		routeEngine:     internal.NewRouteEngine(),
+		routerEngine:    internal.NewRouteEngine(),
 		mvEndpointMap:   make(map[string]*internal.MultiVersionEndpoint),
 		contextWrappers: sync.Pool{New: internal.NewContextWrapper},
 		pipelines:       make([]HttpContextPipelineFunc, 0),
@@ -133,12 +133,12 @@ func (s *HttpServer) InitServer() error {
 	if registry, config, err := findRouterRegistry(); nil != err {
 		return err
 	} else {
-		if err := s.routeEngine.InitialHook(registry, config); nil != err {
+		if err := s.routerEngine.InitialHook(registry, config); nil != err {
 			return err
 		}
 		s.routerRegistry = registry
 	}
-	return s.routeEngine.Initial()
+	return s.routerEngine.Initial()
 }
 
 func (s *HttpServer) Startup(version flux.BuildInfo) error {
@@ -158,7 +158,7 @@ func (s *HttpServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Config
 func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configuration) error {
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
-	if err := s.ensure().routeEngine.Startup(); nil != err {
+	if err := s.ensure().routerEngine.Startup(); nil != err {
 		return err
 	}
 	events := make(chan flux.EndpointEvent, 2)
@@ -189,8 +189,8 @@ func (s *HttpServer) Shutdown(ctx context.Context) error {
 	if err := s.server.Shutdown(ctx); nil != err {
 		return err
 	}
-	// Stop routeEngine
-	return s.routeEngine.Shutdown(ctx)
+	// Stop routerEngine
+	return s.routerEngine.Shutdown(ctx)
 }
 
 // StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。
@@ -251,7 +251,7 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 	for event := range events {
 		pattern := toHttpPattern(event.HttpPattern)
 		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
-		multi, isNew := s.getMultiVersionEndpoint(routeKey)
+		multi, isregister := s.prepareMultiVersionEndpoint(routeKey)
 		// Check http method
 		event.Endpoint.HttpMethod = strings.ToUpper(event.Endpoint.HttpMethod)
 		if !isAllowMethod(event.Endpoint.HttpMethod) {
@@ -263,7 +263,7 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 		case flux.EndpointEventAdded:
 			logger.Infow("New endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", pattern)
 			multi.Update(endpoint.Version, &endpoint)
-			if isNew {
+			if isregister {
 				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", pattern)
 				s.server.Add(event.HttpMethod, pattern, s.newHttpRouteHandler(multi))
 			}
@@ -277,7 +277,7 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 	}
 }
 
-func (s *HttpServer) id(echo echo.Context) string {
+func (s *HttpServer) lookupId(echo echo.Context) string {
 	id := echo.Request().Header.Get(DefaultHttpHeaderRequestId)
 	if "" == id {
 		id = s.snowflakeId.Generate().Base64()
@@ -300,12 +300,12 @@ func (s *HttpServer) release(context *internal.ContextWrapper) {
 
 func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
 	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
-	return func(echo echo.Context) error {
-		request := echo.Request()
+	return func(httpctx echo.Context) error {
+		request := httpctx.Request()
 		// Multi version selection
 		version := request.Header.Get(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.FindByVersion(version)
-		requestId := s.id(echo)
+		requestId := s.lookupId(httpctx)
 		defer func() {
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
@@ -319,13 +319,13 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 					"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 				)
 			}
-			return s.httpWriter.WriteError(echo, requestId, h2tp.Header{}, ErrEndpointVersionNotFound)
+			return s.httpWriter.WriteError(httpctx, requestId, http.Header{}, ErrEndpointVersionNotFound)
 		}
-		ctxw := s.acquire(requestId, echo, endpoint)
+		ctxw := s.acquire(requestId, httpctx, endpoint)
 		defer s.release(ctxw)
 		// Context exchange
 		for _, pf := range s.pipelines {
-			pf(echo, ctxw)
+			pf(httpctx, ctxw)
 		}
 		if requestLogEnable {
 			logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: DISPATCHING",
@@ -334,11 +334,11 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 			)
 		}
 		// Route and response
-		if err := s.routeEngine.Route(ctxw); nil != err {
-			return s.httpWriter.WriteError(echo, ctxw.RequestId(), ctxw.ResponseWriter().Headers(), err)
+		if err := s.routerEngine.Route(ctxw); nil != err {
+			return s.httpWriter.WriteError(httpctx, requestId, ctxw.ResponseWriter().Headers(), err)
 		} else {
 			rw := ctxw.ResponseWriter()
-			return s.httpWriter.WriteBody(echo, ctxw.RequestId(), rw.Headers(), rw.StatusCode(), rw.Body())
+			return s.httpWriter.WriteBody(httpctx, requestId, rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}
 }
@@ -356,12 +356,12 @@ func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
 		}
 	}
 	id := ctx.Response().Header().Get(flux.XRequestId)
-	if err := s.httpWriter.WriteError(ctx, id, h2tp.Header{}, serr); nil != err {
+	if err := s.httpWriter.WriteError(ctx, id, http.Header{}, serr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }
 
-func (s *HttpServer) getMultiVersionEndpoint(routeKey string) (*internal.MultiVersionEndpoint, bool) {
+func (s *HttpServer) prepareMultiVersionEndpoint(routeKey string) (*internal.MultiVersionEndpoint, bool) {
 	if mve, ok := s.mvEndpointMap[routeKey]; ok {
 		return mve, false
 	} else {
@@ -402,8 +402,8 @@ func toHttpPattern(uri string) string {
 
 func isAllowMethod(method string) bool {
 	switch method {
-	case h2tp.MethodGet, h2tp.MethodPost, h2tp.MethodDelete, h2tp.MethodPut,
-		h2tp.MethodHead, h2tp.MethodOptions, h2tp.MethodPatch, h2tp.MethodTrace:
+	case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut,
+		http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace:
 		// Allowed
 		return true
 	default:
