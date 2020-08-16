@@ -247,8 +247,7 @@ func (s *HttpServer) watchRouterRegistry(events chan<- flux.EndpointEvent) error
 
 func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) {
 	for event := range events {
-		pattern := toHttpPattern(event.HttpPattern)
-		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
+		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, event.HttpPattern)
 		multi, isregister := s.prepareMultiVersionEndpoint(routeKey)
 		// Check http method
 		event.Endpoint.HttpMethod = strings.ToUpper(event.Endpoint.HttpMethod)
@@ -259,17 +258,17 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 		endpoint := event.Endpoint
 		switch event.EventType {
 		case flux.EndpointEventAdded:
-			logger.Infow("New endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", pattern)
+			logger.Infow("New endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", event.HttpPattern)
 			multi.Update(endpoint.Version, &endpoint)
 			if isregister {
-				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", pattern)
-				s.webServer.AddWebRouteHandler(event.HttpMethod, pattern, s.newHttpRouteHandler(multi))
+				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", event.HttpPattern)
+				s.webServer.AddWebRouteHandler(event.HttpMethod, event.HttpPattern, s.newHttpRouteHandler(multi))
 			}
 		case flux.EndpointEventUpdated:
-			logger.Infow("Update endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", pattern)
+			logger.Infow("Update endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", event.HttpPattern)
 			multi.Update(endpoint.Version, &endpoint)
 		case flux.EndpointEventRemoved:
-			logger.Infow("Delete endpoint", "method", event.HttpMethod, "pattern", pattern)
+			logger.Infow("Delete endpoint", "method", event.HttpMethod, "pattern", event.HttpPattern)
 			multi.Delete(endpoint.Version)
 		}
 	}
@@ -382,16 +381,6 @@ func findRouterRegistry() (flux.Registry, *flux.Configuration, error) {
 		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
 	} else {
 		return factory(), config, nil
-	}
-}
-
-func toHttpPattern(uri string) string {
-	// /api/{userId} -> /api/:userId
-	replaced := strings.Replace(uri, "}", "", -1)
-	if len(replaced) < len(uri) {
-		return strings.Replace(replaced, "{", ":", -1)
-	} else {
-		return uri
 	}
 }
 

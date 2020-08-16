@@ -5,6 +5,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/webx"
 	"github.com/labstack/echo/v4"
+	"strings"
 )
 
 var _ webx.WebServer = new(AdaptWebServer)
@@ -49,7 +50,7 @@ func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, h webx.WebRo
 	for i, mi := range m {
 		wms[i] = AdaptWebMiddleware(mi).AdaptFunc
 	}
-	w.server.Add(method, pattern, AdaptWebRouteHandler(h).AdaptFunc, wms...)
+	w.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
 }
 
 func (w *AdaptWebServer) Start(addr string) error {
@@ -62,4 +63,14 @@ func (w *AdaptWebServer) StartTLS(addr string, certFile, keyFile string) error {
 
 func (w *AdaptWebServer) Shutdown(ctx context.Context) error {
 	return w.server.Shutdown(ctx)
+}
+
+func toRoutePattern(uri string) string {
+	// /api/{userId} -> /api/:userId
+	replaced := strings.Replace(uri, "}", "", -1)
+	if len(replaced) < len(uri) {
+		return strings.Replace(replaced, "{", ":", -1)
+	} else {
+		return uri
+	}
 }
