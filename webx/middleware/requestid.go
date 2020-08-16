@@ -9,6 +9,7 @@ import (
 var (
 	_lookupHeaderNames = map[string]struct{}{
 		webx.HeaderXRequestId: {},
+		webx.HeaderXRequestID: {},
 		"requestId":           {},
 		"request-id":          {},
 	}
