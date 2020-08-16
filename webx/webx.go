@@ -99,7 +99,9 @@ type WebContext interface {
 	Request() *http.Request
 	RequestURI() string
 	RequestURLPath() string
+	// RequestHeader 返回请求对象的Header，只读
 	RequestHeader() http.Header
+	SetRequestHeader(name, value string)
 	RequestBody() (io.ReadCloser, error)
 
 	QueryValues() url.Values
@@ -113,7 +115,9 @@ type WebContext interface {
 	CookieValue(name string) (*http.Cookie, bool)
 
 	Response() http.ResponseWriter
+	// ResponseHeader 返回响应对象的Header，只读
 	ResponseHeader() http.Header
+	SetResponseHeader(name, value string)
 	ResponseWrite(statusCode int, bytes []byte) error
 
 	SetValue(name string, value interface{})

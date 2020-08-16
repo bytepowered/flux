@@ -43,7 +43,11 @@ func (c *AdaptWebContext) RequestURLPath() string {
 }
 
 func (c *AdaptWebContext) RequestHeader() http.Header {
-	return c.echoc.Request().Header
+	return c.echoc.Request().Header.Clone()
+}
+
+func (c *AdaptWebContext) SetRequestHeader(name, value string) {
+	c.echoc.Request().Header.Set(name, value)
 }
 
 func (c *AdaptWebContext) RequestBody() (io.ReadCloser, error) {
@@ -97,7 +101,11 @@ func (c *AdaptWebContext) Response() http.ResponseWriter {
 }
 
 func (c *AdaptWebContext) ResponseHeader() http.Header {
-	return c.echoc.Response().Header()
+	return c.echoc.Response().Header().Clone()
+}
+
+func (c *AdaptWebContext) SetResponseHeader(name, value string) {
+	c.echoc.Response().Header().Set(name, value)
 }
 
 func (c *AdaptWebContext) ResponseWrite(statusCode int, bytes []byte) error {
