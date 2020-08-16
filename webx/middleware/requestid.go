@@ -47,8 +47,8 @@ func NewLookupRequestIdMiddleware(lookupFunc LookupRequestIdFunc) webx.WebMiddle
 		return func(webc webx.WebContext) error {
 			requestId := lookupFunc(webc)
 			webc.SetValue(webx.HeaderXRequestId, requestId)
-			webc.RequestHeader().Set(webx.HeaderXRequestId, requestId)
-			webc.ResponseHeader().Set(webx.HeaderXRequestId, requestId)
+			webc.SetRequestHeader(webx.HeaderXRequestId, requestId)
+			webc.SetRequestHeader(webx.HeaderXRequestId, requestId)
 			return next(webc)
 		}
 	}
@@ -56,9 +56,8 @@ func NewLookupRequestIdMiddleware(lookupFunc LookupRequestIdFunc) webx.WebMiddle
 
 func AutoGenerateRequestIdFactory(names []string, generator *snowflake.Node) LookupRequestIdFunc {
 	return func(webc webx.WebContext) string {
-		header := webc.RequestHeader()
 		for _, name := range names {
-			id := header.Get(name)
+			id := webc.GetRequestHeader(name)
 			if "" != id {
 				return id
 			}

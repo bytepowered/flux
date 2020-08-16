@@ -36,7 +36,7 @@ func (s *HttpServer) debugFeatures(config *flux.Configuration) {
 		if data, err := json.Marshal(queryEndpoints(s.mvEndpointMap, webc)); nil != err {
 			return err
 		} else {
-			webc.ResponseHeader().Set(webx.HeaderContentType, webx.MIMEApplicationJSONCharsetUTF8)
+			webc.SetResponseHeader(webx.HeaderContentType, webx.MIMEApplicationJSONCharsetUTF8)
 			return webc.ResponseWrite(https.StatusOK, data)
 		}
 	}, auth)

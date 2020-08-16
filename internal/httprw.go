@@ -33,7 +33,7 @@ func (r *RequestWrappedReader) FormValue(name string) string {
 }
 
 func (r *RequestWrappedReader) HeaderValue(name string) string {
-	return r.WebContext.RequestHeader().Get(name)
+	return r.WebContext.GetRequestHeader(name)
 }
 
 func (r *RequestWrappedReader) CookieValue(name string) string {

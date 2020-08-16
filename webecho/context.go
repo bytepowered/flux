@@ -46,6 +46,10 @@ func (c *AdaptWebContext) RequestHeader() http.Header {
 	return c.echoc.Request().Header.Clone()
 }
 
+func (c *AdaptWebContext) GetRequestHeader(name string) string {
+	return c.echoc.Request().Header.Get(name)
+}
+
 func (c *AdaptWebContext) SetRequestHeader(name, value string) {
 	c.echoc.Request().Header.Set(name, value)
 }
@@ -102,6 +106,10 @@ func (c *AdaptWebContext) Response() http.ResponseWriter {
 
 func (c *AdaptWebContext) ResponseHeader() http.Header {
 	return c.echoc.Response().Header().Clone()
+}
+
+func (c *AdaptWebContext) GetResponseHeader(name string) string {
+	return c.echoc.Response().Header().Get(name)
 }
 
 func (c *AdaptWebContext) SetResponseHeader(name, value string) {

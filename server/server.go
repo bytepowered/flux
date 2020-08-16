@@ -289,7 +289,7 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
 	return func(webc webx.WebContext) error {
 		// Multi version selection
-		version := webc.RequestHeader().Get(s.httpVersionHeader)
+		version := webc.GetRequestHeader(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.FindByVersion(version)
 		requestId := cast.ToString(webc.GetValue(webx.HeaderXRequestId))
 		defer func() {

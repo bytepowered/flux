@@ -101,6 +101,7 @@ type WebContext interface {
 	RequestURLPath() string
 	// RequestHeader 返回请求对象的Header，只读
 	RequestHeader() http.Header
+	GetRequestHeader(name string) string
 	SetRequestHeader(name, value string)
 	RequestBody() (io.ReadCloser, error)
 
@@ -117,6 +118,7 @@ type WebContext interface {
 	Response() http.ResponseWriter
 	// ResponseHeader 返回响应对象的Header，只读
 	ResponseHeader() http.Header
+	GetResponseHeader(name string) string
 	SetResponseHeader(name, value string)
 	ResponseWrite(statusCode int, bytes []byte) error
 

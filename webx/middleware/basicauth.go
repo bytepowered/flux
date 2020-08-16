@@ -73,7 +73,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) webx.WebMiddleware {
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)
 			}
-			auth := webc.RequestHeader().Get(HeaderAuthorization)
+			auth := webc.GetRequestHeader(HeaderAuthorization)
 			l := len(basic)
 			if len(auth) > l+1 && strings.ToLower(auth[:l]) == basic {
 				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
@@ -100,7 +100,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) webx.WebMiddleware {
 				realm = strconv.Quote(config.Realm)
 			}
 			// Need to return `401` for browsers to pop-up login box.
-			webc.ResponseHeader().Set(HeaderWWWAuthenticate, basic+" realm="+realm)
+			webc.SetResponseHeader(HeaderWWWAuthenticate, basic+" realm="+realm)
 			return &flux.StateError{
 				StatusCode: http.StatusUnauthorized,
 				ErrorCode:  "UNAUTHORIZED",

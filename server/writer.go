@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 var _ webx.WebServerWriter = new(HttpServerWriter)
@@ -92,13 +93,11 @@ func WriteToHttpChannel(webc webx.WebContext, status int, bytes []byte) error {
 }
 
 func SetupResponseDefaults(webc webx.WebContext, requestId string, header http.Header) {
-	webc.ResponseHeader().Set(webx.HeaderXRequestId, requestId)
-	webc.ResponseHeader().Set(webx.HeaderServer, "Flux/Gateway")
-	webc.ResponseHeader().Set(webx.HeaderContentType, webx.MIMEApplicationJSONCharsetUTF8)
+	webc.SetResponseHeader(webx.HeaderXRequestId, requestId)
+	webc.SetResponseHeader(webx.HeaderServer, "Flux/Gateway")
+	webc.SetResponseHeader(webx.HeaderContentType, webx.MIMEApplicationJSONCharsetUTF8)
 	// 允许Override默认Header
 	for k, v := range header {
-		for _, iv := range v {
-			webc.ResponseHeader().Add(k, iv)
-		}
+		webc.SetResponseHeader(k, strings.Join(v, ";"))
 	}
 }
