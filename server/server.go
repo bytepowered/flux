@@ -8,8 +8,8 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/bytepowered/flux/webex"
+	"github.com/bytepowered/flux/webex/echo"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime/debug"
@@ -63,14 +63,13 @@ var (
 )
 
 // HttpContextPipelineFunc
-type HttpContextPipelineFunc func(echo.Context, flux.Context)
+type HttpContextPipelineFunc func(webex.WebContext, flux.Context)
 
 // Server
 type HttpServer struct {
-	server            *echo.Echo
+	webserver         webex.WebServer
 	httpConfig        *flux.Configuration
 	httpWriter        flux.HttpResponseWriter
-	httpNotFound      echo.HandlerFunc
 	httpVersionHeader string
 	routerEngine      *internal.RouteEngine
 	routerRegistry    flux.Registry
@@ -116,13 +115,11 @@ func (s *HttpServer) InitServer() error {
 	s.httpConfig = flux.NewConfigurationOf(HttpServerConfigRootName)
 	s.httpConfig.SetDefaults(HttpServerConfigDefaults)
 	s.httpVersionHeader = s.httpConfig.GetString(HttpServerConfigKeyVersionHeader)
-	s.server = echo.New()
-	s.server.HideBanner = true
-	s.server.HidePort = true
-	s.server.HTTPErrorHandler = s.handleServerError
+	s.webserver = echo.NewServerEchoAdapter()
+	s.webserver.SetErrorHandler(s.handleServerError)
 	// Http拦截器
 	if !s.httpConfig.GetBool(HttpServerConfigKeyCorsDisable) {
-		s.AddHttpInterceptor(middleware.CORS())
+		s.AddHttpInterceptor(webex.NewCORSMiddleware())
 	}
 	s.AddHttpInterceptor(RepeatableHttpBody)
 	// Http debug features
@@ -174,10 +171,10 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 	close(s.stateStarted)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
-		return s.server.StartTLS(address, certFile, keyFile)
+		return s.webserver.StartTLS(address, certFile, keyFile)
 	} else {
 		logger.Infof("HttpServer starting: %s", address)
-		return s.server.Start(address)
+		return s.webserver.Start(address)
 	}
 }
 
@@ -186,7 +183,7 @@ func (s *HttpServer) Shutdown(ctx context.Context) error {
 	logger.Info("HttpServer shutdown...")
 	defer close(s.stateStopped)
 	// Stop http server
-	if err := s.server.Shutdown(ctx); nil != err {
+	if err := s.webserver.Shutdown(ctx); nil != err {
 		return err
 	}
 	// Stop routerEngine
@@ -208,29 +205,24 @@ func (s *HttpServer) HttpConfig() *flux.Configuration {
 	return s.httpConfig
 }
 
-// HttpServer 返回Http服务器实例
-func (s *HttpServer) HttpServer() *echo.Echo {
-	return s.ensure().server
-}
-
 // AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
-func (s *HttpServer) AddHttpInterceptor(m echo.MiddlewareFunc) {
-	s.ensure().server.Pre(m)
+func (s *HttpServer) AddHttpInterceptor(m webex.MiddlewareFunc) {
+	s.ensure().webserver.AddInterceptor(m)
 }
 
 // AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
-func (s *HttpServer) AddHttpMiddleware(m echo.MiddlewareFunc) {
-	s.ensure().server.Use(m)
+func (s *HttpServer) AddHttpMiddleware(m webex.MiddlewareFunc) {
+	s.ensure().webserver.AddMiddleware(m)
 }
 
 // AddHttpHandler 添加Http处理接口。
-func (s *HttpServer) AddHttpHandler(method, pattern string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) {
-	s.ensure().server.Add(method, pattern, h, m...)
+func (s *HttpServer) AddHttpHandler(method, pattern string, h webex.HandlerFunc, m ...webex.MiddlewareFunc) {
+	s.ensure().webserver.AddRouteHandler(method, pattern, h, m...)
 }
 
 // SetHttpNotFoundHandler 设置Http路由失败的处理接口
-func (s *HttpServer) SetHttpNotFoundHandler(nfh echo.HandlerFunc) {
-	echo.NotFoundHandler = nfh
+func (s *HttpServer) SetHttpNotFoundHandler(nfh webex.HandlerFunc) {
+	s.ensure().webserver.SetNotFoundHandler(nfh)
 }
 
 // SetHttpNotFoundHandler 设置Http响应数据写入的处理接口
@@ -265,7 +257,7 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 			multi.Update(endpoint.Version, &endpoint)
 			if isregister {
 				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", pattern)
-				s.server.Add(event.HttpMethod, pattern, s.newHttpRouteHandler(multi))
+				s.webserver.AddRouteHandler(event.HttpMethod, pattern, s.newHttpRouteHandler(multi))
 			}
 		case flux.EndpointEventUpdated:
 			logger.Infow("Update endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", pattern)
@@ -277,19 +269,19 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 	}
 }
 
-func (s *HttpServer) lookupId(echo echo.Context) string {
-	id := echo.Request().Header.Get(DefaultHttpHeaderRequestId)
+func (s *HttpServer) lookupId(webc webex.WebContext) string {
+	id := webc.RequestHeader().Get(DefaultHttpHeaderRequestId)
 	if "" == id {
 		id = s.snowflakeId.Generate().Base64()
 	}
-	echo.Request().Header.Set(DefaultHttpHeaderRequestId, id)
-	echo.Response().Header().Set(DefaultHttpHeaderRequestId, id)
+	webc.RequestHeader().Set(DefaultHttpHeaderRequestId, id)
+	webc.Response().Header().Set(DefaultHttpHeaderRequestId, id)
 	return id
 }
 
-func (s *HttpServer) acquire(id string, echo echo.Context, endpoint *flux.Endpoint) *internal.ContextWrapper {
+func (s *HttpServer) acquire(id string, webc webex.WebContext, endpoint *flux.Endpoint) *internal.ContextWrapper {
 	ctx := s.contextWrappers.Get().(*internal.ContextWrapper)
-	ctx.Reattach(id, echo, endpoint)
+	ctx.Reattach(id, webc, endpoint)
 	return ctx
 }
 
@@ -298,14 +290,14 @@ func (s *HttpServer) release(context *internal.ContextWrapper) {
 	s.contextWrappers.Put(context)
 }
 
-func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) echo.HandlerFunc {
+func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) webex.HandlerFunc {
 	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
-	return func(httpctx echo.Context) error {
-		request := httpctx.Request()
+	return func(webc webex.WebContext) error {
+		request := webc.Request()
 		// Multi version selection
 		version := request.Header.Get(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.FindByVersion(version)
-		requestId := s.lookupId(httpctx)
+		requestId := s.lookupId(webc)
 		defer func() {
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
@@ -319,13 +311,13 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 					"method", request.Method, "uri", request.RequestURI, "path", request.URL.Path, "version", version,
 				)
 			}
-			return s.httpWriter.WriteError(httpctx, requestId, http.Header{}, ErrEndpointVersionNotFound)
+			return s.httpWriter.WriteError(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
 		}
-		ctxw := s.acquire(requestId, httpctx, endpoint)
+		ctxw := s.acquire(requestId, webc, endpoint)
 		defer s.release(ctxw)
 		// Context exchange
 		for _, pf := range s.pipelines {
-			pf(httpctx, ctxw)
+			pf(webc, ctxw)
 		}
 		if requestLogEnable {
 			logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: DISPATCHING",
@@ -335,16 +327,16 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 		}
 		// Route and response
 		if err := s.routerEngine.Route(ctxw); nil != err {
-			return s.httpWriter.WriteError(httpctx, requestId, ctxw.ResponseWriter().Headers(), err)
+			return s.httpWriter.WriteError(webc, requestId, ctxw.ResponseWriter().Headers(), err)
 		} else {
 			rw := ctxw.ResponseWriter()
-			return s.httpWriter.WriteBody(httpctx, requestId, rw.Headers(), rw.StatusCode(), rw.Body())
+			return s.httpWriter.WriteBody(webc, requestId, rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}
 }
 
 // handleServerError EchoHttp状态错误处理函数。
-func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
+func (s *HttpServer) handleServerError(err error, webc webex.WebContext) {
 	// Http中间件等返回InvokeError错误
 	serr, ok := err.(*flux.StateError)
 	if !ok {
@@ -355,8 +347,8 @@ func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
 			Internal:   err,
 		}
 	}
-	id := ctx.Response().Header().Get(flux.XRequestId)
-	if err := s.httpWriter.WriteError(ctx, id, http.Header{}, serr); nil != err {
+	id := webc.Response().Header().Get(flux.XRequestId)
+	if err := s.httpWriter.WriteError(webc, id, http.Header{}, serr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }
@@ -372,7 +364,7 @@ func (s *HttpServer) prepareMultiVersionEndpoint(routeKey string) (*internal.Mul
 }
 
 func (s *HttpServer) ensure() *HttpServer {
-	if s.server == nil {
+	if s.webserver == nil {
 		logger.Panicf("Call must after InitServer()")
 	}
 	return s

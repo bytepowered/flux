@@ -2,65 +2,60 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/labstack/echo/v4"
+	"github.com/bytepowered/flux/webex"
 	"io"
 	"net/http"
 )
 
+var _ flux.RequestReader = new(RequestWrapReader)
+
 // RequestWrapReader Request请求读取接口的实现
 type RequestWrapReader struct {
-	context echo.Context
+	webc webex.WebContext
 }
 
 func (r *RequestWrapReader) QueryValue(name string) string {
-	return r.context.QueryParam(name)
+	return r.webc.QueryValue(name)
 }
 
 func (r *RequestWrapReader) PathValue(name string) string {
-	return r.context.Param(name)
+	return r.webc.PathValue(name)
 }
 
 func (r *RequestWrapReader) FormValue(name string) string {
-	return r.context.FormValue(name)
+	return r.webc.FormValue(name)
 }
 
 func (r *RequestWrapReader) HeaderValue(name string) string {
-	return r.context.Request().Header.Get(name)
+	return r.webc.RequestHeader().Get(name)
 }
 
 func (r *RequestWrapReader) CookieValue(name string) string {
-	c, e := r.context.Cookie(name)
-	if e == echo.ErrCookieNotFound {
-		return ""
-	} else if nil != c {
-		return c.Raw
-	} else {
-		return ""
-	}
+	return r.webc.CookieValue(name)
 }
 
 func (r *RequestWrapReader) Headers() http.Header {
-	return r.context.Request().Header.Clone()
+	return r.webc.RequestHeader().Clone()
 }
 
 func (r *RequestWrapReader) RemoteAddress() string {
-	return r.context.RealIP()
+	return r.webc.RequestRemoteAddr()
 }
 
 func (r *RequestWrapReader) HttpRequest() *http.Request {
-	return r.context.Request()
+	return r.webc.Request()
 }
 
 func (r *RequestWrapReader) HttpBody() (io.ReadCloser, error) {
-	return r.context.Request().GetBody()
+	return r.webc.Request().GetBody()
 }
 
-func (r *RequestWrapReader) reattach(echo echo.Context) {
-	r.context = echo
+func (r *RequestWrapReader) reattach(webex webex.WebContext) {
+	r.webc = webex
 }
 
 func (r *RequestWrapReader) reset() {
-	r.context = nil
+	r.webc = nil
 }
 
 func newRequestReader() *RequestWrapReader {

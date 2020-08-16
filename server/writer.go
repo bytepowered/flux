@@ -6,6 +6,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"github.com/bytepowered/flux/webex"
 	"github.com/labstack/echo/v4"
 	"io"
 	"io/ioutil"
@@ -19,8 +20,8 @@ var (
 // HttpServerResponseWriter 默认Http服务响应数据Writer
 type HttpServerResponseWriter int
 
-func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string, header http.Header, err *flux.StateError) error {
-	SetupResponseDefaults(ctx.Response(), requestId, header, err.StatusCode)
+func (a *HttpServerResponseWriter) WriteError(webc webex.WebContext, requestId string, header http.Header, err *flux.StateError) error {
+	SetupResponseDefaults(webc.Response(), requestId, header, err.StatusCode)
 	resp := map[string]string{
 		"status":  "error",
 		"message": err.Message,
@@ -32,11 +33,11 @@ func (a *HttpServerResponseWriter) WriteError(ctx echo.Context, requestId string
 	if nil != err {
 		return err
 	}
-	return WriteToHttpChannel(ctx.Response(), bytes)
+	return WriteToHttpChannel(webc.Response(), bytes)
 }
 
-func (a *HttpServerResponseWriter) WriteBody(ctx echo.Context, requestId string, header http.Header, status int, body interface{}) error {
-	SetupResponseDefaults(ctx.Response(), requestId, header, status)
+func (a *HttpServerResponseWriter) WriteBody(webc webex.WebContext, requestId string, header http.Header, status int, body interface{}) error {
+	SetupResponseDefaults(webc.Response(), requestId, header, status)
 	var output []byte
 	if r, ok := body.(io.Reader); ok {
 		if c, ok := r.(io.Closer); ok {
@@ -62,7 +63,7 @@ func (a *HttpServerResponseWriter) WriteBody(ctx echo.Context, requestId string,
 	}()
 	// 写入Http响应发生的错误，没必要向上抛出Error错误处理。
 	// 因为已无法通过WriteError写到客户端
-	if err := WriteToHttpChannel(ctx.Response(), output); nil != err {
+	if err := WriteToHttpChannel(webc.Response(), output); nil != err {
 		logger.Trace(requestId).Errorw("Http response, write channel", "data", string(output), "error", err)
 	}
 	return nil
@@ -85,7 +86,7 @@ func GetHttpDefaultSerializer() flux.Serializer {
 	return ext.GetSerializer(ext.TypeNameSerializerDefault)
 }
 
-func WriteToHttpChannel(resp *echo.Response, bytes []byte) error {
+func WriteToHttpChannel(resp http.ResponseWriter, bytes []byte) error {
 	_, err := resp.Write(bytes)
 	if nil != err {
 		return fmt.Errorf("write http response: %w", err)
@@ -93,8 +94,8 @@ func WriteToHttpChannel(resp *echo.Response, bytes []byte) error {
 	return err
 }
 
-func SetupResponseDefaults(resp *echo.Response, reqId string, header http.Header, status int) *echo.Response {
-	resp.Status = status
+func SetupResponseDefaults(resp http.ResponseWriter, reqId string, header http.Header, status int) http.ResponseWriter {
+	resp.WriteHeader(status)
 	resp.Header().Set(echo.HeaderServer, "Flux/Gateway")
 	resp.Header().Set(echo.HeaderXRequestID, reqId)
 	resp.Header().Set("Content-Type", "application/json; charset=utf-8")

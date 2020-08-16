@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/labstack/echo/v4"
+	"github.com/bytepowered/flux/webex"
 	"sync"
 	"time"
 )
@@ -11,7 +11,7 @@ var _ flux.Context = new(ContextWrapper)
 
 // Context接口实现
 type ContextWrapper struct {
-	context    echo.Context
+	webc       webex.WebContext
 	endpoint   *flux.Endpoint
 	requestId  string
 	attributes *sync.Map
@@ -44,15 +44,15 @@ func (c *ContextWrapper) EndpointProtoName() string {
 }
 
 func (c *ContextWrapper) RequestMethod() string {
-	return c.context.Request().Method
+	return c.webc.RequestMethod()
 }
 
 func (c *ContextWrapper) RequestUri() string {
-	return c.context.Request().RequestURI
+	return c.webc.RequestURI()
 }
 
 func (c *ContextWrapper) RequestPath() string {
-	return c.context.Request().URL.Path
+	return c.webc.RequestURL().Path
 }
 
 func (c *ContextWrapper) RequestId() string {
@@ -60,7 +60,7 @@ func (c *ContextWrapper) RequestId() string {
 }
 
 func (c *ContextWrapper) RequestHost() string {
-	return c.context.Request().Host
+	return c.webc.Request().Host
 }
 
 func (c *ContextWrapper) Attributes() map[string]interface{} {
@@ -94,25 +94,25 @@ func (c *ContextWrapper) EndpointArguments() []flux.Argument {
 	return c.endpoint.Arguments
 }
 
-func (c *ContextWrapper) HttpContext() echo.Context {
-	return c.context
+func (c *ContextWrapper) WebExchange() webex.WebContext {
+	return c.webc
 }
 
-func (c *ContextWrapper) Reattach(requestId string, context echo.Context, endpoint *flux.Endpoint) {
-	c.context = context
-	c.request.reattach(context)
+func (c *ContextWrapper) Reattach(requestId string, webex webex.WebContext, endpoint *flux.Endpoint) {
+	c.webc = webex
+	c.request.reattach(webex)
 	c.endpoint = endpoint
 	c.requestId = requestId
 	c.attributes = new(sync.Map)
 	c.values = new(sync.Map)
 	c.SetAttribute(flux.XRequestTime, time.Now().Unix())
 	c.SetAttribute(flux.XRequestId, c.requestId)
-	c.SetAttribute(flux.XRequestHost, context.Request().Host)
+	c.SetAttribute(flux.XRequestHost, webex.Request().Host)
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 }
 
 func (c *ContextWrapper) Release() {
-	c.context = nil
+	c.webc = nil
 	c.endpoint = nil
 	c.attributes = nil
 	c.values = nil
