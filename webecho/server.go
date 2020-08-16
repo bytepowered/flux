@@ -53,6 +53,14 @@ func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, h webx.WebRo
 	w.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
 }
 
+func (w *AdaptWebServer) WebRouter() interface{} {
+	return w.server
+}
+
+func (w *AdaptWebServer) WebServer() interface{} {
+	return w.server
+}
+
 func (w *AdaptWebServer) Start(addr string) error {
 	return w.server.Start(addr)
 }

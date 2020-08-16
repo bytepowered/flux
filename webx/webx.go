@@ -125,12 +125,24 @@ type WebServerWriter interface {
 
 // WebServer
 type WebServer interface {
+	// SetWebErrorHandler 设置Web请求错误处理函数
 	SetWebErrorHandler(h WebErrorHandler)
+	// SetRouteNotFoundHandler 设置Web路由不存在处理函数
 	SetRouteNotFoundHandler(h WebRouteHandler)
+	// AddWebInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddWebInterceptor(m WebMiddleware)
+	// AddWebMiddleware 添加全局中间件函数，作用于路由请求后
 	AddWebMiddleware(m WebMiddleware)
+	// AddWebRouteHandler 添加请求路由处理函数及其中间件
 	AddWebRouteHandler(method, pattern string, h WebRouteHandler, m ...WebMiddleware)
+	// WebServer 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
+	WebServer() interface{}
+	// WebServer 返回具体实现的WebRouter路由处理对象，如echo,fasthttp的Router
+	WebRouter() interface{}
+	// Start 启动服务
 	Start(addr string) error
+	// StartTLS 启动TLS服务
 	StartTLS(addr string, certFile, keyFile string) error
+	// Shutdown 停止服务
 	Shutdown(ctx context.Context) error
 }
