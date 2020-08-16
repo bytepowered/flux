@@ -90,6 +90,9 @@ type (
 
 // WebContext defines a context for http server handlers/middleware
 type WebContext interface {
+	// 返回具体实现的RequestContext对象
+	Context() interface{}
+
 	Method() string
 	Host() string
 	UserAgent() string

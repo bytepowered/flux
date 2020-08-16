@@ -14,6 +14,10 @@ type AdaptWebContext struct {
 	echoc echo.Context
 }
 
+func (c *AdaptWebContext) Context() interface{} {
+	return c.echoc
+}
+
 func (c *AdaptWebContext) Request() *http.Request {
 	return c.echoc.Request()
 }
