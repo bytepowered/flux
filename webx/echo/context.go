@@ -96,6 +96,13 @@ func (c *AdaptWebContext) ResponseHeader() http.Header {
 	return c.echoc.Response().Header()
 }
 
+func (c *AdaptWebContext) ResponseWrite(statusCode int, bytes []byte) error {
+	writer := c.echoc.Response()
+	writer.WriteHeader(statusCode)
+	_, err := writer.Write(bytes)
+	return err
+}
+
 func (c *AdaptWebContext) SetValue(name string, value interface{}) {
 	c.echoc.Set(name, value)
 }

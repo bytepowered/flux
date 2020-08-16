@@ -1,8 +1,9 @@
-package webx
+package middleware
 
 import (
 	"encoding/base64"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/webx"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,24 +18,24 @@ const (
 
 type BasicAuthConfig struct {
 	// Skipper 用于跳过某些请求
-	Skipper func(ctx WebContext) bool
+	Skipper func(ctx webx.WebContext) bool
 	// Validator 用于检查请求BasicAuth密钥的函数
-	Validator func(string, string, WebContext) (bool, error)
+	Validator func(string, string, webx.WebContext) (bool, error)
 	// Default value "Restricted".
 	Realm string
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件。
-func NewBasicAuthMiddleware(validator func(string, string, WebContext) (bool, error)) WebMiddleware {
+func NewBasicAuthMiddleware(validator func(string, string, webx.WebContext) (bool, error)) webx.WebMiddleware {
 	return NewBasicAuthMiddlewareWith(BasicAuthConfig{
-		Skipper:   func(WebContext) bool { return false },
+		Skipper:   func(webx.WebContext) bool { return false },
 		Validator: validator,
 		Realm:     defaultRealm,
 	})
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件
-func NewBasicAuthMiddlewareWith(config BasicAuthConfig) WebMiddleware {
+func NewBasicAuthMiddlewareWith(config BasicAuthConfig) webx.WebMiddleware {
 	// 参考Echo.BasicAut的实现。
 	// Defaults
 	if config.Validator == nil {
@@ -43,8 +44,8 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) WebMiddleware {
 	if config.Realm == "" {
 		config.Realm = defaultRealm
 	}
-	return func(next WebRouteHandler) WebRouteHandler {
-		return func(webc WebContext) error {
+	return func(next webx.WebRouteHandler) webx.WebRouteHandler {
+		return func(webc webx.WebContext) error {
 			// Skip
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)
@@ -79,7 +80,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) WebMiddleware {
 			webc.ResponseHeader().Set(HeaderWWWAuthenticate, basic+" realm="+realm)
 			return &flux.StateError{
 				StatusCode: http.StatusUnauthorized,
-				ErrorCode:  "BASIC_AUTH:UNAUTHORIZED",
+				ErrorCode:  "UNAUTHORIZED",
 				Message:    "BASIC_AUTH:UNAUTHORIZED",
 			}
 		}

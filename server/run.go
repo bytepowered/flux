@@ -59,7 +59,7 @@ func Run(ver flux.BuildInfo) {
 	if err := fx.Prepare(); nil != err {
 		logger.Panic("Server prepare:", err)
 	}
-	if err := fx.InitServer(); nil != err {
+	if err := fx.Initial(); nil != err {
 		logger.Panic("Server init:", err)
 	}
 	go func() {

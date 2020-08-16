@@ -22,6 +22,7 @@ const (
 const (
 	HeaderContentType = "Content-Type"
 	HeaderServer      = "Server"
+	HeaderXRequestId  = flux.XRequestId
 )
 
 // Web interfaces
@@ -59,6 +60,7 @@ type WebContext interface {
 
 	Response() http.ResponseWriter
 	ResponseHeader() http.Header
+	ResponseWrite(statusCode int, bytes []byte) error
 
 	SetValue(name string, value interface{})
 	GetValue(name string) interface{}

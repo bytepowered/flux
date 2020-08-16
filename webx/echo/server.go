@@ -2,23 +2,17 @@ package echo
 
 import (
 	"context"
-	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/webx"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 var _ webx.WebServer = new(AdaptWebServer)
 
-func NewAdaptWebServer(config *flux.Configuration) webx.WebServer {
+func NewAdaptWebServer() webx.WebServer {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
-	// 手动指定才关闭CORS中间件
-	if !config.GetBool("cors-disable") {
-		server.Pre(middleware.CORS())
-	}
-	// 开启可重启读中间件
+	// 可重读Body
 	server.Pre(RepeatableReadBody)
 	return &AdaptWebServer{server}
 }

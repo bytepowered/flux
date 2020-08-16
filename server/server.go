@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/bwmarrin/snowflake"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/webx"
 	"github.com/bytepowered/flux/webx/echo"
+	"github.com/bytepowered/flux/webx/middleware"
+	"github.com/spf13/cast"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime/debug"
@@ -23,19 +24,20 @@ const (
 )
 
 const (
-	DefaultHttpHeaderVersion   = "X-Version"
-	DefaultHttpHeaderRequestId = flux.XRequestId
+	DefaultHttpHeaderVersion = "X-Version"
 )
 
 const (
-	HttpServerConfigRootName            = "HttpServer"
-	HttpServerConfigKeyVersionHeader    = "version-header"
-	HttpServerConfigKeyDebugEnable      = "debug-enable"
-	HttpServerConfigKeyRequestLogEnable = "request-log-enable"
-	HttpServerConfigKeyAddress          = "address"
-	HttpServerConfigKeyPort             = "port"
-	HttpServerConfigKeyTlsCertFile      = "tls-cert-file"
-	HttpServerConfigKeyTlsKeyFile       = "tls-key-file"
+	HttpServerConfigRootName              = "HttpServer"
+	HttpServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
+	HttpServerConfigKeyFeatureCorsEnable  = "feature-cors-enable"
+	HttpServerConfigKeyVersionHeader      = "version-header"
+	HttpServerConfigKeyRequestIdHeaders   = "request-id-headers"
+	HttpServerConfigKeyRequestLogEnable   = "request-log-enable"
+	HttpServerConfigKeyAddress            = "address"
+	HttpServerConfigKeyPort               = "port"
+	HttpServerConfigKeyTlsCertFile        = "tls-cert-file"
+	HttpServerConfigKeyTlsKeyFile         = "tls-key-file"
 )
 
 const (
@@ -54,10 +56,10 @@ var (
 
 var (
 	HttpServerConfigDefaults = map[string]interface{}{
-		HttpServerConfigKeyVersionHeader: DefaultHttpHeaderVersion,
-		HttpServerConfigKeyDebugEnable:   false,
-		HttpServerConfigKeyAddress:       "0.0.0.0",
-		HttpServerConfigKeyPort:          8080,
+		HttpServerConfigKeyVersionHeader:      DefaultHttpHeaderVersion,
+		HttpServerConfigKeyFeatureDebugEnable: false,
+		HttpServerConfigKeyAddress:            "0.0.0.0",
+		HttpServerConfigKeyPort:               8080,
 	}
 )
 
@@ -74,21 +76,18 @@ type HttpServer struct {
 	routerRegistry    flux.Registry
 	mvEndpointMap     map[string]*internal.MultiVersionEndpoint
 	contextWrappers   sync.Pool
-	snowflakeId       *snowflake.Node
 	pipelines         []HttpContextPipelineFunc
 	stateStarted      chan struct{}
 	stateStopped      chan struct{}
 }
 
 func NewHttpServer() *HttpServer {
-	id, _ := snowflake.NewNode(1)
 	return &HttpServer{
 		webWriter:       new(HttpServerWriter),
 		routerEngine:    internal.NewRouteEngine(),
 		mvEndpointMap:   make(map[string]*internal.MultiVersionEndpoint),
 		contextWrappers: sync.Pool{New: internal.NewContextWrapper},
 		pipelines:       make([]HttpContextPipelineFunc, 0),
-		snowflakeId:     id,
 		stateStarted:    make(chan struct{}),
 		stateStopped:    make(chan struct{}),
 	}
@@ -114,13 +113,32 @@ func (s *HttpServer) InitServer() error {
 	s.httpConfig = flux.NewConfigurationOf(HttpServerConfigRootName)
 	s.httpConfig.SetDefaults(HttpServerConfigDefaults)
 	s.httpVersionHeader = s.httpConfig.GetString(HttpServerConfigKeyVersionHeader)
-	s.webServer = echo.NewAdaptWebServer(s.httpConfig)
+	// 创建Echo框架的WebServer
+	s.webServer = echo.NewAdaptWebServer()
+
+	// 默认必备的WebServer功能
 	s.webServer.SetWebErrorHandler(s.handleServerError)
-	// Http debug features
-	if s.httpConfig.GetBool(HttpServerConfigKeyDebugEnable) {
+	s.webServer.SetRouteNotFoundHandler(s.handleNotFoundError)
+
+	// - 请求CORS跨域支持：默认关闭，需要配置开启
+	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureCorsEnable) {
+		s.AddHttpInterceptor(middleware.NewCORSMiddleware())
+	}
+
+	// - RequestId查找与生成
+	if headers := s.httpConfig.GetStringSlice(HttpServerConfigKeyRequestIdHeaders); 0 < len(headers) {
+		for _, header := range headers {
+			middleware.AddRequestIdLookupHeader(header)
+		}
+	}
+	s.AddHttpInterceptor(middleware.NewRequestIdMiddleware())
+
+	// - Debug特性支持：默认关闭，需要配置开启
+	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureDebugEnable) {
 		s.debugFeatures(s.httpConfig)
 	}
-	// Http Registry
+
+	// Registry
 	if registry, config, err := findRouterRegistry(); nil != err {
 		return err
 	} else {
@@ -147,8 +165,6 @@ func (s *HttpServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Config
 
 // StartServeWith server
 func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configuration) error {
-	logger.Info(Banner)
-	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
 	if err := s.ensure().routerEngine.Startup(); nil != err {
 		return err
 	}
@@ -163,6 +179,8 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 	certFile := config.GetString(HttpServerConfigKeyTlsCertFile)
 	keyFile := config.GetString(HttpServerConfigKeyTlsKeyFile)
 	close(s.stateStarted)
+	logger.Info(Banner)
+	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
 		return s.webServer.StartTLS(address, certFile, keyFile)
@@ -263,16 +281,6 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 	}
 }
 
-func (s *HttpServer) lookupId(webc webx.WebContext) string {
-	id := webc.RequestHeader().Get(DefaultHttpHeaderRequestId)
-	if "" == id {
-		id = s.snowflakeId.Generate().Base64()
-	}
-	webc.RequestHeader().Set(DefaultHttpHeaderRequestId, id)
-	webc.ResponseHeader().Set(DefaultHttpHeaderRequestId, id)
-	return id
-}
-
 func (s *HttpServer) acquire(id string, webc webx.WebContext, endpoint *flux.Endpoint) *internal.ContextWrapper {
 	ctx := s.contextWrappers.Get().(*internal.ContextWrapper)
 	ctx.Reattach(id, webc, endpoint)
@@ -290,7 +298,7 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 		// Multi version selection
 		version := webc.RequestHeader().Get(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.FindByVersion(version)
-		requestId := s.lookupId(webc)
+		requestId := cast.ToString(webc.GetValue(webx.HeaderXRequestId))
 		defer func() {
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
@@ -328,6 +336,14 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 	}
 }
 
+func (s *HttpServer) handleNotFoundError(webc webx.WebContext) error {
+	return &flux.StateError{
+		StatusCode: flux.StatusNotFound,
+		ErrorCode:  flux.ErrorCodeRequestNotFound,
+		Message:    "ROUTE:NOT_FOUND",
+	}
+}
+
 // handleServerError EchoHttp状态错误处理函数。
 func (s *HttpServer) handleServerError(err error, webc webx.WebContext) {
 	// Http中间件等返回InvokeError错误
@@ -340,8 +356,8 @@ func (s *HttpServer) handleServerError(err error, webc webx.WebContext) {
 			Internal:   err,
 		}
 	}
-	id := webc.ResponseHeader().Get(DefaultHttpHeaderRequestId)
-	if err := s.webWriter.WriteError(webc, id, http.Header{}, serr); nil != err {
+	requestId := cast.ToString(webc.GetValue(webx.HeaderXRequestId))
+	if err := s.webWriter.WriteError(webc, requestId, http.Header{}, serr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }

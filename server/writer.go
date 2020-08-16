@@ -84,18 +84,17 @@ func GetHttpDefaultSerializer() flux.Serializer {
 }
 
 func WriteToHttpChannel(webc webx.WebContext, status int, bytes []byte) error {
-	_, err := webc.Response().Write(bytes)
+	err := webc.ResponseWrite(status, bytes)
 	if nil != err {
 		return fmt.Errorf("write http response: %w", err)
 	}
-	webc.Response().WriteHeader(status)
 	return err
 }
 
 func SetupResponseDefaults(webc webx.WebContext, requestId string, header http.Header) {
+	webc.ResponseHeader().Set(webx.HeaderXRequestId, requestId)
 	webc.ResponseHeader().Set(webx.HeaderServer, "Flux/Gateway")
-	webc.ResponseHeader().Set(flux.XRequestId, requestId)
-	webc.ResponseHeader().Set(webx.HeaderContentType, webx.MIMEApplicationJSON)
+	webc.ResponseHeader().Set(webx.HeaderContentType, webx.MIMEApplicationJSONCharsetUTF8)
 	// 允许Override默认Header
 	for k, v := range header {
 		for _, iv := range v {
