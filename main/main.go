@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/server"
+	_ "github.com/bytepowered/flux/webecho"
 )
 
 var (

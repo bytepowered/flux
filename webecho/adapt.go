@@ -1,4 +1,4 @@
-package echo
+package webecho
 
 import (
 	"github.com/bytepowered/flux/webx"

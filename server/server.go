@@ -8,7 +8,6 @@ import (
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/webx"
-	"github.com/bytepowered/flux/webx/echo"
 	"github.com/bytepowered/flux/webx/middleware"
 	"github.com/spf13/cast"
 	"net/http"
@@ -113,9 +112,8 @@ func (s *HttpServer) InitServer() error {
 	s.httpConfig = flux.NewConfigurationOf(HttpServerConfigRootName)
 	s.httpConfig.SetDefaults(HttpServerConfigDefaults)
 	s.httpVersionHeader = s.httpConfig.GetString(HttpServerConfigKeyVersionHeader)
-	// 创建Echo框架的WebServer
-	s.webServer = echo.NewAdaptWebServer()
-
+	// 创建WebServer
+	s.webServer = ext.GetWebServerFactory()()
 	// 默认必备的WebServer功能
 	s.webServer.SetWebErrorHandler(s.handleServerError)
 	s.webServer.SetRouteNotFoundHandler(s.handleNotFoundError)

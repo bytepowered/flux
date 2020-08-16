@@ -1,12 +1,17 @@
-package echo
+package webecho
 
 import (
 	"context"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/webx"
 	"github.com/labstack/echo/v4"
 )
 
 var _ webx.WebServer = new(AdaptWebServer)
+
+func init() {
+	ext.SetWebServerFactory(NewAdaptWebServer)
+}
 
 func NewAdaptWebServer() webx.WebServer {
 	server := echo.New()
