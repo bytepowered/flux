@@ -126,12 +126,8 @@ func (s *HttpServer) InitServer() error {
 	}
 
 	// - RequestId查找与生成
-	if headers := s.httpConfig.GetStringSlice(HttpServerConfigKeyRequestIdHeaders); 0 < len(headers) {
-		for _, header := range headers {
-			middleware.AddRequestIdLookupHeader(header)
-		}
-	}
-	s.AddHttpInterceptor(middleware.NewRequestIdMiddleware())
+	headers := s.httpConfig.GetStringSlice(HttpServerConfigKeyRequestIdHeaders)
+	s.AddHttpInterceptor(middleware.NewRequestIdMiddleware(headers...))
 
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureDebugEnable) {
