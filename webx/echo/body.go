@@ -1,19 +1,19 @@
-package server
+package echo
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/webex"
+	"github.com/labstack/echo/v4"
 	"io"
 	"io/ioutil"
 )
 
 // Body缓存，允许通过 GetBody 多次读取Body
-func RepeatableHttpBody(next webex.HandlerFunc) webex.HandlerFunc {
+func RepeatableReadBody(next echo.HandlerFunc) echo.HandlerFunc {
 	// 包装Http处理错误，统一由HttpErrorHandler处理
-	return func(webc webex.WebContext) error {
-		request := webc.Request()
+	return func(echo echo.Context) error {
+		request := echo.Request()
 		data, err := ioutil.ReadAll(request.Body)
 		if nil != err {
 			return &flux.StateError{
@@ -36,7 +36,7 @@ func RepeatableHttpBody(next webex.HandlerFunc) webex.HandlerFunc {
 				Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 			}
 		} else {
-			return next(webc)
+			return next(echo)
 		}
 	}
 }

@@ -5,12 +5,12 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	https "net/http"
+	"net/http"
 )
 
 // 默认实现：查找Argument的值函数
 func DefaultArgumentValueLookupFunc(arg flux.Argument, ctx flux.Context) (interface{}, error) {
-	request := ctx.RequestReader()
+	request := ctx.Request()
 	switch arg.HttpScope {
 	case flux.ScopeQuery:
 		return request.QueryValue(arg.HttpKey), nil
@@ -52,7 +52,7 @@ func DefaultArgumentValueLookupFunc(arg flux.Argument, ctx flux.Context) (interf
 
 func shouldResolve(ctx flux.Context, args []flux.Argument) bool {
 	// HEAD, OPTIONS 不需要解析参数
-	if https.MethodHead == ctx.RequestMethod() || https.MethodOptions == ctx.RequestMethod() {
+	if http.MethodHead == ctx.RequestMethod() || http.MethodOptions == ctx.RequestMethod() {
 		return false
 	}
 	if len(args) == 0 {

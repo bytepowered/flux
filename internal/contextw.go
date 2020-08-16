@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/webex"
+	"github.com/bytepowered/flux/webx"
 	"sync"
 	"time"
 )
@@ -11,27 +11,27 @@ var _ flux.Context = new(ContextWrapper)
 
 // Context接口实现
 type ContextWrapper struct {
-	webc       webex.WebContext
+	webc       webx.WebContext
 	endpoint   *flux.Endpoint
 	requestId  string
 	attributes *sync.Map
 	values     *sync.Map
-	response   *ResponseWrapWriter
-	request    *RequestWrapReader
+	response   *ResponseWrappedWriter
+	request    *RequestWrappedReader
 }
 
 func NewContextWrapper() interface{} {
 	return &ContextWrapper{
-		response: newResponseWriter(),
-		request:  newRequestReader(),
+		response: newResponseWrappedWriter(),
+		request:  newRequestWrappedReader(),
 	}
 }
 
-func (c *ContextWrapper) RequestReader() flux.RequestReader {
+func (c *ContextWrapper) Request() flux.RequestReader {
 	return c.request
 }
 
-func (c *ContextWrapper) ResponseWriter() flux.ResponseWriter {
+func (c *ContextWrapper) Response() flux.ResponseWriter {
 	return c.response
 }
 
@@ -44,15 +44,15 @@ func (c *ContextWrapper) EndpointProtoName() string {
 }
 
 func (c *ContextWrapper) RequestMethod() string {
-	return c.webc.RequestMethod()
+	return c.webc.Method()
 }
 
-func (c *ContextWrapper) RequestUri() string {
+func (c *ContextWrapper) RequestURI() string {
 	return c.webc.RequestURI()
 }
 
-func (c *ContextWrapper) RequestPath() string {
-	return c.webc.RequestURL().Path
+func (c *ContextWrapper) RequestURLPath() string {
+	return c.webc.Request().URL.Path
 }
 
 func (c *ContextWrapper) RequestId() string {
@@ -60,7 +60,7 @@ func (c *ContextWrapper) RequestId() string {
 }
 
 func (c *ContextWrapper) RequestHost() string {
-	return c.webc.Request().Host
+	return c.webc.Host()
 }
 
 func (c *ContextWrapper) Attributes() map[string]interface{} {
@@ -94,20 +94,20 @@ func (c *ContextWrapper) EndpointArguments() []flux.Argument {
 	return c.endpoint.Arguments
 }
 
-func (c *ContextWrapper) WebExchange() webex.WebContext {
+func (c *ContextWrapper) WebExchange() webx.WebContext {
 	return c.webc
 }
 
-func (c *ContextWrapper) Reattach(requestId string, webex webex.WebContext, endpoint *flux.Endpoint) {
-	c.webc = webex
-	c.request.reattach(webex)
+func (c *ContextWrapper) Reattach(requestId string, webc webx.WebContext, endpoint *flux.Endpoint) {
+	c.webc = webc
+	c.request.reattach(webc)
 	c.endpoint = endpoint
 	c.requestId = requestId
 	c.attributes = new(sync.Map)
 	c.values = new(sync.Map)
 	c.SetAttribute(flux.XRequestTime, time.Now().Unix())
 	c.SetAttribute(flux.XRequestId, c.requestId)
-	c.SetAttribute(flux.XRequestHost, webex.Request().Host)
+	c.SetAttribute(flux.XRequestHost, webc.Host())
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 }
 

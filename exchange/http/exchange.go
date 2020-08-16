@@ -32,8 +32,7 @@ func (ex *exchange) Exchange(ctx flux.Context) *flux.StateError {
 }
 
 func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
-	httpRequest := ctx.RequestReader().HttpRequest()
-	newRequest, err := ex.Assemble(target, httpRequest)
+	newRequest, err := ex.Assemble(target, ctx.Request())
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -43,7 +42,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 		}
 	} else {
 		// Header透传以及传递AttrValues
-		newRequest.Header = httpRequest.Header.Clone()
+		newRequest.Header = ctx.Request().RequestHeader().Clone()
 		for k, v := range ctx.Attributes() {
 			newRequest.Header.Set(k, cast.ToString(v))
 		}
@@ -64,11 +63,12 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 	return resp, nil
 }
 
-func (ex *exchange) Assemble(endpoint *flux.Endpoint, inReq *http.Request) (*http.Request, error) {
+func (ex *exchange) Assemble(endpoint *flux.Endpoint, inRequest flux.RequestReader) (*http.Request, error) {
 	inParams := endpoint.Arguments
-	newQuery := inReq.URL.RawQuery
+	inURL := inRequest.Request().URL
+	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
-	reader, err := inReq.GetBody()
+	reader, err := inRequest.RequestBody()
 	if nil != err {
 		return nil, fmt.Errorf("get body by func, err: %w", err)
 	}
@@ -89,17 +89,17 @@ func (ex *exchange) Assemble(endpoint *flux.Endpoint, inReq *http.Request) (*htt
 			newBodyReader = strings.NewReader(data)
 		}
 	}
-	// 未定义参数，即透传Http请求：Rewrite inReq path
+	// 未定义参数，即透传Http请求：Rewrite inRequest path
 	newUrl := &url.URL{
 		Host:       endpoint.UpstreamHost,
 		Path:       endpoint.UpstreamUri,
-		Scheme:     inReq.URL.Scheme,
-		Opaque:     inReq.URL.Opaque,
-		User:       inReq.URL.User,
-		RawPath:    inReq.URL.RawPath,
-		ForceQuery: inReq.URL.ForceQuery,
+		Scheme:     inURL.Scheme,
+		Opaque:     inURL.Opaque,
+		User:       inURL.User,
+		RawPath:    inURL.RawPath,
+		ForceQuery: inURL.ForceQuery,
 		RawQuery:   newQuery,
-		Fragment:   inReq.URL.Fragment,
+		Fragment:   inURL.Fragment,
 	}
 	timeout, err := time.ParseDuration(endpoint.RpcTimeout)
 	if err != nil {

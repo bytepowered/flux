@@ -4,9 +4,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/webex"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/bytepowered/flux/webx"
 	"github.com/labstack/gommon/random"
 	https "net/http"
 )
@@ -19,17 +17,26 @@ func (s *HttpServer) debugFeatures(config *flux.Configuration) {
 	username := config.GetString("debug-auth-username")
 	password := config.GetString("debug-auth-password")
 	logger.Infow("Http debug feature: [ENABLED], Auth: BasicAuth", "username", username, "password", password)
-	auth := middleware.BasicAuth(func(u string, p string, c webex.WebContext) (bool, error) {
-		return u == username && p == password, nil
+	auth := webx.NewBasicAuthMiddleware(func(user string, pass string, webc webx.WebContext) (bool, error) {
+		return user == username && pass == password, nil
 	})
-	debugHandler := echo.WrapHandler(https.DefaultServeMux)
-	s.webserver.AddRouteHandler("GET", DebugPathVars, debugHandler, auth)
-	s.webserver.AddRouteHandler("GET", DebugPathPprof, debugHandler, auth)
-	s.webserver.AddRouteHandler("GET", DebugPathEndpoints, func(c echo.Context) error {
-		if data, err := ext.GetSerializer(ext.TypeNameSerializerJson).Marshal(queryEndpoints(s.mvEndpointMap, c)); nil != err {
+	// Debug查询接口
+	debugHandler := webx.AdaptHttpHandler(https.DefaultServeMux)
+	s.webServer.AddWebRouteHandler("GET", DebugPathVars, debugHandler, auth)
+	s.webServer.AddWebRouteHandler("GET", DebugPathPprof, debugHandler, auth)
+	// Endpoint查询
+	json := ext.GetSerializer(ext.TypeNameSerializerJson)
+	s.webServer.AddWebRouteHandler("GET", DebugPathEndpoints, func(webc webx.WebContext) error {
+		if data, err := json.Marshal(queryEndpoints(s.mvEndpointMap, webc)); nil != err {
 			return err
 		} else {
-			return c.JSONBlob(flux.StatusOK, data)
+			rw := webc.Response()
+			webc.ResponseHeader().Set(webx.HeaderContentType, webx.MIMEApplicationJSON)
+			_, err := rw.Write(data)
+			if nil != err {
+				rw.WriteHeader(https.StatusOK)
+			}
+			return err
 		}
 	}, auth)
 }

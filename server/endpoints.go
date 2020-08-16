@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/bytepowered/flux/internal"
-	"github.com/labstack/echo/v4"
+	"github.com/bytepowered/flux/webx"
 	"strings"
 )
 
@@ -45,10 +45,11 @@ func init() {
 	}
 }
 
-func queryEndpoints(data map[string]*internal.MultiVersionEndpoint, request echo.Context) interface{} {
+func queryEndpoints(data map[string]*internal.MultiVersionEndpoint, webc webx.WebContext) interface{} {
 	filters := make([]_filter, 0)
+	query := webc.QueryValues()
 	for _, key := range _typeKeys {
-		if query := request.QueryParam(key); "" != query {
+		if query := query.Get(key); "" != query {
 			if f, ok := _filterFactories[key]; ok {
 				filters = append(filters, f(query))
 			}

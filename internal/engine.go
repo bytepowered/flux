@@ -98,26 +98,20 @@ func (r *RouteEngine) Route(ctx *ContextWrapper) *flux.StateError {
 		}
 	}
 	// Select filters
-	globalFilters := ext.GlobalFilters()
-	selectiveFilters := make([]flux.Filter, 0)
+	globals := ext.GlobalFilters()
+	selectives := make([]flux.Filter, 0)
 	for _, selector := range ext.FindSelectors(ctx.RequestHost()) {
 		for _, typeId := range selector.Select(ctx).Filters {
 			if f, ok := ext.GetSelectiveFilter(typeId); ok {
-				selectiveFilters = append(selectiveFilters, f)
+				selectives = append(selectives, f)
 			} else {
 				logger.Trace(ctx.RequestId()).Warnw("Filter not found on selector", "type-id", typeId)
 			}
 		}
 	}
-	// Metrics
-	metrics := make(map[string]string, len(globalFilters)+len(selectiveFilters)+1)
-	defer func() {
-		for k, v := range metrics {
-			ctx.ResponseWriter().AddHeader(k, v)
-		}
-	}()
+	metrics := make(map[string]string, len(globals)+len(selectives)+1)
 	// Walk filters
-	return r.walk(metrics, func(ctx flux.Context) *flux.StateError {
+	err := r.walk(metrics, func(ctx flux.Context) *flux.StateError {
 		protoName := ctx.EndpointProtoName()
 		if exchange, ok := ext.GetExchange(protoName); !ok {
 			return &flux.StateError{
@@ -130,7 +124,12 @@ func (r *RouteEngine) Route(ctx *ContextWrapper) *flux.StateError {
 			metrics["X-Metric-Exchange"] = time.Since(start).String()
 			return ret
 		}
-	}, append(globalFilters, selectiveFilters...)...)(ctx)
+	}, append(globals, selectives...)...)(ctx)
+	// Set metrics
+	for k, v := range metrics {
+		ctx.Response().AddHeader(k, v)
+	}
+	return err
 }
 
 func (r *RouteEngine) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {

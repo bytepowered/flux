@@ -7,10 +7,10 @@ version-header = "X-Version"
 #tls-cret-file = ""
 #tls-key-file = ""
 #cors-disable = false
-#routing-log-enable = true
-#debug-enable = true
-#debug-auth-username = "yongjia.chen"
-#debug-auth-password = "yongjiaxxl"
+request-log-enable = true
+debug-enable = true
+debug-auth-username = "yongjia.chen"
+debug-auth-password = "yongjiapro"
 
 # REGISTRY: 网关元数据配置中心
 [REGISTRY]
