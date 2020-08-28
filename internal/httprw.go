@@ -2,7 +2,6 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/webx"
 	"net/http"
 )
@@ -15,21 +14,15 @@ type RequestWrappedReader struct {
 }
 
 func (r *RequestWrappedReader) QueryValue(name string) string {
-	return r.WebContext.QueryValues().Get(name)
+	return r.WebContext.QueryValue(name)
 }
 
 func (r *RequestWrappedReader) PathValue(name string) string {
-	return r.WebContext.PathValues().Get(name)
+	return r.WebContext.PathValue(name)
 }
 
 func (r *RequestWrappedReader) FormValue(name string) string {
-	form, err := r.WebContext.FormValues()
-	if nil != err {
-		logger.Panicw("parse form value", "error", err)
-		return ""
-	} else {
-		return form.Get(name)
-	}
+	return r.WebContext.FormValue(name)
 }
 
 func (r *RequestWrappedReader) HeaderValue(name string) string {
