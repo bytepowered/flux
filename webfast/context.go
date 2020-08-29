@@ -2,6 +2,7 @@ package webfast
 
 import (
 	"bytes"
+	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/webx"
 	"github.com/spf13/cast"
 	"github.com/valyala/fasthttp"
@@ -20,10 +21,12 @@ func toAdaptWebContext(ctx *fasthttp.RequestCtx) webx.WebContext {
 	}
 }
 
+// AdaptWebContext: Not thread-safe
 type AdaptWebContext struct {
 	fastc       *fasthttp.RequestCtx
 	values      map[string]interface{}
 	cookies     []*http.Cookie
+	request     *http.Request
 	reqHeader   *http.Header
 	respHeader  *http.Header
 	queryValues *url.Values
@@ -48,7 +51,15 @@ func (a *AdaptWebContext) UserAgent() string {
 }
 
 func (a *AdaptWebContext) Request() *http.Request {
-	panic("implement me")
+	if a.request == nil {
+		body := ioutil.NopCloser(bytes.NewReader(a.fastc.Request.Body()))
+		request, err := http.NewRequest(a.Method(), a.RequestURI(), body)
+		if nil != err {
+			logger.Panicw("webfast: build request", "error", err)
+		}
+		a.request = request
+	}
+	return a.request
 }
 
 func (a *AdaptWebContext) RequestURI() string {
