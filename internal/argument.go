@@ -52,7 +52,7 @@ func DefaultArgumentValueLookupFunc(arg flux.Argument, ctx flux.Context) (interf
 
 func shouldResolve(ctx flux.Context, args []flux.Argument) bool {
 	// HEAD, OPTIONS 不需要解析参数
-	if http.MethodHead == ctx.RequestMethod() || http.MethodOptions == ctx.RequestMethod() {
+	if http.MethodHead == ctx.Method() || http.MethodOptions == ctx.Method() {
 		return false
 	}
 	if len(args) == 0 {

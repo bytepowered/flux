@@ -5,6 +5,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/webx"
 	"github.com/labstack/echo/v4"
+	"net/http"
 	"strings"
 )
 
@@ -51,6 +52,14 @@ func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, h webx.WebRo
 		wms[i] = AdaptWebMiddleware(mi).AdaptFunc
 	}
 	w.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
+}
+
+func (w *AdaptWebServer) AddStdHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+	wm := make([]echo.MiddlewareFunc, len(m))
+	for i, mf := range m {
+		wm[i] = echo.WrapMiddleware(mf)
+	}
+	w.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wm...)
 }
 
 func (w *AdaptWebServer) WebRouter() interface{} {

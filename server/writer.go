@@ -13,9 +13,17 @@ import (
 	"strings"
 )
 
-var _ webx.WebServerWriter = new(HttpServerWriter)
+var _ HttpResponseWriter = new(HttpServerWriter)
 
-// WebServerWriter 默认Http服务响应数据Writer
+// HttpResponseWriter 实现将错误消息和响应数据写入Response实例
+type HttpResponseWriter interface {
+	// WriteError 写入Error错误响应数据到WebServer
+	WriteError(webc webx.WebContext, requestId string, header http.Header, error *flux.StateError) error
+	// WriteBody 写入Body正常响应数据到WebServer
+	WriteBody(webc webx.WebContext, requestId string, header http.Header, status int, body interface{}) error
+}
+
+// HttpServerWriter 默认Http服务响应数据Writer
 type HttpServerWriter int
 
 func (a *HttpServerWriter) WriteError(webc webx.WebContext, requestId string, header http.Header, serr *flux.StateError) error {

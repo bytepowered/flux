@@ -43,7 +43,7 @@ func (c *ContextWrapper) EndpointProtoName() string {
 	return c.endpoint.Protocol
 }
 
-func (c *ContextWrapper) RequestMethod() string {
+func (c *ContextWrapper) Method() string {
 	return c.webc.Method()
 }
 
@@ -51,16 +51,8 @@ func (c *ContextWrapper) RequestURI() string {
 	return c.webc.RequestURI()
 }
 
-func (c *ContextWrapper) RequestURLPath() string {
-	return c.webc.Request().URL.Path
-}
-
 func (c *ContextWrapper) RequestId() string {
 	return c.requestId
-}
-
-func (c *ContextWrapper) RequestHost() string {
-	return c.webc.Host()
 }
 
 func (c *ContextWrapper) Attributes() map[string]interface{} {

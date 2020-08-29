@@ -2,10 +2,15 @@ package webx
 
 import (
 	"context"
-	"github.com/bytepowered/flux"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
+)
+
+var (
+	ErrHttpRequestNotSupported  = errors.New("webserver: http.request not supported")
+	ErrHttpResponseNotSupported = errors.New("webserver: http.responsewriter not supported")
 )
 
 const (
@@ -70,7 +75,8 @@ const (
 	HeaderReferrerPolicy                  = "Referrer-Policy"
 
 	// Ext
-	HeaderXRequestId = flux.XRequestId
+	HeaderXRequestId     = "X-Request-Id"
+	HeaderValueSeparator = ","
 )
 
 // Web interfaces
@@ -96,40 +102,44 @@ type WebContext interface {
 	Method() string
 	Host() string
 	UserAgent() string
-	Request() *http.Request
+	// 返回Http标准Request对象。
+	// 如果WebServer不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
+	Request() (*http.Request, error)
 	RequestURI() string
-	RequestURLPath() string
-	// RequestHeader 返回请求对象的Header，只读
-	RequestHeader() http.Header
+	// RequestURL 返回请求对象的URL
+	// 注意：部分Http框架返回只读url.URL
+	RequestURL() (url *url.URL, readonly bool)
+	// RequestHeader 返回请求对象的Header
+	// 注意：部分Http框架返回只读http.Header
+	RequestHeader() (header http.Header, readonly bool)
 	GetRequestHeader(name string) string
 	SetRequestHeader(name, value string)
-	RequestBody() (io.ReadCloser, error)
+	AddRequestHeader(name, value string)
+	RequestBodyReader() (io.ReadCloser, error)
 
 	QueryValues() url.Values
 	PathValues() url.Values
-	FormValues() (url.Values, error)
+	FormValues() url.Values
 	CookieValues() []*http.Cookie
 
 	QueryValue(name string) string
 	PathValue(name string) string
 	FormValue(name string) string
-	CookieValue(name string) (*http.Cookie, bool)
+	CookieValue(name string) (cookie *http.Cookie, ok bool)
 
-	Response() http.ResponseWriter
-	// ResponseHeader 返回响应对象的Header，只读
-	ResponseHeader() http.Header
+	// 返回Http标准ResponseWriter对象。
+	// 如果WebServer不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
+	Response() (http.ResponseWriter, error)
+	// ResponseHeader 返回响应对象的Header以及是否只读
+	// 注意：部分Http框架返回只读http.Header
+	ResponseHeader() (header http.Header, readonly bool)
 	GetResponseHeader(name string) string
 	SetResponseHeader(name, value string)
+	AddResponseHeader(name, value string)
 	ResponseWrite(statusCode int, bytes []byte) error
 
 	SetValue(name string, value interface{})
 	GetValue(name string) interface{}
-}
-
-// WebServerWriter 实现将错误消息和响应数据写入Response实例
-type WebServerWriter interface {
-	WriteError(webc WebContext, requestId string, header http.Header, error *flux.StateError) error
-	WriteBody(webc WebContext, requestId string, header http.Header, status int, body interface{}) error
 }
 
 // WebServer
@@ -144,6 +154,8 @@ type WebServer interface {
 	AddWebMiddleware(m WebMiddleware)
 	// AddWebRouteHandler 添加请求路由处理函数及其中间件
 	AddWebRouteHandler(method, pattern string, h WebRouteHandler, m ...WebMiddleware)
+	// AddStdHttpHandler 添加http标准请求路由处理函数及其中间件
+	AddStdHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 	// WebServer 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
 	WebServer() interface{}
 	// WebServer 返回具体实现的WebRouter路由处理对象，如echo,fasthttp的Router

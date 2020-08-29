@@ -68,7 +68,7 @@ type HttpContextPipelineFunc func(webx.WebContext, flux.Context)
 // Server
 type HttpServer struct {
 	webServer         webx.WebServer
-	webWriter         webx.WebServerWriter
+	respWriter        HttpResponseWriter
 	httpConfig        *flux.Configuration
 	httpVersionHeader string
 	routerEngine      *internal.RouteEngine
@@ -82,7 +82,7 @@ type HttpServer struct {
 
 func NewHttpServer() *HttpServer {
 	return &HttpServer{
-		webWriter:       new(HttpServerWriter),
+		respWriter:      new(HttpServerWriter),
 		routerEngine:    internal.NewRouteEngine(),
 		mvEndpointMap:   make(map[string]*internal.MultiVersionEndpoint),
 		contextWrappers: sync.Pool{New: internal.NewContextWrapper},
@@ -120,12 +120,12 @@ func (s *HttpServer) InitServer() error {
 
 	// - 请求CORS跨域支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureCorsEnable) {
-		s.AddHttpInterceptor(middleware.NewCORSMiddleware())
+		s.AddWebInterceptor(middleware.NewCORSMiddleware())
 	}
 
 	// - RequestId查找与生成
 	headers := s.httpConfig.GetStringSlice(HttpServerConfigKeyRequestIdHeaders)
-	s.AddHttpInterceptor(middleware.NewRequestIdMiddleware(headers...))
+	s.AddWebInterceptor(middleware.NewRequestIdMiddleware(headers...))
 
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureDebugEnable) {
@@ -211,33 +211,43 @@ func (s *HttpServer) HttpConfig() *flux.Configuration {
 	return s.httpConfig
 }
 
-// AddHttpInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
-func (s *HttpServer) AddHttpInterceptor(m webx.WebMiddleware) {
+// AddWebInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
+func (s *HttpServer) AddWebInterceptor(m webx.WebMiddleware) {
 	s.ensure().webServer.AddWebInterceptor(m)
 }
 
-// AddHttpMiddleware 添加Http中间件。在Http路由到对应Handler后执行
-func (s *HttpServer) AddHttpMiddleware(m webx.WebMiddleware) {
+// AddWebMiddleware 添加Http中间件。在Http路由到对应Handler后执行
+func (s *HttpServer) AddWebMiddleware(m webx.WebMiddleware) {
 	s.ensure().webServer.AddWebMiddleware(m)
 }
 
-// AddHttpHandler 添加Http处理接口。
-func (s *HttpServer) AddHttpHandler(method, pattern string, h webx.WebRouteHandler, m ...webx.WebMiddleware) {
+// AddWebRouteHandler 添加Http处理接口。
+func (s *HttpServer) AddWebRouteHandler(method, pattern string, h webx.WebRouteHandler, m ...webx.WebMiddleware) {
 	s.ensure().webServer.AddWebRouteHandler(method, pattern, h, m...)
 }
 
-// SetHttpNotFoundHandler 设置Http路由失败的处理接口
-func (s *HttpServer) SetHttpNotFoundHandler(nfh webx.WebRouteHandler) {
+// AddWebRouteHandler 添加Http处理接口。
+func (s *HttpServer) AddStdHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+	s.ensure().webServer.AddStdHttpHandler(method, pattern, h, m...)
+}
+
+// SetRouteNotFoundHandler 设置Http路由失败的处理接口
+func (s *HttpServer) SetRouteNotFoundHandler(nfh webx.WebRouteHandler) {
 	s.ensure().webServer.SetRouteNotFoundHandler(nfh)
 }
 
-// SetHttpNotFoundHandler 设置Http响应数据写入的处理接口
-func (s *HttpServer) SetHttpServerWriter(writer webx.WebServerWriter) {
-	s.webWriter = writer
+// WebServer 返回WebServer实例
+func (s *HttpServer) WebServer() webx.WebServer {
+	return s.ensure().webServer
 }
 
-// AddHttpContextPipeline 添加Http与Flux的Context桥接函数
-func (s *HttpServer) AddHttpContextPipeline(f HttpContextPipelineFunc) {
+// SetRouteNotFoundHandler 设置Http响应数据写入的处理接口
+func (s *HttpServer) SetHttpServerWriter(writer HttpResponseWriter) {
+	s.respWriter = writer
+}
+
+// AddHttpContextPipelineFunc 添加Http与Flux的Context桥接函数
+func (s *HttpServer) AddHttpContextPipelineFunc(f HttpContextPipelineFunc) {
 	s.pipelines = append(s.pipelines, f)
 }
 
@@ -299,13 +309,15 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 				tl.Error(string(debug.Stack()))
 			}
 		}()
+
 		if !found {
 			if requestLogEnable {
+				requrl, _ := webc.RequestURL()
 				logger.Trace(requestId).Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
-					"method", webc.Method(), "uri", webc.RequestURI(), "path", webc.RequestURLPath(), "version", version,
+					"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
 				)
 			}
-			return s.webWriter.WriteError(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
+			return s.respWriter.WriteError(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
 		}
 		ctxw := s.acquire(requestId, webc, endpoint)
 		defer s.release(ctxw)
@@ -314,17 +326,18 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 			pf(webc, ctxw)
 		}
 		if requestLogEnable {
+			requrl, _ := webc.RequestURL()
 			logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: DISPATCHING",
-				"method", webc.Method(), "uri", webc.RequestURI(), "path", webc.RequestURLPath(), "version", version,
+				"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
 				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
 			)
 		}
 		// Route and response
 		if err := s.routerEngine.Route(ctxw); nil != err {
-			return s.webWriter.WriteError(webc, requestId, ctxw.Response().Headers(), err)
+			return s.respWriter.WriteError(webc, requestId, ctxw.Response().Headers(), err)
 		} else {
 			rw := ctxw.Response()
-			return s.webWriter.WriteBody(webc, requestId, rw.Headers(), rw.StatusCode(), rw.Body())
+			return s.respWriter.WriteBody(webc, requestId, rw.Headers(), rw.StatusCode(), rw.Body())
 		}
 	}
 }
@@ -350,7 +363,7 @@ func (s *HttpServer) handleServerError(err error, webc webx.WebContext) {
 		}
 	}
 	requestId := cast.ToString(webc.GetValue(webx.HeaderXRequestId))
-	if err := s.webWriter.WriteError(webc, requestId, http.Header{}, serr); nil != err {
+	if err := s.respWriter.WriteError(webc, requestId, http.Header{}, serr); nil != err {
 		logger.Errorw("Server http response error", "error", err)
 	}
 }

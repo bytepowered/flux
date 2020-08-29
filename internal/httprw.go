@@ -50,6 +50,10 @@ func newRequestWrappedReader() *RequestWrappedReader {
 	return &RequestWrappedReader{}
 }
 
+////
+
+var _ flux.ResponseWriter = new(ResponseWrappedWriter)
+
 // ResponseWrappedWriter 定义响应数据
 type ResponseWrappedWriter struct {
 	status  int
@@ -69,24 +73,24 @@ func (r *ResponseWrappedWriter) Body() interface{} {
 	return r.body
 }
 
-func (r *ResponseWrappedWriter) SetStatusCode(status int) flux.ResponseWriter {
+func (r *ResponseWrappedWriter) SetStatusCode(status int) {
 	r.status = status
-	return r
 }
 
-func (r *ResponseWrappedWriter) AddHeader(name, value string) flux.ResponseWriter {
+func (r *ResponseWrappedWriter) AddHeader(name, value string) {
 	r.headers.Add(name, value)
-	return r
 }
 
-func (r *ResponseWrappedWriter) SetHeaders(headers http.Header) flux.ResponseWriter {
+func (r *ResponseWrappedWriter) SetHeader(name, value string) {
+	r.headers.Set(name, value)
+}
+
+func (r *ResponseWrappedWriter) SetHeaders(headers http.Header) {
 	r.headers = headers
-	return r
 }
 
-func (r *ResponseWrappedWriter) SetBody(body interface{}) flux.ResponseWriter {
+func (r *ResponseWrappedWriter) SetBody(body interface{}) {
 	r.body = body
-	return r
 }
 
 func (r *ResponseWrappedWriter) reset() {

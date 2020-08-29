@@ -3,6 +3,7 @@ package flux
 import (
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -34,15 +35,19 @@ type RequestReader interface {
 	Host() string
 	// 获取UserAgent
 	UserAgent() string
-	// 获取Http请求对象
-	Request() *http.Request
+	// 获取Http请求对象。
+	// 注意：部分Web框架不支持标准Request对象，返回 webx.ErrHttpRequestNotSupported 错误。
+	Request() (*http.Request, error)
 	// 获取Http请求的URI地址
 	RequestURI() string
-	// 获取Http请求的全部Header
-	RequestHeader() http.Header
+	// 获取Http请求的URL。
+	// 注意部分Web框架只能返回Readonly对象
+	RequestURL() (url *url.URL, readonly bool)
+	// 获取Http请求的全部Header。
+	// 注意部分Web框架只能返回Readonly对象
+	RequestHeader() (header http.Header, readonly bool)
 	// 返回Http请求的Body可重复读取的接口
-	RequestBody() (io.ReadCloser, error)
-
+	RequestBodyReader() (io.ReadCloser, error)
 	// 获取Http请求的Query参数
 	QueryValue(name string) string
 	// 获取Http请求的Path路径参数
@@ -58,35 +63,33 @@ type RequestReader interface {
 // Response 是写入响应数据的接口
 type ResponseWriter interface {
 	// SetStatusCode 设置Http响应状态码
-	SetStatusCode(status int) ResponseWriter
+	SetStatusCode(status int)
 	// StatusCode 获取Http响应状态码
 	StatusCode() int
-	// AddHeader 添加Header
-	AddHeader(name, value string) ResponseWriter
-	// SetHeaders 设置全部Headers
-	SetHeaders(headers http.Header) ResponseWriter
-	// Header 获取设置的Headers
+	// Header 获取设置的Headers。
 	Headers() http.Header
+	// AddHeader 添加Header键值
+	AddHeader(name, value string)
+	// SetHeader 设置Header键值
+	SetHeader(name, value string)
+	// SetHeaders 设置全部Headers
+	SetHeaders(headers http.Header)
 	// SetBody 设置数据响应体
-	SetBody(body interface{}) ResponseWriter
+	SetBody(body interface{})
 	// Body 响应数据体
 	Body() interface{}
 }
 
 // Context 定义每个请求的上下文环境
 type Context interface {
-	// 返回当前请求的Method
-	RequestMethod() string
-	// 返回当前请求的Host地址
-	RequestHost() string
-	// 返回当前请求的URI
-	RequestURI() string
-	// 返回当前请求的URI的路径
-	RequestURLPath() string
-	// 返回当前请求的唯一ID
-	RequestId() string
 	// 返回请求数据接口
 	Request() RequestReader
+	// 返回当前请求的Method
+	Method() string
+	// 返回当前请求的URI
+	RequestURI() string
+	// 返回当前请求的唯一ID
+	RequestId() string
 	// 返回响应数据接口
 	Response() ResponseWriter
 	// 返回请求路由定义的元数据

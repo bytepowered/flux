@@ -18,10 +18,6 @@ func (c *AdaptWebContext) Context() interface{} {
 	return c.echoc
 }
 
-func (c *AdaptWebContext) Request() *http.Request {
-	return c.echoc.Request()
-}
-
 func (c *AdaptWebContext) Method() string {
 	return c.echoc.Request().Method
 }
@@ -34,16 +30,20 @@ func (c *AdaptWebContext) UserAgent() string {
 	return c.echoc.Request().UserAgent()
 }
 
+func (c *AdaptWebContext) Request() (*http.Request, error) {
+	return c.echoc.Request(), nil
+}
+
 func (c *AdaptWebContext) RequestURI() string {
 	return c.echoc.Request().RequestURI
 }
 
-func (c *AdaptWebContext) RequestURLPath() string {
-	return c.echoc.Request().URL.Path
+func (c *AdaptWebContext) RequestURL() (*url.URL, bool) {
+	return c.echoc.Request().URL, false
 }
 
-func (c *AdaptWebContext) RequestHeader() http.Header {
-	return c.echoc.Request().Header.Clone()
+func (c *AdaptWebContext) RequestHeader() (http.Header, bool) {
+	return c.echoc.Request().Header, false
 }
 
 func (c *AdaptWebContext) GetRequestHeader(name string) string {
@@ -54,7 +54,11 @@ func (c *AdaptWebContext) SetRequestHeader(name, value string) {
 	c.echoc.Request().Header.Set(name, value)
 }
 
-func (c *AdaptWebContext) RequestBody() (io.ReadCloser, error) {
+func (c *AdaptWebContext) AddRequestHeader(name, value string) {
+	c.echoc.Request().Header.Add(name, value)
+}
+
+func (c *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
 	return c.echoc.Request().GetBody()
 }
 
@@ -72,8 +76,12 @@ func (c *AdaptWebContext) PathValues() url.Values {
 	return pairs
 }
 
-func (c *AdaptWebContext) FormValues() (url.Values, error) {
-	return c.echoc.FormParams()
+func (c *AdaptWebContext) FormValues() url.Values {
+	form, err := c.echoc.FormParams()
+	if nil != err {
+		panic(err)
+	}
+	return form
 }
 
 func (c *AdaptWebContext) CookieValues() []*http.Cookie {
@@ -100,12 +108,8 @@ func (c *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
 	return cookie, true
 }
 
-func (c *AdaptWebContext) Response() http.ResponseWriter {
-	return c.echoc.Response()
-}
-
-func (c *AdaptWebContext) ResponseHeader() http.Header {
-	return c.echoc.Response().Header().Clone()
+func (c *AdaptWebContext) ResponseHeader() (http.Header, bool) {
+	return c.echoc.Response().Header(), false
 }
 
 func (c *AdaptWebContext) GetResponseHeader(name string) string {
@@ -114,6 +118,14 @@ func (c *AdaptWebContext) GetResponseHeader(name string) string {
 
 func (c *AdaptWebContext) SetResponseHeader(name, value string) {
 	c.echoc.Response().Header().Set(name, value)
+}
+
+func (c *AdaptWebContext) AddResponseHeader(name, value string) {
+	c.echoc.Response().Header().Add(name, value)
+}
+
+func (c *AdaptWebContext) Response() (http.ResponseWriter, error) {
+	return c.echoc.Response(), nil
 }
 
 func (c *AdaptWebContext) ResponseWrite(statusCode int, bytes []byte) error {

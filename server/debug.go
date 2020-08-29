@@ -2,12 +2,6 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/webx"
-	"github.com/bytepowered/flux/webx/middleware"
-	"github.com/labstack/gommon/random"
-	https "net/http"
 )
 
 const (
@@ -16,7 +10,7 @@ const (
 )
 
 func (s *HttpServer) debugFeatures(config *flux.Configuration) {
-	config.SetDefaults(map[string]interface{}{
+	/*config.SetDefaults(map[string]interface{}{
 		HttpConfigDebugAuthUsername: "fluxgo",
 		HttpConfigDebugAuthPassword: random.String(8),
 	})
@@ -27,17 +21,17 @@ func (s *HttpServer) debugFeatures(config *flux.Configuration) {
 		return user == username && pass == password, nil
 	})
 	// Debug查询接口
-	debugHandler := webx.AdaptHttpHandler(https.DefaultServeMux)
-	s.AddHttpHandler("GET", DebugPathVars, debugHandler, auth)
-	s.AddHttpHandler("GET", DebugPathPprof, debugHandler, auth)
+	debugHandler := https.DefaultServeMux
+	s.AddStdHttpHandler("GET", DebugPathVars, debugHandler, auth)
+	s.AddStdHttpHandler("GET", DebugPathPprof, debugHandler, auth)
 	// Endpoint查询
 	json := ext.GetSerializer(ext.TypeNameSerializerJson)
-	s.AddHttpHandler("GET", DebugPathEndpoints, func(webc webx.WebContext) error {
+	s.AddStdHttpHandler("GET", DebugPathEndpoints, func(webc webx.WebContext) error {
 		if data, err := json.Marshal(queryEndpoints(s.mvEndpointMap, webc)); nil != err {
 			return err
 		} else {
 			webc.SetResponseHeader(webx.HeaderContentType, webx.MIMEApplicationJSONCharsetUTF8)
 			return webc.ResponseWrite(https.StatusOK, data)
 		}
-	}, auth)
+	}, auth)*/
 }

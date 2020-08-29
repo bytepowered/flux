@@ -2,7 +2,6 @@ package webfast
 
 import (
 	"bytes"
-	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/webx"
 	"github.com/spf13/cast"
 	"github.com/valyala/fasthttp"
@@ -26,7 +25,6 @@ type AdaptWebContext struct {
 	fastc       *fasthttp.RequestCtx
 	values      map[string]interface{}
 	cookies     []*http.Cookie
-	request     *http.Request
 	reqHeader   *http.Header
 	respHeader  *http.Header
 	queryValues *url.Values
@@ -50,27 +48,20 @@ func (a *AdaptWebContext) UserAgent() string {
 	return string(a.fastc.UserAgent())
 }
 
-func (a *AdaptWebContext) Request() *http.Request {
-	if a.request == nil {
-		body := ioutil.NopCloser(bytes.NewReader(a.fastc.Request.Body()))
-		request, err := http.NewRequest(a.Method(), a.RequestURI(), body)
-		if nil != err {
-			logger.Panicw("webfast: build request", "error", err)
-		}
-		a.request = request
-	}
-	return a.request
+func (a *AdaptWebContext) Request() (*http.Request, error) {
+	return nil, webx.ErrHttpRequestNotSupported
 }
 
 func (a *AdaptWebContext) RequestURI() string {
 	return string(a.fastc.RequestURI())
 }
 
-func (a *AdaptWebContext) RequestURLPath() string {
-	return string(a.fastc.URI().Path())
+func (a *AdaptWebContext) RequestURL() *url.URL {
+	//return a.fastc.Request.URI().FullURI()
+	panic("implement me !")
 }
 
-func (a *AdaptWebContext) RequestHeader() http.Header {
+func (a *AdaptWebContext) RequestHeader() (http.Header, bool) {
 	l := a.fastc.Request.Header.Len()
 	if a.reqHeader == nil || len(*a.reqHeader) != l {
 		header := make(http.Header, l)
@@ -79,18 +70,22 @@ func (a *AdaptWebContext) RequestHeader() http.Header {
 		})
 		a.reqHeader = &header
 	}
-	return *a.reqHeader
-}
-
-func (a *AdaptWebContext) SetRequestHeader(name, value string) {
-	a.fastc.Request.Header.Set(name, value)
+	return *a.reqHeader, true
 }
 
 func (a *AdaptWebContext) GetRequestHeader(name string) string {
 	return cast.ToString(a.fastc.Request.Header.Peek(name))
 }
 
-func (a *AdaptWebContext) RequestBody() (io.ReadCloser, error) {
+func (a *AdaptWebContext) SetRequestHeader(name, value string) {
+	a.fastc.Request.Header.Set(name, value)
+}
+
+func (a *AdaptWebContext) AddRequestHeader(name, value string) {
+	a.fastc.Request.Header.Add(name, value)
+}
+
+func (a *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
 	r := bytes.NewReader(a.fastc.Request.Body())
 	return ioutil.NopCloser(r), nil
 }
@@ -118,7 +113,7 @@ func (a *AdaptWebContext) PathValues() url.Values {
 	return *a.pathValues
 }
 
-func (a *AdaptWebContext) FormValues() (url.Values, error) {
+func (a *AdaptWebContext) FormValues() url.Values {
 	args := a.fastc.PostArgs()
 	if a.formValues == nil || args.Len() != len(*a.formValues) {
 		values := make(url.Values, args.Len())
@@ -127,7 +122,7 @@ func (a *AdaptWebContext) FormValues() (url.Values, error) {
 		})
 		a.formValues = &values
 	}
-	return *a.formValues, nil
+	return *a.formValues
 }
 
 func (a *AdaptWebContext) CookieValues() []*http.Cookie {
@@ -165,11 +160,11 @@ func (a *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
 	return nil, false
 }
 
-func (a *AdaptWebContext) Response() http.ResponseWriter {
-	panic("implement me")
+func (a *AdaptWebContext) Response() (http.ResponseWriter, error) {
+	return nil, webx.ErrHttpResponseNotSupported
 }
 
-func (a *AdaptWebContext) ResponseHeader() http.Header {
+func (a *AdaptWebContext) ResponseHeader() (http.Header, bool) {
 	l := a.fastc.Request.Header.Len()
 	if a.respHeader == nil || len(*a.respHeader) != l {
 		header := make(http.Header, l)
@@ -178,7 +173,7 @@ func (a *AdaptWebContext) ResponseHeader() http.Header {
 		})
 		a.respHeader = &header
 	}
-	return *a.respHeader
+	return *a.respHeader, true
 }
 
 func (a *AdaptWebContext) GetResponseHeader(name string) string {
@@ -187,6 +182,10 @@ func (a *AdaptWebContext) GetResponseHeader(name string) string {
 
 func (a *AdaptWebContext) SetResponseHeader(name, value string) {
 	a.fastc.Response.Header.Set(name, value)
+}
+
+func (a *AdaptWebContext) AddResponseHeader(name, value string) {
+	a.fastc.Response.Header.Add(name, value)
 }
 
 func (a *AdaptWebContext) ResponseWrite(statusCode int, bytes []byte) error {

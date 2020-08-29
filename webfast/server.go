@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux/webx"
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
+	"net/http"
 )
 
 var _ webx.WebServer = new(AdaptWebServer)
@@ -16,10 +17,12 @@ func init() {
 }
 
 func NewAdaptWebServer() webx.WebServer {
-	r := router.New()
-	return &AdaptWebServer{server: &fasthttp.Server{
-		Handler: r.Handler,
-	}}
+	// TODO middleware
+	panic("implement me")
+	//r := router.New()
+	//return &AdaptWebServer{server: &fasthttp.Server{
+	//	Handler: r.Handler,
+	//}}
 }
 
 type AdaptWebServer struct {
@@ -50,11 +53,19 @@ func (w *AdaptWebServer) SetRouteNotFoundHandler(fun webx.WebRouteHandler) {
 }
 
 func (w *AdaptWebServer) AddWebInterceptor(m webx.WebMiddleware) {
+	// TODO interceptor
 	panic("implement me")
 
 }
 
 func (w *AdaptWebServer) AddWebMiddleware(m webx.WebMiddleware) {
+	// TODO middleware
+	panic("implement me")
+}
+
+func (w *AdaptWebServer) AddStdHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+	//w.router.Handle(method, pattern, fasthttpadaptor.NewFastHTTPHandler(h))
+	// TODO
 	panic("implement me")
 }
 
@@ -65,8 +76,9 @@ func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, fun webx.Web
 			w.server.ErrorHandler(ctx, err)
 		}
 	}
-	// TODO middleware
 	w.router.Handle(method, pattern, h)
+	// TODO middleware
+	panic("implement me")
 }
 
 func (w *AdaptWebServer) WebRouter() interface{} {
@@ -85,6 +97,6 @@ func (w *AdaptWebServer) StartTLS(addr string, certFile, keyFile string) error {
 	return w.server.ListenAndServeTLS(addr, certFile, keyFile)
 }
 
-func (w *AdaptWebServer) Shutdown(ctx context.Context) error {
+func (w *AdaptWebServer) Shutdown(_ context.Context) error {
 	return w.server.Shutdown()
 }

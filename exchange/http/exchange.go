@@ -42,7 +42,11 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 		}
 	} else {
 		// Header透传以及传递AttrValues
-		newRequest.Header = ctx.Request().RequestHeader().Clone()
+		if header, readonly := ctx.Request().RequestHeader(); readonly {
+			newRequest.Header = header
+		} else {
+			newRequest.Header = header.Clone()
+		}
 		for k, v := range ctx.Attributes() {
 			newRequest.Header.Set(k, cast.ToString(v))
 		}
@@ -65,10 +69,10 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 
 func (ex *exchange) Assemble(endpoint *flux.Endpoint, inRequest flux.RequestReader) (*http.Request, error) {
 	inParams := endpoint.Arguments
-	inURL := inRequest.Request().URL
+	inURL, _ := inRequest.RequestURL()
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
-	reader, err := inRequest.RequestBody()
+	reader, err := inRequest.RequestBodyReader()
 	if nil != err {
 		return nil, fmt.Errorf("get body by func, err: %w", err)
 	}

@@ -100,7 +100,8 @@ func (r *RouteEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	// Select filters
 	globals := ext.GlobalFilters()
 	selectives := make([]flux.Filter, 0)
-	for _, selector := range ext.FindSelectors(ctx.RequestHost()) {
+	host := ctx.Request().Host()
+	for _, selector := range ext.FindSelectors(host) {
 		for _, typeId := range selector.Select(ctx).Filters {
 			if f, ok := ext.GetSelectiveFilter(typeId); ok {
 				selectives = append(selectives, f)

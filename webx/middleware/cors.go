@@ -59,9 +59,7 @@ func NewCORSMiddlewareWith(config CorsConfig) webx.WebMiddleware {
 				return next(webc)
 			}
 
-			req := webc.Request()
-			res := webc.Response()
-			origin := req.Header.Get(webx.HeaderOrigin)
+			origin := webc.GetRequestHeader(webx.HeaderOrigin)
 			allowOrigin := ""
 
 			// Check allowed origins
@@ -81,37 +79,37 @@ func NewCORSMiddlewareWith(config CorsConfig) webx.WebMiddleware {
 			}
 
 			// Simple request
-			if req.Method != http.MethodOptions {
-				res.Header().Add(webx.HeaderVary, webx.HeaderOrigin)
-				res.Header().Set(webx.HeaderAccessControlAllowOrigin, allowOrigin)
+			if webc.Method() != http.MethodOptions {
+				webc.AddRequestHeader(webx.HeaderVary, webx.HeaderOrigin)
+				webc.SetResponseHeader(webx.HeaderAccessControlAllowOrigin, allowOrigin)
 				if config.AllowCredentials {
-					res.Header().Set(webx.HeaderAccessControlAllowCredentials, "true")
+					webc.SetResponseHeader(webx.HeaderAccessControlAllowCredentials, "true")
 				}
 				if exposeHeaders != "" {
-					res.Header().Set(webx.HeaderAccessControlExposeHeaders, exposeHeaders)
+					webc.SetResponseHeader(webx.HeaderAccessControlExposeHeaders, exposeHeaders)
 				}
 				return next(webc)
 			}
 
 			// Preflight request
-			res.Header().Add(webx.HeaderVary, webx.HeaderOrigin)
-			res.Header().Add(webx.HeaderVary, webx.HeaderAccessControlRequestMethod)
-			res.Header().Add(webx.HeaderVary, webx.HeaderAccessControlRequestHeaders)
-			res.Header().Set(webx.HeaderAccessControlAllowOrigin, allowOrigin)
-			res.Header().Set(webx.HeaderAccessControlAllowMethods, allowMethods)
+			webc.AddRequestHeader(webx.HeaderVary, webx.HeaderOrigin)
+			webc.AddRequestHeader(webx.HeaderVary, webx.HeaderAccessControlRequestMethod)
+			webc.AddRequestHeader(webx.HeaderVary, webx.HeaderAccessControlRequestHeaders)
+			webc.SetResponseHeader(webx.HeaderAccessControlAllowOrigin, allowOrigin)
+			webc.SetResponseHeader(webx.HeaderAccessControlAllowMethods, allowMethods)
 			if config.AllowCredentials {
-				res.Header().Set(webx.HeaderAccessControlAllowCredentials, "true")
+				webc.SetResponseHeader(webx.HeaderAccessControlAllowCredentials, "true")
 			}
 			if allowHeaders != "" {
-				res.Header().Set(webx.HeaderAccessControlAllowHeaders, allowHeaders)
+				webc.SetResponseHeader(webx.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
-				h := req.Header.Get(webx.HeaderAccessControlRequestHeaders)
+				h := webc.GetRequestHeader(webx.HeaderAccessControlRequestHeaders)
 				if h != "" {
-					res.Header().Set(webx.HeaderAccessControlAllowHeaders, h)
+					webc.SetResponseHeader(webx.HeaderAccessControlAllowHeaders, h)
 				}
 			}
 			if config.MaxAge > 0 {
-				res.Header().Set(webx.HeaderAccessControlMaxAge, maxAge)
+				webc.SetResponseHeader(webx.HeaderAccessControlMaxAge, maxAge)
 			}
 			return &flux.StateError{
 				StatusCode: http.StatusNoContent,
