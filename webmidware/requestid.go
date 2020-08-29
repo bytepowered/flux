@@ -1,15 +1,15 @@
-package middleware
+package webmidware
 
 import (
 	"github.com/bwmarrin/snowflake"
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/webx"
 )
 
 var (
 	_defaultLookupHeaders = map[string]struct{}{
-		webx.HeaderXRequestId: {},
-		webx.HeaderXRequestID: {},
+		flux.HeaderXRequestId: {},
+		flux.HeaderXRequestID: {},
 		"requestId":           {},
 		"request-id":          {},
 	}
@@ -22,13 +22,13 @@ func AddRequestIdLookupHeader(header string) {
 }
 
 // LookupRequestIdFunc 查找或者生成RequestId的函数
-type LookupRequestIdFunc func(ctx webx.WebContext) string
+type LookupRequestIdFunc func(ctx flux.WebContext) string
 
 // NewRequestIdMiddleware 生成RequestId中间件的函数
-func NewRequestIdMiddleware(headers ...string) webx.WebMiddleware {
+func NewRequestIdMiddleware(headers ...string) flux.WebMiddleware {
 	id, err := snowflake.NewNode(1)
 	if nil != err {
-		logger.Panicw("request-id-middleware: new snowflake node", "error", err)
+		logger.Panicw("request-id-webmidware: new snowflake node", "error", err)
 		return nil
 	}
 	for _, name := range headers {
@@ -42,20 +42,20 @@ func NewRequestIdMiddleware(headers ...string) webx.WebMiddleware {
 }
 
 // NewRequestIdMiddleware 生成RequestId中间件的函数
-func NewLookupRequestIdMiddleware(lookupFunc LookupRequestIdFunc) webx.WebMiddleware {
-	return func(next webx.WebRouteHandler) webx.WebRouteHandler {
-		return func(webc webx.WebContext) error {
+func NewLookupRequestIdMiddleware(lookupFunc LookupRequestIdFunc) flux.WebMiddleware {
+	return func(next flux.WebRouteHandler) flux.WebRouteHandler {
+		return func(webc flux.WebContext) error {
 			requestId := lookupFunc(webc)
-			webc.SetValue(webx.HeaderXRequestId, requestId)
-			webc.SetRequestHeader(webx.HeaderXRequestId, requestId)
-			webc.SetRequestHeader(webx.HeaderXRequestId, requestId)
+			webc.SetValue(flux.HeaderXRequestId, requestId)
+			webc.SetRequestHeader(flux.HeaderXRequestId, requestId)
+			webc.SetRequestHeader(flux.HeaderXRequestId, requestId)
 			return next(webc)
 		}
 	}
 }
 
 func AutoGenerateRequestIdFactory(names []string, generator *snowflake.Node) LookupRequestIdFunc {
-	return func(webc webx.WebContext) string {
+	return func(webc flux.WebContext) string {
 		for _, name := range names {
 			id := webc.GetRequestHeader(name)
 			if "" != id {

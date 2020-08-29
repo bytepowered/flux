@@ -2,20 +2,20 @@ package webecho
 
 import (
 	"context"
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/webx"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strings"
 )
 
-var _ webx.WebServer = new(AdaptWebServer)
+var _ flux.WebServer = new(AdaptWebServer)
 
 func init() {
 	ext.SetWebServerFactory(NewAdaptWebServer)
 }
 
-func NewAdaptWebServer() webx.WebServer {
+func NewAdaptWebServer() flux.WebServer {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
@@ -28,25 +28,25 @@ type AdaptWebServer struct {
 	server *echo.Echo
 }
 
-func (w *AdaptWebServer) SetRouteNotFoundHandler(fun webx.WebRouteHandler) {
+func (w *AdaptWebServer) SetRouteNotFoundHandler(fun flux.WebRouteHandler) {
 	echo.NotFoundHandler = AdaptWebRouteHandler(fun).AdaptFunc
 }
 
-func (w *AdaptWebServer) SetWebErrorHandler(fun webx.WebErrorHandler) {
+func (w *AdaptWebServer) SetWebErrorHandler(fun flux.WebErrorHandler) {
 	w.server.HTTPErrorHandler = func(err error, c echo.Context) {
 		fun(err, toAdaptWebContext(c))
 	}
 }
 
-func (w *AdaptWebServer) AddWebInterceptor(m webx.WebMiddleware) {
+func (w *AdaptWebServer) AddWebInterceptor(m flux.WebMiddleware) {
 	w.server.Pre(AdaptWebMiddleware(m).AdaptFunc)
 }
 
-func (w *AdaptWebServer) AddWebMiddleware(m webx.WebMiddleware) {
+func (w *AdaptWebServer) AddWebMiddleware(m flux.WebMiddleware) {
 	w.server.Use(AdaptWebMiddleware(m).AdaptFunc)
 }
 
-func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, h webx.WebRouteHandler, m ...webx.WebMiddleware) {
+func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, h flux.WebRouteHandler, m ...flux.WebMiddleware) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mi := range m {
 		wms[i] = AdaptWebMiddleware(mi).AdaptFunc

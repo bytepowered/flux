@@ -2,7 +2,7 @@ package webfast
 
 import (
 	"bytes"
-	"github.com/bytepowered/flux/webx"
+	"github.com/bytepowered/flux"
 	"github.com/spf13/cast"
 	"github.com/valyala/fasthttp"
 	"io"
@@ -11,9 +11,9 @@ import (
 	"net/url"
 )
 
-var _ webx.WebContext = new(AdaptWebContext)
+var _ flux.WebContext = new(AdaptWebContext)
 
-func toAdaptWebContext(ctx *fasthttp.RequestCtx) webx.WebContext {
+func toAdaptWebContext(ctx *fasthttp.RequestCtx) flux.WebContext {
 	return &AdaptWebContext{
 		fastc:  ctx,
 		values: make(map[string]interface{}, 16),
@@ -49,7 +49,7 @@ func (a *AdaptWebContext) UserAgent() string {
 }
 
 func (a *AdaptWebContext) Request() (*http.Request, error) {
-	return nil, webx.ErrHttpRequestNotSupported
+	return nil, flux.ErrHttpRequestNotSupported
 }
 
 func (a *AdaptWebContext) RequestURI() string {
@@ -127,12 +127,12 @@ func (a *AdaptWebContext) FormValues() url.Values {
 
 func (a *AdaptWebContext) CookieValues() []*http.Cookie {
 	if a.cookies == nil {
-		cookies := a.fastc.Request.Header.Peek(webx.HeaderSetCookie)
+		cookies := a.fastc.Request.Header.Peek(flux.HeaderSetCookie)
 		if nil == cookies || len(cookies) == 0 {
 			a.cookies = make([]*http.Cookie, 0)
 		} else {
 			header := make(http.Header)
-			header.Set(webx.HeaderSetCookie, string(cookies))
+			header.Set(flux.HeaderSetCookie, string(cookies))
 			a.cookies = (&http.Response{Header: header}).Cookies()
 		}
 	}
@@ -161,7 +161,7 @@ func (a *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
 }
 
 func (a *AdaptWebContext) Response() (http.ResponseWriter, error) {
-	return nil, webx.ErrHttpResponseNotSupported
+	return nil, flux.ErrHttpResponseNotSupported
 }
 
 func (a *AdaptWebContext) ResponseHeader() (http.Header, bool) {

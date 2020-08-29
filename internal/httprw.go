@@ -2,7 +2,6 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/webx"
 	"net/http"
 )
 
@@ -10,7 +9,7 @@ var _ flux.RequestReader = new(RequestWrappedReader)
 
 // RequestWrappedReader Request请求读取接口的实现
 type RequestWrappedReader struct {
-	webx.WebContext
+	flux.WebContext
 }
 
 func (r *RequestWrappedReader) QueryValue(name string) string {
@@ -38,7 +37,7 @@ func (r *RequestWrappedReader) CookieValue(name string) string {
 	return ""
 }
 
-func (r *RequestWrappedReader) reattach(webex webx.WebContext) {
+func (r *RequestWrappedReader) reattach(webex flux.WebContext) {
 	r.WebContext = webex
 }
 

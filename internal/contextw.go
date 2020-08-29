@@ -2,7 +2,6 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/webx"
 	"sync"
 	"time"
 )
@@ -11,7 +10,7 @@ var _ flux.Context = new(ContextWrapper)
 
 // Context接口实现
 type ContextWrapper struct {
-	webc       webx.WebContext
+	webc       flux.WebContext
 	endpoint   *flux.Endpoint
 	requestId  string
 	attributes *sync.Map
@@ -86,11 +85,11 @@ func (c *ContextWrapper) EndpointArguments() []flux.Argument {
 	return c.endpoint.Arguments
 }
 
-func (c *ContextWrapper) WebExchange() webx.WebContext {
+func (c *ContextWrapper) WebExchange() flux.WebContext {
 	return c.webc
 }
 
-func (c *ContextWrapper) Reattach(requestId string, webc webx.WebContext, endpoint *flux.Endpoint) {
+func (c *ContextWrapper) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {
 	c.webc = webc
 	c.request.reattach(webc)
 	c.endpoint = endpoint

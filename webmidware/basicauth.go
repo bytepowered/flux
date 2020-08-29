@@ -21,12 +21,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package middleware
+package webmidware
 
 import (
 	"encoding/base64"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/webx"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,34 +40,34 @@ const (
 
 type BasicAuthConfig struct {
 	// Skipper 用于跳过某些请求
-	Skipper webx.WebSkipper
+	Skipper flux.WebSkipper
 	// Validator 用于检查请求BasicAuth密钥的函数
-	Validator func(string, string, webx.WebContext) (bool, error)
+	Validator func(string, string, flux.WebContext) (bool, error)
 	// Default value "Restricted".
 	Realm string
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件。
-func NewBasicAuthMiddleware(validator func(string, string, webx.WebContext) (bool, error)) webx.WebMiddleware {
+func NewBasicAuthMiddleware(validator func(string, string, flux.WebContext) (bool, error)) flux.WebMiddleware {
 	return NewBasicAuthMiddlewareWith(BasicAuthConfig{
-		Skipper:   func(webx.WebContext) bool { return false },
+		Skipper:   func(flux.WebContext) bool { return false },
 		Validator: validator,
 		Realm:     defaultRealm,
 	})
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件
-func NewBasicAuthMiddlewareWith(config BasicAuthConfig) webx.WebMiddleware {
+func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebMiddleware {
 	// 参考Echo.BasicAut的实现。
 	// Defaults
 	if config.Validator == nil {
-		panic("webex: basic-auth middleware requires a validator function")
+		panic("webex: basic-auth webmidware requires a validator function")
 	}
 	if config.Realm == "" {
 		config.Realm = defaultRealm
 	}
-	return func(next webx.WebRouteHandler) webx.WebRouteHandler {
-		return func(webc webx.WebContext) error {
+	return func(next flux.WebRouteHandler) flux.WebRouteHandler {
+		return func(webc flux.WebContext) error {
 			// Skip
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)

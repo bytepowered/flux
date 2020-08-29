@@ -3,21 +3,21 @@ package webfast
 import (
 	"context"
 	"fmt"
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/webx"
 	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
 	"net/http"
 )
 
-var _ webx.WebServer = new(AdaptWebServer)
+var _ flux.WebServer = new(AdaptWebServer)
 
 func init() {
 	ext.SetWebServerFactory(NewAdaptWebServer)
 }
 
-func NewAdaptWebServer() webx.WebServer {
-	// TODO middleware
+func NewAdaptWebServer() flux.WebServer {
+	// TODO webmidware
 	panic("implement me")
 	//r := router.New()
 	//return &AdaptWebServer{server: &fasthttp.Server{
@@ -30,7 +30,7 @@ type AdaptWebServer struct {
 	server *fasthttp.Server
 }
 
-func (w *AdaptWebServer) SetWebErrorHandler(fun webx.WebErrorHandler) {
+func (w *AdaptWebServer) SetWebErrorHandler(fun flux.WebErrorHandler) {
 	w.server.ErrorHandler = func(ctx *fasthttp.RequestCtx, err error) {
 		fun(err, toAdaptWebContext(ctx))
 	}
@@ -44,7 +44,7 @@ func (w *AdaptWebServer) SetWebErrorHandler(fun webx.WebErrorHandler) {
 	}
 }
 
-func (w *AdaptWebServer) SetRouteNotFoundHandler(fun webx.WebRouteHandler) {
+func (w *AdaptWebServer) SetRouteNotFoundHandler(fun flux.WebRouteHandler) {
 	w.router.NotFound = func(ctx *fasthttp.RequestCtx) {
 		if err := fun(toAdaptWebContext(ctx)); nil != err {
 			w.server.ErrorHandler(ctx, err)
@@ -52,14 +52,14 @@ func (w *AdaptWebServer) SetRouteNotFoundHandler(fun webx.WebRouteHandler) {
 	}
 }
 
-func (w *AdaptWebServer) AddWebInterceptor(m webx.WebMiddleware) {
+func (w *AdaptWebServer) AddWebInterceptor(m flux.WebMiddleware) {
 	// TODO interceptor
 	panic("implement me")
 
 }
 
-func (w *AdaptWebServer) AddWebMiddleware(m webx.WebMiddleware) {
-	// TODO middleware
+func (w *AdaptWebServer) AddWebMiddleware(m flux.WebMiddleware) {
+	// TODO webmidware
 	panic("implement me")
 }
 
@@ -69,7 +69,7 @@ func (w *AdaptWebServer) AddStdHttpHandler(method, pattern string, h http.Handle
 	panic("implement me")
 }
 
-func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, fun webx.WebRouteHandler, m ...webx.WebMiddleware) {
+func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, fun flux.WebRouteHandler, m ...flux.WebMiddleware) {
 	h := func(ctx *fasthttp.RequestCtx) {
 		webc := toAdaptWebContext(ctx)
 		if err := fun(webc); nil != err {
@@ -77,7 +77,7 @@ func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, fun webx.Web
 		}
 	}
 	w.router.Handle(method, pattern, h)
-	// TODO middleware
+	// TODO webmidware
 	panic("implement me")
 }
 

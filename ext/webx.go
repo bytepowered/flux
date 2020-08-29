@@ -1,8 +1,10 @@
 package ext
 
-import "github.com/bytepowered/flux/webx"
+import (
+	"github.com/bytepowered/flux"
+)
 
-type WebServerFactory func() webx.WebServer
+type WebServerFactory func() flux.WebServer
 
 var _webServerFactory WebServerFactory
 

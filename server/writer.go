@@ -6,27 +6,18 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	"github.com/bytepowered/flux/webx"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 )
 
-var _ HttpResponseWriter = new(HttpServerWriter)
+var _ flux.WebServerResponseWriter = new(DefaultWebServerResponseWriter)
 
-// HttpResponseWriter 实现将错误消息和响应数据写入Response实例
-type HttpResponseWriter interface {
-	// WriteError 写入Error错误响应数据到WebServer
-	WriteError(webc webx.WebContext, requestId string, header http.Header, error *flux.StateError) error
-	// WriteBody 写入Body正常响应数据到WebServer
-	WriteBody(webc webx.WebContext, requestId string, header http.Header, status int, body interface{}) error
-}
+// DefaultWebServerResponseWriter 默认Http服务响应数据Writer
+type DefaultWebServerResponseWriter int
 
-// HttpServerWriter 默认Http服务响应数据Writer
-type HttpServerWriter int
-
-func (a *HttpServerWriter) WriteError(webc webx.WebContext, requestId string, header http.Header, serr *flux.StateError) error {
+func (a *DefaultWebServerResponseWriter) WriteError(webc flux.WebContext, requestId string, header http.Header, serr *flux.StateError) error {
 	SetupResponseDefaults(webc, requestId, header)
 	resp := map[string]string{
 		"status":  "error",
@@ -42,7 +33,7 @@ func (a *HttpServerWriter) WriteError(webc webx.WebContext, requestId string, he
 	return WriteToHttpChannel(webc, serr.StatusCode, bytes)
 }
 
-func (a *HttpServerWriter) WriteBody(webc webx.WebContext, requestId string, header http.Header, status int, body interface{}) error {
+func (a *DefaultWebServerResponseWriter) WriteBody(webc flux.WebContext, requestId string, header http.Header, status int, body interface{}) error {
 	SetupResponseDefaults(webc, requestId, header)
 	var output []byte
 	if r, ok := body.(io.Reader); ok {
@@ -92,7 +83,7 @@ func GetHttpDefaultSerializer() flux.Serializer {
 	return ext.GetSerializer(ext.TypeNameSerializerDefault)
 }
 
-func WriteToHttpChannel(webc webx.WebContext, status int, bytes []byte) error {
+func WriteToHttpChannel(webc flux.WebContext, status int, bytes []byte) error {
 	err := webc.ResponseWrite(status, bytes)
 	if nil != err {
 		return fmt.Errorf("write http response: %w", err)
@@ -100,10 +91,10 @@ func WriteToHttpChannel(webc webx.WebContext, status int, bytes []byte) error {
 	return err
 }
 
-func SetupResponseDefaults(webc webx.WebContext, requestId string, header http.Header) {
-	webc.SetResponseHeader(webx.HeaderXRequestId, requestId)
-	webc.SetResponseHeader(webx.HeaderServer, "Flux/Gateway")
-	webc.SetResponseHeader(webx.HeaderContentType, webx.MIMEApplicationJSONCharsetUTF8)
+func SetupResponseDefaults(webc flux.WebContext, requestId string, header http.Header) {
+	webc.SetResponseHeader(flux.HeaderXRequestId, requestId)
+	webc.SetResponseHeader(flux.HeaderServer, "Flux/Gateway")
+	webc.SetResponseHeader(flux.HeaderContentType, flux.MIMEApplicationJSONCharsetUTF8)
 	// 允许Override默认Header
 	for k, v := range header {
 		webc.SetResponseHeader(k, strings.Join(v, ";"))

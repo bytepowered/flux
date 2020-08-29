@@ -1,14 +1,14 @@
 package webecho
 
 import (
-	"github.com/bytepowered/flux/webx"
+	"github.com/bytepowered/flux"
 	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
 	"net/url"
 )
 
-var _ webx.WebContext = new(AdaptWebContext)
+var _ flux.WebContext = new(AdaptWebContext)
 
 type AdaptWebContext struct {
 	echoc echo.Context
@@ -143,6 +143,6 @@ func (c *AdaptWebContext) GetValue(name string) interface{} {
 	return c.echoc.Get(name)
 }
 
-func toAdaptWebContext(echo echo.Context) webx.WebContext {
+func toAdaptWebContext(echo echo.Context) flux.WebContext {
 	return &AdaptWebContext{echo}
 }

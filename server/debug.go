@@ -17,7 +17,7 @@ func (s *HttpServer) debugFeatures(config *flux.Configuration) {
 	username := config.GetString(HttpConfigDebugAuthUsername)
 	password := config.GetString(HttpConfigDebugAuthPassword)
 	logger.Infow("Http debug feature: [ENABLED], Auth: BasicAuth", "username", username, "password", password)
-	auth := middleware.NewBasicAuthMiddleware(func(user string, pass string, webc webx.WebContext) (bool, error) {
+	auth := webmidware.NewBasicAuthMiddleware(func(user string, pass string, webc webx.WebContext) (bool, error) {
 		return user == username && pass == password, nil
 	})
 	// Debug查询接口

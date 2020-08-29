@@ -21,18 +21,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package middleware
+package webmidware
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/webx"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 type CorsConfig struct {
-	Skipper          webx.WebSkipper
+	Skipper          flux.WebSkipper
 	AllowOrigins     []string
 	AllowMethods     []string
 	AllowHeaders     []string
@@ -41,25 +40,25 @@ type CorsConfig struct {
 	MaxAge           int
 }
 
-func NewCORSMiddleware() webx.WebMiddleware {
+func NewCORSMiddleware() flux.WebMiddleware {
 	return NewCORSMiddlewareWith(CorsConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
 	})
 }
 
-func NewCORSMiddlewareWith(config CorsConfig) webx.WebMiddleware {
+func NewCORSMiddlewareWith(config CorsConfig) flux.WebMiddleware {
 	allowMethods := strings.Join(config.AllowMethods, ",")
 	allowHeaders := strings.Join(config.AllowHeaders, ",")
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
 	maxAge := strconv.Itoa(config.MaxAge)
-	return func(next webx.WebRouteHandler) webx.WebRouteHandler {
-		return func(webc webx.WebContext) error {
+	return func(next flux.WebRouteHandler) flux.WebRouteHandler {
+		return func(webc flux.WebContext) error {
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)
 			}
 
-			origin := webc.GetRequestHeader(webx.HeaderOrigin)
+			origin := webc.GetRequestHeader(flux.HeaderOrigin)
 			allowOrigin := ""
 
 			// Check allowed origins
@@ -80,36 +79,36 @@ func NewCORSMiddlewareWith(config CorsConfig) webx.WebMiddleware {
 
 			// Simple request
 			if webc.Method() != http.MethodOptions {
-				webc.AddRequestHeader(webx.HeaderVary, webx.HeaderOrigin)
-				webc.SetResponseHeader(webx.HeaderAccessControlAllowOrigin, allowOrigin)
+				webc.AddRequestHeader(flux.HeaderVary, flux.HeaderOrigin)
+				webc.SetResponseHeader(flux.HeaderAccessControlAllowOrigin, allowOrigin)
 				if config.AllowCredentials {
-					webc.SetResponseHeader(webx.HeaderAccessControlAllowCredentials, "true")
+					webc.SetResponseHeader(flux.HeaderAccessControlAllowCredentials, "true")
 				}
 				if exposeHeaders != "" {
-					webc.SetResponseHeader(webx.HeaderAccessControlExposeHeaders, exposeHeaders)
+					webc.SetResponseHeader(flux.HeaderAccessControlExposeHeaders, exposeHeaders)
 				}
 				return next(webc)
 			}
 
 			// Preflight request
-			webc.AddRequestHeader(webx.HeaderVary, webx.HeaderOrigin)
-			webc.AddRequestHeader(webx.HeaderVary, webx.HeaderAccessControlRequestMethod)
-			webc.AddRequestHeader(webx.HeaderVary, webx.HeaderAccessControlRequestHeaders)
-			webc.SetResponseHeader(webx.HeaderAccessControlAllowOrigin, allowOrigin)
-			webc.SetResponseHeader(webx.HeaderAccessControlAllowMethods, allowMethods)
+			webc.AddRequestHeader(flux.HeaderVary, flux.HeaderOrigin)
+			webc.AddRequestHeader(flux.HeaderVary, flux.HeaderAccessControlRequestMethod)
+			webc.AddRequestHeader(flux.HeaderVary, flux.HeaderAccessControlRequestHeaders)
+			webc.SetResponseHeader(flux.HeaderAccessControlAllowOrigin, allowOrigin)
+			webc.SetResponseHeader(flux.HeaderAccessControlAllowMethods, allowMethods)
 			if config.AllowCredentials {
-				webc.SetResponseHeader(webx.HeaderAccessControlAllowCredentials, "true")
+				webc.SetResponseHeader(flux.HeaderAccessControlAllowCredentials, "true")
 			}
 			if allowHeaders != "" {
-				webc.SetResponseHeader(webx.HeaderAccessControlAllowHeaders, allowHeaders)
+				webc.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
-				h := webc.GetRequestHeader(webx.HeaderAccessControlRequestHeaders)
+				h := webc.GetRequestHeader(flux.HeaderAccessControlRequestHeaders)
 				if h != "" {
-					webc.SetResponseHeader(webx.HeaderAccessControlAllowHeaders, h)
+					webc.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, h)
 				}
 			}
 			if config.MaxAge > 0 {
-				webc.SetResponseHeader(webx.HeaderAccessControlMaxAge, maxAge)
+				webc.SetResponseHeader(flux.HeaderAccessControlMaxAge, maxAge)
 			}
 			return &flux.StateError{
 				StatusCode: http.StatusNoContent,

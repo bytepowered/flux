@@ -1,8 +1,8 @@
 package server
 
 import (
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/internal"
-	"github.com/bytepowered/flux/webx"
 	"strings"
 )
 
@@ -45,7 +45,7 @@ func init() {
 	}
 }
 
-func queryEndpoints(data map[string]*internal.MultiVersionEndpoint, webc webx.WebContext) interface{} {
+func queryEndpoints(data map[string]*internal.MultiVersionEndpoint, webc flux.WebContext) interface{} {
 	filters := make([]_filter, 0)
 	query := webc.QueryValues()
 	for _, key := range _typeKeys {
