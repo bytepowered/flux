@@ -71,7 +71,7 @@ type HttpServer struct {
 	respWriter        HttpResponseWriter
 	httpConfig        *flux.Configuration
 	httpVersionHeader string
-	routerEngine      *internal.RouteEngine
+	routerEngine      *internal.RouterEngine
 	routerRegistry    flux.Registry
 	mvEndpointMap     map[string]*internal.MultiVersionEndpoint
 	contextWrappers   sync.Pool

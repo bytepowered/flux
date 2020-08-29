@@ -10,14 +10,14 @@ import (
 	"time"
 )
 
-type RouteEngine struct {
+type RouterEngine struct {
 }
 
-func NewRouteEngine() *RouteEngine {
-	return &RouteEngine{}
+func NewRouteEngine() *RouterEngine {
+	return &RouterEngine{}
 }
 
-func (r *RouteEngine) Initial() error {
+func (r *RouterEngine) Initial() error {
 	logger.Infof("Dispatcher initialing")
 	// Exchanges
 	for proto, ex := range ext.Exchanges() {
@@ -62,7 +62,7 @@ func (r *RouteEngine) Initial() error {
 	return nil
 }
 
-func (r *RouteEngine) InitialHook(ref interface{}, config *flux.Configuration) error {
+func (r *RouterEngine) InitialHook(ref interface{}, config *flux.Configuration) error {
 	if init, ok := ref.(flux.Initializer); ok {
 		if err := init.Init(config); nil != err {
 			return err
@@ -72,7 +72,7 @@ func (r *RouteEngine) InitialHook(ref interface{}, config *flux.Configuration) e
 	return nil
 }
 
-func (r *RouteEngine) Startup() error {
+func (r *RouterEngine) Startup() error {
 	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -81,7 +81,7 @@ func (r *RouteEngine) Startup() error {
 	return nil
 }
 
-func (r *RouteEngine) Shutdown(ctx context.Context) error {
+func (r *RouterEngine) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -90,7 +90,7 @@ func (r *RouteEngine) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *RouteEngine) Route(ctx *ContextWrapper) *flux.StateError {
+func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	// Resolve arguments
 	if shouldResolve(ctx, ctx.EndpointArguments()) {
 		if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
@@ -133,7 +133,7 @@ func (r *RouteEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	return err
 }
 
-func (r *RouteEngine) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
+func (r *RouterEngine) walk(metrics map[string]string, next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		start := time.Now()
 		next = filters[i].Invoke(next)
