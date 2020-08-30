@@ -36,8 +36,7 @@ func QueryEndpointFeature(datamap map[string]*internal.MultiVersionEndpoint) flu
 		if data, err := json.Marshal(queryEndpoints(datamap, webc)); nil != err {
 			return err
 		} else {
-			webc.SetResponseHeader(flux.HeaderContentType, flux.MIMEApplicationJSONCharsetUTF8)
-			return webc.ResponseWrite(https.StatusOK, data)
+			return webc.ResponseWrite(https.StatusOK, flux.MIMEApplicationJSONCharsetUTF8, data)
 		}
 	}
 }
