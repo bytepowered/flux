@@ -5,71 +5,66 @@ import (
 	"sync"
 )
 
-func NewMultiVersionEndpoint() *MultiVersionEndpoint {
+func NewMultiVersionEndpoint(endpoint *flux.Endpoint) *MultiVersionEndpoint {
 	return &MultiVersionEndpoint{
-		versions: make(map[string]*flux.Endpoint),
-		rwmu:     new(sync.RWMutex),
+		versionMap: map[string]*flux.Endpoint{
+			endpoint.Version: endpoint,
+		},
+		rwmu: new(sync.RWMutex),
 	}
 }
 
 // Multi version Endpoint
 type MultiVersionEndpoint struct {
-	versions map[string]*flux.Endpoint // 各版本数据
-	latest   *flux.Endpoint            // 最新版本
-	rwmu     *sync.RWMutex             // 读写锁
-}
-
-func (m *MultiVersionEndpoint) Application() string {
-	return m.latest.Application
-}
-
-func (m *MultiVersionEndpoint) ProtoName() string {
-	return m.latest.Protocol
-}
-
-func (m *MultiVersionEndpoint) HttpPattern() string {
-	return m.latest.HttpPattern
-}
-
-func (m *MultiVersionEndpoint) UpstreamUri() string {
-	return m.latest.UpstreamUri
+	versionMap map[string]*flux.Endpoint // 各版本数据
+	rwmu       *sync.RWMutex             // 读写锁
 }
 
 // Find find endpoint by version
 func (m *MultiVersionEndpoint) FindByVersion(version string) (*flux.Endpoint, bool) {
 	m.rwmu.RLock()
-	defer m.rwmu.RUnlock()
-	if "" == version {
-		return m.latest, true
+	if "" == version || 1 == len(m.versionMap) {
+		rv := m.random()
+		m.rwmu.RUnlock()
+		return rv, nil != rv
 	}
-	if 1 == len(m.versions) {
-		for _, v := range m.versions {
-			return v, true
-		}
-		return nil, false
-	} else {
-		v, ok := m.versions[version]
-		return v, ok
-	}
+	v, ok := m.versionMap[version]
+	m.rwmu.RUnlock()
+	return v, ok
 }
 
 func (m *MultiVersionEndpoint) Update(version string, endpoint *flux.Endpoint) {
 	m.rwmu.Lock()
-	m.versions[version] = endpoint
-	m.latest = endpoint
+	m.versionMap[version] = endpoint
 	m.rwmu.Unlock()
 }
 
 func (m *MultiVersionEndpoint) Delete(version string) {
 	m.rwmu.Lock()
-	delete(m.versions, version)
+	delete(m.versionMap, version)
 	m.rwmu.Unlock()
+}
+
+func (m *MultiVersionEndpoint) RandomVersion() *flux.Endpoint {
+	m.rwmu.RLock()
+	rv := m.random()
+	m.rwmu.RUnlock()
+	return rv
+}
+
+func (m *MultiVersionEndpoint) random() *flux.Endpoint {
+	for _, v := range m.versionMap {
+		return v
+	}
+	return nil
 }
 
 func (m *MultiVersionEndpoint) ToSerializableMap() map[interface{}]interface{} {
 	copies := make(map[interface{}]interface{})
-	for k, v := range m.versions {
+	m.rwmu.RLock()
+	for k, v := range m.versionMap {
 		copies[k] = v
 	}
+	m.rwmu.RUnlock()
 	return copies
 }

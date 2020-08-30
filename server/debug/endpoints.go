@@ -25,22 +25,22 @@ var (
 func init() {
 	_filterFactories[_typeApplication] = func(query string) _filter {
 		return func(ep *internal.MultiVersionEndpoint) bool {
-			return query == ep.Application()
+			return query == ep.RandomVersion().Application
 		}
 	}
 	_filterFactories[_typeProtocol] = func(query string) _filter {
 		return func(ep *internal.MultiVersionEndpoint) bool {
-			return strings.ToLower(query) == strings.ToLower(ep.ProtoName())
+			return strings.ToLower(query) == strings.ToLower(ep.RandomVersion().Protocol)
 		}
 	}
 	_filterFactories[_typeHttpPattern] = func(query string) _filter {
 		return func(ep *internal.MultiVersionEndpoint) bool {
-			return query == ep.HttpPattern()
+			return query == ep.RandomVersion().HttpPattern
 		}
 	}
 	_filterFactories[_typeUpstreamUri] = func(query string) _filter {
 		return func(ep *internal.MultiVersionEndpoint) bool {
-			return query == ep.UpstreamUri()
+			return query == ep.RandomVersion().UpstreamUri
 		}
 	}
 }
