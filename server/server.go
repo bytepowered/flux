@@ -251,19 +251,18 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 	for event := range events {
 		pattern := toHttpPattern(event.HttpPattern)
 		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, pattern)
-		multi, isregister := s.prepareMultiVersionEndpoint(routeKey)
 		// Check http method
-		event.Endpoint.HttpMethod = strings.ToUpper(event.Endpoint.HttpMethod)
-		if !isAllowMethod(event.Endpoint.HttpMethod) {
+		if !isAllowMethod(strings.ToUpper(event.Endpoint.HttpMethod)) {
 			continue
 		}
 		// Refresh endpoint
 		endpoint := event.Endpoint
+		multi, isRegister := s.loadOrStoreMultiVersionEndpoint(routeKey, &endpoint)
 		switch event.EventType {
 		case flux.EndpointEventAdded:
 			logger.Infow("New endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", pattern)
 			multi.Update(endpoint.Version, &endpoint)
-			if isregister {
+			if isRegister {
 				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", pattern)
 				s.server.Add(event.HttpMethod, pattern, s.newHttpRouteHandler(multi))
 			}
@@ -361,11 +360,11 @@ func (s *HttpServer) handleServerError(err error, ctx echo.Context) {
 	}
 }
 
-func (s *HttpServer) prepareMultiVersionEndpoint(routeKey string) (*internal.MultiVersionEndpoint, bool) {
+func (s *HttpServer) loadOrStoreMultiVersionEndpoint(routeKey string, endpoint *flux.Endpoint) (*internal.MultiVersionEndpoint, bool) {
 	if mve, ok := s.mvEndpointMap[routeKey]; ok {
 		return mve, false
 	} else {
-		mve = internal.NewMultiVersionEndpoint()
+		mve = internal.NewMultiVersionEndpoint(endpoint)
 		s.mvEndpointMap[routeKey] = mve
 		return mve, true
 	}
