@@ -56,9 +56,12 @@ func (a *AdaptWebContext) RequestURI() string {
 	return string(a.fastc.RequestURI())
 }
 
-func (a *AdaptWebContext) RequestURL() *url.URL {
-	//return a.fastc.Request.URI().FullURI()
-	panic("implement me !")
+func (a *AdaptWebContext) RequestURL() (*url.URL, bool) {
+	stdurl, err := url.Parse(string(a.fastc.Request.URI().FullURI()))
+	if nil != err {
+		panic(err)
+	}
+	return stdurl, true
 }
 
 func (a *AdaptWebContext) RequestHeader() (http.Header, bool) {

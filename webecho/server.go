@@ -20,7 +20,7 @@ func NewAdaptWebServer() flux.WebServer {
 	server.HideBanner = true
 	server.HidePort = true
 	// 可重读Body
-	server.Pre(RepeatableReadBody)
+	server.Pre(RepeatableBodyReader)
 	return &AdaptWebServer{server}
 }
 
@@ -55,11 +55,11 @@ func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, h flux.WebRo
 }
 
 func (w *AdaptWebServer) AddStdHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
-	wm := make([]echo.MiddlewareFunc, len(m))
+	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mf := range m {
-		wm[i] = echo.WrapMiddleware(mf)
+		wms[i] = echo.WrapMiddleware(mf)
 	}
-	w.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wm...)
+	w.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wms...)
 }
 
 func (w *AdaptWebServer) WebRouter() interface{} {

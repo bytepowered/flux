@@ -10,7 +10,7 @@ import (
 )
 
 // Body缓存，允许通过 GetBody 多次读取Body
-func RepeatableReadBody(next echo.HandlerFunc) echo.HandlerFunc {
+func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 	// 包装Http处理错误，统一由HttpErrorHandler处理
 	return func(echo echo.Context) error {
 		request := echo.Request()

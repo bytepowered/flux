@@ -11,12 +11,11 @@ require (
 	github.com/bytepowered/cache v0.1.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dubbogo/go-zookeeper v1.0.1
-	github.com/fasthttp/router v1.3.2 // indirect
+	github.com/fasthttp/router v1.3.2
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
 	github.com/json-iterator/go v1.1.9
 	github.com/klauspost/compress v1.11.1 // indirect
 	github.com/labstack/echo/v4 v4.1.16
-	github.com/labstack/gommon v0.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.3.0
 	github.com/spf13/viper v1.7.1
