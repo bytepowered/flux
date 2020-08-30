@@ -175,3 +175,21 @@ type WebServerResponseWriter interface {
 	// WriteBody 写入Body正常响应数据到WebServer
 	WriteBody(webc WebContext, requestId string, header http.Header, status int, body interface{}) error
 }
+
+/// Wrapper functions
+
+func WrapHttpHandler(h http.Handler) WebRouteHandler {
+	return func(webc WebContext) error {
+		// 注意：部分Web框架不支持返回标准Request/Response
+		resp, err := webc.Response()
+		if nil != err {
+			return err
+		}
+		req, err := webc.Request()
+		if nil != err {
+			return err
+		}
+		h.ServeHTTP(resp, req)
+		return nil
+	}
+}

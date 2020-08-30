@@ -10,8 +10,7 @@ import (
 	"github.com/bytepowered/flux/webmidware"
 	"github.com/spf13/cast"
 	"net/http"
-	_ "net/http/pprof"
-	"runtime/debug"
+	stddebug "runtime/debug"
 	"strings"
 	"sync"
 )
@@ -128,7 +127,7 @@ func (s *HttpServer) InitServer() error {
 
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureDebugEnable) {
-		s.debugFeatures(s.httpConfig)
+		enableDebugFeature(s, s.httpConfig)
 	}
 
 	// Registry
@@ -305,7 +304,7 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
 				tl.Errorw("Server dispatch: unexpected error", "error", err)
-				tl.Error(string(debug.Stack()))
+				tl.Error(string(stddebug.Stack()))
 			}
 		}()
 
