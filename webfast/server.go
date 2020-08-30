@@ -19,10 +19,10 @@ func init() {
 func NewAdaptWebServer() flux.WebServer {
 	// TODO webmidware
 	panic("implement me")
-	//r := router.New()
-	//return &AdaptWebServer{server: &fasthttp.Server{
-	//	Handler: r.Handler,
-	//}}
+	r := router.New()
+	return &AdaptWebServer{server: &fasthttp.Server{
+		Handler: r.Handler,
+	}}
 }
 
 type AdaptWebServer struct {

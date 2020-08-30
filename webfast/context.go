@@ -52,6 +52,16 @@ func (a *AdaptWebContext) Request() (*http.Request, error) {
 	return nil, flux.ErrHttpRequestNotSupported
 }
 
+func (a *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
+	r := bytes.NewReader(a.fastc.Request.Body())
+	return ioutil.NopCloser(r), nil
+}
+
+func (a *AdaptWebContext) RequestRewrite(method string, path string) {
+	a.fastc.Request.Header.SetMethod(method)
+	a.fastc.Request.URI().SetPath(path)
+}
+
 func (a *AdaptWebContext) RequestURI() string {
 	return string(a.fastc.RequestURI())
 }
@@ -86,11 +96,6 @@ func (a *AdaptWebContext) SetRequestHeader(name, value string) {
 
 func (a *AdaptWebContext) AddRequestHeader(name, value string) {
 	a.fastc.Request.Header.Add(name, value)
-}
-
-func (a *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
-	r := bytes.NewReader(a.fastc.Request.Body())
-	return ioutil.NopCloser(r), nil
 }
 
 func (a *AdaptWebContext) QueryValues() url.Values {

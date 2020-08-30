@@ -42,6 +42,15 @@ func (c *AdaptWebContext) RequestURL() (*url.URL, bool) {
 	return c.echoc.Request().URL, false
 }
 
+func (c *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
+	return c.echoc.Request().GetBody()
+}
+
+func (c *AdaptWebContext) RequestRewrite(method string, path string) {
+	c.echoc.Request().Method = method
+	c.echoc.Request().URL.Path = path
+}
+
 func (c *AdaptWebContext) RequestHeader() (http.Header, bool) {
 	return c.echoc.Request().Header, false
 }
@@ -56,10 +65,6 @@ func (c *AdaptWebContext) SetRequestHeader(name, value string) {
 
 func (c *AdaptWebContext) AddRequestHeader(name, value string) {
 	c.echoc.Request().Header.Add(name, value)
-}
-
-func (c *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
-	return c.echoc.Request().GetBody()
 }
 
 func (c *AdaptWebContext) QueryValues() url.Values {
