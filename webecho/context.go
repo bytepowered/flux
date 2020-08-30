@@ -133,11 +133,20 @@ func (c *AdaptWebContext) Response() (http.ResponseWriter, error) {
 	return c.echoc.Response(), nil
 }
 
-func (c *AdaptWebContext) ResponseWrite(statusCode int, bytes []byte) error {
-	writer := c.echoc.Response()
-	writer.WriteHeader(statusCode)
-	_, err := writer.Write(bytes)
-	return err
+func (c *AdaptWebContext) ResponseWrite(statusCode int, contentType string, bytes []byte) (err error) {
+	return c.echoc.Blob(statusCode, contentType, bytes)
+}
+
+func (c *AdaptWebContext) ResponseStream(statusCode int, contentType string, reader io.Reader) error {
+	return c.echoc.Stream(statusCode, contentType, reader)
+}
+
+func (c *AdaptWebContext) ResponseNoContent(statusCode int) {
+	_ = c.echoc.NoContent(statusCode)
+}
+
+func (c *AdaptWebContext) ResponseRedirect(statusCode int, url string) {
+	_ = c.echoc.Redirect(statusCode, url)
 }
 
 func (c *AdaptWebContext) SetValue(name string, value interface{}) {

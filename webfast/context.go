@@ -32,135 +32,135 @@ type AdaptWebContext struct {
 	pathValues  *url.Values
 }
 
-func (a *AdaptWebContext) Context() interface{} {
-	return a.fastc
+func (c *AdaptWebContext) Context() interface{} {
+	return c.fastc
 }
 
-func (a *AdaptWebContext) Method() string {
-	return string(a.fastc.Method())
+func (c *AdaptWebContext) Method() string {
+	return string(c.fastc.Method())
 }
 
-func (a *AdaptWebContext) Host() string {
-	return string(a.fastc.Host())
+func (c *AdaptWebContext) Host() string {
+	return string(c.fastc.Host())
 }
 
-func (a *AdaptWebContext) UserAgent() string {
-	return string(a.fastc.UserAgent())
+func (c *AdaptWebContext) UserAgent() string {
+	return string(c.fastc.UserAgent())
 }
 
-func (a *AdaptWebContext) Request() (*http.Request, error) {
+func (c *AdaptWebContext) Request() (*http.Request, error) {
 	return nil, flux.ErrHttpRequestNotSupported
 }
 
-func (a *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
-	r := bytes.NewReader(a.fastc.Request.Body())
+func (c *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
+	r := bytes.NewReader(c.fastc.Request.Body())
 	return ioutil.NopCloser(r), nil
 }
 
-func (a *AdaptWebContext) RequestRewrite(method string, path string) {
-	a.fastc.Request.Header.SetMethod(method)
-	a.fastc.Request.URI().SetPath(path)
+func (c *AdaptWebContext) RequestRewrite(method string, path string) {
+	c.fastc.Request.Header.SetMethod(method)
+	c.fastc.Request.URI().SetPath(path)
 }
 
-func (a *AdaptWebContext) RequestURI() string {
-	return string(a.fastc.RequestURI())
+func (c *AdaptWebContext) RequestURI() string {
+	return string(c.fastc.RequestURI())
 }
 
-func (a *AdaptWebContext) RequestURL() (*url.URL, bool) {
-	stdurl, err := url.Parse(string(a.fastc.Request.URI().FullURI()))
+func (c *AdaptWebContext) RequestURL() (*url.URL, bool) {
+	stdurl, err := url.Parse(string(c.fastc.Request.URI().FullURI()))
 	if nil != err {
 		panic(err)
 	}
 	return stdurl, true
 }
 
-func (a *AdaptWebContext) RequestHeader() (http.Header, bool) {
-	l := a.fastc.Request.Header.Len()
-	if a.reqHeader == nil || len(*a.reqHeader) != l {
+func (c *AdaptWebContext) RequestHeader() (http.Header, bool) {
+	l := c.fastc.Request.Header.Len()
+	if c.reqHeader == nil || len(*c.reqHeader) != l {
 		header := make(http.Header, l)
-		a.fastc.Request.Header.VisitAll(func(key, value []byte) {
+		c.fastc.Request.Header.VisitAll(func(key, value []byte) {
 			header.Set(string(key), string(value))
 		})
-		a.reqHeader = &header
+		c.reqHeader = &header
 	}
-	return *a.reqHeader, true
+	return *c.reqHeader, true
 }
 
-func (a *AdaptWebContext) GetRequestHeader(name string) string {
-	return cast.ToString(a.fastc.Request.Header.Peek(name))
+func (c *AdaptWebContext) GetRequestHeader(name string) string {
+	return cast.ToString(c.fastc.Request.Header.Peek(name))
 }
 
-func (a *AdaptWebContext) SetRequestHeader(name, value string) {
-	a.fastc.Request.Header.Set(name, value)
+func (c *AdaptWebContext) SetRequestHeader(name, value string) {
+	c.fastc.Request.Header.Set(name, value)
 }
 
-func (a *AdaptWebContext) AddRequestHeader(name, value string) {
-	a.fastc.Request.Header.Add(name, value)
+func (c *AdaptWebContext) AddRequestHeader(name, value string) {
+	c.fastc.Request.Header.Add(name, value)
 }
 
-func (a *AdaptWebContext) QueryValues() url.Values {
-	args := a.fastc.QueryArgs()
-	if a.queryValues == nil || args.Len() != len(*a.queryValues) {
+func (c *AdaptWebContext) QueryValues() url.Values {
+	args := c.fastc.QueryArgs()
+	if c.queryValues == nil || args.Len() != len(*c.queryValues) {
 		values := make(url.Values, args.Len())
 		args.VisitAll(func(key, value []byte) {
 			values.Set(string(key), string(value))
 		})
-		a.queryValues = &values
+		c.queryValues = &values
 	}
-	return *a.queryValues
+	return *c.queryValues
 }
 
-func (a *AdaptWebContext) PathValues() url.Values {
-	if a.pathValues == nil {
+func (c *AdaptWebContext) PathValues() url.Values {
+	if c.pathValues == nil {
 		values := make(url.Values, 16)
-		a.fastc.VisitUserValues(func(key []byte, value interface{}) {
+		c.fastc.VisitUserValues(func(key []byte, value interface{}) {
 			values.Set(string(key), cast.ToString(values))
 		})
-		a.pathValues = &values
+		c.pathValues = &values
 	}
-	return *a.pathValues
+	return *c.pathValues
 }
 
-func (a *AdaptWebContext) FormValues() url.Values {
-	args := a.fastc.PostArgs()
-	if a.formValues == nil || args.Len() != len(*a.formValues) {
+func (c *AdaptWebContext) FormValues() url.Values {
+	args := c.fastc.PostArgs()
+	if c.formValues == nil || args.Len() != len(*c.formValues) {
 		values := make(url.Values, args.Len())
 		args.VisitAll(func(key, value []byte) {
 			values.Set(string(key), string(value))
 		})
-		a.formValues = &values
+		c.formValues = &values
 	}
-	return *a.formValues
+	return *c.formValues
 }
 
-func (a *AdaptWebContext) CookieValues() []*http.Cookie {
-	if a.cookies == nil {
-		cookies := a.fastc.Request.Header.Peek(flux.HeaderSetCookie)
+func (c *AdaptWebContext) CookieValues() []*http.Cookie {
+	if c.cookies == nil {
+		cookies := c.fastc.Request.Header.Peek(flux.HeaderSetCookie)
 		if nil == cookies || len(cookies) == 0 {
-			a.cookies = make([]*http.Cookie, 0)
+			c.cookies = make([]*http.Cookie, 0)
 		} else {
 			header := make(http.Header)
 			header.Set(flux.HeaderSetCookie, string(cookies))
-			a.cookies = (&http.Response{Header: header}).Cookies()
+			c.cookies = (&http.Response{Header: header}).Cookies()
 		}
 	}
-	return a.cookies
+	return c.cookies
 }
 
-func (a *AdaptWebContext) QueryValue(name string) string {
-	return cast.ToString(a.fastc.QueryArgs().Peek(name))
+func (c *AdaptWebContext) QueryValue(name string) string {
+	return cast.ToString(c.fastc.QueryArgs().Peek(name))
 }
 
-func (a *AdaptWebContext) PathValue(name string) string {
-	return cast.ToString(a.fastc.UserValue(name))
+func (c *AdaptWebContext) PathValue(name string) string {
+	return cast.ToString(c.fastc.UserValue(name))
 }
 
-func (a *AdaptWebContext) FormValue(name string) string {
-	return cast.ToString(a.fastc.PostArgs().Peek(name))
+func (c *AdaptWebContext) FormValue(name string) string {
+	return cast.ToString(c.fastc.PostArgs().Peek(name))
 }
 
-func (a *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
-	for _, cookie := range a.CookieValues() {
+func (c *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
+	for _, cookie := range c.CookieValues() {
 		if name == cookie.Name {
 			return cookie, true
 		}
@@ -168,44 +168,64 @@ func (a *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
 	return nil, false
 }
 
-func (a *AdaptWebContext) Response() (http.ResponseWriter, error) {
+func (c *AdaptWebContext) Response() (http.ResponseWriter, error) {
 	return nil, flux.ErrHttpResponseNotSupported
 }
 
-func (a *AdaptWebContext) ResponseHeader() (http.Header, bool) {
-	l := a.fastc.Request.Header.Len()
-	if a.respHeader == nil || len(*a.respHeader) != l {
+func (c *AdaptWebContext) ResponseHeader() (http.Header, bool) {
+	l := c.fastc.Request.Header.Len()
+	if c.respHeader == nil || len(*c.respHeader) != l {
 		header := make(http.Header, l)
-		a.fastc.Response.Header.VisitAll(func(key, value []byte) {
+		c.fastc.Response.Header.VisitAll(func(key, value []byte) {
 			header.Set(string(key), string(value))
 		})
-		a.respHeader = &header
+		c.respHeader = &header
 	}
-	return *a.respHeader, true
+	return *c.respHeader, true
 }
 
-func (a *AdaptWebContext) GetResponseHeader(name string) string {
-	return cast.ToString(a.fastc.Response.Header.Peek(name))
+func (c *AdaptWebContext) GetResponseHeader(name string) string {
+	return cast.ToString(c.fastc.Response.Header.Peek(name))
 }
 
-func (a *AdaptWebContext) SetResponseHeader(name, value string) {
-	a.fastc.Response.Header.Set(name, value)
+func (c *AdaptWebContext) SetResponseHeader(name, value string) {
+	c.fastc.Response.Header.Set(name, value)
 }
 
-func (a *AdaptWebContext) AddResponseHeader(name, value string) {
-	a.fastc.Response.Header.Add(name, value)
+func (c *AdaptWebContext) AddResponseHeader(name, value string) {
+	c.fastc.Response.Header.Add(name, value)
 }
 
-func (a *AdaptWebContext) ResponseWrite(statusCode int, bytes []byte) error {
-	a.fastc.SetStatusCode(statusCode)
-	_, err := a.fastc.Write(bytes)
-	return err
+func (c *AdaptWebContext) ResponseWrite(statusCode int, contentType string, bytes []byte) (err error) {
+	c.fastc.SetStatusCode(statusCode)
+	c.fastc.SetContentType(contentType)
+	if nil != bytes && len(bytes) > 0 {
+		c.fastc.SetBody(bytes)
+	}
+	// Fasthttp的响应Error由ErrorHandler处理
+	return nil
 }
 
-func (a *AdaptWebContext) SetValue(name string, value interface{}) {
-	a.values[name] = value
+func (c *AdaptWebContext) ResponseStream(statusCode int, contentType string, reader io.Reader) error {
+	c.fastc.SetStatusCode(statusCode)
+	c.fastc.SetContentType(contentType)
+	c.fastc.SetBodyStream(reader, -1)
+	// Fasthttp的响应Error由ErrorHandler处理
+	return nil
 }
 
-func (a *AdaptWebContext) GetValue(name string) interface{} {
-	return a.values[name]
+func (c *AdaptWebContext) ResponseNoContent(statusCode int) {
+	_ = c.ResponseWrite(statusCode, flux.MIMEApplicationJSONCharsetUTF8, nil)
+}
+
+func (c *AdaptWebContext) ResponseRedirect(statusCode int, url string) {
+	c.fastc.Redirect(url, statusCode)
+}
+
+func (c *AdaptWebContext) SetValue(name string, value interface{}) {
+	c.values[name] = value
+}
+
+func (c *AdaptWebContext) GetValue(name string) interface{} {
+	return c.values[name]
 }

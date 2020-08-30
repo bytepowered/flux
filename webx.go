@@ -171,7 +171,16 @@ type WebContext interface {
 	ResponseHeader() (header http.Header, readonly bool)
 
 	// ResponseWrite 写入响应状态码和响应数据
-	ResponseWrite(statusCode int, bytes []byte) error
+	ResponseWrite(statusCode int, contentType string, bytes []byte) error
+
+	// ResponseStream 写入响应状态码和流数据
+	ResponseStream(statusCode int, contentType string, reader io.Reader) error
+
+	// ResponseNoContent 返回无数据响应
+	ResponseNoContent(statusCode int)
+
+	// ResponseRedirect 返回客户端重定向
+	ResponseRedirect(statusCode int, url string)
 
 	// GetResponseHeader 获取已设置的Header键值
 	GetResponseHeader(name string) string
