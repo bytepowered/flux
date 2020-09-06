@@ -121,9 +121,9 @@ func (s *HttpServer) InitServer() error {
 		s.AddWebInterceptor(webmidware.NewCORSMiddleware())
 	}
 
-	// - RequestId查找与生成
+	// - RequestId是重要的参数，不可关闭；
 	headers := s.httpConfig.GetStringSlice(HttpServerConfigKeyRequestIdHeaders)
-	s.AddWebInterceptor(webmidware.NewRequestIdMiddleware(headers...))
+	s.AddWebInterceptor(webmidware.NewRequestIdMiddlewareWithinHeader(headers...))
 
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureDebugEnable) {
@@ -361,7 +361,7 @@ func (s *HttpServer) handleServerError(err error, webc flux.WebContext) {
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	if err := s.webServerWriter.WriteError(webc, requestId, http.Header{}, serr); nil != err {
-		logger.Errorw("Server http response error", "error", err)
+		logger.Trace(requestId).Errorw("Server http response error", "error", err)
 	}
 }
 
