@@ -131,6 +131,11 @@ func (c *AdaptWebContext) Response() (http.ResponseWriter, error) {
 	return c.echoc.Response(), nil
 }
 
+// SetResponseWriter 设置响应的ResponseWriter
+func (c *AdaptWebContext) SetResponseWriter(w http.ResponseWriter) {
+	c.echoc.Response().Writer = w
+}
+
 func (c *AdaptWebContext) ResponseWrite(statusCode int, contentType string, bytes []byte) (err error) {
 	return c.echoc.Blob(statusCode, contentType, bytes)
 }

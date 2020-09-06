@@ -159,9 +159,12 @@ type WebContext interface {
 	// CookieValue 查询指定Name的Cookie对象，并返回是否存在标识
 	CookieValue(name string) (cookie *http.Cookie, ok bool)
 
-	// 返回Http标准ResponseWriter对象。
+	// Response 返回Http标准ResponseWriter对象。
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
 	Response() (http.ResponseWriter, error)
+
+	// SetResponseWriter 设置响应的ResponseWriter
+	SetResponseWriter(w http.ResponseWriter)
 
 	// ResponseHeader 返回响应对象的Header以及是否只读
 	// 注意：部分Web框架返回只读http.Header
