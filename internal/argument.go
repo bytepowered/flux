@@ -2,7 +2,6 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"net/http"
@@ -19,7 +18,7 @@ func shouldResolve(ctx flux.Context, args []flux.Argument) bool {
 	return true
 }
 
-func resolveArguments(lookupFunc ext.ArgumentLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
+func resolveArguments(lookupFunc flux.ArgumentLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
 	for _, arg := range arguments {
 		if flux.ArgumentTypePrimitive == arg.Type {
 			if err := resolve(lookupFunc, arg, ctx); nil != err {
@@ -37,7 +36,7 @@ func resolveArguments(lookupFunc ext.ArgumentLookupFunc, arguments []flux.Argume
 	return nil
 }
 
-func resolve(lookupFunc ext.ArgumentLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
+func resolve(lookupFunc flux.ArgumentLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
 	value, err := lookupFunc(arg, ctx)
 	if nil != err {
 		logger.Trace(ctx.RequestId()).Warnw("Failed to lookup argument",
