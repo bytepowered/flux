@@ -28,10 +28,6 @@ func (c *AdaptWebContext) UserAgent() string {
 	return c.echoc.Request().UserAgent()
 }
 
-func (c *AdaptWebContext) Request() (*http.Request, error) {
-	return c.echoc.Request(), nil
-}
-
 func (c *AdaptWebContext) RequestURI() string {
 	return c.echoc.Request().RequestURI
 }
@@ -127,15 +123,6 @@ func (c *AdaptWebContext) AddResponseHeader(name, value string) {
 	c.echoc.Response().Header().Add(name, value)
 }
 
-func (c *AdaptWebContext) Response() (http.ResponseWriter, error) {
-	return c.echoc.Response(), nil
-}
-
-// SetResponseWriter 设置响应的ResponseWriter
-func (c *AdaptWebContext) SetResponseWriter(w http.ResponseWriter) {
-	c.echoc.Response().Writer = w
-}
-
 func (c *AdaptWebContext) ResponseWrite(statusCode int, contentType string, bytes []byte) (err error) {
 	return c.echoc.Blob(statusCode, contentType, bytes)
 }
@@ -160,8 +147,24 @@ func (c *AdaptWebContext) GetValue(name string) interface{} {
 	return c.echoc.Get(name)
 }
 
-func (c *AdaptWebContext) Context() interface{} {
+func (c *AdaptWebContext) ContextRef() interface{} {
 	return c.echoc
+}
+
+func (c *AdaptWebContext) RequestRef() interface{} {
+	return c.echoc.Request()
+}
+
+func (c *AdaptWebContext) ResponseRef() interface{} {
+	return c.echoc.Response()
+}
+
+func (c *AdaptWebContext) HttpRequest() (*http.Request, error) {
+	return c.echoc.Request(), nil
+}
+
+func (c *AdaptWebContext) HttpResponseWriter() (http.ResponseWriter, error) {
+	return c.echoc.Response(), nil
 }
 
 func toAdaptWebContext(echo echo.Context) flux.WebContext {

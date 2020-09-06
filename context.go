@@ -72,7 +72,7 @@ type RequestReader interface {
 	CookieValue(name string) string
 }
 
-// Response 是写入响应数据的接口
+// ResponseWriter 是写入响应数据的接口
 type ResponseWriter interface {
 	// SetStatusCode 设置Http响应状态码
 	SetStatusCode(status int)

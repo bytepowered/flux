@@ -105,10 +105,6 @@ type WebContext interface {
 	// UserAgent 返回请求的UserAgent
 	UserAgent() string
 
-	// Request 返回Http标准Request对象。
-	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
-	Request() (*http.Request, error)
-
 	// RequestURI 返回请求的URI
 	RequestURI() string
 
@@ -159,13 +155,6 @@ type WebContext interface {
 	// CookieValue 查询指定Name的Cookie对象，并返回是否存在标识
 	CookieValue(name string) (cookie *http.Cookie, ok bool)
 
-	// Response 返回Http标准ResponseWriter对象。
-	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
-	Response() (http.ResponseWriter, error)
-
-	// SetResponseWriter 设置响应的ResponseWriter
-	SetResponseWriter(w http.ResponseWriter)
-
 	// ResponseHeader 返回响应对象的Header以及是否只读
 	// 注意：部分Web框架返回只读http.Header
 	ResponseHeader() (header http.Header, readonly bool)
@@ -197,8 +186,22 @@ type WebContext interface {
 	// GetValue 获取Context域键值；作用域与请求生命周期相同；
 	GetValue(name string) interface{}
 
-	// Context 返回具体Web框架实现的RequestContext对象
-	Context() interface{}
+	// HttpRequest 返回Http标准Request对象。
+	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
+	HttpRequest() (*http.Request, error)
+
+	// HttpResponseWriter 返回Http标准ResponseWriter对象。
+	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
+	HttpResponseWriter() (http.ResponseWriter, error)
+
+	// Context 返回具体Web框架实现的WebContext对象
+	ContextRef() interface{}
+
+	// RequestRef 返回具体Web框架实现的Request对象
+	RequestRef() interface{}
+
+	// ResponseRef 返回具体Web框架实现的Response对象
+	ResponseRef() interface{}
 }
 
 // WebServer 定义Web框架服务器的接口；通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。
@@ -252,11 +255,11 @@ type WebServerResponseWriter interface {
 func WrapHttpHandler(h http.Handler) WebRouteHandler {
 	return func(webc WebContext) error {
 		// 注意：部分Web框架不支持返回标准Request/Response
-		resp, err := webc.Response()
+		resp, err := webc.HttpResponseWriter()
 		if nil != err {
 			return err
 		}
-		req, err := webc.Request()
+		req, err := webc.HttpRequest()
 		if nil != err {
 			return err
 		}
