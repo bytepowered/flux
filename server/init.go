@@ -6,7 +6,6 @@ import (
 	"github.com/bytepowered/flux/exchange/http"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
-	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/registry/zk"
 )
 
@@ -14,10 +13,10 @@ func init() {
 	// Default logger factory
 	ext.SetLoggerFactory(DefaultLoggerFactory)
 	// 参数查找函数
-	ext.SetArgumentLookupFunc(internal.DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(flux.DefaultArgumentValueLookupFunc)
 	// Serializer
 	// Default: JSON
-	serializer := internal.NewJsonSerializer()
+	serializer := flux.NewJsonSerializer()
 	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
 	// Registry

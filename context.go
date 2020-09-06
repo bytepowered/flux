@@ -29,34 +29,46 @@ const (
 
 // Request 定义请求参数读取接口
 type RequestReader interface {
-	// 获取Method
+	// Method 获取Method
 	Method() string
-	// 获取Host
+
+	// Host 获取Host
 	Host() string
-	// 获取UserAgent
+
+	// UserAgent 获取UserAgent
 	UserAgent() string
-	// 获取Http请求对象。
+
+	// Request 获取Http请求对象。
 	// 注意：部分Web框架不支持标准Request对象，返回 webx.ErrHttpRequestNotSupported 错误。
 	Request() (*http.Request, error)
-	// 获取Http请求的URI地址
+
+	// RequestURI() 获取Http请求的URI地址
 	RequestURI() string
-	// 获取Http请求的URL。
+
+	// RequestURL 获取Http请求的URL。
 	// 注意部分Web框架只能返回Readonly对象
 	RequestURL() (url *url.URL, readonly bool)
-	// 获取Http请求的全部Header。
+
+	// RequestHeader 获取Http请求的全部Header。
 	// 注意部分Web框架只能返回Readonly对象
 	RequestHeader() (header http.Header, readonly bool)
+
 	// 返回Http请求的Body可重复读取的接口
 	RequestBodyReader() (io.ReadCloser, error)
-	// 获取Http请求的Query参数
+
+	// QueryValue 获取Http请求的Query参数
 	QueryValue(name string) string
-	// 获取Http请求的Path路径参数
+
+	// PathValue 获取Http请求的Path路径参数
 	PathValue(name string) string
-	// 获取Http请求的Form表单参数
+
+	// FormValue 获取Http请求的Form表单参数
 	FormValue(name string) string
-	// 获取Http请求的Header参数
+
+	// HeaderValue 获取Http请求的Header参数
 	HeaderValue(name string) string
-	// 获取Http请求的Cookie参数
+
+	// CookieValue 获取Http请求的Cookie参数
 	CookieValue(name string) string
 }
 
@@ -64,46 +76,64 @@ type RequestReader interface {
 type ResponseWriter interface {
 	// SetStatusCode 设置Http响应状态码
 	SetStatusCode(status int)
+
 	// StatusCode 获取Http响应状态码
 	StatusCode() int
-	// Header 获取设置的Headers。
+
+	// Headers 获取设置的Headers。
 	Headers() http.Header
+
 	// AddHeader 添加Header键值
 	AddHeader(name, value string)
+
 	// SetHeader 设置Header键值
 	SetHeader(name, value string)
+
 	// SetHeaders 设置全部Headers
 	SetHeaders(headers http.Header)
+
 	// SetBody 设置数据响应体
 	SetBody(body interface{})
+
 	// Body 响应数据体
 	Body() interface{}
 }
 
 // Context 定义每个请求的上下文环境
 type Context interface {
-	// 返回请求数据接口
+	// Request 返回请求数据接口
 	Request() RequestReader
-	// 返回当前请求的Method
+
+	// Method 返回当前请求的Method
 	Method() string
-	// 返回当前请求的URI
+
+	// RequestURI 返回当前请求的URI
 	RequestURI() string
-	// 返回当前请求的唯一ID
+
+	// RequestId 返回当前请求的唯一ID
 	RequestId() string
-	// 返回响应数据接口
+
+	// Response 返回响应数据接口
 	Response() ResponseWriter
-	// 返回请求路由定义的元数据
+
+	// Endpoint 返回请求路由定义的元数据
 	Endpoint() Endpoint
-	// 返回Endpoint的协议名称
+
+	// EndpointProtoName 返回Endpoint的协议名称
 	EndpointProtoName() string
-	// 返回所有Attributes键值对
+
+	// Attributes 返回所有Attributes键值对；只读；
 	Attributes() map[string]interface{}
-	// 获取指定name的Attribute，返回值和是否存在标识
+
+	// GetAttribute 获取指定name的Attribute，返回值和是否存在标识
 	GetAttribute(name string) (interface{}, bool)
-	// 向Context添加Attribute键值对
+
+	// SetAttribute 向Context添加Attribute键值对
 	SetAttribute(name string, value interface{})
+
 	// 获取当前请求范围的值
 	GetValue(name string) (interface{}, bool)
+
 	// 设置当前请求范围的KV
 	SetValue(name string, value interface{})
 }

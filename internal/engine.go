@@ -18,7 +18,7 @@ func NewRouteEngine() *RouterEngine {
 }
 
 func (r *RouterEngine) Initial() error {
-	logger.Infof("Dispatcher initialing")
+	logger.Infof("RouterEngine initialing")
 	// Exchanges
 	for proto, ex := range ext.Exchanges() {
 		ns := "EXCHANGE." + proto
