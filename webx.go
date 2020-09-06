@@ -180,6 +180,10 @@ type WebContext interface {
 	// AddResponseHeader 添加指定Name的Header键值
 	AddResponseHeader(name, value string)
 
+	// SetResponseWriter 设置ResponseWriter
+	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
+	SetResponseWriter(w http.ResponseWriter) error
+
 	// SetValue 设置Context域键值；作用域与请求生命周期相同；
 	SetValue(name string, value interface{})
 

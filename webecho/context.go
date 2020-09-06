@@ -139,6 +139,11 @@ func (c *AdaptWebContext) ResponseRedirect(statusCode int, url string) {
 	_ = c.echoc.Redirect(statusCode, url)
 }
 
+func (c *AdaptWebContext) SetResponseWriter(w http.ResponseWriter) error {
+	c.echoc.Response().Writer = w
+	return nil
+}
+
 func (c *AdaptWebContext) SetValue(name string, value interface{}) {
 	c.echoc.Set(name, value)
 }
@@ -164,7 +169,7 @@ func (c *AdaptWebContext) HttpRequest() (*http.Request, error) {
 }
 
 func (c *AdaptWebContext) HttpResponseWriter() (http.ResponseWriter, error) {
-	return c.echoc.Response(), nil
+	return c.echoc.Response().Writer, nil
 }
 
 func toAdaptWebContext(echo echo.Context) flux.WebContext {
