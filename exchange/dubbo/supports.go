@@ -53,6 +53,7 @@ func NewReference(refid string, endpoint *flux.Endpoint, config *flux.Configurat
 	ref.Cluster = config.GetString("cluster")
 	ref.Retries = config.GetString("retries")
 	ref.Protocol = config.GetString("protocol")
+	ref.Loadbalance = config.GetString("load-balance")
 	ref.Generic = true
 	return ref
 }

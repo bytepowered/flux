@@ -92,7 +92,8 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 		configKeyTraceEnable:    false,
 		"timeout":               "3000",
 		"retries":               "1",
-		"cluster":               "default",
+		"cluster":               "failover",
+		"load-balance":          "random",
 		"protocol":              dubbo.DUBBO,
 	})
 	ex.configuration = config

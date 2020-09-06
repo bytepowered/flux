@@ -26,7 +26,10 @@ port = 2181
 
 # Dubbo Exange 配置参数
 [EXCHANGE.DUBBO]
+# 集群策略：[Failover, Failfast, Failsafe/Failback, Available, Broadcast, Forking]
 cluster = "failover"
+# 负载策略: [Random, RoundRobin, LeastActive, ConsistentHash]
+load-balance = "random"
 # 日志开关；如果开启则打印Dubbo调用细节
 trace-enable = false
 # DuoobReference 初始化等待延时
