@@ -79,7 +79,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebMiddleware {
 
 			// Simple request
 			if webc.Method() != http.MethodOptions {
-				webc.AddRequestHeader(flux.HeaderVary, flux.HeaderOrigin)
+				webc.AddResponseHeader(flux.HeaderVary, flux.HeaderOrigin)
 				webc.SetResponseHeader(flux.HeaderAccessControlAllowOrigin, allowOrigin)
 				if config.AllowCredentials {
 					webc.SetResponseHeader(flux.HeaderAccessControlAllowCredentials, "true")
@@ -91,9 +91,9 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebMiddleware {
 			}
 
 			// Preflight request
-			webc.AddRequestHeader(flux.HeaderVary, flux.HeaderOrigin)
-			webc.AddRequestHeader(flux.HeaderVary, flux.HeaderAccessControlRequestMethod)
-			webc.AddRequestHeader(flux.HeaderVary, flux.HeaderAccessControlRequestHeaders)
+			webc.AddResponseHeader(flux.HeaderVary, flux.HeaderOrigin)
+			webc.AddResponseHeader(flux.HeaderVary, flux.HeaderAccessControlRequestMethod)
+			webc.AddResponseHeader(flux.HeaderVary, flux.HeaderAccessControlRequestHeaders)
 			webc.SetResponseHeader(flux.HeaderAccessControlAllowOrigin, allowOrigin)
 			webc.SetResponseHeader(flux.HeaderAccessControlAllowMethods, allowMethods)
 			if config.AllowCredentials {

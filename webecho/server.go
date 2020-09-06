@@ -24,6 +24,8 @@ func NewAdaptWebServer() flux.WebServer {
 	return &AdaptWebServer{server}
 }
 
+// AdaptWebServer 默认实现的基于echo框架的WebServer
+// 注意：保持AdaptWebServer的公共访问性
 type AdaptWebServer struct {
 	server *echo.Echo
 }

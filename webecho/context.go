@@ -10,12 +10,10 @@ import (
 
 var _ flux.WebContext = new(AdaptWebContext)
 
+// AdaptWebContext 默认实现的基于echo框架的WebContext
+// 注意：保持AdaptWebContext的公共访问性
 type AdaptWebContext struct {
 	echoc echo.Context
-}
-
-func (c *AdaptWebContext) Context() interface{} {
-	return c.echoc
 }
 
 func (c *AdaptWebContext) Method() string {
@@ -137,7 +135,7 @@ func (c *AdaptWebContext) ResponseWrite(statusCode int, contentType string, byte
 	return c.echoc.Blob(statusCode, contentType, bytes)
 }
 
-func (c *AdaptWebContext) ResponseStream(statusCode int, contentType string, reader io.Reader) error {
+func (c *AdaptWebContext) ResponseWriteStream(statusCode int, contentType string, reader io.Reader) error {
 	return c.echoc.Stream(statusCode, contentType, reader)
 }
 
@@ -155,6 +153,10 @@ func (c *AdaptWebContext) SetValue(name string, value interface{}) {
 
 func (c *AdaptWebContext) GetValue(name string) interface{} {
 	return c.echoc.Get(name)
+}
+
+func (c *AdaptWebContext) Context() interface{} {
+	return c.echoc
 }
 
 func toAdaptWebContext(echo echo.Context) flux.WebContext {

@@ -48,7 +48,7 @@ func NewLookupRequestIdMiddleware(lookupFunc LookupRequestIdFunc) flux.WebMiddle
 			requestId := lookupFunc(webc)
 			webc.SetValue(flux.HeaderXRequestId, requestId)
 			webc.SetRequestHeader(flux.HeaderXRequestId, requestId)
-			webc.SetRequestHeader(flux.HeaderXRequestId, requestId)
+			webc.SetResponseHeader(flux.HeaderXRequestId, requestId)
 			return next(webc)
 		}
 	}

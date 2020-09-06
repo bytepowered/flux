@@ -81,24 +81,21 @@ const (
 
 // Web interfaces
 type (
-	// WebMiddleware defines a function to process webmidware.
+	// WebMiddleware 定义处理Web请求的中间件函数
 	WebMiddleware func(WebRouteHandler) WebRouteHandler
 
-	// WebRouteHandler defines a function to serve HTTP requests.
+	// WebRouteHandler 定义处理Web请求的处理函数
 	WebRouteHandler func(WebContext) error
 
-	// WebRouteHandler defines a function to handle errors.
+	// WebRouteHandler 定义Web服务处理异常错误的处理函数
 	WebErrorHandler func(err error, ctx WebContext)
 
-	// WebSkipper
+	// WebSkipper 用于部分Middleware逻辑，实现忽略部分请求的功能；
 	WebSkipper func(ctx WebContext) bool
 )
 
-// WebContext defines a context for http server handlers/webmidware
+// WebContext 定义封装Web框架的RequestContext的接口；用于RequestHandler，Middleware实现Web请求处理；
 type WebContext interface {
-	// 返回具体Web框架实现的RequestContext对象
-	Context() interface{}
-
 	// Method 返回请求的HttpMethod
 	Method() string
 
@@ -109,14 +106,14 @@ type WebContext interface {
 	UserAgent() string
 
 	// Request 返回Http标准Request对象。
-	// 如果WebServer不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
+	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
 	Request() (*http.Request, error)
 
 	// RequestURI 返回请求的URI
 	RequestURI() string
 
 	// RequestURL 返回请求对象的URL
-	// 注意：部分Http框架返回只读url.URL
+	// 注意：部分Web框架返回只读url.URL
 	RequestURL() (url *url.URL, readonly bool)
 
 	// RequestBodyReader 返回可重复读取的Reader接口；
@@ -126,7 +123,7 @@ type WebContext interface {
 	RequestRewrite(method string, path string)
 
 	// RequestHeader 返回请求对象的Header
-	// 注意：部分Http框架返回只读http.Header
+	// 注意：部分Web框架返回只读http.Header
 	RequestHeader() (header http.Header, readonly bool)
 
 	// GetRequestHeader 读取请求的Header
@@ -163,18 +160,18 @@ type WebContext interface {
 	CookieValue(name string) (cookie *http.Cookie, ok bool)
 
 	// 返回Http标准ResponseWriter对象。
-	// 如果WebServer不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
+	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
 	Response() (http.ResponseWriter, error)
 
 	// ResponseHeader 返回响应对象的Header以及是否只读
-	// 注意：部分Http框架返回只读http.Header
+	// 注意：部分Web框架返回只读http.Header
 	ResponseHeader() (header http.Header, readonly bool)
 
 	// ResponseWrite 写入响应状态码和响应数据
 	ResponseWrite(statusCode int, contentType string, bytes []byte) error
 
-	// ResponseStream 写入响应状态码和流数据
-	ResponseStream(statusCode int, contentType string, reader io.Reader) error
+	// ResponseWriteStream 写入响应状态码和流数据
+	ResponseWriteStream(statusCode int, contentType string, reader io.Reader) error
 
 	// ResponseNoContent 返回无数据响应
 	ResponseNoContent(statusCode int)
@@ -196,9 +193,13 @@ type WebContext interface {
 
 	// GetValue 获取Context域键值；作用域与请求生命周期相同；
 	GetValue(name string) interface{}
+
+	// Context 返回具体Web框架实现的RequestContext对象
+	Context() interface{}
 }
 
-// WebServer
+// WebServer 定义Web框架服务器的接口；通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。
+// 例如默认Web框架为labstack.echo；可以支持git, fasthttp等框架。
 type WebServer interface {
 	// SetWebErrorHandler 设置Web请求错误处理函数
 	SetWebErrorHandler(h WebErrorHandler)
