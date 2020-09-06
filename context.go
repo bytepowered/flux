@@ -38,9 +38,9 @@ type RequestReader interface {
 	// UserAgent 获取UserAgent
 	UserAgent() string
 
-	// Request 获取Http请求对象。
+	// HttpRequest 获取Http请求对象。
 	// 注意：部分Web框架不支持标准Request对象，返回 webx.ErrHttpRequestNotSupported 错误。
-	Request() (*http.Request, error)
+	HttpRequest() (*http.Request, error)
 
 	// RequestURI() 获取Http请求的URI地址
 	RequestURI() string
