@@ -100,7 +100,7 @@ func (j *JwtVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvok
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
-		tokenString := cast.ToString(flux.LookupValue(j.config.lookupToken, ctx))
+		tokenString := cast.ToString(flux.LookupContextValue(j.config.lookupToken, ctx))
 		if "" == tokenString {
 			return ErrorAuthorizationHeaderRequired
 		}

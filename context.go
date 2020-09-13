@@ -138,13 +138,13 @@ type Context interface {
 	SetValue(name string, value interface{})
 }
 
-// LookupValue 搜索Lookup指定域的值。支持：
+// LookupContextValue 搜索Lookup指定域的值。支持：
 // 1. query:<name>
 // 2. form:<name>
 // 3. path:<name>
 // 4. header:<name>
 // 5. attr:<name>
-func LookupValue(lookup string, ctx Context) interface{} {
+func LookupContextValue(lookup string, ctx Context) interface{} {
 	if "" == lookup || nil == ctx {
 		return nil
 	}

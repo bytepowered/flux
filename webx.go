@@ -3,9 +3,11 @@ package flux
 import (
 	"context"
 	"errors"
+	"github.com/spf13/cast"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 var (
@@ -269,5 +271,37 @@ func WrapHttpHandler(h http.Handler) WebRouteHandler {
 		}
 		h.ServeHTTP(resp, req)
 		return nil
+	}
+}
+
+//// Lookup
+
+// LookupWebContextValue 搜索Lookup指定域的值。支持：
+// 1. query:<name>
+// 2. form:<name>
+// 3. path:<name>
+// 4. header:<name>
+// 5. attr:<name>
+func LookupWebContextValue(lookup string, ctx WebContext) string {
+	if "" == lookup || nil == ctx {
+		return ""
+	}
+	parts := strings.Split(lookup, ":")
+	if len(parts) == 1 {
+		return ctx.GetRequestHeader(parts[0])
+	}
+	switch strings.ToUpper(parts[0]) {
+	case ScopeQuery:
+		return ctx.QueryValue(parts[1])
+	case ScopeForm:
+		return ctx.FormValue(parts[1])
+	case ScopePath:
+		return ctx.PathValue(parts[1])
+	case ScopeHeader:
+		return ctx.GetRequestHeader(parts[1])
+	case ScopeAttr:
+		return cast.ToString(ctx.GetValue(parts[1]))
+	default:
+		return ""
 	}
 }
