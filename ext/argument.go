@@ -31,25 +31,25 @@ func NewPrimitiveArgument(typeClass, argName string, value interface{}) flux.Arg
 }
 
 func NewStringArgument(argName string, value string) flux.Argument {
-	return NewPrimitiveArgument(pkg.JavaLangStringClassName, argName, value)
+	return NewPrimitiveArgument(flux.JavaLangStringClassName, argName, value)
 }
 
 func NewIntegerArgument(argName string, value int) flux.Argument {
-	return NewPrimitiveArgument(pkg.JavaLangIntegerClassName, argName, value)
+	return NewPrimitiveArgument(flux.JavaLangIntegerClassName, argName, value)
 }
 
 func NewLongArgument(argName string, value int64) flux.Argument {
-	return NewPrimitiveArgument(pkg.JavaLangLongClassName, argName, value)
+	return NewPrimitiveArgument(flux.JavaLangLongClassName, argName, value)
 }
 
 func NewFloatArgument(argName string, value float32) flux.Argument {
-	return NewPrimitiveArgument(pkg.JavaLangFloatClassName, argName, value)
+	return NewPrimitiveArgument(flux.JavaLangFloatClassName, argName, value)
 }
 
 func NewDoubleArgument(argName string, value float64) flux.Argument {
-	return NewPrimitiveArgument(pkg.JavaLangDoubleClassName, argName, value)
+	return NewPrimitiveArgument(flux.JavaLangDoubleClassName, argName, value)
 }
 
 func NewHashMapArgument(argName string, value interface{}) flux.Argument {
-	return NewPrimitiveArgument(pkg.JavaUtilMapClassName, argName, value)
+	return NewPrimitiveArgument(flux.JavaUtilMapClassName, argName, value)
 }

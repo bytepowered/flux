@@ -2,8 +2,8 @@ package internal
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"net/http"
 )
 
@@ -48,11 +48,11 @@ func resolve(lookupFunc flux.ArgumentLookupFunc, arg flux.Argument, ctx flux.Con
 			Internal:   err,
 		}
 	}
-	valueResolver := pkg.GetValueResolver(arg.TypeClass)
-	if nil == valueResolver {
-		valueResolver = pkg.GetDefaultResolver()
+	resolver := ext.GetTypedValueResolver(arg.TypeClass)
+	if nil == resolver {
+		resolver = ext.GetDefaultTypedValueResolver()
 	}
-	if v, err := valueResolver(arg.TypeClass, arg.TypeGeneric, value); nil != err {
+	if v, err := resolver(arg.TypeClass, arg.TypeGeneric, value); nil != err {
 		logger.Trace(ctx.RequestId()).Warnw("Failed to resolve argument",
 			"http.key", arg.HttpKey, "arg.name", arg.Name, "class", arg.TypeClass, "generic", arg.TypeGeneric,
 			"value", value, "error", err)

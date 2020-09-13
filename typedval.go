@@ -1,4 +1,4 @@
-package pkg
+package flux
 
 const (
 	JavaLangStringClassName  = "java.lang.String"
@@ -11,10 +11,10 @@ const (
 	JavaUtilListClassName    = "java.util.List"
 )
 
-type ValueResolver func(typeName string, genericTypes []string, value interface{}) (interface{}, error)
+type TypedValueResolver func(typeName string, genericTypes []string, value interface{}) (interface{}, error)
 
-type SimpleValueResolver func(value interface{}) (interface{}, error)
+type SimpleTypedValueResolver func(value interface{}) (interface{}, error)
 
-func (s SimpleValueResolver) ResolveFunc(_ string, _ []string, value interface{}) (interface{}, error) {
+func (s SimpleTypedValueResolver) ResolveFunc(_ string, _ []string, value interface{}) (interface{}, error) {
 	return s(value)
 }
