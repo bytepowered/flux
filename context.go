@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 const (
@@ -136,36 +135,4 @@ type Context interface {
 
 	// 设置当前请求范围的KV
 	SetValue(name string, value interface{})
-}
-
-// LookupContextValue 搜索Lookup指定域的值。支持：
-// 1. query:<name>
-// 2. form:<name>
-// 3. path:<name>
-// 4. header:<name>
-// 5. attr:<name>
-func LookupContextValue(lookup string, ctx Context) interface{} {
-	if "" == lookup || nil == ctx {
-		return nil
-	}
-	req := ctx.Request()
-	parts := strings.Split(lookup, ":")
-	if len(parts) == 1 {
-		return req.HeaderValue(parts[0])
-	}
-	switch strings.ToUpper(parts[0]) {
-	case ScopeQuery:
-		return req.QueryValue(parts[1])
-	case ScopeForm:
-		return req.FormValue(parts[1])
-	case ScopePath:
-		return req.PathValue(parts[1])
-	case ScopeHeader:
-		return req.HeaderValue(parts[1])
-	case ScopeAttr:
-		v, _ := ctx.GetAttribute(parts[1])
-		return v
-	default:
-		return nil
-	}
 }
