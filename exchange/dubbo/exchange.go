@@ -90,8 +90,8 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		configKeyReferenceDelay: time.Millisecond * 30,
 		configKeyTraceEnable:    false,
-		"timeout":               "3000",
-		"retries":               "1",
+		"timeout":               "5000",
+		"retries":               "0",
 		"cluster":               "failover",
 		"load-balance":          "random",
 		"protocol":              dubbo.DUBBO,
@@ -156,6 +156,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 		ssmap, err := cast.ToStringMapStringE(attachments)
 		if nil != err {
+			trace.Errorw("Dubbo attachment error", "service", serviceTag, "error", err)
 			return nil, &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -166,8 +167,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		goctx = context.WithValue(goctx, constant.AttachmentKey, ssmap)
 	}
 	if resp, err := service.Invoke(goctx, args); err != nil {
-		trace.Errorw("Dubbo rpc error", "service", serviceTag)
-		trace.Error("Dubbo rpc error", err)
+		trace.Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayExchange,
@@ -207,7 +207,7 @@ func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubgo.GenericSe
 		t = time.Millisecond * 30
 	}
 	<-time.After(t)
-	logger.Infow("Create dubbo reference-config, ok", "service-id", id, "interface", endpoint.UpstreamUri)
+	logger.Infow("Create dubbo reference-config: OK", "service-id", id, "interface", endpoint.UpstreamUri)
 	return genericService
 }
 
