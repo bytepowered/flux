@@ -12,7 +12,7 @@ func NewConfigurationOf(namespace string) *Configuration {
 	if v == nil {
 		v = viper.New()
 	}
-	return &Configuration{ref: v}
+	return &Configuration{instance: v}
 }
 
 // NewConfiguration 根据指定Viper实例来构建。如果Viper实例为nil，新建一个空配置实例。
@@ -20,33 +20,34 @@ func NewConfiguration(in *viper.Viper) *Configuration {
 	if nil == in {
 		in = viper.New()
 	}
-	return &Configuration{ref: in}
+	return &Configuration{instance: in}
 }
 
 // Configuration 封装Viper实例访问接口的配置类
 type Configuration struct {
-	ref         *viper.Viper      // 实际的配置实例
-	globalAlias map[string]string // 全局配置别名；
+	instance    *viper.Viper      // 实际的配置实例
+	globalAlias map[string]string // 全局配置别名
 }
 
 // Reference 返回Viper实例
 func (c *Configuration) Reference() *viper.Viper {
-	return c.ref
+	return c.instance
 }
 
 // Sub 获取当前实例的子级配置对象
 func (c *Configuration) Sub(name string) *Configuration {
-	return NewConfiguration(c.ref.Sub(name))
+	return NewConfiguration(c.instance.Sub(name))
 }
 
 // Get 查找指定Key的配置值。
 // 从当前NS查询不到配置时，如果配置了key与globalAlias的另外映射，则会尝试从全局配置中再次查找。
-// 与Viper的Alias不同的是，Configuration的GlobalAlias是作用于局部命名空间下的别名映射。当然，这不影响原有Viper的Alias功能。
+// 与Viper的Alias不同的是，Configuration的GlobalAlias是作用于局部命名空间下的别名映射。
+// 当然，这不影响原有Viper的Alias功能。
 func (c *Configuration) Get(key string) interface{} {
-	v := c.ref.Get(key)
+	v := c.instance.Get(key)
 	if nil == v && c.globalAlias != nil {
-		if akey, ok := c.globalAlias[key]; ok {
-			return viper.Get(akey)
+		if alias, ok := c.globalAlias[key]; ok {
+			return viper.Get(alias)
 		}
 	}
 	return v
@@ -54,30 +55,36 @@ func (c *Configuration) Get(key string) interface{} {
 
 // Set 向当前配置实例以覆盖的方式设置Key-Value键值。
 func (c *Configuration) Set(key string, value interface{}) {
-	c.ref.Set(key, value)
+	c.instance.Set(key, value)
 }
 
 // SetGlobalAlias 设置当前配置实例的Key与GlobalAlias的映射
+// GlobalAlias 映射的Key是针对当前Configuration下的Key列表的映射。
+// 如果在当前Configuration实例中查找不到值是时，将尝试使用GlobalAlias映射的Key，在全局对象中查找。
 func (c *Configuration) SetGlobalAlias(globalAlias map[string]string) {
 	c.globalAlias = globalAlias
 }
 
 // SetDefault 为当前配置实例设置单个默认值。与Viper的SetDefault一致，作用于当前配置实例。
 func (c *Configuration) SetDefault(key string, value interface{}) {
-	c.ref.SetDefault(key, value)
+	c.instance.SetDefault(key, value)
 }
 
 // SetDefault 为当前配置实例设置一组默认值。与Viper的SetDefault一致，作用于当前配置实例。
 func (c *Configuration) SetDefaults(defaults map[string]interface{}) {
 	for k, v := range defaults {
-		c.ref.SetDefault(k, v)
+		c.instance.SetDefault(k, v)
 	}
 }
 
 // IsSet 判定当前配置实例是否设置指定Key（多个）。与Viper的IsSet一致，查询范围为当前配置实例。
 func (c *Configuration) IsSet(keys ...string) bool {
+	if len(keys) == 0 {
+		return false
+	}
+	// Any not set, return false
 	for _, key := range keys {
-		if !c.ref.IsSet(key) {
+		if !c.instance.IsSet(key) {
 			return false
 		}
 	}
