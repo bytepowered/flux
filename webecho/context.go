@@ -13,7 +13,8 @@ var _ flux.WebContext = new(AdaptWebContext)
 // AdaptWebContext 默认实现的基于echo框架的WebContext
 // 注意：保持AdaptWebContext的公共访问性
 type AdaptWebContext struct {
-	echoc echo.Context
+	echoc      echo.Context
+	pathValues url.Values
 }
 
 func (c *AdaptWebContext) Method() string {
@@ -33,7 +34,7 @@ func (c *AdaptWebContext) RequestURI() string {
 }
 
 func (c *AdaptWebContext) RequestURL() (*url.URL, bool) {
-	return c.echoc.Request().URL, false
+	return c.echoc.Request().URL, true
 }
 
 func (c *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
@@ -45,20 +46,12 @@ func (c *AdaptWebContext) RequestRewrite(method string, path string) {
 	c.echoc.Request().URL.Path = path
 }
 
-func (c *AdaptWebContext) RequestHeader() (http.Header, bool) {
-	return c.echoc.Request().Header, false
+func (c *AdaptWebContext) HeaderValues() (http.Header, bool) {
+	return c.echoc.Request().Header, true
 }
 
-func (c *AdaptWebContext) GetRequestHeader(name string) string {
+func (c *AdaptWebContext) HeaderValue(name string) string {
 	return c.echoc.Request().Header.Get(name)
-}
-
-func (c *AdaptWebContext) SetRequestHeader(name, value string) {
-	c.echoc.Request().Header.Set(name, value)
-}
-
-func (c *AdaptWebContext) AddRequestHeader(name, value string) {
-	c.echoc.Request().Header.Add(name, value)
 }
 
 func (c *AdaptWebContext) QueryValues() url.Values {
@@ -66,13 +59,15 @@ func (c *AdaptWebContext) QueryValues() url.Values {
 }
 
 func (c *AdaptWebContext) PathValues() url.Values {
-	names := c.echoc.ParamNames()
-	values := c.echoc.ParamValues()
-	pairs := make(url.Values, len(names))
-	for i, name := range names {
-		pairs.Set(name, values[i])
+	if c.pathValues == nil {
+		names := c.echoc.ParamNames()
+		values := c.echoc.ParamValues()
+		c.pathValues = make(url.Values, len(names))
+		for i, name := range names {
+			c.pathValues.Set(name, values[i])
+		}
 	}
-	return pairs
+	return c.pathValues
 }
 
 func (c *AdaptWebContext) FormValues() url.Values {
@@ -108,7 +103,7 @@ func (c *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
 }
 
 func (c *AdaptWebContext) ResponseHeader() (http.Header, bool) {
-	return c.echoc.Response().Header(), false
+	return c.echoc.Response().Header(), true
 }
 
 func (c *AdaptWebContext) GetResponseHeader(name string) string {
@@ -123,20 +118,12 @@ func (c *AdaptWebContext) AddResponseHeader(name, value string) {
 	c.echoc.Response().Header().Add(name, value)
 }
 
-func (c *AdaptWebContext) ResponseWrite(statusCode int, contentType string, bytes []byte) (err error) {
+func (c *AdaptWebContext) Write(statusCode int, contentType string, bytes []byte) (err error) {
 	return c.echoc.Blob(statusCode, contentType, bytes)
 }
 
-func (c *AdaptWebContext) ResponseWriteStream(statusCode int, contentType string, reader io.Reader) error {
+func (c *AdaptWebContext) WriteStream(statusCode int, contentType string, reader io.Reader) error {
 	return c.echoc.Stream(statusCode, contentType, reader)
-}
-
-func (c *AdaptWebContext) ResponseNoContent(statusCode int) {
-	_ = c.echoc.NoContent(statusCode)
-}
-
-func (c *AdaptWebContext) ResponseRedirect(statusCode int, url string) {
-	_ = c.echoc.Redirect(statusCode, url)
 }
 
 func (c *AdaptWebContext) SetResponseWriter(w http.ResponseWriter) error {
@@ -152,15 +139,15 @@ func (c *AdaptWebContext) GetValue(name string) interface{} {
 	return c.echoc.Get(name)
 }
 
-func (c *AdaptWebContext) ContextRef() interface{} {
+func (c *AdaptWebContext) RawContext() interface{} {
 	return c.echoc
 }
 
-func (c *AdaptWebContext) RequestRef() interface{} {
+func (c *AdaptWebContext) RawRequest() interface{} {
 	return c.echoc.Request()
 }
 
-func (c *AdaptWebContext) ResponseRef() interface{} {
+func (c *AdaptWebContext) RawResponse() interface{} {
 	return c.echoc.Response()
 }
 
@@ -173,5 +160,5 @@ func (c *AdaptWebContext) HttpResponseWriter() (http.ResponseWriter, error) {
 }
 
 func toAdaptWebContext(echo echo.Context) flux.WebContext {
-	return &AdaptWebContext{echo}
+	return &AdaptWebContext{echoc: echo}
 }

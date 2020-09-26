@@ -141,7 +141,7 @@ func (r *RouterEngine) Shutdown(ctx context.Context) error {
 func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	doMetricEndpoint := func(err *flux.StateError) *flux.StateError {
 		// Access Counter: ProtoName, UpstreamUri, UpstreamMethod
-		proto, uri, method := ctx.EndpointProtoName(), ctx.endpoint.UpstreamUri, ctx.endpoint.UpstreamMethod
+		proto, uri, method := ctx.EndpointProto(), ctx.endpoint.UpstreamUri, ctx.endpoint.UpstreamMethod
 		r.metricEndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, UpstreamUri, UpstreamMethod, ErrorCode
@@ -170,7 +170,7 @@ func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	}
 	// Walk filters
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
-		protoName := ctx.EndpointProtoName()
+		protoName := ctx.EndpointProto()
 		if exchange, ok := ext.GetExchange(protoName); !ok {
 			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,
@@ -186,10 +186,10 @@ func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	return doMetricEndpoint(err)
 }
 
-func (r *RouterEngine) walk(next flux.FilterInvoker, filters ...flux.Filter) flux.FilterInvoker {
+func (r *RouterEngine) walk(next flux.FilterHandler, filters ...flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
 		timer := prometheus.NewTimer(r.metricRouteDuration.WithLabelValues("Filter", filters[i].TypeId()))
-		next = filters[i].Invoke(next)
+		next = filters[i].DoFilter(next)
 		timer.ObserveDuration()
 	}
 	return next

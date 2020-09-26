@@ -48,7 +48,7 @@ type BasicAuthConfig struct {
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件。
-func NewBasicAuthMiddleware(validator func(string, string, flux.WebContext) (bool, error)) flux.WebMiddleware {
+func NewBasicAuthMiddleware(validator func(string, string, flux.WebContext) (bool, error)) flux.WebInterceptor {
 	return NewBasicAuthMiddlewareWith(BasicAuthConfig{
 		Skipper:   func(flux.WebContext) bool { return false },
 		Validator: validator,
@@ -57,7 +57,7 @@ func NewBasicAuthMiddleware(validator func(string, string, flux.WebContext) (boo
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件
-func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebMiddleware {
+func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 	// 参考Echo.BasicAut的实现。
 	// Defaults
 	if config.Validator == nil {
@@ -66,13 +66,13 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebMiddleware {
 	if config.Realm == "" {
 		config.Realm = defaultRealm
 	}
-	return func(next flux.WebRouteHandler) flux.WebRouteHandler {
+	return func(next flux.WebHandler) flux.WebHandler {
 		return func(webc flux.WebContext) error {
 			// Skip
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)
 			}
-			auth := webc.GetRequestHeader(HeaderAuthorization)
+			auth := webc.HeaderValue(HeaderAuthorization)
 			l := len(basic)
 			if len(auth) > l+1 && strings.ToLower(auth[:l]) == basic {
 				b, err := base64.StdEncoding.DecodeString(auth[l+1:])

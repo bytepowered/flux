@@ -138,7 +138,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	attachments := make(map[string]interface{})
 	traceId := "no-trace-id"
 	if nil != fxctx {
-		attachments = fxctx.Attributes()
+		attachments = fxctx.Attachments()
 		traceId = fxctx.RequestId()
 	}
 	trace := logger.Trace(traceId)

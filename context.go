@@ -16,59 +16,60 @@ const (
 	XJwtToken     = "X-Jwt-Token"
 )
 
-const (
-	StatusOK           = http.StatusOK
-	StatusBadRequest   = http.StatusBadRequest
-	StatusNotFound     = http.StatusNotFound
-	StatusUnauthorized = http.StatusUnauthorized
-	StatusAccessDenied = http.StatusForbidden
-	StatusServerError  = http.StatusInternalServerError
-	StatusBadGateway   = http.StatusBadGateway
-)
-
 // Request 定义请求参数读取接口
 type RequestReader interface {
-	// Method 获取Method
+	// Method 返回请求的HttpMethod
 	Method() string
 
-	// Host 获取Host
+	// Host 返回请求的Host
 	Host() string
 
-	// UserAgent 获取UserAgent
+	// UserAgent 返回请求的UserAgent
 	UserAgent() string
 
-	// HttpRequest 获取Http请求对象。
-	// 注意：部分Web框架不支持标准Request对象，返回 webx.ErrHttpRequestNotSupported 错误。
-	HttpRequest() (*http.Request, error)
-
-	// RequestURI() 获取Http请求的URI地址
+	// RequestURI 返回请求的URI
 	RequestURI() string
 
-	// RequestURL 获取Http请求的URL。
-	// 注意部分Web框架只能返回Readonly对象
-	RequestURL() (url *url.URL, readonly bool)
+	// RequestURL 返回请求对象的URL
+	// 注意：部分Web框架返回只读url.URL
+	RequestURL() (url *url.URL, writable bool)
 
-	// RequestHeader 获取Http请求的全部Header。
-	// 注意部分Web框架只能返回Readonly对象
-	RequestHeader() (header http.Header, readonly bool)
-
-	// 返回Http请求的Body可重复读取的接口
+	// RequestBodyReader 返回可重复读取的Reader接口；
 	RequestBodyReader() (io.ReadCloser, error)
 
-	// QueryValue 获取Http请求的Query参数
-	QueryValue(name string) string
+	// RequestRewrite 修改请求方法和路径；
+	RequestRewrite(method string, path string)
 
-	// PathValue 获取Http请求的Path路径参数
-	PathValue(name string) string
+	// HeaderValues 返回请求对象的Header
+	// 注意：部分Web框架返回只读http.Header
+	HeaderValues() (header http.Header, writable bool)
 
-	// FormValue 获取Http请求的Form表单参数
-	FormValue(name string) string
+	// QueryValues 返回Query查询参数键值对；只读；
+	QueryValues() url.Values
 
-	// HeaderValue 获取Http请求的Header参数
+	// PathValues 返回动态路径参数的键值对；只读；
+	PathValues() url.Values
+
+	// FormValues 返回Form表单参数键值对；只读；
+	FormValues() url.Values
+
+	// QueryValues 返回Cookie列表；只读；
+	CookieValues() []*http.Cookie
+
+	// HeaderValue 读取请求的Header
 	HeaderValue(name string) string
 
-	// CookieValue 获取Http请求的Cookie参数
-	CookieValue(name string) string
+	// QueryValue 查询指定Name的Query参数值
+	QueryValue(name string) string
+
+	// PathValue 查询指定Name的动态路径参数值
+	PathValue(name string) string
+
+	// FormValue 查询指定Name的表单参数值
+	FormValue(name string) string
+
+	// CookieValue 查询指定Name的Cookie对象，并返回是否存在标识
+	CookieValue(name string) (cookie *http.Cookie, ok bool)
 }
 
 // ResponseWriter 是写入响应数据的接口
@@ -79,8 +80,8 @@ type ResponseWriter interface {
 	// StatusCode 获取Http响应状态码
 	StatusCode() int
 
-	// Headers 获取设置的Headers。
-	Headers() http.Header
+	// HeaderValues 获取设置的Headers。
+	HeaderValues() http.Header
 
 	// AddHeader 添加Header键值
 	AddHeader(name, value string)
@@ -100,8 +101,6 @@ type ResponseWriter interface {
 
 // Context 定义每个请求的上下文环境
 type Context interface {
-	// Request 返回请求数据接口
-	Request() RequestReader
 
 	// Method 返回当前请求的Method
 	Method() string
@@ -112,23 +111,26 @@ type Context interface {
 	// RequestId 返回当前请求的唯一ID
 	RequestId() string
 
+	// Request 返回请求数据接口
+	Request() RequestReader
+
 	// Response 返回响应数据接口
 	Response() ResponseWriter
 
 	// Endpoint 返回请求路由定义的元数据
 	Endpoint() Endpoint
 
-	// EndpointProtoName 返回Endpoint的协议名称
-	EndpointProtoName() string
+	// EndpointProto 返回Endpoint的协议名称
+	EndpointProto() string
 
-	// Attributes 返回所有Attributes键值对；只读；
-	Attributes() map[string]interface{}
+	// Attachments 返回所有Attributes键值对；只读；
+	Attachments() map[string]interface{}
 
-	// GetAttribute 获取指定name的Attribute，返回值和是否存在标识
-	GetAttribute(name string) (interface{}, bool)
+	// GetAttachment 获取指定key的Attachment，返回值和是否存在标识
+	GetAttachment(key string) (interface{}, bool)
 
-	// SetAttribute 向Context添加Attribute键值对
-	SetAttribute(name string, value interface{})
+	// SetAttachment 向Context添加Attribute键值对
+	SetAttachment(name string, value interface{})
 
 	// 获取当前请求范围的值
 	GetValue(name string) (interface{}, bool)

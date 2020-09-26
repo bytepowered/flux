@@ -30,7 +30,7 @@ type AdaptWebServer struct {
 	server *echo.Echo
 }
 
-func (w *AdaptWebServer) SetRouteNotFoundHandler(fun flux.WebRouteHandler) {
+func (w *AdaptWebServer) SetRouteNotFoundHandler(fun flux.WebHandler) {
 	echo.NotFoundHandler = AdaptWebRouteHandler(fun).AdaptFunc
 }
 
@@ -40,23 +40,23 @@ func (w *AdaptWebServer) SetWebErrorHandler(fun flux.WebErrorHandler) {
 	}
 }
 
-func (w *AdaptWebServer) AddWebInterceptor(m flux.WebMiddleware) {
-	w.server.Pre(AdaptWebMiddleware(m).AdaptFunc)
+func (w *AdaptWebServer) AddWebInterceptor(m flux.WebInterceptor) {
+	w.server.Pre(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (w *AdaptWebServer) AddWebMiddleware(m flux.WebMiddleware) {
-	w.server.Use(AdaptWebMiddleware(m).AdaptFunc)
+func (w *AdaptWebServer) AddWebMiddleware(m flux.WebInterceptor) {
+	w.server.Use(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (w *AdaptWebServer) AddWebRouteHandler(method, pattern string, h flux.WebRouteHandler, m ...flux.WebMiddleware) {
+func (w *AdaptWebServer) AddWebHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mi := range m {
-		wms[i] = AdaptWebMiddleware(mi).AdaptFunc
+		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
 	}
 	w.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
 }
 
-func (w *AdaptWebServer) AddStdHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+func (w *AdaptWebServer) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mf := range m {
 		wms[i] = echo.WrapMiddleware(mf)
@@ -64,20 +64,20 @@ func (w *AdaptWebServer) AddStdHttpHandler(method, pattern string, h http.Handle
 	w.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wms...)
 }
 
-func (w *AdaptWebServer) WebRouter() interface{} {
+func (w *AdaptWebServer) RawWebRouter() interface{} {
 	return w.server
 }
 
-func (w *AdaptWebServer) WebServer() interface{} {
+func (w *AdaptWebServer) RawWebServer() interface{} {
 	return w.server
-}
-
-func (w *AdaptWebServer) Start(addr string) error {
-	return w.server.Start(addr)
 }
 
 func (w *AdaptWebServer) StartTLS(addr string, certFile, keyFile string) error {
-	return w.server.StartTLS(addr, certFile, keyFile)
+	if "" == certFile || "" == keyFile {
+		return w.server.Start(addr)
+	} else {
+		return w.server.StartTLS(addr, certFile, keyFile)
+	}
 }
 
 func (w *AdaptWebServer) Shutdown(ctx context.Context) error {

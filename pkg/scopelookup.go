@@ -28,7 +28,7 @@ func ScopeLookupWebContextValue(lookup string, ctx flux.WebContext) string {
 	case flux.ScopePath:
 		return ctx.PathValue(key)
 	case flux.ScopeHeader:
-		return ctx.GetRequestHeader(key)
+		return ctx.HeaderValue(key)
 	case flux.ScopeAttr:
 		return cast.ToString(ctx.GetValue(key))
 	default:
@@ -61,7 +61,7 @@ func ScopeLookupContextValue(lookup string, ctx flux.Context) interface{} {
 	case flux.ScopeHeader:
 		return req.HeaderValue(key)
 	case flux.ScopeAttr:
-		v, _ := ctx.GetAttribute(key)
+		v, _ := ctx.GetAttachment(key)
 		return v
 	default:
 		return nil

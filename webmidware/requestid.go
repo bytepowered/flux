@@ -32,7 +32,7 @@ func SetRequestIdLookupFunc(f LookupRequestIdFunc) {
 }
 
 // NewRequestIdMiddlewareWithinHeader 生成从Header中查找的RequestId中间件的函数
-func NewRequestIdMiddlewareWithinHeader(headers ...string) flux.WebMiddleware {
+func NewRequestIdMiddlewareWithinHeader(headers ...string) flux.WebInterceptor {
 	id, err := snowflake.NewNode(1)
 	if nil != err {
 		logger.Panicw("request-id-middleware: new snowflake node", "error", err)
@@ -49,12 +49,11 @@ func NewRequestIdMiddlewareWithinHeader(headers ...string) flux.WebMiddleware {
 }
 
 // NewRequestIdMiddleware 生成RequestId中间件的函数
-func NewRequestIdMiddleware(lookupFunc LookupRequestIdFunc) flux.WebMiddleware {
-	return func(next flux.WebRouteHandler) flux.WebRouteHandler {
+func NewRequestIdMiddleware(lookupFunc LookupRequestIdFunc) flux.WebInterceptor {
+	return func(next flux.WebHandler) flux.WebHandler {
 		return func(webc flux.WebContext) error {
 			requestId := lookupFunc(webc)
 			webc.SetValue(flux.HeaderXRequestId, requestId)
-			webc.SetRequestHeader(flux.HeaderXRequestId, requestId)
 			webc.SetResponseHeader(flux.HeaderXRequestId, requestId)
 			return next(webc)
 		}
@@ -72,7 +71,7 @@ func DefaultLookupRequestIdFactory(names []string, generator *snowflake.Node) Lo
 		}
 		// 查Header
 		for _, name := range names {
-			id := webc.GetRequestHeader(name)
+			id := webc.HeaderValue(name)
 			if "" != id {
 				return id
 			}

@@ -83,7 +83,7 @@ func GetHttpDefaultSerializer() flux.Serializer {
 }
 
 func WriteToHttpChannel(webc flux.WebContext, status int, contentType string, bytes []byte) error {
-	err := webc.ResponseWrite(status, contentType, bytes)
+	err := webc.Write(status, contentType, bytes)
 	if nil != err {
 		return fmt.Errorf("write http response: %w", err)
 	}

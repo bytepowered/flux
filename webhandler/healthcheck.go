@@ -22,7 +22,7 @@ type HealthCheckConfig struct {
 }
 
 // NewHealthCheckWebRouteHandlerFactory 根据配置构建应用健康检查WebHandler
-func NewHealthCheckWebRouteHandlerFactory(config HealthCheckConfig) flux.WebRouteHandler {
+func NewHealthCheckWebRouteHandlerFactory(config HealthCheckConfig) flux.WebHandler {
 	if config.CommandLookupKey == "" {
 		logger.Panicw("Health check config, requires: CommandLookupKey")
 	}
@@ -32,13 +32,13 @@ func NewHealthCheckWebRouteHandlerFactory(config HealthCheckConfig) flux.WebRout
 	return func(webc flux.WebContext) error {
 		cmd := pkg.ScopeLookupWebContextValue(config.CommandLookupKey, webc)
 		if cmd == "" {
-			return webc.ResponseWrite(http.StatusBadRequest, flux.MIMEApplicationJSONCharsetUTF8, HealthStateCmdNotFound)
+			return webc.Write(http.StatusBadRequest, flux.MIMEApplicationJSONCharsetUTF8, HealthStateCmdNotFound)
 		}
 		handler, ok := config.CommandHandlers[cmd]
 		if !ok {
-			return webc.ResponseWrite(http.StatusBadRequest, flux.MIMEApplicationJSONCharsetUTF8, HealthStateCmdNotSupported)
+			return webc.Write(http.StatusBadRequest, flux.MIMEApplicationJSONCharsetUTF8, HealthStateCmdNotSupported)
 		}
 		status, data := handler(webc)
-		return webc.ResponseWrite(status, flux.MIMEApplicationJSONCharsetUTF8, data)
+		return webc.Write(status, flux.MIMEApplicationJSONCharsetUTF8, data)
 	}
 }

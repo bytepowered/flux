@@ -24,8 +24,8 @@ func (e *StateError) Error() string {
 }
 
 type (
-	// FilterInvoker 定义一个处理方法，处理请求Context；如果发生错误则返回 StateError。
-	FilterInvoker func(Context) *StateError
+	// FilterHandler 定义一个处理方法，处理请求Context；如果发生错误则返回 StateError。
+	FilterHandler func(Context) *StateError
 	// FilterSkipper 定义一个函数，用于Filter执行中跳过某些处理。返回True跳过某些处理，见具体Filter的实现逻辑。
 	FilterSkipper func(Context) bool
 )
@@ -34,6 +34,6 @@ type (
 type Filter interface {
 	// TypeId Filter的类型标识
 	TypeId() string
-	// Invoke 执行Filter链
-	Invoke(next FilterInvoker) FilterInvoker
+	// DoFilter 执行Filter链
+	DoFilter(next FilterHandler) FilterHandler
 }

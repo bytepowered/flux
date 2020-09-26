@@ -185,13 +185,8 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 			_ = s.debugServer.ListenAndServe()
 		}()
 	}
-	if certFile != "" && keyFile != "" {
-		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
-		return s.webServer.StartTLS(address, certFile, keyFile)
-	} else {
-		logger.Infof("HttpServer starting: %s", address)
-		return s.webServer.Start(address)
-	}
+	logger.Infow("HttpServer starting", "address", address)
+	return s.webServer.StartTLS(address, certFile, keyFile)
 }
 
 // Shutdown to cleanup resources
@@ -223,31 +218,31 @@ func (s *HttpServer) HttpConfig() *flux.Configuration {
 }
 
 // AddWebInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
-func (s *HttpServer) AddWebInterceptor(m flux.WebMiddleware) {
+func (s *HttpServer) AddWebInterceptor(m flux.WebInterceptor) {
 	s.ensure().webServer.AddWebInterceptor(m)
 }
 
 // AddWebMiddleware 添加Http中间件。在Http路由到对应Handler后执行
-func (s *HttpServer) AddWebMiddleware(m flux.WebMiddleware) {
+func (s *HttpServer) AddWebMiddleware(m flux.WebInterceptor) {
 	s.ensure().webServer.AddWebMiddleware(m)
 }
 
-// AddWebRouteHandler 添加Http处理接口。
-func (s *HttpServer) AddWebRouteHandler(method, pattern string, h flux.WebRouteHandler, m ...flux.WebMiddleware) {
-	s.ensure().webServer.AddWebRouteHandler(method, pattern, h, m...)
+// AddWebHandler 添加Http处理接口。
+func (s *HttpServer) AddWebRouteHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
+	s.ensure().webServer.AddWebHandler(method, pattern, h, m...)
 }
 
-// AddWebRouteHandler 添加Http处理接口。
+// AddWebHandler 添加Http处理接口。
 func (s *HttpServer) AddStdHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
-	s.ensure().webServer.AddStdHttpHandler(method, pattern, h, m...)
+	s.ensure().webServer.AddHttpHandler(method, pattern, h, m...)
 }
 
 // SetRouteNotFoundHandler 设置Http路由失败的处理接口
-func (s *HttpServer) SetRouteNotFoundHandler(nfh flux.WebRouteHandler) {
+func (s *HttpServer) SetRouteNotFoundHandler(nfh flux.WebHandler) {
 	s.ensure().webServer.SetRouteNotFoundHandler(nfh)
 }
 
-// WebServer 返回WebServer实例
+// RawWebServer 返回WebServer实例
 func (s *HttpServer) WebServer() flux.WebServer {
 	return s.ensure().webServer
 }
@@ -287,7 +282,7 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 			multi.Update(endpoint.Version, &endpoint)
 			if isRegister {
 				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", event.HttpPattern)
-				s.webServer.AddWebRouteHandler(event.HttpMethod, event.HttpPattern, s.newHttpRouteHandler(multi))
+				s.webServer.AddWebHandler(event.HttpMethod, event.HttpPattern, s.newHttpRouteHandler(multi))
 			}
 		case flux.EndpointEventUpdated:
 			logger.Infow("Update endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", event.HttpPattern)
@@ -310,11 +305,11 @@ func (s *HttpServer) release(context *internal.ContextWrapper) {
 	s.contextWrappers.Put(context)
 }
 
-func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) flux.WebRouteHandler {
+func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoint) flux.WebHandler {
 	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		// Multi version selection
-		version := webc.GetRequestHeader(s.httpVersionHeader)
+		version := webc.HeaderValue(s.httpVersionHeader)
 		endpoint, found := mvEndpoint.FindByVersion(version)
 		requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 		defer func() {
@@ -349,10 +344,10 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 		}
 		// Route and response
 		if err := s.routerEngine.Route(ctxw); nil != err {
-			return s.webServerWriter.WriteError(webc, requestId, ctxw.Response().Headers(), err)
+			return s.webServerWriter.WriteError(webc, requestId, ctxw.Response().HeaderValues(), err)
 		} else {
 			rw := ctxw.Response()
-			return s.webServerWriter.WriteBody(webc, requestId, rw.Headers(), rw.StatusCode(), rw.Body())
+			return s.webServerWriter.WriteBody(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
 		}
 	}
 }

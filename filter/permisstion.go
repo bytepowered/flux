@@ -48,7 +48,7 @@ type PermissionVerificationFilter struct {
 	permCache cache.Cache
 }
 
-func (p *PermissionVerificationFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
+func (p *PermissionVerificationFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	if p.disabled {
 		return next
 	}
@@ -110,7 +110,7 @@ func (*PermissionVerificationFilter) TypeId() string {
 }
 
 func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.StateError {
-	jwtSubjectId, ok := ctx.GetAttribute(flux.XJwtSubject)
+	jwtSubjectId, ok := ctx.GetAttachment(flux.XJwtSubject)
 	if !ok {
 		return ErrPermissionSubjectNotFound
 	}

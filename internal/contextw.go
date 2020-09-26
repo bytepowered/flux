@@ -15,8 +15,8 @@ type ContextWrapper struct {
 	requestId  string
 	attributes *sync.Map
 	values     *sync.Map
-	response   *ResponseWrappedWriter
-	request    *RequestWrappedReader
+	response   *WrappedResponseWriter
+	request    *WrappedRequestReader
 }
 
 func NewContextWrapper() interface{} {
@@ -38,7 +38,7 @@ func (c *ContextWrapper) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *ContextWrapper) EndpointProtoName() string {
+func (c *ContextWrapper) EndpointProto() string {
 	return c.endpoint.Protocol
 }
 
@@ -54,7 +54,7 @@ func (c *ContextWrapper) RequestId() string {
 	return c.requestId
 }
 
-func (c *ContextWrapper) Attributes() map[string]interface{} {
+func (c *ContextWrapper) Attachments() map[string]interface{} {
 	copied := make(map[string]interface{})
 	c.attributes.Range(func(key, value interface{}) bool {
 		copied[key.(string)] = value
@@ -63,11 +63,11 @@ func (c *ContextWrapper) Attributes() map[string]interface{} {
 	return copied
 }
 
-func (c *ContextWrapper) SetAttribute(name string, value interface{}) {
+func (c *ContextWrapper) SetAttachment(name string, value interface{}) {
 	c.attributes.Store(name, value)
 }
 
-func (c *ContextWrapper) GetAttribute(name string) (interface{}, bool) {
+func (c *ContextWrapper) GetAttachment(name string) (interface{}, bool) {
 	v, ok := c.attributes.Load(name)
 	return v, ok
 }
@@ -96,10 +96,10 @@ func (c *ContextWrapper) Reattach(requestId string, webc flux.WebContext, endpoi
 	c.requestId = requestId
 	c.attributes = new(sync.Map)
 	c.values = new(sync.Map)
-	c.SetAttribute(flux.XRequestTime, time.Now().Unix())
-	c.SetAttribute(flux.XRequestId, c.requestId)
-	c.SetAttribute(flux.XRequestHost, webc.Host())
-	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
+	c.SetAttachment(flux.XRequestTime, time.Now().Unix())
+	c.SetAttachment(flux.XRequestId, c.requestId)
+	c.SetAttachment(flux.XRequestHost, webc.Host())
+	c.SetAttachment(flux.XRequestAgent, "flux/gateway")
 }
 
 func (c *ContextWrapper) Release() {

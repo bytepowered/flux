@@ -42,12 +42,12 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 		}
 	} else {
 		// Header透传以及传递AttrValues
-		if header, readonly := ctx.Request().RequestHeader(); readonly {
-			newRequest.Header = header
-		} else {
+		if header, writable := ctx.Request().HeaderValues(); writable {
 			newRequest.Header = header.Clone()
+		} else {
+			newRequest.Header = header
 		}
-		for k, v := range ctx.Attributes() {
+		for k, v := range ctx.Attachments() {
 			newRequest.Header.Set(k, cast.ToString(v))
 		}
 	}

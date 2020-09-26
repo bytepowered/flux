@@ -40,25 +40,25 @@ type CorsConfig struct {
 	MaxAge           int
 }
 
-func NewCORSMiddleware() flux.WebMiddleware {
+func NewCORSMiddleware() flux.WebInterceptor {
 	return NewCORSMiddlewareWith(CorsConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
 	})
 }
 
-func NewCORSMiddlewareWith(config CorsConfig) flux.WebMiddleware {
+func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 	allowMethods := strings.Join(config.AllowMethods, ",")
 	allowHeaders := strings.Join(config.AllowHeaders, ",")
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
 	maxAge := strconv.Itoa(config.MaxAge)
-	return func(next flux.WebRouteHandler) flux.WebRouteHandler {
+	return func(next flux.WebHandler) flux.WebHandler {
 		return func(webc flux.WebContext) error {
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)
 			}
 
-			origin := webc.GetRequestHeader(flux.HeaderOrigin)
+			origin := webc.HeaderValue(flux.HeaderOrigin)
 			allowOrigin := ""
 
 			// Check allowed origins
@@ -102,7 +102,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebMiddleware {
 			if allowHeaders != "" {
 				webc.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
-				h := webc.GetRequestHeader(flux.HeaderAccessControlRequestHeaders)
+				h := webc.HeaderValue(flux.HeaderAccessControlRequestHeaders)
 				if h != "" {
 					webc.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, h)
 				}

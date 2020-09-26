@@ -90,7 +90,7 @@ func (r *HystrixFilter) GetHystrixConfig() HystrixConfig {
 	return *(r.config)
 }
 
-func (r *HystrixFilter) Invoke(next flux.FilterInvoker) flux.FilterInvoker {
+func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	return func(ctx flux.Context) *flux.StateError {
 		if r.config.ServiceSkipFunc(ctx) {
 			return next(ctx)
@@ -143,7 +143,7 @@ func (*HystrixFilter) TypeId() string {
 
 func hystrixServiceSkipper(ctx flux.Context) bool {
 	// 只处理Http协议，Dubbo协议内部自带熔断逻辑
-	if flux.ProtoHttp != ctx.EndpointProtoName() {
+	if flux.ProtoHttp != ctx.EndpointProto() {
 		return true
 	}
 	return false
