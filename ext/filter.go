@@ -18,8 +18,8 @@ func (s filterArray) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s filterArray) Less(i, j int) bool { return s[i].order < s[j].order }
 
 var (
-	_globalFilter    = make([]filterWrapper, 0)
-	_selectiveFilter = make([]filterWrapper, 0)
+	_globalFilter    = make([]filterWrapper, 0, 16)
+	_selectiveFilter = make([]filterWrapper, 0, 16)
 )
 
 // AddGlobalFilter 注册全局Filter；

@@ -9,7 +9,7 @@ const (
 )
 
 var (
-	_typedValueResolvers = make(map[string]flux.TypedValueResolver)
+	_typedValueResolvers = make(map[string]flux.TypedValueResolver, 16)
 )
 
 // RegisterTypedValueResolver 添加值类型解析函数

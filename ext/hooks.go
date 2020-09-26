@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	hooksPrepare  = make([]flux.PrepareHookFunc, 0)
-	hooksStartup  = make([]flux.Startuper, 0)
-	hooksShutdown = make([]flux.Shutdowner, 0)
+	hooksPrepare  = make([]flux.PrepareHookFunc, 0, 16)
+	hooksStartup  = make([]flux.Startuper, 0, 16)
+	hooksShutdown = make([]flux.Shutdowner, 0, 16)
 )
 
 // AddLifecycleHook 添加生命周期启动与停止的钩子接口

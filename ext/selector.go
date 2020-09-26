@@ -11,7 +11,7 @@ const (
 )
 
 var (
-	_hostedSelectors = make(map[string][]flux.Selector)
+	_hostedSelectors = make(map[string][]flux.Selector, 16)
 	_rwLock          sync.RWMutex
 )
 

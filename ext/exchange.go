@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	_protoNamedExchanges        = make(map[string]flux.Exchange)
-	_protoNamedExchangeDecoders = make(map[string]flux.ExchangeDecoder)
+	_protoNamedExchanges        = make(map[string]flux.Exchange, 4)
+	_protoNamedExchangeDecoders = make(map[string]flux.ExchangeDecoder, 4)
 )
 
 func SetExchange(protoName string, exchange flux.Exchange) {

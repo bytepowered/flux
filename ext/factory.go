@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	_typeNamedFactories = make(map[string]flux.Factory)
+	_typeNamedFactories = make(map[string]flux.Factory, 16)
 )
 
 func GetFactory(typeName string) (flux.Factory, bool) {
