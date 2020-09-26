@@ -7,61 +7,16 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"reflect"
 )
 
-var (
-	defaultMetricNamespace = "flux"
-	defaultMetricSubsystem = "http"
-	defaultMetricBuckets   = []float64{
-		0.0005,
-		0.001, // 1ms
-		0.002,
-		0.005,
-		0.01, // 10ms
-		0.02,
-		0.05,
-		0.1, // 100 ms
-		0.2,
-		0.5,
-		1.0, // 1s
-		2.0,
-		5.0,
-		10.0, // 10s
-		15.0,
-		20.0,
-		30.0,
-	}
-)
-
 type RouterEngine struct {
-	metricEndpointAccess *prometheus.CounterVec
-	metricEndpointError  *prometheus.CounterVec
-	metricRouteDuration  *prometheus.HistogramVec
+	metrics *Metrics
 }
 
 func NewRouteEngine() *RouterEngine {
 	return &RouterEngine{
-		metricEndpointAccess: promauto.NewCounterVec(prometheus.CounterOpts{
-			Namespace: defaultMetricNamespace,
-			Subsystem: defaultMetricSubsystem,
-			Name:      "endpoint_access_total",
-			Help:      "Number of endpoint access",
-		}, []string{"ProtoName", "UpstreamUri", "UpstreamMethod"}),
-		metricEndpointError: promauto.NewCounterVec(prometheus.CounterOpts{
-			Namespace: defaultMetricNamespace,
-			Subsystem: defaultMetricSubsystem,
-			Name:      "endpoint_error_total",
-			Help:      "Number of endpoint access errors",
-		}, []string{"ProtoName", "UpstreamUri", "UpstreamMethod", "ErrorCode"}),
-		metricRouteDuration: promauto.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: defaultMetricNamespace,
-			Subsystem: defaultMetricSubsystem,
-			Name:      "endpoint_route_duration",
-			Help:      "Spend time by processing a endpoint",
-			Buckets:   defaultMetricBuckets,
-		}, []string{"ComponentType", "TypeId"}),
+		metrics: NewMetrics(),
 	}
 }
 
@@ -142,10 +97,10 @@ func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
 	doMetricEndpoint := func(err *flux.StateError) *flux.StateError {
 		// Access Counter: ProtoName, UpstreamUri, UpstreamMethod
 		proto, uri, method := ctx.EndpointProto(), ctx.endpoint.UpstreamUri, ctx.endpoint.UpstreamMethod
-		r.metricEndpointAccess.WithLabelValues(proto, uri, method).Inc()
+		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, UpstreamUri, UpstreamMethod, ErrorCode
-			r.metricEndpointError.WithLabelValues(proto, uri, method, err.ErrorCode).Inc()
+			r.metrics.EndpointError.WithLabelValues(proto, uri, method, err.ErrorCode).Inc()
 		}
 		return err
 	}
@@ -177,7 +132,7 @@ func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL: %s", protoName)}
 		} else {
-			timer := prometheus.NewTimer(r.metricRouteDuration.WithLabelValues("Exchange", protoName))
+			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Exchange", protoName))
 			ret := exchange.Exchange(ctx)
 			timer.ObserveDuration()
 			return ret
@@ -188,7 +143,7 @@ func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
 
 func (r *RouterEngine) walk(next flux.FilterHandler, filters ...flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
-		timer := prometheus.NewTimer(r.metricRouteDuration.WithLabelValues("Filter", filters[i].TypeId()))
+		timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Filter", filters[i].TypeId()))
 		next = filters[i].DoFilter(next)
 		timer.ObserveDuration()
 	}
