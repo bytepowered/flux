@@ -6,8 +6,10 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/support"
 	"github.com/prometheus/client_golang/prometheus"
 	"reflect"
+	"sort"
 )
 
 type RouterEngine struct {
@@ -152,4 +154,22 @@ func (r *RouterEngine) walk(next flux.FilterHandler, filters ...flux.Filter) flu
 
 func _isDisabled(config *flux.Configuration) bool {
 	return config.GetBool("disable") || config.GetBool("disabled")
+}
+
+func sortedStartup(items []flux.Startuper) []flux.Startuper {
+	out := make(support.StartupArray, len(items))
+	for i, v := range items {
+		out[i] = v
+	}
+	sort.Sort(out)
+	return out
+}
+
+func sortedShutdown(items []flux.Shutdowner) []flux.Shutdowner {
+	out := make(support.ShutdownArray, len(items))
+	for i, v := range items {
+		out[i] = v
+	}
+	sort.Sort(out)
+	return out
 }

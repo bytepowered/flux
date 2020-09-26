@@ -1,8 +1,7 @@
-package server
+package support
 
 import (
 	"github.com/bytepowered/flux"
-	"sort"
 )
 
 type StartupArray []flux.Startuper
@@ -23,22 +22,4 @@ func orderOf(v interface{}) int {
 	} else {
 		return 0
 	}
-}
-
-func sortedStartup(items []flux.Startuper) []flux.Startuper {
-	out := make(StartupArray, len(items))
-	for i, v := range items {
-		out[i] = v
-	}
-	sort.Sort(out)
-	return out
-}
-
-func sortedShutdown(items []flux.Shutdowner) []flux.Shutdowner {
-	out := make(ShutdownArray, len(items))
-	for i, v := range items {
-		out[i] = v
-	}
-	sort.Sort(out)
-	return out
 }
