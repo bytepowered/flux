@@ -98,12 +98,8 @@ func (s *HttpServer) Prepare(hooks ...flux.PrepareHookFunc) error {
 	return nil
 }
 
+// Initial
 func (s *HttpServer) Initial() error {
-	return s.InitServer()
-}
-
-// InitServer : Call before startup
-func (s *HttpServer) InitServer() error {
 	// Http server
 	s.httpConfig = flux.NewConfigurationOf(HttpServerConfigRootName)
 	s.httpConfig.SetDefaults(HttpServerConfigDefaults)
@@ -148,20 +144,15 @@ func (s *HttpServer) InitServer() error {
 }
 
 func (s *HttpServer) Startup(version flux.BuildInfo) error {
-	return s.StartServe(version)
-}
-
-// StartServe server
-func (s *HttpServer) StartServe(version flux.BuildInfo) error {
-	return s.StartServeWith(version, s.httpConfig)
+	return s.StartServe(version, s.httpConfig)
 }
 
 func (s *HttpServer) StartupWith(version flux.BuildInfo, httpConfig *flux.Configuration) error {
-	return s.StartServeWith(version, httpConfig)
+	return s.StartServe(version, httpConfig)
 }
 
-// StartServeWith server
-func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configuration) error {
+// StartServe server
+func (s *HttpServer) StartServe(info flux.BuildInfo, config *flux.Configuration) error {
 	if err := s.ensure().routerEngine.Startup(); nil != err {
 		return err
 	}
@@ -288,17 +279,6 @@ func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) 
 	}
 }
 
-func (s *HttpServer) acquire(id string, webc flux.WebContext, endpoint *flux.Endpoint) *WrappedContext {
-	ctx := s.contextWrappers.Get().(*WrappedContext)
-	ctx.Reattach(id, webc, endpoint)
-	return ctx
-}
-
-func (s *HttpServer) release(context *WrappedContext) {
-	context.Release()
-	s.contextWrappers.Put(context)
-}
-
 func (s *HttpServer) newHttpRouteHandler(mvEndpoint *MultiVersionEndpoint) flux.WebHandler {
 	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
@@ -382,9 +362,20 @@ func (s *HttpServer) loadOrStoreMultiVersionEndpoint(routeKey string, endpoint *
 	}
 }
 
+func (s *HttpServer) acquire(id string, webc flux.WebContext, endpoint *flux.Endpoint) *WrappedContext {
+	ctx := s.contextWrappers.Get().(*WrappedContext)
+	ctx.Reattach(id, webc, endpoint)
+	return ctx
+}
+
+func (s *HttpServer) release(context *WrappedContext) {
+	context.Release()
+	s.contextWrappers.Put(context)
+}
+
 func (s *HttpServer) ensure() *HttpServer {
 	if s.webServer == nil {
-		logger.Panicf("Call must after InitServer()")
+		logger.Panicf("Call must after InitialServer()")
 	}
 	return s
 }
