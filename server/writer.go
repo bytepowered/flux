@@ -40,14 +40,14 @@ func (a *DefaultWebServerResponseWriter) WriteBody(webc flux.WebContext, request
 			defer pkg.SilentlyCloseFunc(c)
 		}
 		if bytes, err := ioutil.ReadAll(r); nil != err {
-			logger.Trace(requestId).Errorw("Http response, read body", "error", err)
+			logger.Trace(requestId).Errorw("Http responseWriter, read body", "error", err)
 			return err
 		} else {
 			output = bytes
 		}
 	} else {
 		if bytes, err := SerializeWith(GetHttpDefaultSerializer(), body); nil != err {
-			logger.Trace(requestId).Errorw("Http response, serialize to json", "body", body, "error", err)
+			logger.Trace(requestId).Errorw("Http responseWriter, serialize to json", "body", body, "error", err)
 			return err
 		} else {
 			output = bytes
@@ -55,12 +55,12 @@ func (a *DefaultWebServerResponseWriter) WriteBody(webc flux.WebContext, request
 	}
 	// 异步地打印响应日志信息
 	go func() {
-		logger.Trace(requestId).Infow("Http response, logging", "data", string(output))
+		logger.Trace(requestId).Infow("Http responseWriter, logging", "data", string(output))
 	}()
 	// 写入Http响应发生的错误，没必要向上抛出Error错误处理。
 	// 因为已无法通过WriteError写到客户端
 	if err := WriteToHttpChannel(webc, status, flux.MIMEApplicationJSONCharsetUTF8, output); nil != err {
-		logger.Trace(requestId).Errorw("Http response, write channel", "data", string(output), "error", err)
+		logger.Trace(requestId).Errorw("Http responseWriter, write channel", "data", string(output), "error", err)
 	}
 	return nil
 }
@@ -85,7 +85,7 @@ func GetHttpDefaultSerializer() flux.Serializer {
 func WriteToHttpChannel(webc flux.WebContext, status int, contentType string, bytes []byte) error {
 	err := webc.Write(status, contentType, bytes)
 	if nil != err {
-		return fmt.Errorf("write http response: %w", err)
+		return fmt.Errorf("write http responseWriter: %w", err)
 	}
 	return err
 }

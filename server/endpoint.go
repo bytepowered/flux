@@ -1,4 +1,4 @@
-package internal
+package server
 
 import (
 	"github.com/bytepowered/flux"
@@ -7,64 +7,64 @@ import (
 
 func NewMultiVersionEndpoint(endpoint *flux.Endpoint) *MultiVersionEndpoint {
 	return &MultiVersionEndpoint{
-		versionMap: map[string]*flux.Endpoint{
+		versioned: map[string]*flux.Endpoint{
 			endpoint.Version: endpoint,
 		},
-		rwmu: new(sync.RWMutex),
+		mutex: new(sync.RWMutex),
 	}
 }
 
 // Multi version Endpoint
 type MultiVersionEndpoint struct {
-	versionMap map[string]*flux.Endpoint // 各版本数据
-	rwmu       *sync.RWMutex             // 读写锁
+	versioned map[string]*flux.Endpoint // 各版本数据
+	mutex     *sync.RWMutex             // 读写锁
 }
 
 // Find find endpoint by version
 func (m *MultiVersionEndpoint) FindByVersion(version string) (*flux.Endpoint, bool) {
-	m.rwmu.RLock()
-	if "" == version || 1 == len(m.versionMap) {
+	m.mutex.RLock()
+	if "" == version || 1 == len(m.versioned) {
 		rv := m.random()
-		m.rwmu.RUnlock()
+		m.mutex.RUnlock()
 		return rv, nil != rv
 	}
-	v, ok := m.versionMap[version]
-	m.rwmu.RUnlock()
+	v, ok := m.versioned[version]
+	m.mutex.RUnlock()
 	return v, ok
 }
 
 func (m *MultiVersionEndpoint) Update(version string, endpoint *flux.Endpoint) {
-	m.rwmu.Lock()
-	m.versionMap[version] = endpoint
-	m.rwmu.Unlock()
+	m.mutex.Lock()
+	m.versioned[version] = endpoint
+	m.mutex.Unlock()
 }
 
 func (m *MultiVersionEndpoint) Delete(version string) {
-	m.rwmu.Lock()
-	delete(m.versionMap, version)
-	m.rwmu.Unlock()
+	m.mutex.Lock()
+	delete(m.versioned, version)
+	m.mutex.Unlock()
 }
 
 func (m *MultiVersionEndpoint) RandomVersion() *flux.Endpoint {
-	m.rwmu.RLock()
+	m.mutex.RLock()
 	rv := m.random()
-	m.rwmu.RUnlock()
+	m.mutex.RUnlock()
 	return rv
 }
 
 func (m *MultiVersionEndpoint) random() *flux.Endpoint {
-	for _, v := range m.versionMap {
+	for _, v := range m.versioned {
 		return v
 	}
 	return nil
 }
 
-func (m *MultiVersionEndpoint) ToSerializableMap() map[interface{}]interface{} {
+func (m *MultiVersionEndpoint) ToSerializable() map[interface{}]interface{} {
 	copies := make(map[interface{}]interface{})
-	m.rwmu.RLock()
-	for k, v := range m.versionMap {
+	m.mutex.RLock()
+	for k, v := range m.versioned {
 		copies[k] = v
 	}
-	m.rwmu.RUnlock()
+	m.mutex.RUnlock()
 	return copies
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
+	"github.com/bytepowered/flux/support"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/spf13/cast"
 	"strings"
@@ -101,7 +101,7 @@ func (j *JwtVerificationFilter) DoFilter(next flux.FilterHandler) flux.FilterHan
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
-		tokenString := cast.ToString(pkg.ScopeLookupContextValue(j.config.lookupToken, ctx))
+		tokenString := cast.ToString(support.ScopeLookupContextValue(j.config.lookupToken, ctx))
 		if "" == tokenString {
 			return ErrorAuthorizationHeaderRequired
 		}

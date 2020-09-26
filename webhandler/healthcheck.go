@@ -3,7 +3,7 @@ package webhandler
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
+	"github.com/bytepowered/flux/support"
 	"net/http"
 )
 
@@ -30,7 +30,7 @@ func NewHealthCheckWebRouteHandlerFactory(config HealthCheckConfig) flux.WebHand
 		logger.Panicw("Health check config, requires: CommandHandlers")
 	}
 	return func(webc flux.WebContext) error {
-		cmd := pkg.ScopeLookupWebContextValue(config.CommandLookupKey, webc)
+		cmd := support.ScopeLookupWebContextValue(config.CommandLookupKey, webc)
 		if cmd == "" {
 			return webc.Write(http.StatusBadRequest, flux.MIMEApplicationJSONCharsetUTF8, HealthStateCmdNotFound)
 		}

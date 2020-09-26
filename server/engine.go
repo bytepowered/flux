@@ -1,4 +1,4 @@
-package internal
+package server
 
 import (
 	"context"
@@ -93,7 +93,7 @@ func (r *RouterEngine) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *RouterEngine) Route(ctx *ContextWrapper) *flux.StateError {
+func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	doMetricEndpoint := func(err *flux.StateError) *flux.StateError {
 		// Access Counter: ProtoName, UpstreamUri, UpstreamMethod
 		proto, uri, method := ctx.EndpointProto(), ctx.endpoint.UpstreamUri, ctx.endpoint.UpstreamMethod

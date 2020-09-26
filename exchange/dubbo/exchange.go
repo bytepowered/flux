@@ -14,9 +14,9 @@ import (
 	_ "github.com/apache/dubbo-go/registry/protocol"
 	_ "github.com/apache/dubbo-go/registry/zookeeper"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"github.com/bytepowered/flux/support"
 	"github.com/spf13/cast"
 	"reflect"
 	"sync"
@@ -129,7 +129,7 @@ func (ex *DubboExchange) Shutdown(_ context.Context) error {
 }
 
 func (ex *DubboExchange) Exchange(ctx flux.Context) *flux.StateError {
-	return internal.InvokeExchanger(ctx, ex)
+	return support.InvokeExchanger(ctx, ex)
 }
 
 func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.StateError) {

@@ -1,4 +1,4 @@
-package internal
+package support
 
 import (
 	"github.com/bytepowered/flux"
@@ -19,7 +19,7 @@ func InvokeExchanger(ctx flux.Context, exchange flux.Exchange) *flux.StateError 
 	if err != nil {
 		return err
 	}
-	// decode response
+	// decode responseWriter
 	decoder, ok := ext.GetExchangeDecoder(endpoint.Protocol)
 	if !ok {
 		return ErrExchangeDecoderNotFound

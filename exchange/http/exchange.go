@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"github.com/bytepowered/flux/support"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
@@ -28,7 +28,7 @@ type exchange struct {
 }
 
 func (ex *exchange) Exchange(ctx flux.Context) *flux.StateError {
-	return internal.InvokeExchanger(ctx, ex)
+	return support.InvokeExchanger(ctx, ex)
 }
 
 func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
