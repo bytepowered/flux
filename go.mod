@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5
 	github.com/apache/dubbo-go v1.5.1
-	github.com/apache/dubbo-go-hessian2 v1.6.2
+	github.com/apache/dubbo-go-hessian2 v1.7.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/bytepowered/cache v0.1.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
