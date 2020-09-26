@@ -1,8 +1,9 @@
-package debug
+package server
 
 import (
-	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
+	"net/http"
 	"strings"
 )
 
@@ -21,6 +22,20 @@ var _typeKeys = []string{"application", "protocol", "http-pattern", "upstream-ur
 var (
 	_filterFactories = make(map[string]func(string) _filter)
 )
+
+func DebugQueryEndpoint(datamap map[string]*internal.MultiVersionEndpoint) http.HandlerFunc {
+	// Endpoint查询
+	json := ext.GetSerializer(ext.TypeNameSerializerJson)
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if data, err := json.Marshal(queryEndpoints(datamap, request)); nil != err {
+			writer.WriteHeader(http.StatusInternalServerError)
+			_, _ = writer.Write([]byte(err.Error()))
+		} else {
+			writer.WriteHeader(http.StatusOK)
+			_, _ = writer.Write(data)
+		}
+	}
+}
 
 func init() {
 	_filterFactories[_typeApplication] = func(query string) _filter {
@@ -45,9 +60,9 @@ func init() {
 	}
 }
 
-func queryEndpoints(data map[string]*internal.MultiVersionEndpoint, webc flux.WebContext) interface{} {
+func queryEndpoints(data map[string]*internal.MultiVersionEndpoint, request *http.Request) interface{} {
 	filters := make([]_filter, 0)
-	query := webc.QueryValues()
+	query := request.URL.Query()
 	for _, key := range _typeKeys {
 		if query := query.Get(key); "" != query {
 			if f, ok := _filterFactories[key]; ok {

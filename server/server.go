@@ -8,9 +8,11 @@ import (
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/webmidware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cast"
 	"net/http"
-	stddebug "runtime/debug"
+	_ "net/http/pprof"
+	"runtime/debug"
 	"strings"
 	"sync"
 )
@@ -27,6 +29,7 @@ const (
 const (
 	HttpServerConfigRootName              = "HttpServer"
 	HttpServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
+	HttpServerConfigKeyFeatureDebugPort   = "feature-debug-port"
 	HttpServerConfigKeyFeatureCorsEnable  = "feature-cors-enable"
 	HttpServerConfigKeyVersionHeader      = "version-header"
 	HttpServerConfigKeyRequestIdHeaders   = "request-id-headers"
@@ -35,12 +38,6 @@ const (
 	HttpServerConfigKeyPort               = "port"
 	HttpServerConfigKeyTlsCertFile        = "tls-cert-file"
 	HttpServerConfigKeyTlsKeyFile         = "tls-key-file"
-)
-
-const (
-	DebugPathVars      = "/debug/vars"
-	DebugPathPprof     = "/debug/pprof/*"
-	DebugPathEndpoints = "/debug/endpoints"
 )
 
 var (
@@ -55,6 +52,7 @@ var (
 	HttpServerConfigDefaults = map[string]interface{}{
 		HttpServerConfigKeyVersionHeader:      DefaultHttpHeaderVersion,
 		HttpServerConfigKeyFeatureDebugEnable: false,
+		HttpServerConfigKeyFeatureDebugPort:   9527,
 		HttpServerConfigKeyAddress:            "0.0.0.0",
 		HttpServerConfigKeyPort:               8080,
 	}
@@ -67,6 +65,7 @@ type HttpContextHookFunc func(flux.WebContext, flux.Context)
 type HttpServer struct {
 	webServer         flux.WebServer
 	webServerWriter   flux.WebServerResponseWriter
+	debugServer       *http.Server
 	httpConfig        *flux.Configuration
 	httpVersionHeader string
 	routerEngine      *internal.RouterEngine
@@ -127,7 +126,14 @@ func (s *HttpServer) InitServer() error {
 
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureDebugEnable) {
-		enableDebugFeature(s, s.httpConfig)
+		servemux := http.DefaultServeMux
+		s.debugServer = &http.Server{
+			Handler: servemux,
+			Addr:    fmt.Sprintf("0.0.0.0:%d", s.httpConfig.GetInt(HttpServerConfigKeyFeatureDebugPort)),
+		}
+		logger.Infow("Start debug server", "addr", s.debugServer.Addr)
+		servemux.Handle("/debug/endpoints", DebugQueryEndpoint(s.mvEndpointMap))
+		servemux.Handle("/debug/metrics", promhttp.Handler())
 	}
 
 	// Registry
@@ -173,6 +179,12 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 	close(s.stateStarted)
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
+	// Start Servers
+	if s.debugServer != nil {
+		go func() {
+			_ = s.debugServer.ListenAndServe()
+		}()
+	}
 	if certFile != "" && keyFile != "" {
 		logger.Infof("HttpServer(HTTP/2 TLS) starting: %s", address)
 		return s.webServer.StartTLS(address, certFile, keyFile)
@@ -186,11 +198,12 @@ func (s *HttpServer) StartServeWith(info flux.BuildInfo, config *flux.Configurat
 func (s *HttpServer) Shutdown(ctx context.Context) error {
 	logger.Info("HttpServer shutdown...")
 	defer close(s.stateStopped)
-	// Stop http server
+	if s.debugServer != nil {
+		_ = s.debugServer.Close()
+	}
 	if err := s.webServer.Shutdown(ctx); nil != err {
 		return err
 	}
-	// Stop routerEngine
 	return s.routerEngine.Shutdown(ctx)
 }
 
@@ -237,6 +250,11 @@ func (s *HttpServer) SetRouteNotFoundHandler(nfh flux.WebRouteHandler) {
 // WebServer 返回WebServer实例
 func (s *HttpServer) WebServer() flux.WebServer {
 	return s.ensure().webServer
+}
+
+// DebugServer 返回DebugServer实例，以及实体是否有效
+func (s *HttpServer) DebugServer() (*http.Server, bool) {
+	return s.debugServer, nil != s.debugServer
 }
 
 // SetRouteNotFoundHandler 设置Http响应数据写入的处理接口
@@ -303,7 +321,7 @@ func (s *HttpServer) newHttpRouteHandler(mvEndpoint *internal.MultiVersionEndpoi
 			if err := recover(); err != nil {
 				tl := logger.Trace(requestId)
 				tl.Errorw("Server dispatch: unexpected error", "error", err)
-				tl.Error(string(stddebug.Stack()))
+				tl.Error(string(debug.Stack()))
 			}
 		}()
 
