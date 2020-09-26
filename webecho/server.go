@@ -30,7 +30,7 @@ type AdaptWebServer struct {
 	server *echo.Echo
 }
 
-func (w *AdaptWebServer) SetRouteNotFoundHandler(fun flux.WebHandler) {
+func (w *AdaptWebServer) SetWebNotFoundHandler(fun flux.WebHandler) {
 	echo.NotFoundHandler = AdaptWebRouteHandler(fun).AdaptFunc
 }
 
@@ -56,7 +56,7 @@ func (w *AdaptWebServer) AddWebHandler(method, pattern string, h flux.WebHandler
 	w.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
 }
 
-func (w *AdaptWebServer) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+func (w *AdaptWebServer) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mf := range m {
 		wms[i] = echo.WrapMiddleware(mf)

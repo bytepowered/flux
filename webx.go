@@ -213,20 +213,17 @@ type WebServer interface {
 	// SetWebErrorHandler 设置Web请求错误处理函数
 	SetWebErrorHandler(h WebErrorHandler)
 
-	// SetRouteNotFoundHandler 设置Web路由不存在处理函数
-	SetRouteNotFoundHandler(h WebHandler)
+	// SetWebNotFoundHandler 设置Web路由不存在处理函数
+	SetWebNotFoundHandler(h WebHandler)
 
 	// AddWebInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddWebInterceptor(m WebInterceptor)
 
-	// AddWebMiddleware 添加全局中间件函数，作用于路由请求后
-	AddWebMiddleware(m WebInterceptor)
-
 	// AddWebHandler 添加请求路由处理函数及其中间件
 	AddWebHandler(method, pattern string, h WebHandler, m ...WebInterceptor)
 
-	// AddHttpHandler 添加http标准请求路由处理函数及其中间件
-	AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
+	// AddWebHttpHandler 添加http标准请求路由处理函数及其中间件
+	AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 
 	// RawWebServer 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
 	RawWebServer() interface{}
