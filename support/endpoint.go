@@ -1,4 +1,4 @@
-package server
+package support
 
 import (
 	"github.com/bytepowered/flux"
