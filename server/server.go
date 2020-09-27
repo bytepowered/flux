@@ -64,12 +64,12 @@ type ContextExchangeFunc func(flux.WebContext, flux.Context)
 // Server
 type HttpServer struct {
 	webServer            flux.WebServer
-	webServerWriter      flux.WebServerResponseWriter
+	serverResponseWriter flux.WebServerResponseWriter
 	debugServer          *http.Server
 	httpConfig           *flux.Configuration
 	httpVersionHeader    string
 	routerEngine         *RouterEngine
-	routerRegistry       flux.Registry
+	endpointRegistry     flux.Registry
 	mvEndpointMap        map[string]*support.MultiVersionEndpoint
 	contextWrappers      sync.Pool
 	contextExchangeFuncs []ContextExchangeFunc
@@ -79,7 +79,7 @@ type HttpServer struct {
 
 func NewHttpServer() *HttpServer {
 	return &HttpServer{
-		webServerWriter:      new(DefaultWebServerResponseWriter),
+		serverResponseWriter: new(DefaultWebServerResponseWriter),
 		routerEngine:         NewRouteEngine(),
 		mvEndpointMap:        make(map[string]*support.MultiVersionEndpoint),
 		contextWrappers:      sync.Pool{New: NewContextWrapper},
@@ -133,13 +133,13 @@ func (s *HttpServer) Initial() error {
 	}
 
 	// Registry
-	if registry, config, err := findRouterRegistry(); nil != err {
+	if registry, config, err := _activeEndpointRegistry(); nil != err {
 		return err
 	} else {
 		if err := s.routerEngine.InitialHook(registry, config); nil != err {
 			return err
 		}
-		s.routerRegistry = registry
+		s.endpointRegistry = registry
 	}
 	return s.routerEngine.Initial()
 }
@@ -153,12 +153,18 @@ func (s *HttpServer) StartServe(info flux.BuildInfo, config *flux.Configuration)
 	if err := s.ensure().routerEngine.Startup(); nil != err {
 		return err
 	}
-	events := make(chan flux.EndpointEvent, 2)
-	defer close(events)
-	if err := s.watchRouterRegistry(events); nil != err {
+	// Watch endpoint register
+	if events, err := s.endpointRegistry.Watch(); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
-		go s.handleRouteRegistryEvent(events)
+		defer func() {
+			close(events)
+		}()
+		go func() {
+			for event := range events {
+				s.HandleEndpointEvent(event)
+			}
+		}()
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
 	certFile := config.GetString(HttpServerConfigKeyTlsCertFile)
@@ -236,7 +242,7 @@ func (s *HttpServer) DebugServer() (*http.Server, bool) {
 
 // SetWebNotFoundHandler 设置Http响应数据写入的处理接口
 func (s *HttpServer) SetWebServerResponseWriter(writer flux.WebServerResponseWriter) {
-	s.webServerWriter = writer
+	s.serverResponseWriter = writer
 }
 
 // AddContextExchangeFunc 添加Http与Flux的Context桥接函数
@@ -244,83 +250,110 @@ func (s *HttpServer) AddContextExchangeFunc(f ContextExchangeFunc) {
 	s.contextExchangeFuncs = append(s.contextExchangeFuncs, f)
 }
 
-func (s *HttpServer) watchRouterRegistry(events chan<- flux.EndpointEvent) error {
-	return s.routerRegistry.WatchEvents(events)
-}
-
-func (s *HttpServer) handleRouteRegistryEvent(events <-chan flux.EndpointEvent) {
-	for event := range events {
-		routeKey := fmt.Sprintf("%s#%s", event.HttpMethod, event.HttpPattern)
-		// Check http method
-		if !isAllowMethod(strings.ToUpper(event.Endpoint.HttpMethod)) {
-			continue
+func (s *HttpServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *support.MultiVersionEndpoint, tracing bool) error {
+	version := webc.HeaderValue(s.httpVersionHeader)
+	endpoint, found := mvendpoint.FindByVersion(version)
+	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
+	defer func() {
+		if err := recover(); err != nil {
+			tl := logger.Trace(requestId)
+			tl.Errorw("Server dispatch: unexpected error", "error", err)
+			tl.Error(string(debug.Stack()))
 		}
-		// Refresh endpoint
-		endpoint := event.Endpoint
-		multi, isRegister := s.loadOrStoreMultiVersionEndpoint(routeKey, &endpoint)
-		switch event.EventType {
-		case flux.EndpointEventAdded:
-			logger.Infow("New endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", event.HttpPattern)
-			multi.Update(endpoint.Version, &endpoint)
-			if isRegister {
-				logger.Infow("Register http router", "method", event.HttpMethod, "pattern", event.HttpPattern)
-				s.webServer.AddWebHandler(event.HttpMethod, event.HttpPattern, s.newHttpRouteHandler(multi))
-			}
-		case flux.EndpointEventUpdated:
-			logger.Infow("Update endpoint", "version", endpoint.Version, "method", event.HttpMethod, "pattern", event.HttpPattern)
-			multi.Update(endpoint.Version, &endpoint)
-		case flux.EndpointEventRemoved:
-			logger.Infow("Delete endpoint", "method", event.HttpMethod, "pattern", event.HttpPattern)
-			multi.Delete(endpoint.Version)
-		}
-	}
-}
-
-func (s *HttpServer) newHttpRouteHandler(mvEndpoint *support.MultiVersionEndpoint) flux.WebHandler {
-	requestLogEnable := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
-	return func(webc flux.WebContext) error {
-		// Multi version selection
-		version := webc.HeaderValue(s.httpVersionHeader)
-		endpoint, found := mvEndpoint.FindByVersion(version)
-		requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
-		defer func() {
-			if err := recover(); err != nil {
-				tl := logger.Trace(requestId)
-				tl.Errorw("Server dispatch: unexpected error", "error", err)
-				tl.Error(string(debug.Stack()))
-			}
-		}()
-
-		if !found {
-			if requestLogEnable {
-				requrl, _ := webc.RequestURL()
-				logger.Trace(requestId).Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
-					"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
-				)
-			}
-			return s.webServerWriter.WriteError(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
-		}
-		ctxw := s.acquire(requestId, webc, endpoint)
-		defer s.release(ctxw)
-		// Context hook
-		for _, hook := range s.contextExchangeFuncs {
-			hook(webc, ctxw)
-		}
-		if requestLogEnable {
+	}()
+	if !found {
+		if tracing {
 			requrl, _ := webc.RequestURL()
-			logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: DISPATCHING",
+			logger.Trace(requestId).Infow("HttpServer routing: ENDPOINT_NOT_FOUND",
 				"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
-				"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
 			)
 		}
-		// Route and responseWriter
-		if err := s.routerEngine.Route(ctxw); nil != err {
-			return s.webServerWriter.WriteError(webc, requestId, ctxw.Response().HeaderValues(), err)
-		} else {
-			rw := ctxw.Response()
-			return s.webServerWriter.WriteBody(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
-		}
+		return s.serverResponseWriter.WriteError(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
 	}
+	ctxw := s.acquireContext(requestId, webc, endpoint)
+	defer s.releaseContext(ctxw)
+	// Context hook
+	for _, ctxex := range s.contextExchangeFuncs {
+		ctxex(webc, ctxw)
+	}
+	if tracing {
+		requrl, _ := webc.RequestURL()
+		logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: DISPATCHING",
+			"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
+			"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
+		)
+	}
+	// Route and response
+	if err := s.routerEngine.Route(ctxw); nil != err {
+		return s.serverResponseWriter.WriteError(webc, requestId, ctxw.Response().HeaderValues(), err)
+	} else {
+		rw := ctxw.Response()
+		return s.serverResponseWriter.WriteBody(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
+	}
+}
+
+func (s *HttpServer) HandleEndpointEvent(event flux.EndpointEvent) {
+	routeMethod := strings.ToUpper(event.Endpoint.HttpMethod)
+	// Check http method
+	if !_isExpectedMethod(routeMethod) {
+		logger.Warnw("Unsupported http method", "method", routeMethod, "pattern", event.HttpPattern)
+		return
+	}
+	pattern := event.HttpPattern
+	routeKey := fmt.Sprintf("%s#%s", routeMethod, pattern)
+	// Refresh endpoint
+	endpoint := event.Endpoint
+	multi, isRegister := s.selectMultiEndpoint(routeKey, &endpoint)
+	switch event.EventType {
+	case flux.EndpointEventAdded:
+		logger.Infow("New endpoint", "version", endpoint.Version, "method", routeMethod, "pattern", pattern)
+		multi.Update(endpoint.Version, &endpoint)
+		if isRegister {
+			logger.Infow("Register http router", "method", routeMethod, "pattern", pattern)
+			s.webServer.AddWebHandler(routeMethod, pattern, s.newWrappedEndpointHandler(multi))
+		}
+	case flux.EndpointEventUpdated:
+		logger.Infow("Update endpoint", "version", endpoint.Version, "method", routeMethod, "pattern", pattern)
+		multi.Update(endpoint.Version, &endpoint)
+	case flux.EndpointEventRemoved:
+		logger.Infow("Delete endpoint", "method", routeMethod, "pattern", pattern)
+		multi.Delete(endpoint.Version)
+	}
+}
+
+func (s *HttpServer) newWrappedEndpointHandler(endpoint *support.MultiVersionEndpoint) flux.WebHandler {
+	enabled := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
+	return func(webc flux.WebContext) error {
+		return s.HandleEndpointRequest(webc, endpoint, enabled)
+	}
+}
+
+func (s *HttpServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*support.MultiVersionEndpoint, bool) {
+	if mve, ok := s.mvEndpointMap[routeKey]; ok {
+		return mve, false
+	} else {
+		mve = support.NewMultiVersionEndpoint(endpoint)
+		s.mvEndpointMap[routeKey] = mve
+		return mve, true
+	}
+}
+
+func (s *HttpServer) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *WrappedContext {
+	ctx := s.contextWrappers.Get().(*WrappedContext)
+	ctx.Reattach(id, webc, endpoint)
+	return ctx
+}
+
+func (s *HttpServer) releaseContext(context *WrappedContext) {
+	context.Release()
+	s.contextWrappers.Put(context)
+}
+
+func (s *HttpServer) ensure() *HttpServer {
+	if s.webServer == nil {
+		logger.Panicf("Call must after InitialServer()")
+	}
+	return s
 }
 
 func (s *HttpServer) handleNotFoundError(webc flux.WebContext) error {
@@ -331,7 +364,6 @@ func (s *HttpServer) handleNotFoundError(webc flux.WebContext) error {
 	}
 }
 
-// handleServerError EchoHttp状态错误处理函数。
 func (s *HttpServer) handleServerError(err error, webc flux.WebContext) {
 	// Http中间件等返回InvokeError错误
 	serr, ok := err.(*flux.StateError)
@@ -344,40 +376,12 @@ func (s *HttpServer) handleServerError(err error, webc flux.WebContext) {
 		}
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
-	if err := s.webServerWriter.WriteError(webc, requestId, http.Header{}, serr); nil != err {
+	if err := s.serverResponseWriter.WriteError(webc, requestId, http.Header{}, serr); nil != err {
 		logger.Trace(requestId).Errorw("Server http responseWriter error", "error", err)
 	}
 }
 
-func (s *HttpServer) loadOrStoreMultiVersionEndpoint(routeKey string, endpoint *flux.Endpoint) (*support.MultiVersionEndpoint, bool) {
-	if mve, ok := s.mvEndpointMap[routeKey]; ok {
-		return mve, false
-	} else {
-		mve = support.NewMultiVersionEndpoint(endpoint)
-		s.mvEndpointMap[routeKey] = mve
-		return mve, true
-	}
-}
-
-func (s *HttpServer) acquire(id string, webc flux.WebContext, endpoint *flux.Endpoint) *WrappedContext {
-	ctx := s.contextWrappers.Get().(*WrappedContext)
-	ctx.Reattach(id, webc, endpoint)
-	return ctx
-}
-
-func (s *HttpServer) release(context *WrappedContext) {
-	context.Release()
-	s.contextWrappers.Put(context)
-}
-
-func (s *HttpServer) ensure() *HttpServer {
-	if s.webServer == nil {
-		logger.Panicf("Call must after InitialServer()")
-	}
-	return s
-}
-
-func findRouterRegistry() (flux.Registry, *flux.Configuration, error) {
+func _activeEndpointRegistry() (flux.Registry, *flux.Configuration, error) {
 	config := flux.NewConfigurationOf(flux.KeyConfigRootRegistry)
 	config.SetDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
 	registryId := config.GetString(flux.KeyConfigRegistryId)
@@ -389,7 +393,7 @@ func findRouterRegistry() (flux.Registry, *flux.Configuration, error) {
 	}
 }
 
-func isAllowMethod(method string) bool {
+func _isExpectedMethod(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut,
 		http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace:
