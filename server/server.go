@@ -60,31 +60,31 @@ var (
 
 // Server
 type HttpServer struct {
-	webServer              flux.WebServer
-	serverResponseWriter   flux.ServerResponseWriter
-	serverErrorWriter      flux.ServerErrorsWriter
-	serverContextExchanges []flux.ServerContextExchange
-	debugServer            *http.Server
-	httpConfig             *flux.Configuration
-	httpVersionHeader      string
-	routerEngine           *RouterEngine
-	endpointRegistry       flux.EndpointRegistry
-	mvEndpointMap          map[string]*support.MultiVersionEndpoint
-	contextWrappers        sync.Pool
-	stateStarted           chan struct{}
-	stateStopped           chan struct{}
+	webServer                 flux.WebServer
+	serverResponseWriter      flux.ServerResponseWriter
+	serverErrorsWriter        flux.ServerErrorsWriter
+	serverContextExchangeFuns []flux.ServerContextExchangeFunc
+	debugServer               *http.Server
+	httpConfig                *flux.Configuration
+	httpVersionHeader         string
+	routerEngine              *RouterEngine
+	endpointRegistry          flux.EndpointRegistry
+	mvEndpointMap             map[string]*support.MultiVersionEndpoint
+	contextWrappers           sync.Pool
+	stateStarted              chan struct{}
+	stateStopped              chan struct{}
 }
 
 func NewHttpServer() *HttpServer {
 	return &HttpServer{
-		serverResponseWriter:   DefaultServerResponseWriter,
-		serverErrorWriter:      DefaultServerErrorsWriter,
-		routerEngine:           NewRouteEngine(),
-		mvEndpointMap:          make(map[string]*support.MultiVersionEndpoint),
-		contextWrappers:        sync.Pool{New: NewContextWrapper},
-		serverContextExchanges: make([]flux.ServerContextExchange, 0, 4),
-		stateStarted:           make(chan struct{}),
-		stateStopped:           make(chan struct{}),
+		serverResponseWriter:      DefaultServerResponseWriter,
+		serverErrorsWriter:        DefaultServerErrorsWriter,
+		routerEngine:              NewRouteEngine(),
+		mvEndpointMap:             make(map[string]*support.MultiVersionEndpoint),
+		contextWrappers:           sync.Pool{New: NewContextWrapper},
+		serverContextExchangeFuns: make([]flux.ServerContextExchangeFunc, 0, 4),
+		stateStarted:              make(chan struct{}),
+		stateStopped:              make(chan struct{}),
 	}
 }
 
@@ -243,12 +243,12 @@ func (s *HttpServer) SetServerResponseWriter(writer flux.ServerResponseWriter) {
 
 // SetServerErrorsWriter 设置Http响应异常消息写入的处理接口
 func (s *HttpServer) SetServerErrorsWriter(writer flux.ServerErrorsWriter) {
-	s.serverErrorWriter = writer
+	s.serverErrorsWriter = writer
 }
 
-// AddServerContextExchange 添加Http与Flux的Context桥接函数
-func (s *HttpServer) AddServerContextExchange(f flux.ServerContextExchange) {
-	s.serverContextExchanges = append(s.serverContextExchanges, f)
+// AddServerContextExchangeFunc 添加Http与Flux的Context桥接函数
+func (s *HttpServer) AddServerContextExchangeFunc(f flux.ServerContextExchangeFunc) {
+	s.serverContextExchangeFuns = append(s.serverContextExchangeFuns, f)
 }
 
 func (s *HttpServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *support.MultiVersionEndpoint, tracing bool) error {
@@ -269,12 +269,12 @@ func (s *HttpServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *sup
 				"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
 			)
 		}
-		return s.serverErrorWriter(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
+		return s.serverErrorsWriter(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
 	}
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
 	// Context hook
-	for _, ctxex := range s.serverContextExchanges {
+	for _, ctxex := range s.serverContextExchangeFuns {
 		ctxex(webc, ctxw)
 	}
 	if tracing {
@@ -286,7 +286,7 @@ func (s *HttpServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *sup
 	}
 	// Route and response
 	if err := s.routerEngine.Route(ctxw); nil != err {
-		return s.serverErrorWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
+		return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
 	} else {
 		rw := ctxw.Response()
 		return s.serverResponseWriter(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
@@ -377,7 +377,7 @@ func (s *HttpServer) handleServerError(err error, webc flux.WebContext) {
 		}
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
-	if err := s.serverErrorWriter(webc, requestId, http.Header{}, serr); nil != err {
+	if err := s.serverErrorsWriter(webc, requestId, http.Header{}, serr); nil != err {
 		logger.Trace(requestId).Errorw("Server http responseWriter error", "error", err)
 	}
 }

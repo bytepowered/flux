@@ -6,16 +6,16 @@ import (
 )
 
 var (
-	_protoNamedExchanges        = make(map[string]flux.Exchange, 4)
-	_protoNamedExchangeDecoders = make(map[string]flux.ExchangeDecoder, 4)
+	_protoNamedExchanges                = make(map[string]flux.Exchange, 4)
+	_protoNamedExchangeResponseDecoders = make(map[string]flux.ExchangeResponseDecoder, 4)
 )
 
 func SetExchange(protoName string, exchange flux.Exchange) {
 	_protoNamedExchanges[protoName] = pkg.RequireNotNil(exchange, "Exchange is nil").(flux.Exchange)
 }
 
-func SetExchangeDecoder(protoName string, decoder flux.ExchangeDecoder) {
-	_protoNamedExchangeDecoders[protoName] = pkg.RequireNotNil(decoder, "ExchangeDecoder is nil").(flux.ExchangeDecoder)
+func SetExchangeResponseDecoder(protoName string, decoder flux.ExchangeResponseDecoder) {
+	_protoNamedExchangeResponseDecoders[protoName] = pkg.RequireNotNil(decoder, "ExchangeResponseDecoder is nil").(flux.ExchangeResponseDecoder)
 }
 
 func GetExchange(protoName string) (flux.Exchange, bool) {
@@ -23,8 +23,8 @@ func GetExchange(protoName string) (flux.Exchange, bool) {
 	return exchange, ok
 }
 
-func GetExchangeDecoder(protoName string) (flux.ExchangeDecoder, bool) {
-	decoder, ok := _protoNamedExchangeDecoders[protoName]
+func GetExchangeResponseDecoder(protoName string) (flux.ExchangeResponseDecoder, bool) {
+	decoder, ok := _protoNamedExchangeResponseDecoders[protoName]
 	return decoder, ok
 }
 

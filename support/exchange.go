@@ -20,7 +20,7 @@ func InvokeExchanger(ctx flux.Context, exchange flux.Exchange) *flux.StateError 
 		return err
 	}
 	// decode responseWriter
-	decoder, ok := ext.GetExchangeDecoder(endpoint.Protocol)
+	decoder, ok := ext.GetExchangeResponseDecoder(endpoint.Protocol)
 	if !ok {
 		return ErrExchangeDecoderNotFound
 	}

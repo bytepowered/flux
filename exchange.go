@@ -12,5 +12,5 @@ type Exchange interface {
 	Invoke(*Endpoint, Context) (interface{}, *StateError)
 }
 
-// ExchangeDecoder 解析Exchange返回的数据
-type ExchangeDecoder func(ctx Context, response interface{}) (statusCode int, headers http.Header, body Object, err error)
+// ExchangeResponseDecoder 解析Exchange返回的数据
+type ExchangeResponseDecoder func(ctx Context, response interface{}) (statusCode int, headers http.Header, body Object, err error)

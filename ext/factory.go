@@ -9,11 +9,11 @@ var (
 	_typeNamedFactories = make(map[string]flux.Factory, 16)
 )
 
-func GetFactory(typeName string) (flux.Factory, bool) {
+func GetTypedFactory(typeName string) (flux.Factory, bool) {
 	f, o := _typeNamedFactories[typeName]
 	return f, o
 }
 
-func SetFactory(typeName string, factory flux.Factory) {
+func SetTypedFactory(typeName string, factory flux.Factory) {
 	_typeNamedFactories[typeName] = pkg.RequireNotNil(factory, "Factory is nil").(flux.Factory)
 }

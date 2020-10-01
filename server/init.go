@@ -13,7 +13,7 @@ func init() {
 	// Default logger factory
 	ext.SetLoggerFactory(DefaultLoggerFactory)
 	// 参数查找函数
-	ext.SetArgumentLookupResolver(flux.DefaultArgumentLookupResolver)
+	ext.SetEndpointArgumentValueLookupFunc(flux.DefaultEndpointArgumentValueLookup)
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()
@@ -25,11 +25,11 @@ func init() {
 	ext.SetEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
 	// Exchanges
 	ext.SetExchange(flux.ProtoHttp, http.NewHttpExchange())
-	ext.SetExchangeDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())
+	ext.SetExchangeResponseDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())
 	ext.SetExchange(flux.ProtoDubbo, dubbo.NewDubboExchange())
-	ext.SetExchangeDecoder(flux.ProtoDubbo, dubbo.NewDubboExchangeDecoder())
+	ext.SetExchangeResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboExchangeDecoder())
 	// Dynamic factories
-	ext.SetFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
-	ext.SetFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
-	ext.SetFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
+	ext.SetTypedFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
+	ext.SetTypedFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
+	ext.SetTypedFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
 }
