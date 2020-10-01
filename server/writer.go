@@ -11,12 +11,7 @@ import (
 	"net/http"
 )
 
-var _ flux.WebServerResponseWriter = new(DefaultWebServerResponseWriter)
-
-// DefaultWebServerResponseWriter 默认Http服务响应数据Writer
-type DefaultWebServerResponseWriter int
-
-func (a *DefaultWebServerResponseWriter) WriteError(webc flux.WebContext, requestId string, header http.Header, serr *flux.StateError) error {
+func DefaultServerErrorsWriter(webc flux.WebContext, requestId string, header http.Header, serr *flux.StateError) error {
 	SetupResponseDefaults(webc, requestId, header)
 	resp := map[string]string{
 		"status":  "error",
@@ -32,7 +27,7 @@ func (a *DefaultWebServerResponseWriter) WriteError(webc flux.WebContext, reques
 	return WriteToHttpChannel(webc, serr.StatusCode, flux.MIMEApplicationJSONCharsetUTF8, bytes)
 }
 
-func (a *DefaultWebServerResponseWriter) WriteBody(webc flux.WebContext, requestId string, header http.Header, status int, body interface{}) error {
+func DefaultServerResponseWriter(webc flux.WebContext, requestId string, header http.Header, status int, body interface{}) error {
 	SetupResponseDefaults(webc, requestId, header)
 	var output []byte
 	if r, ok := body.(io.Reader); ok {

@@ -238,15 +238,6 @@ type WebServer interface {
 	Shutdown(ctx context.Context) error
 }
 
-// WebServerResponseWriter 实现将错误消息和响应数据写入Web服务响应对象
-type WebServerResponseWriter interface {
-	// WriteError 写入Error错误响应数据到WebServer
-	WriteError(webc WebContext, requestId string, header http.Header, error *StateError) error
-
-	// WriteBody 写入Body正常响应数据到WebServer
-	WriteBody(webc WebContext, requestId string, header http.Header, status int, body interface{}) error
-}
-
 /// Wrapper functions
 
 func WrapHttpHandler(h http.Handler) WebHandler {
