@@ -12,8 +12,8 @@ feature-debug-enable = true
 debug-auth-username = "yongjia.chen"
 debug-auth-password = "yongjiapro"
 
-# REGISTRY: 网关元数据配置中心
-[REGISTRY]
+# ENDPOINTREGISTRY: 网关端点注册中心
+[ENDPOINTREGISTRY]
 # 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
 registry-id = "zookeeper"
 root-path = "/flux-metadata"

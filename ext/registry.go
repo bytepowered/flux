@@ -7,18 +7,18 @@ import (
 
 // known ids of registry
 const (
-	RegistryIdDefault   = "active"
-	RegistryIdZookeeper = "zookeeper"
+	EndpointRegistryIdDefault   = "active"
+	EndpointRegistryIdZookeeper = "zookeeper"
 )
 
 var (
 	_identityRegistryFactories = make(map[string]RegistryFactory, 2)
 )
 
-type RegistryFactory func() flux.Registry
+type RegistryFactory func() flux.EndpointRegistry
 
-// SetRegistryFactory 设置指定ID名的Registry工厂函数。
-func SetRegistryFactory(id string, factory RegistryFactory) {
+// SetEndpointRegistryFactory 设置指定ID名的Registry工厂函数。
+func SetEndpointRegistryFactory(id string, factory RegistryFactory) {
 	_identityRegistryFactories[id] = pkg.RequireNotNil(factory, "RegistryFactory is nil").(RegistryFactory)
 }
 

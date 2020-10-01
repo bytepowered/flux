@@ -6,7 +6,7 @@ import (
 	"github.com/bytepowered/flux/exchange/http"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
-	"github.com/bytepowered/flux/registry/zk"
+	"github.com/bytepowered/flux/registry"
 )
 
 func init() {
@@ -19,10 +19,10 @@ func init() {
 	serializer := flux.NewJsonSerializer()
 	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
-	// Registry
+	// Endpoint registry
 	// Default: ZK
-	ext.SetRegistryFactory(ext.RegistryIdDefault, zk.ZookeeperRegistryFactory)
-	ext.SetRegistryFactory(ext.RegistryIdZookeeper, zk.ZookeeperRegistryFactory)
+	ext.SetEndpointRegistryFactory(ext.EndpointRegistryIdDefault, registry.ZkEndpointRegistryFactory)
+	ext.SetEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
 	// Exchanges
 	ext.SetExchange(flux.ProtoHttp, http.NewHttpExchange())
 	ext.SetExchangeDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())

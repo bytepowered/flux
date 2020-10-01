@@ -69,7 +69,7 @@ type HttpServer struct {
 	httpConfig           *flux.Configuration
 	httpVersionHeader    string
 	routerEngine         *RouterEngine
-	endpointRegistry     flux.Registry
+	endpointRegistry     flux.EndpointRegistry
 	mvEndpointMap        map[string]*support.MultiVersionEndpoint
 	contextWrappers      sync.Pool
 	contextExchangeFuncs []ContextExchangeFunc
@@ -132,7 +132,7 @@ func (s *HttpServer) Initial() error {
 		servemux.Handle("/debug/metrics", promhttp.Handler())
 	}
 
-	// Registry
+	// Endpoint registry
 	if registry, config, err := _activeEndpointRegistry(); nil != err {
 		return err
 	} else {
@@ -157,9 +157,6 @@ func (s *HttpServer) StartServe(info flux.BuildInfo, config *flux.Configuration)
 	if events, err := s.endpointRegistry.Watch(); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
-		defer func() {
-			close(events)
-		}()
 		go func() {
 			for event := range events {
 				s.HandleEndpointEvent(event)
@@ -381,10 +378,10 @@ func (s *HttpServer) handleServerError(err error, webc flux.WebContext) {
 	}
 }
 
-func _activeEndpointRegistry() (flux.Registry, *flux.Configuration, error) {
-	config := flux.NewConfigurationOf(flux.KeyConfigRootRegistry)
-	config.SetDefault(flux.KeyConfigRegistryId, ext.RegistryIdDefault)
-	registryId := config.GetString(flux.KeyConfigRegistryId)
+func _activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, error) {
+	config := flux.NewConfigurationOf(flux.KeyConfigRootEndpointRegistry)
+	config.SetDefault(flux.KeyConfigEndpointRegistryId, ext.EndpointRegistryIdDefault)
+	registryId := config.GetString(flux.KeyConfigEndpointRegistryId)
 	logger.Infow("Active router registry", "registry-id", registryId)
 	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
 		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
