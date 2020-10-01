@@ -8,6 +8,10 @@ import (
 	"net/url"
 )
 
+const (
+	keyWebContext = "$internal.web.adapted.context"
+)
+
 var _ flux.WebContext = new(AdaptWebContext)
 
 // AdaptWebContext 默认实现的基于echo框架的WebContext
@@ -160,5 +164,10 @@ func (c *AdaptWebContext) HttpResponseWriter() (http.ResponseWriter, error) {
 }
 
 func toAdaptWebContext(echo echo.Context) flux.WebContext {
-	return &AdaptWebContext{echoc: echo}
+	webc, ok := echo.Get(keyWebContext).(*AdaptWebContext)
+	if !ok {
+		webc = &AdaptWebContext{echoc: echo}
+		echo.Set(keyWebContext, webc)
+	}
+	return webc
 }
