@@ -107,8 +107,8 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 		return err
 	}
 	// Resolve arguments
-	if shouldResolve(ctx, ctx.EndpointArguments()) {
-		if err := resolveArguments(ext.GetArgumentLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
+	if argumentShouldResolve(ctx, ctx.EndpointArguments()) {
+		if err := argumentResolveWith(ext.GetArgumentLookupResolver(), ctx.EndpointArguments(), ctx); nil != err {
 			return doMetricEndpoint(err)
 		}
 	}

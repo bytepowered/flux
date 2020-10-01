@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func shouldResolve(ctx flux.Context, args []flux.Argument) bool {
+func argumentShouldResolve(ctx flux.Context, args []flux.Argument) bool {
 	// HEAD, OPTIONS 不需要解析参数
 	if http.MethodHead == ctx.Method() || http.MethodOptions == ctx.Method() {
 		return false
@@ -18,14 +18,14 @@ func shouldResolve(ctx flux.Context, args []flux.Argument) bool {
 	return true
 }
 
-func resolveArguments(lookupFunc flux.ArgumentLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
+func argumentResolveWith(resolver flux.ArgumentLookupResolver, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
 	for _, arg := range arguments {
 		if flux.ArgumentTypePrimitive == arg.Type {
-			if err := resolve(lookupFunc, arg, ctx); nil != err {
+			if err := resolve(resolver, arg, ctx); nil != err {
 				return err
 			}
 		} else if flux.ArgumentTypeComplex == arg.Type {
-			if err := resolveArguments(lookupFunc, arg.Fields, ctx); nil != err {
+			if err := argumentResolveWith(resolver, arg.Fields, ctx); nil != err {
 				return err
 			}
 		} else {
@@ -36,7 +36,7 @@ func resolveArguments(lookupFunc flux.ArgumentLookupFunc, arguments []flux.Argum
 	return nil
 }
 
-func resolve(lookupFunc flux.ArgumentLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
+func resolve(lookupFunc flux.ArgumentLookupResolver, arg flux.Argument, ctx flux.Context) *flux.StateError {
 	value, err := lookupFunc(arg, ctx)
 	if nil != err {
 		logger.Trace(ctx.RequestId()).Warnw("Failed to lookup argument",

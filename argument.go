@@ -1,10 +1,10 @@
 package flux
 
-// ArgumentLookupFunc 参数值查找函数
-type ArgumentLookupFunc func(argument Argument, context Context) (interface{}, error)
+// ArgumentLookupResolver 参数值查找函数
+type ArgumentLookupResolver func(argument Argument, context Context) (interface{}, error)
 
 // 默认实现：查找Argument的值函数
-func DefaultArgumentValueLookupFunc(arg Argument, ctx Context) (interface{}, error) {
+func DefaultArgumentLookupResolver(arg Argument, ctx Context) (interface{}, error) {
 	request := ctx.Request()
 	switch arg.HttpScope {
 	case ScopeQuery:
