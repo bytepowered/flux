@@ -11,3 +11,11 @@ func TestRequireNotNil(t *testing.T) {
 		RequireNotNil(nil, "should nil, panic")
 	})
 }
+
+func TestRequireNotNilFunc(t *testing.T) {
+	asserter := assert.New(t)
+	var nilFunc func() = nil
+	asserter.Panics(func() {
+		RequireNotNil(nilFunc, "should nil, panic")
+	})
+}
