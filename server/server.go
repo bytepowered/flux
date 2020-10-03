@@ -126,7 +126,6 @@ func (s *HttpServer) Initial() error {
 			Handler: servemux,
 			Addr:    fmt.Sprintf("0.0.0.0:%d", s.httpConfig.GetInt(HttpServerConfigKeyFeatureDebugPort)),
 		}
-		logger.Infow("Start debug server", "addr", s.debugServer.Addr)
 		servemux.Handle("/debug/endpoints", DebugQueryEndpoint(s.mvEndpointMap))
 		servemux.Handle("/debug/metrics", promhttp.Handler())
 	}
@@ -153,13 +152,15 @@ func (s *HttpServer) StartServe(info flux.BuildInfo, config *flux.Configuration)
 		return err
 	}
 	// Watch endpoint register
-	if events, err := s.endpointRegistry.Watch(); nil != err {
+	if events, err := s.endpointRegistry.WatchEvents(); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
 		go func() {
+			logger.Info("Endpoint event loop: starting")
 			for event := range events {
 				s.HandleEndpointEvent(event)
 			}
+			logger.Info("Endpoint event loop: Stopped")
 		}()
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
@@ -171,6 +172,7 @@ func (s *HttpServer) StartServe(info flux.BuildInfo, config *flux.Configuration)
 	// Start Servers
 	if s.debugServer != nil {
 		go func() {
+			logger.Infow("DebugServer starting", "address", s.debugServer.Addr)
 			_ = s.debugServer.ListenAndServe()
 		}()
 	}

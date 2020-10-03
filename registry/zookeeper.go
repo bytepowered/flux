@@ -50,7 +50,7 @@ func (r *ZookeeperEndpointRegistry) Init(config *flux.Configuration) error {
 	return r.retriever.InitWith(config)
 }
 
-func (r *ZookeeperEndpointRegistry) Watch() (<-chan flux.EndpointEvent, error) {
+func (r *ZookeeperEndpointRegistry) WatchEvents() (<-chan flux.EndpointEvent, error) {
 	if exist, _ := r.retriever.Exists(r.path); !exist {
 		if err := r.retriever.Create(r.path); nil != err {
 			return nil, fmt.Errorf("init metadata node: %w", err)
@@ -66,7 +66,7 @@ func (r *ZookeeperEndpointRegistry) Watch() (<-chan flux.EndpointEvent, error) {
 		logger.Infow("Receive child change event", "event", event)
 		if event.EventType == remoting.EventTypeChildAdd {
 			if err := r.retriever.WatchNodeData("", event.Path, nodeListener); nil != err {
-				logger.Warnw("Watch node data", "error", err)
+				logger.Warnw("WatchEvents node data", "error", err)
 			}
 		}
 	})
@@ -88,28 +88,29 @@ func (r *ZookeeperEndpointRegistry) Shutdown(ctx context.Context) error {
 	return r.retriever.Shutdown(ctx)
 }
 
-func toEndpointEvent(data []byte, etype remoting.EventType) (fxEvt flux.EndpointEvent, ok bool) {
+func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.EndpointEvent, ok bool) {
 	// Check json text
-	size := len(data)
-	if size < len("{\"k\":0}") || (data[0] != '[' && data[size-1] != '}') {
+	size := len(bytes)
+	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
+		logger.Infow("Invalid endpoint event data.size", "data", string(bytes))
 		return _invalidEndpointEvent, false
 	}
 	endpoint := flux.Endpoint{}
 	json := ext.GetSerializer(ext.TypeNameSerializerJson)
-	if err := json.Unmarshal(data, &endpoint); nil != err {
-		logger.Warnf("Parsing invalid endpoint registry, evt.type: %s, evt.data: %s", etype, string(data), err)
+	if err := json.Unmarshal(bytes, &endpoint); nil != err {
+		logger.Warnw("Parsing invalid endpoint registry",
+			"event-type: ", etype, "data: %s", etype, string(bytes), "error", err)
 		return _invalidEndpointEvent, false
 	}
-	logger.Debugf("Parsed endpoint registry, event: %s, method: %s, uri-pattern: %s", etype, endpoint.HttpMethod, endpoint.HttpPattern)
-	if endpoint.HttpPattern == "" {
-		logger.Infof("illegal http-pattern, data: %s", string(data))
+	logger.Infow("Received endpoint event",
+		"event-type", etype, "method", endpoint.HttpMethod, "pattern", endpoint.HttpPattern, "data", string(bytes))
+	if endpoint.HttpPattern == "" || endpoint.HttpMethod == "" {
+		logger.Infof("illegal http-pattern, data: %s", string(bytes))
 		return _invalidEndpointEvent, false
 	}
-	// Init arg value
 	for i := range endpoint.Arguments {
-		_initArgumentValue(&endpoint.Arguments[i])
+		_initializeArgument(&endpoint.Arguments[i])
 	}
-
 	event := flux.EndpointEvent{
 		HttpMethod:  endpoint.HttpMethod,
 		HttpPattern: endpoint.HttpPattern,
@@ -128,9 +129,9 @@ func toEndpointEvent(data []byte, etype remoting.EventType) (fxEvt flux.Endpoint
 	return event, true
 }
 
-func _initArgumentValue(arg *flux.Argument) {
+func _initializeArgument(arg *flux.Argument) {
 	arg.HttpValue = flux.NewWrapValue(nil)
 	for i := range arg.Fields {
-		_initArgumentValue(&arg.Fields[i])
+		_initializeArgument(&arg.Fields[i])
 	}
 }
