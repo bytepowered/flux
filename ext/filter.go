@@ -2,7 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
-	"reflect"
+	"github.com/bytepowered/flux/pkg"
 	"sort"
 )
 
@@ -24,37 +24,34 @@ var (
 
 // AddGlobalFilter 注册全局Filter；
 func AddGlobalFilter(v interface{}) {
-	f, ok := v.(flux.Filter)
-	if !ok || nil == f {
-		NewLogger().Panicf("Not a Filter: type=%s, v=%+v", reflect.TypeOf(v), v)
-	}
-	_globalFilter = append(_globalFilter, filterWrapper{filter: f, order: orderOf(v)})
+	_globalFilter = _checkedAppendFilter(v, _globalFilter)
 	sort.Sort(filterArray(_globalFilter))
 }
 
 // AddSelectiveFilter 注册可选Filter；
 func AddSelectiveFilter(v interface{}) {
-	f, ok := v.(flux.Filter)
-	if !ok || nil == f {
-		NewLogger().Panicf("Not a Filter: type=%T, v=%+v", v, v)
-	}
-	_selectiveFilter = append(_selectiveFilter, filterWrapper{filter: f, order: orderOf(v)})
+	_selectiveFilter = _checkedAppendFilter(v, _selectiveFilter)
 	sort.Sort(filterArray(_selectiveFilter))
+}
+
+func _checkedAppendFilter(v interface{}, in []filterWrapper) (out []filterWrapper) {
+	f := pkg.RequireNotNil(v, "Not a filter").(flux.Filter)
+	return append(in, filterWrapper{filter: f, order: orderOf(v)})
 }
 
 // SelectiveFilters 获取已排序的Filter列表
 func SelectiveFilters() []flux.Filter {
-	out := make([]flux.Filter, len(_selectiveFilter))
-	for i, v := range _selectiveFilter {
-		out[i] = v.filter
-	}
-	return out
+	return _getFilters(_selectiveFilter)
 }
 
 // GlobalFilters 获取已排序的全局Filter列表
 func GlobalFilters() []flux.Filter {
-	out := make([]flux.Filter, len(_globalFilter))
-	for i, v := range _globalFilter {
+	return _getFilters(_globalFilter)
+}
+
+func _getFilters(in []filterWrapper) []flux.Filter {
+	out := make([]flux.Filter, len(in))
+	for i, v := range in {
 		out[i] = v.filter
 	}
 	return out
