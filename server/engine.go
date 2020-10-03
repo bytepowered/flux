@@ -24,11 +24,11 @@ func NewRouteEngine() *RouterEngine {
 
 func (r *RouterEngine) Initial() error {
 	logger.Infof("RouterEngine initialing")
-	// Exchanges
-	for proto, ex := range ext.Exchanges() {
-		ns := "EXCHANGE." + proto
-		logger.Infow("Load exchange", "proto", proto, "type", reflect.TypeOf(ex), "config-ns", ns)
-		if err := r.InitialHook(ex, flux.NewConfigurationOf(ns)); nil != err {
+	// Backends
+	for proto, bk := range ext.Backends() {
+		ns := "BACKEND." + proto
+		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(bk), "config-ns", ns)
+		if err := r.InitialHook(bk, flux.NewConfigurationOf(ns)); nil != err {
 			return err
 		}
 	}
@@ -128,14 +128,14 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	// Walk filters
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
 		protoName := ctx.EndpointProto()
-		if exchange, ok := ext.GetExchange(protoName); !ok {
+		if backend, ok := ext.GetBackend(protoName); !ok {
 			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL: %s", protoName)}
 		} else {
-			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Exchange", protoName))
-			ret := exchange.Exchange(ctx)
+			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Backend", protoName))
+			ret := backend.Exchange(ctx)
 			timer.ObserveDuration()
 			return ret
 		}

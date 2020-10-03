@@ -158,8 +158,8 @@ func (j *JwtVerificationFilter) jwtCertKeyFactory(_ flux.Context) func(token *jw
 }
 
 func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject string, claims jwt.MapClaims) (interface{}, *time.Duration, error) {
-	exchange, _ := ext.GetExchange(proto)
-	if ret, err := exchange.Invoke(&flux.Endpoint{
+	backend, _ := ext.GetBackend(proto)
+	if ret, err := backend.Invoke(&flux.Endpoint{
 		UpstreamMethod: j.config.upstreamMethod,
 		UpstreamUri:    j.config.upstreamUri,
 		Arguments: []flux.Argument{

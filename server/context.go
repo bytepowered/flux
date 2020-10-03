@@ -85,10 +85,6 @@ func (c *WrappedContext) EndpointArguments() []flux.Argument {
 	return c.endpoint.Arguments
 }
 
-func (c *WrappedContext) WebExchange() flux.WebContext {
-	return c.webc
-}
-
 func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {
 	c.webc = webc
 	c.requestReader.reattach(webc)

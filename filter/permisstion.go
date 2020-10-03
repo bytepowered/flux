@@ -86,9 +86,9 @@ func (p *PermissionVerificationFilter) Init(config *flux.Configuration) error {
 			return func(subjectId, method, pattern string) (bool, *time.Duration, error) {
 				switch strings.ToUpper(proto) {
 				case flux.ProtoDubbo:
-					return _loadPermByExchange(flux.ProtoDubbo, host, method, uri, subjectId, method, pattern)
+					return _loadPermByBackend(flux.ProtoDubbo, host, method, uri, subjectId, method, pattern)
 				case flux.ProtoHttp:
-					return _loadPermByExchange(flux.ProtoHttp, host, method, uri, subjectId, method, pattern)
+					return _loadPermByBackend(flux.ProtoHttp, host, method, uri, subjectId, method, pattern)
 				default:
 					return false, cache.NoExpiration, fmt.Errorf("unknown verification protocol: %s", proto)
 				}
@@ -136,16 +136,18 @@ func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.St
 	}
 }
 
-func _loadPermByExchange(proto string, host, method, uri string, reqSubjectId, reqMethod, reqPattern string) (bool, *time.Duration, error) {
-	exchange, _ := ext.GetExchange(proto)
-	if ret, err := exchange.Invoke(&flux.Endpoint{
-		UpstreamHost:   host,
-		UpstreamMethod: method,
-		UpstreamUri:    uri,
+func _loadPermByBackend(proto string,
+	backendHost, backendMethod, backendUri string,
+	argSubjectId, argMethod, argPattern string) (bool, *time.Duration, error) {
+	backend, _ := ext.GetBackend(proto)
+	if ret, err := backend.Invoke(&flux.Endpoint{
+		UpstreamHost:   backendHost,
+		UpstreamMethod: backendMethod,
+		UpstreamUri:    backendUri,
 		Arguments: []flux.Argument{
-			ext.NewStringArgument("subjectId", reqSubjectId),
-			ext.NewStringArgument("method", reqMethod),
-			ext.NewStringArgument("pattern", reqPattern),
+			ext.NewStringArgument("subjectId", argSubjectId),
+			ext.NewStringArgument("method", argMethod),
+			ext.NewStringArgument("pattern", argPattern),
 		},
 	}, nil); nil != err {
 		return false, cache.NoExpiration, err

@@ -7,14 +7,14 @@ import (
 )
 
 var (
-	ErrUnknownHttpExchangeResponse = errors.New("EXCHANGE:UNKNOWN_HTTP_RESPONSE")
+	ErrUnknownHttpBackendResponse = errors.New("BACKEND:UNKNOWN_HTTP_RESPONSE")
 )
 
-func NewHttpExchangeDecoder() flux.ExchangeResponseDecoder {
+func NewHttpBackendResponseDecoder() flux.BackendResponseDecoder {
 	return func(ctx flux.Context, value interface{}) (statusCode int, headers http.Header, body flux.Object, err error) {
 		resp, ok := value.(*http.Response)
 		if !ok {
-			return http.StatusInternalServerError, http.Header{}, nil, ErrUnknownHttpExchangeResponse
+			return http.StatusInternalServerError, http.Header{}, nil, ErrUnknownHttpBackendResponse
 		}
 		return resp.StatusCode, resp.Header, resp.Body, nil
 	}

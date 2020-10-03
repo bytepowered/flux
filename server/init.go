@@ -2,8 +2,8 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/exchange/dubbo"
-	"github.com/bytepowered/flux/exchange/http"
+	"github.com/bytepowered/flux/backend/dubbo"
+	"github.com/bytepowered/flux/backend/http"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
 	"github.com/bytepowered/flux/registry"
@@ -23,11 +23,11 @@ func init() {
 	// Default: ZK
 	ext.SetEndpointRegistryFactory(ext.EndpointRegistryIdDefault, registry.ZkEndpointRegistryFactory)
 	ext.SetEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
-	// Exchanges
-	ext.SetExchange(flux.ProtoHttp, http.NewHttpExchange())
-	ext.SetExchangeResponseDecoder(flux.ProtoHttp, http.NewHttpExchangeDecoder())
-	ext.SetExchange(flux.ProtoDubbo, dubbo.NewDubboExchange())
-	ext.SetExchangeResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboExchangeDecoder())
+	// Backends
+	ext.SetBackend(flux.ProtoHttp, http.NewHttpBackend())
+	ext.SetBackendResponseDecoder(flux.ProtoHttp, http.NewHttpBackendResponseDecoder())
+	ext.SetBackend(flux.ProtoDubbo, dubbo.NewDubboBackend())
+	ext.SetBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendDecoder())
 	// Dynamic factories
 	ext.SetTypedFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetTypedFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)

@@ -15,24 +15,26 @@ import (
 	"time"
 )
 
-func NewHttpExchange() *exchange {
-	return &exchange{
+func NewHttpBackend() *HttpBackend {
+	return &HttpBackend{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
 	}
 }
 
-type exchange struct {
+type HttpBackend struct {
 	httpClient *http.Client
 }
 
-func (ex *exchange) Exchange(ctx flux.Context) *flux.StateError {
-	return support.InvokeExchanger(ctx, ex)
+func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
+	return support.InvokeBackendExchange(ctx, ex)
 }
 
-func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
-	newRequest, err := ex.Assemble(target, ctx.Request())
+func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
+	inURL, _ := ctx.Request().RequestURL()
+	bodyReader, _ := ctx.Request().RequestBodyReader()
+	newRequest, err := ex.Assemble(target, inURL, bodyReader)
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -59,7 +61,7 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 		}
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayExchange,
+			ErrorCode:  flux.ErrorCodeGatewayBackend,
 			Message:    msg,
 			Internal:   err,
 		}
@@ -67,17 +69,12 @@ func (ex *exchange) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}
 	return resp, nil
 }
 
-func (ex *exchange) Assemble(endpoint *flux.Endpoint, inRequest flux.RequestReader) (*http.Request, error) {
+func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyReader io.ReadCloser) (*http.Request, error) {
 	inParams := endpoint.Arguments
-	inURL, _ := inRequest.RequestURL()
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
-	reader, err := inRequest.RequestBodyReader()
-	if nil != err {
-		return nil, fmt.Errorf("get body by func, err: %w", err)
-	}
-	defer pkg.SilentlyCloseFunc(reader)
-	var newBodyReader io.Reader = reader
+	defer pkg.SilentlyCloseFunc(bodyReader)
+	var newBodyReader io.Reader = bodyReader
 	if len(inParams) > 0 {
 		// 如果Endpoint定义了参数，即表示限定参数传递
 		data := _toHttpUrlValues(inParams).Encode()
@@ -119,6 +116,6 @@ func (ex *exchange) Assemble(endpoint *flux.Endpoint, inRequest flux.RequestRead
 	if http.MethodGet != endpoint.UpstreamMethod {
 		newRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	newRequest.Header.Set("User-Agent", "FluxGo/Exchange/v1")
+	newRequest.Header.Set("User-Agent", "FluxGo/Backend/v1")
 	return newRequest, err
 }

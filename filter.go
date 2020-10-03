@@ -4,7 +4,7 @@ import "fmt"
 
 const (
 	ErrorCodeGatewayInternal  = "GATEWAY:INTERNAL"
-	ErrorCodeGatewayExchange  = "GATEWAY:EXCHANGE"
+	ErrorCodeGatewayBackend   = "GATEWAY:BACKEND"
 	ErrorCodeGatewayEndpoint  = "GATEWAY:ENDPOINT"
 	ErrorCodeGatewayCircuited = "GATEWAY:CIRCUITED"
 	ErrorCodeRequestInvalid   = "REQUEST:INVALID"

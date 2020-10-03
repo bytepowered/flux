@@ -29,10 +29,10 @@ const (
 )
 
 var (
-	ErrInvalidHeaders  = errors.New("DUEXRPC:INVALID_HEADERS")
-	ErrInvalidStatus   = errors.New("DUEXRPC:INVALID_STATUS")
-	ErrMessageInvoke   = "DUEXRPC:INVOKE"
-	ErrMessageAssemble = "DUEXRPC:ASSEMBLE"
+	ErrInvalidHeaders  = errors.New("DUBBRPC:INVALID_HEADERS")
+	ErrInvalidStatus   = errors.New("DUBBRPC:INVALID_STATUS")
+	ErrMessageInvoke   = "DUBBRPC:INVOKE"
+	ErrMessageAssemble = "DUBBRPC:ASSEMBLE"
 )
 
 var (
@@ -63,8 +63,8 @@ func SetRegistryGlobalAlias(alias map[string]string) {
 	registryGlobalAlias = alias
 }
 
-// 集成DubboRPC框架的Exchange
-type DubboExchange struct {
+// 集成DubboRPC框架的Backend
+type DubboBackend struct {
 	// 可外部配置
 	OptionFuncs  []OptionFunc
 	AssembleFunc AssembleFunc
@@ -74,19 +74,19 @@ type DubboExchange struct {
 	referenceMu   sync.RWMutex
 }
 
-func NewDubboExchange() flux.Exchange {
-	return &DubboExchange{
+func NewDubboBackend() flux.Backend {
+	return &DubboBackend{
 		OptionFuncs:  make([]OptionFunc, 0),
 		AssembleFunc: assembleHessianValues,
 	}
 }
 
-func (ex *DubboExchange) Configuration() *flux.Configuration {
+func (ex *DubboBackend) Configuration() *flux.Configuration {
 	return ex.configuration
 }
 
-func (ex *DubboExchange) Init(config *flux.Configuration) error {
-	logger.Info("Dubbo Exchange initializing")
+func (ex *DubboBackend) Init(config *flux.Configuration) error {
+	logger.Info("Dubbo backend initializing")
 	config.SetDefaults(map[string]interface{}{
 		configKeyReferenceDelay: time.Millisecond * 30,
 		configKeyTraceEnable:    false,
@@ -98,7 +98,7 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	})
 	ex.configuration = config
 	ex.traceEnable = config.GetBool(configKeyTraceEnable)
-	logger.Infow("Dubbo Exchange request trace", "enable", ex.traceEnable)
+	logger.Infow("Dubbo backend request trace", "enable", ex.traceEnable)
 	// Set default impl if not present
 	if nil == ex.OptionFuncs {
 		ex.OptionFuncs = make([]OptionFunc, 0)
@@ -113,26 +113,26 @@ func (ex *DubboExchange) Init(config *flux.Configuration) error {
 	registry.SetGlobalAlias(GetRegistryGlobalAlias())
 	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
 		consumerc.Registries[id] = rconfig
-		logger.Infow("Dubbo exchange setup registry", "id", id, "config", rconfig)
+		logger.Infow("Dubbo backend setup registry", "id", id, "config", rconfig)
 	}
 	dubgo.SetConsumerConfig(consumerc)
 	return nil
 }
 
-func (ex *DubboExchange) Startup() error {
+func (ex *DubboBackend) Startup() error {
 	return nil
 }
 
-func (ex *DubboExchange) Shutdown(_ context.Context) error {
+func (ex *DubboBackend) Shutdown(_ context.Context) error {
 	dubgo.BeforeShutdown()
 	return nil
 }
 
-func (ex *DubboExchange) Exchange(ctx flux.Context) *flux.StateError {
-	return support.InvokeExchanger(ctx, ex)
+func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
+	return support.InvokeBackendExchange(ctx, ex)
 }
 
-func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.StateError) {
 	types, values := ex.AssembleFunc(target.Arguments)
 	// 在测试场景中，fluxContext可能为nil
 	attachments := make(map[string]interface{})
@@ -170,7 +170,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 		trace.Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
-			ErrorCode:  flux.ErrorCodeGatewayExchange,
+			ErrorCode:  flux.ErrorCodeGatewayBackend,
 			Message:    ErrMessageInvoke,
 			Internal:   err,
 		}
@@ -182,7 +182,7 @@ func (ex *DubboExchange) Invoke(target *flux.Endpoint, fxctx flux.Context) (inte
 	}
 }
 
-func (ex *DubboExchange) lookupService(endpoint *flux.Endpoint) *dubgo.GenericService {
+func (ex *DubboBackend) lookupService(endpoint *flux.Endpoint) *dubgo.GenericService {
 	ex.referenceMu.Lock()
 	defer ex.referenceMu.Unlock()
 	id := endpoint.UpstreamUri

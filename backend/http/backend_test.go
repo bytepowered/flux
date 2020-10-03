@@ -11,8 +11,8 @@ import (
 	"testing"
 )
 
-func TestExchange_HttpbinMethods(t *testing.T) {
-	ex := NewHttpExchange()
+func TestBackend_HttpbinMethods(t *testing.T) {
+	backend := NewHttpBackend()
 	for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
 		inReq, _ := http.NewRequest(method, "http://localhost:8080/"+method, nil)
 		inReq.GetBody = func() (io.ReadCloser, error) {
@@ -22,7 +22,8 @@ func TestExchange_HttpbinMethods(t *testing.T) {
 				return ioutil.NopCloser(bytes.NewReader([]byte{})), nil
 			}
 		}
-		newReq, err := ex.Assemble(newHttpBinEndpoint(method), inReq)
+		bodyReader, _ := inReq.GetBody()
+		newReq, err := backend.Assemble(newHttpBinEndpoint(method), inReq.URL, bodyReader)
 		if nil != err {
 			t.Fatalf("invoke err: %s", err)
 		}
