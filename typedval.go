@@ -11,10 +11,12 @@ const (
 	JavaUtilListClassName    = "java.util.List"
 )
 
-type TypedValueResolver func(typeName string, genericTypes []string, value interface{}) (interface{}, error)
+// TypedValueResolver 将未定类型的值，按指定类型以及泛型类型转换
+type TypedValueResolver func(typeClassName string, genericTypes []string, value interface{}) (interface{}, error)
 
-type SimpleTypedValueResolver func(value interface{}) (interface{}, error)
+// TypedValueResolveWrapper 包装转换函数
+type TypedValueResolveWrapper func(value interface{}) (interface{}, error)
 
-func (s SimpleTypedValueResolver) ResolveFunc(_ string, _ []string, value interface{}) (interface{}, error) {
+func (s TypedValueResolveWrapper) ResolveFunc(_ string, _ []string, value interface{}) (interface{}, error) {
 	return s(value)
 }

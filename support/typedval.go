@@ -8,25 +8,25 @@ import (
 )
 
 var (
-	stringResolver = flux.SimpleTypedValueResolver(func(value interface{}) (interface{}, error) {
+	stringResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToString(value), nil
 	}).ResolveFunc
-	integerResolver = flux.SimpleTypedValueResolver(func(value interface{}) (interface{}, error) {
+	integerResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToInt(value), nil
 	}).ResolveFunc
-	longResolver = flux.SimpleTypedValueResolver(func(value interface{}) (interface{}, error) {
+	longResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToInt64(value), nil
 	}).ResolveFunc
-	float32Resolver = flux.SimpleTypedValueResolver(func(value interface{}) (interface{}, error) {
+	float32Resolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat32(value), nil
 	}).ResolveFunc
-	float64Resolver = flux.SimpleTypedValueResolver(func(value interface{}) (interface{}, error) {
+	float64Resolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat64(value), nil
 	}).ResolveFunc
-	booleanResolver = flux.SimpleTypedValueResolver(func(value interface{}) (interface{}, error) {
+	booleanResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToBool(value), nil
 	}).ResolveFunc
-	mapResolver = flux.SimpleTypedValueResolver(func(value interface{}) (interface{}, error) {
+	mapResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return _toMap(value)
 	}).ResolveFunc
 	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value interface{}) (interface{}, error) {
