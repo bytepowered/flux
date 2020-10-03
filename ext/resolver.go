@@ -12,8 +12,8 @@ var (
 	_typedValueResolvers = make(map[string]flux.TypedValueResolver, 16)
 )
 
-// RegisterTypedValueResolver 添加值类型解析函数
-func RegisterTypedValueResolver(typeName string, resolver flux.TypedValueResolver) {
+// SetTypedValueResolver 添加值类型解析函数
+func SetTypedValueResolver(typeName string, resolver flux.TypedValueResolver) {
 	_typedValueResolvers[typeName] = resolver
 }
 

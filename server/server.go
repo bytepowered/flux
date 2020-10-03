@@ -389,8 +389,8 @@ func _activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, erro
 	config.SetDefault(flux.KeyConfigEndpointRegistryId, ext.EndpointRegistryIdDefault)
 	registryId := config.GetString(flux.KeyConfigEndpointRegistryId)
 	logger.Infow("Active router registry", "registry-id", registryId)
-	if factory, ok := ext.GetRegistryFactory(registryId); !ok {
-		return nil, config, fmt.Errorf("RegistryFactory not found, id: %s", registryId)
+	if factory, ok := ext.GetEndpointRegistryFactory(registryId); !ok {
+		return nil, config, fmt.Errorf("EndpointRegistryFactory not found, id: %s", registryId)
 	} else {
 		return factory(), config, nil
 	}
