@@ -31,6 +31,7 @@ type ZookeeperEndpointRegistry struct {
 func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 	return &ZookeeperEndpointRegistry{
 		retriever: zk.NewZkRetriever(),
+		events:    make(chan flux.EndpointEvent, 4),
 	}
 }
 
@@ -58,6 +59,11 @@ func (r *ZookeeperEndpointRegistry) WatchEvents() (<-chan flux.EndpointEvent, er
 	}
 	logger.Infow("Zookeeper watching metadata node", "path", r.path)
 	nodeListener := func(event remoting.NodeEvent) {
+		defer func() {
+			if r := recover(); nil != r {
+				logger.Errorw("Zookeeper node listening", "event", event, "error", r)
+			}
+		}()
 		if evt, ok := toEndpointEvent(event.Data, event.EventType); ok {
 			r.events <- evt
 		}
