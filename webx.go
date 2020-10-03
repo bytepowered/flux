@@ -97,10 +97,10 @@ type (
 	// WebHandler 定义处理Web请求的处理函数
 	WebHandler func(WebContext) error
 
-	// WebHandler 定义Web服务处理异常错误的处理函数
+	// WebErrorHandler 定义Web服务处理异常错误的处理函数
 	WebErrorHandler func(error, WebContext)
 
-	// WebSkipper 用于部分Middleware逻辑，实现忽略部分请求的功能；
+	// WebSkipper 用于部分WebInterceptor逻辑，实现忽略部分请求的功能；
 	WebSkipper func(WebContext) bool
 )
 
