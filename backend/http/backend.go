@@ -49,7 +49,7 @@ func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interfac
 		} else {
 			newRequest.Header = header
 		}
-		for k, v := range ctx.Attachments() {
+		for k, v := range ctx.Attributes() {
 			newRequest.Header.Set(k, cast.ToString(v))
 		}
 	}

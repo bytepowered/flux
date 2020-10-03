@@ -61,7 +61,7 @@ func ScopeLookupContextValue(lookup string, ctx flux.Context) interface{} {
 	case flux.ScopeHeader:
 		return req.HeaderValue(key)
 	case flux.ScopeAttr:
-		v, _ := ctx.GetAttachment(key)
+		v, _ := ctx.GetAttribute(key)
 		return v
 	default:
 		return nil

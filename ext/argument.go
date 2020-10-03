@@ -11,11 +11,11 @@ var (
 	_argumentValueLookupFunc flux.ArgumentValueLookupFunc
 )
 
-func SetEndpointArgumentValueLookupFunc(r flux.ArgumentValueLookupFunc) {
+func SetArgumentValueLookupFunc(r flux.ArgumentValueLookupFunc) {
 	_argumentValueLookupFunc = pkg.RequireNotNil(r, "ArgumentValueLookupFunc is nil").(flux.ArgumentValueLookupFunc)
 }
 
-func GetEndpointArgumentValueLookupFunc() flux.ArgumentValueLookupFunc {
+func GetArgumentValueLookupFunc() flux.ArgumentValueLookupFunc {
 	return _argumentValueLookupFunc
 }
 

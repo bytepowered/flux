@@ -22,9 +22,9 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx Context) (value inter
 	case ScopeForm:
 		return request.FormValue(key), nil
 	case ScopeAttrs:
-		return ctx.Attachments(), nil
+		return ctx.Attributes(), nil
 	case ScopeAttr:
-		value, _ := ctx.GetAttachment(key)
+		value, _ := ctx.GetAttribute(key)
 		return value, nil
 	case ScopeAuto:
 		fallthrough
@@ -37,7 +37,7 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx Context) (value inter
 			return v, nil
 		} else if v := request.HeaderValue(key); "" != v {
 			return v, nil
-		} else if v, _ := ctx.GetAttachment(key); "" != v {
+		} else if v, _ := ctx.GetAttribute(key); "" != v {
 			return v, nil
 		} else {
 			return nil, nil

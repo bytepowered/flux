@@ -123,14 +123,14 @@ type Context interface {
 	// EndpointProto 返回Endpoint的协议名称
 	EndpointProto() string
 
-	// Attachments 返回所有Attributes键值对；只读；
-	Attachments() map[string]interface{}
+	// Attributes 返回所有Attributes键值对；只读；
+	Attributes() map[string]interface{}
 
-	// GetAttachment 获取指定key的Attachment，返回值和是否存在标识
-	GetAttachment(key string) (interface{}, bool)
+	// GetAttribute 获取指定key的Attribute，返回值和是否存在标识
+	GetAttribute(key string) (interface{}, bool)
 
-	// SetAttachment 向Context添加Attribute键值对
-	SetAttachment(name string, value interface{})
+	// SetAttribute 向Context添加Attribute键值对
+	SetAttribute(name string, value interface{})
 
 	// 获取当前请求范围的值
 	GetValue(name string) (interface{}, bool)

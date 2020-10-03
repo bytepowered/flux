@@ -110,7 +110,7 @@ func (*PermissionVerificationFilter) TypeId() string {
 }
 
 func (p *PermissionVerificationFilter) doVerification(ctx flux.Context) *flux.StateError {
-	jwtSubjectId, ok := ctx.GetAttachment(flux.XJwtSubject)
+	jwtSubjectId, ok := ctx.GetAttribute(flux.XJwtSubject)
 	if !ok {
 		return ErrPermissionSubjectNotFound
 	}

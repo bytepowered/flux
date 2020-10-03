@@ -111,9 +111,9 @@ func (j *JwtVerificationFilter) DoFilter(next flux.FilterHandler) flux.FilterHan
 			// Claims to scoped
 			ctx.SetValue(KeyScopedValueJwtClaims, claims)
 			// JWT Storage
-			ctx.SetAttachment(flux.XJwtToken, tokenString)
-			ctx.SetAttachment(flux.XJwtIssuer, claims[j.config.issuerKey])
-			ctx.SetAttachment(flux.XJwtSubject, claims[j.config.subjectKey])
+			ctx.SetAttribute(flux.XJwtToken, tokenString)
+			ctx.SetAttribute(flux.XJwtIssuer, claims[j.config.issuerKey])
+			ctx.SetAttribute(flux.XJwtSubject, claims[j.config.subjectKey])
 			return next(ctx)
 		}
 	}
