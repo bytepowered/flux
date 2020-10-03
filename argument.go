@@ -1,10 +1,10 @@
 package flux
 
-// EndpointArgumentValueLookupFunc 参数值查找函数
-type EndpointArgumentValueLookupFunc func(scope, key string, context Context) (value interface{}, err error)
+// ArgumentValueLookupFunc 参数值查找函数
+type ArgumentValueLookupFunc func(scope, key string, context Context) (value interface{}, err error)
 
 // 默认实现：查找Argument的值函数
-func DefaultEndpointArgumentValueLookup(scope, key string, ctx Context) (value interface{}, err error) {
+func DefaultArgumentValueLookupFunc(scope, key string, ctx Context) (value interface{}, err error) {
 	request := ctx.Request()
 	switch scope {
 	case ScopeQuery:

@@ -18,7 +18,7 @@ func argumentNeedResolve(ctx flux.Context, args []flux.Argument) bool {
 	return true
 }
 
-func argumentResolveWith(lookupFunc flux.EndpointArgumentValueLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
+func argumentResolveWith(lookupFunc flux.ArgumentValueLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
 	for _, arg := range arguments {
 		if flux.ArgumentTypePrimitive == arg.Type {
 			if err := resolve(lookupFunc, arg, ctx); nil != err {
@@ -36,7 +36,7 @@ func argumentResolveWith(lookupFunc flux.EndpointArgumentValueLookupFunc, argume
 	return nil
 }
 
-func resolve(lookupFunc flux.EndpointArgumentValueLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
+func resolve(lookupFunc flux.ArgumentValueLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
 	value, err := lookupFunc(arg.HttpScope, arg.HttpKey, ctx)
 	if nil != err {
 		logger.Trace(ctx.RequestId()).Warnw("Failed to lookup argument",
