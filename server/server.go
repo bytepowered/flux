@@ -174,7 +174,7 @@ func (s *HttpServer) StartServe(info flux.BuildInfo, config *flux.Configuration)
 			_ = s.debugServer.ListenAndServe()
 		}()
 	}
-	logger.Infow("HttpServer starting", "address", address)
+	logger.Infow("HttpServer starting", "address", address, "cert", certFile, "key", keyFile)
 	return s.webServer.StartTLS(address, certFile, keyFile)
 }
 
