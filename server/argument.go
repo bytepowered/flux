@@ -21,7 +21,7 @@ func argumentNeedResolve(ctx flux.Context, args []flux.Argument) bool {
 func argumentResolveWith(lookupFunc flux.ArgumentValueLookupFunc, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
 	for _, arg := range arguments {
 		if flux.ArgumentTypePrimitive == arg.Type {
-			if err := resolve(lookupFunc, arg, ctx); nil != err {
+			if err := doResolveWith(lookupFunc, arg, ctx); nil != err {
 				return err
 			}
 		} else if flux.ArgumentTypeComplex == arg.Type {
@@ -36,7 +36,7 @@ func argumentResolveWith(lookupFunc flux.ArgumentValueLookupFunc, arguments []fl
 	return nil
 }
 
-func resolve(lookupFunc flux.ArgumentValueLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
+func doResolveWith(lookupFunc flux.ArgumentValueLookupFunc, arg flux.Argument, ctx flux.Context) *flux.StateError {
 	value, err := lookupFunc(arg.HttpScope, arg.HttpKey, ctx)
 	if nil != err {
 		logger.Trace(ctx.RequestId()).Warnw("Failed to lookup argument",
@@ -53,7 +53,7 @@ func resolve(lookupFunc flux.ArgumentValueLookupFunc, arg flux.Argument, ctx flu
 		resolver = ext.GetDefaultTypedValueResolver()
 	}
 	if v, err := resolver(arg.TypeClass, arg.TypeGeneric, value); nil != err {
-		logger.Trace(ctx.RequestId()).Warnw("Failed to resolve argument",
+		logger.Trace(ctx.RequestId()).Warnw("Failed to doResolveWith argument",
 			"http.key", arg.HttpKey, "arg.name", arg.Name, "class", arg.TypeClass, "generic", arg.TypeGeneric,
 			"value", value, "error", err)
 		return &flux.StateError{
