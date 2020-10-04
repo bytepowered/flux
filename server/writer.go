@@ -19,9 +19,19 @@ func SetServerWriterSerializer(s flux.Serializer) {
 	_serverWriterSerializer = s
 }
 
+// GetServerWriterSerializer 获取Http响应数据序列化接口实现；默认为JSON序列化实现。
+func GetServerWriterSerializer() flux.Serializer {
+	return _serverWriterSerializer
+}
+
 // SetServerResponseContentType 设置Http响应的MIME类型字符串；默认为JSON/UTF8。
 func SetServerResponseContentType(ctype string) {
 	_serverResponseContentType = ctype
+}
+
+// GetServerResponseContentType 获取Http响应的MIME类型字符串；默认为JSON/UTF8。
+func GetServerResponseContentType() string {
+	return _serverResponseContentType
 }
 
 func DefaultServerErrorsWriter(webc flux.WebContext, requestId string, header http.Header, serr *flux.StateError) error {
