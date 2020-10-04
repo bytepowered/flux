@@ -50,10 +50,12 @@ func doResolveWith(lookupFunc flux.ArgumentValueLookupFunc, arg flux.Argument, c
 	}
 	resolver := ext.GetTypedValueResolver(arg.TypeClass)
 	if nil == resolver {
+		logger.Trace(ctx.RequestId()).Warnw("Not supported argument type",
+			"http.key", arg.HttpKey, "arg.name", arg.Name, "class", arg.TypeClass, "generic", arg.TypeGeneric)
 		resolver = ext.GetDefaultTypedValueResolver()
 	}
-	if v, err := resolver(arg.TypeClass, arg.TypeGeneric, value); nil != err {
-		logger.Trace(ctx.RequestId()).Warnw("Failed to doResolveWith argument",
+	if typedValue, err := resolver(arg.TypeClass, arg.TypeGeneric, value); nil != err {
+		logger.Trace(ctx.RequestId()).Warnw("Failed to resolve argument",
 			"http.key", arg.HttpKey, "arg.name", arg.Name, "class", arg.TypeClass, "generic", arg.TypeGeneric,
 			"value", value, "error", err)
 		return &flux.StateError{
@@ -63,7 +65,7 @@ func doResolveWith(lookupFunc flux.ArgumentValueLookupFunc, arg flux.Argument, c
 			Internal:   err,
 		}
 	} else {
-		arg.HttpValue.SetValue(v)
+		arg.HttpValue.SetValue(typedValue)
 		return nil
 	}
 }
