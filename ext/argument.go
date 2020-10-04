@@ -3,6 +3,7 @@ package ext
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/pkg"
+	"reflect"
 )
 
 // 提供一种可扩展的参数查找实现。
@@ -30,6 +31,15 @@ func NewPrimitiveArgument(typeClass, argName string, value interface{}) flux.Arg
 	}
 }
 
+func NewComplexArgument(typeClass, argName string, value interface{}) flux.Argument {
+	return flux.Argument{
+		TypeClass: typeClass,
+		Type:      flux.ArgumentTypeComplex,
+		Name:      argName,
+		HttpValue: flux.NewWrapValue(value),
+	}
+}
+
 func NewStringArgument(argName string, value string) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangStringClassName, argName, value)
 }
@@ -42,6 +52,10 @@ func NewLongArgument(argName string, value int64) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangLongClassName, argName, value)
 }
 
+func NewBooleanArgument(argName string, value bool) flux.Argument {
+	return NewPrimitiveArgument(flux.JavaLangBooleanClassName, argName, value)
+}
+
 func NewFloatArgument(argName string, value float32) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangFloatClassName, argName, value)
 }
@@ -50,6 +64,32 @@ func NewDoubleArgument(argName string, value float64) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangDoubleClassName, argName, value)
 }
 
+func NewStringMapArgument(argName string, value map[string]interface{}) flux.Argument {
+	return NewComplexArgument(flux.JavaUtilMapClassName, argName, value)
+}
+
 func NewHashMapArgument(argName string, value interface{}) flux.Argument {
-	return NewPrimitiveArgument(flux.JavaUtilMapClassName, argName, value)
+	// Allow nil
+	if nil == value {
+		return NewComplexArgument(flux.JavaUtilMapClassName, argName, value)
+	}
+	switch reflect.TypeOf(value).Kind() {
+	case reflect.Map:
+		return NewComplexArgument(flux.JavaUtilMapClassName, argName, value)
+	default:
+		panic("value is not a hashmap")
+	}
+}
+
+func NewSliceArrayArgument(argName string, value interface{}) flux.Argument {
+	// allow nil
+	if nil == value {
+		return NewComplexArgument(flux.JavaUtilListClassName, argName, value)
+	}
+	switch reflect.TypeOf(value).Kind() {
+	case reflect.Slice, reflect.Array:
+		return NewComplexArgument(flux.JavaUtilListClassName, argName, value)
+	default:
+		panic("value is not a hashmap")
+	}
 }

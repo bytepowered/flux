@@ -165,7 +165,7 @@ func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject str
 		Arguments: []flux.Argument{
 			ext.NewStringArgument("issuer", issuer),
 			ext.NewStringArgument("subject", subject),
-			ext.NewHashMapArgument("claims", claims),
+			ext.NewStringMapArgument("claims", claims),
 		},
 	}, nil); nil != err {
 		return false, cache.NoExpiration, err
