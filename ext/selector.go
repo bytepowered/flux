@@ -32,19 +32,19 @@ func AddHostedSelector(host string, s flux.Selector) {
 }
 
 func FindSelectors(host string) []flux.Selector {
-	defer _rwLock.RUnlock()
 	_rwLock.RLock()
+	defer _rwLock.RUnlock()
 	if hosted, ok := _hostedSelectors[host]; ok {
-		return _selectors(hosted)
+		return _newSelectors(hosted)
 	} else if anyHost != host {
 		if any, ok := _hostedSelectors[anyHost]; ok {
-			return _selectors(any)
+			return _newSelectors(any)
 		}
 	}
 	return nil
 }
 
-func _selectors(src []flux.Selector) []flux.Selector {
+func _newSelectors(src []flux.Selector) []flux.Selector {
 	out := make([]flux.Selector, len(src))
 	copy(out, src)
 	return out

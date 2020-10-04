@@ -73,7 +73,7 @@ func (r *RouterEngine) InitialHook(ref interface{}, config *flux.Configuration) 
 			return err
 		}
 	}
-	ext.AddLifecycleHook(ref)
+	ext.AddHook(ref)
 	return nil
 }
 

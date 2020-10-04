@@ -59,8 +59,8 @@ func (m *MultiVersionEndpoint) random() *flux.Endpoint {
 	return nil
 }
 
-func (m *MultiVersionEndpoint) ToSerializable() map[interface{}]interface{} {
-	copies := make(map[interface{}]interface{})
+func (m *MultiVersionEndpoint) ToSerializable() map[string]*flux.Endpoint {
+	copies := make(map[string]*flux.Endpoint)
 	m.mutex.RLock()
 	for k, v := range m.versioned {
 		copies[k] = v

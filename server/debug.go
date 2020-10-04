@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/support"
 	"net/http"
@@ -25,9 +26,10 @@ var (
 
 func DebugQueryEndpoint(datamap map[string]*support.MultiVersionEndpoint) http.HandlerFunc {
 	// Endpoint查询
-	json := ext.GetSerializer(ext.TypeNameSerializerJson)
+	serializer := ext.GetSerializer(ext.TypeNameSerializerJson)
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if data, err := json.Marshal(queryEndpoints(datamap, request)); nil != err {
+		data := queryEndpoints(datamap, request)
+		if data, err := serializer.Marshal(data); nil != err {
 			writer.WriteHeader(http.StatusInternalServerError)
 			_, _ = writer.Write([]byte(err.Error()))
 		} else {
@@ -71,7 +73,7 @@ func queryEndpoints(data map[string]*support.MultiVersionEndpoint, request *http
 		}
 	}
 	if len(filters) == 0 {
-		m := make(map[string]interface{})
+		m := make(map[string]map[string]*flux.Endpoint, 16)
 		for k, v := range data {
 			m[k] = v.ToSerializable()
 		}
@@ -80,8 +82,8 @@ func queryEndpoints(data map[string]*support.MultiVersionEndpoint, request *http
 	return _queryWithFilters(data, filters...)
 }
 
-func _queryWithFilters(data map[string]*support.MultiVersionEndpoint, filters ..._filter) []interface{} {
-	items := make([]interface{}, 0)
+func _queryWithFilters(data map[string]*support.MultiVersionEndpoint, filters ..._filter) []map[string]*flux.Endpoint {
+	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {
 		for _, filter := range filters {

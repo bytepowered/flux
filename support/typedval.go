@@ -42,40 +42,40 @@ var (
 )
 
 func init() {
-	ext.RegisterTypedValueResolver("string", stringResolver)
-	ext.RegisterTypedValueResolver("String", stringResolver)
-	ext.RegisterTypedValueResolver(flux.JavaLangStringClassName, stringResolver)
+	ext.SetTypedValueResolver("string", stringResolver)
+	ext.SetTypedValueResolver("String", stringResolver)
+	ext.SetTypedValueResolver(flux.JavaLangStringClassName, stringResolver)
 
-	ext.RegisterTypedValueResolver("int", integerResolver)
-	ext.RegisterTypedValueResolver("Integer", integerResolver)
-	ext.RegisterTypedValueResolver(flux.JavaLangIntegerClassName, integerResolver)
+	ext.SetTypedValueResolver("int", integerResolver)
+	ext.SetTypedValueResolver("Integer", integerResolver)
+	ext.SetTypedValueResolver(flux.JavaLangIntegerClassName, integerResolver)
 
-	ext.RegisterTypedValueResolver("int64", longResolver)
-	ext.RegisterTypedValueResolver("long", longResolver)
-	ext.RegisterTypedValueResolver("Long", longResolver)
-	ext.RegisterTypedValueResolver(flux.JavaLangLongClassName, longResolver)
+	ext.SetTypedValueResolver("int64", longResolver)
+	ext.SetTypedValueResolver("long", longResolver)
+	ext.SetTypedValueResolver("Long", longResolver)
+	ext.SetTypedValueResolver(flux.JavaLangLongClassName, longResolver)
 
-	ext.RegisterTypedValueResolver("float", float32Resolver)
-	ext.RegisterTypedValueResolver("Float", float32Resolver)
-	ext.RegisterTypedValueResolver(flux.JavaLangFloatClassName, float32Resolver)
+	ext.SetTypedValueResolver("float", float32Resolver)
+	ext.SetTypedValueResolver("Float", float32Resolver)
+	ext.SetTypedValueResolver(flux.JavaLangFloatClassName, float32Resolver)
 
-	ext.RegisterTypedValueResolver("double", float64Resolver)
-	ext.RegisterTypedValueResolver("Double", float64Resolver)
-	ext.RegisterTypedValueResolver(flux.JavaLangDoubleClassName, float64Resolver)
+	ext.SetTypedValueResolver("double", float64Resolver)
+	ext.SetTypedValueResolver("Double", float64Resolver)
+	ext.SetTypedValueResolver(flux.JavaLangDoubleClassName, float64Resolver)
 
-	ext.RegisterTypedValueResolver("bool", booleanResolver)
-	ext.RegisterTypedValueResolver("Boolean", booleanResolver)
-	ext.RegisterTypedValueResolver(flux.JavaLangBooleanClassName, booleanResolver)
+	ext.SetTypedValueResolver("bool", booleanResolver)
+	ext.SetTypedValueResolver("Boolean", booleanResolver)
+	ext.SetTypedValueResolver(flux.JavaLangBooleanClassName, booleanResolver)
 
-	ext.RegisterTypedValueResolver("map", mapResolver)
-	ext.RegisterTypedValueResolver("Map", mapResolver)
-	ext.RegisterTypedValueResolver(flux.JavaUtilMapClassName, mapResolver)
+	ext.SetTypedValueResolver("map", mapResolver)
+	ext.SetTypedValueResolver("Map", mapResolver)
+	ext.SetTypedValueResolver(flux.JavaUtilMapClassName, mapResolver)
 
-	ext.RegisterTypedValueResolver("slice", listResolver)
-	ext.RegisterTypedValueResolver("List", listResolver)
-	ext.RegisterTypedValueResolver(flux.JavaUtilListClassName, listResolver)
+	ext.SetTypedValueResolver("slice", listResolver)
+	ext.SetTypedValueResolver("List", listResolver)
+	ext.SetTypedValueResolver(flux.JavaUtilListClassName, listResolver)
 
-	ext.RegisterTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
+	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
 }
 
 func _toMap(value interface{}) (interface{}, error) {
