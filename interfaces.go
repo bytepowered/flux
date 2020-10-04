@@ -2,9 +2,6 @@ package flux
 
 import "context"
 
-// An Object
-type Object interface{}
-
 // Build version info
 type BuildInfo struct {
 	CommitId string

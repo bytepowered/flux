@@ -11,7 +11,7 @@ var (
 )
 
 func NewHttpBackendResponseDecoder() flux.BackendResponseDecoder {
-	return func(ctx flux.Context, value interface{}) (statusCode int, headers http.Header, body flux.Object, err error) {
+	return func(ctx flux.Context, value interface{}) (statusCode int, headers http.Header, body interface{}, err error) {
 		resp, ok := value.(*http.Response)
 		if !ok {
 			return http.StatusInternalServerError, http.Header{}, nil, ErrUnknownHttpBackendResponse

@@ -14,4 +14,4 @@ type Backend interface {
 }
 
 // BackendResponseDecoder 解析Backend返回的数据
-type BackendResponseDecoder func(ctx Context, response interface{}) (statusCode int, headers http.Header, body Object, err error)
+type BackendResponseDecoder func(ctx Context, response interface{}) (statusCode int, headers http.Header, body interface{}, err error)

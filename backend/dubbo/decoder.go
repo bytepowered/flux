@@ -1,7 +1,6 @@
 package dubbo
 
 import (
-	"github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"github.com/spf13/cast"
@@ -16,7 +15,7 @@ const (
 )
 
 func NewDubboBackendReponseDecoderWith(codeKey, headerKey, bodyKey string) flux.BackendResponseDecoder {
-	return func(ctx flux.Context, input interface{}) (statusCode int, header http.Header, body flux.Object, err error) {
+	return func(ctx flux.Context, input interface{}) (statusCode int, header http.Header, body interface{}, err error) {
 		header = make(http.Header)
 		if mapValues, ok := input.(map[interface{}]interface{}); ok {
 			// Header
@@ -42,9 +41,9 @@ func NewDubboBackendResponseDecoder() flux.BackendResponseDecoder {
 	return NewDubboBackendReponseDecoderWith(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
 }
 
-func ReadBodyObject(key string, values map[interface{}]interface{}) hessian.Object {
+func ReadBodyObject(key string, values map[interface{}]interface{}) interface{} {
 	if body, ok := values[key]; ok {
-		return body.(hessian.Object)
+		return body
 	} else {
 		return values
 	}
