@@ -27,7 +27,7 @@ func init() {
 	ext.SetBackend(flux.ProtoHttp, http.NewHttpBackend())
 	ext.SetBackendResponseDecoder(flux.ProtoHttp, http.NewHttpBackendResponseDecoder())
 	ext.SetBackend(flux.ProtoDubbo, dubbo.NewDubboBackend())
-	ext.SetBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendDecoder())
+	ext.SetBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendResponseDecoder())
 	// Dynamic factories
 	ext.SetTypedFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetTypedFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)

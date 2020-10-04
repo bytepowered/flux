@@ -15,7 +15,7 @@ const (
 	ResponseKeyBody       = "@net.bytepowered.flux.http-body"
 )
 
-func NewDubboBackendDecoderWithKeys(codeKey, headerKey, bodyKey string) flux.BackendResponseDecoder {
+func NewDubboBackendReponseDecoderWith(codeKey, headerKey, bodyKey string) flux.BackendResponseDecoder {
 	return func(ctx flux.Context, input interface{}) (statusCode int, header http.Header, body flux.Object, err error) {
 		header = make(http.Header)
 		if mapValues, ok := input.(map[interface{}]interface{}); ok {
@@ -38,8 +38,8 @@ func NewDubboBackendDecoderWithKeys(codeKey, headerKey, bodyKey string) flux.Bac
 	}
 }
 
-func NewDubboBackendDecoder() flux.BackendResponseDecoder {
-	return NewDubboBackendDecoderWithKeys(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
+func NewDubboBackendResponseDecoder() flux.BackendResponseDecoder {
+	return NewDubboBackendReponseDecoderWith(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
 }
 
 func ReadBodyObject(key string, values map[interface{}]interface{}) hessian.Object {

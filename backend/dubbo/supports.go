@@ -11,21 +11,22 @@ import (
 
 // Dubbo默认参数封装处理：转换成hession协议对象。
 // 注意：不能使用 interface{} 值类型。在Dubbogo 1.5.1 / hessian2 v1.6.1中，序列化值类型会被识别为 Ljava.util.List
+// 注意：函数定义的返回值类型不指定为hessian.Object，避免外部化实现或者其它协议实现时，直接依赖hessian.Object类型；
 func assembleHessianValues(arguments []flux.Argument) ([]string, interface{}) {
 	size := len(arguments)
-	types := make([]string, size)
-	values := make([]hessian.Object, size)
+	argTypes := make([]string, size)
+	argValues := make([]hessian.Object, size)
 	for i, arg := range arguments {
-		types[i] = arg.TypeClass
+		argTypes[i] = arg.TypeClass
 		if flux.ArgumentTypePrimitive == arg.Type {
-			values[i] = arg.HttpValue.Value()
+			argValues[i] = arg.HttpValue.Value()
 		} else if flux.ArgumentTypeComplex == arg.Type {
-			values[i] = ComplexToMap(arg)
+			argValues[i] = ComplexToMap(arg)
 		} else {
 			logger.Warn("Unsupported parameter", zap.String("type", arg.Type))
 		}
 	}
-	return types, values
+	return argTypes, argValues
 }
 
 func ComplexToMap(arg flux.Argument) map[string]interface{} {

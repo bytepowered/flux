@@ -4,8 +4,12 @@ import "reflect"
 
 // 检查非Nil值。当为Nil时，Panic报错
 func RequireNotNil(v interface{}, msg string) interface{} {
-	if nil == v || reflect.ValueOf(v).IsNil() {
+	if IsNil(v) {
 		panic(msg)
 	}
 	return v
+}
+
+func IsNil(v interface{}) bool {
+	return v == nil || reflect.ValueOf(v).IsNil()
 }

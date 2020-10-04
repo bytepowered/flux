@@ -103,7 +103,7 @@ func (ex *DubboBackend) Init(config *flux.Configuration) error {
 	if nil == ex.OptionFuncs {
 		ex.OptionFuncs = make([]OptionFunc, 0)
 	}
-	if nil == ex.AssembleFunc {
+	if pkg.IsNil(ex.AssembleFunc) {
 		ex.AssembleFunc = assembleHessianValues
 	}
 	// 修改默认Consumer配置
@@ -141,10 +141,9 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 		attachments = fxctx.Attributes()
 		traceId = fxctx.RequestId()
 	}
-	trace := logger.Trace(traceId)
 	serviceTag := target.UpstreamUri + "." + target.UpstreamMethod
 	if ex.traceEnable {
-		trace.Infow("Dubbo invoking",
+		logger.Trace(traceId).Infow("Dubbo invoking",
 			"service", serviceTag, "arguments.type", types, "attachments", attachments,
 		)
 	}
@@ -156,7 +155,7 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 		// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 		ssmap, err := cast.ToStringMapStringE(attachments)
 		if nil != err {
-			trace.Errorw("Dubbo attachment error", "service", serviceTag, "error", err)
+			logger.Trace(traceId).Errorw("Dubbo attachment error", "service", serviceTag, "error", err)
 			return nil, &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -167,7 +166,7 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 		goctx = context.WithValue(fxctx.HttpRequestContext(), constant.AttachmentKey, ssmap)
 	}
 	if resp, err := service.Invoke(goctx, args); err != nil {
-		trace.Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
+		logger.Trace(traceId).Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
@@ -176,7 +175,7 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 		}
 	} else {
 		if ex.traceEnable {
-			trace.Infow("Dubbo invoked: OK", "service", serviceTag, "return.type", reflect.TypeOf(resp))
+			logger.Trace(traceId).Infow("Dubbo invoked: OK", "service", serviceTag, "return.type", reflect.TypeOf(resp))
 		}
 		return resp, nil
 	}
