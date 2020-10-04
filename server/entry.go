@@ -63,7 +63,7 @@ func Run(ver flux.BuildInfo) {
 		logger.Panic("Server init:", err)
 	}
 	go func() {
-		if err := fx.Startup(ver); nil != err {
+		if err := fx.Startup(ver); nil != err && err != http.ErrServerClosed {
 			logger.Error(err)
 		}
 	}()
