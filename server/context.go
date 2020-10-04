@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"github.com/bytepowered/flux"
 	"sync"
 	"time"
@@ -79,6 +80,10 @@ func (c *WrappedContext) SetValue(name string, value interface{}) {
 func (c *WrappedContext) GetValue(name string) (interface{}, bool) {
 	v, ok := c.values.Load(name)
 	return v, ok
+}
+
+func (c *WrappedContext) HttpRequestContext() context.Context {
+	return c.webc.HttpRequestContext()
 }
 
 func (c *WrappedContext) EndpointArguments() []flux.Argument {

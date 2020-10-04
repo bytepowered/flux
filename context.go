@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -132,9 +133,12 @@ type Context interface {
 	// SetAttribute 向Context添加Attribute键值对
 	SetAttribute(name string, value interface{})
 
-	// 获取当前请求范围的值
+	// GetValue 获取当前请求范围的值
 	GetValue(name string) (interface{}, bool)
 
-	// 设置当前请求范围的KV
+	// SetValue 设置当前请求范围的KV
 	SetValue(name string, value interface{})
+
+	// HttpRequestContext 返回Http请求的Context对象。用于判定Http请求是否被Cancel。
+	HttpRequestContext() context.Context
 }

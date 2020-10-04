@@ -1,6 +1,7 @@
 package webecho
 
 import (
+	"context"
 	"github.com/bytepowered/flux"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -48,6 +49,14 @@ func (c *AdaptWebContext) RequestBodyReader() (io.ReadCloser, error) {
 func (c *AdaptWebContext) RequestRewrite(method string, path string) {
 	c.echoc.Request().Method = method
 	c.echoc.Request().URL.Path = path
+}
+
+func (c *AdaptWebContext) SetRequestHeader(name, value string) {
+	c.echoc.Request().Header.Set(name, value)
+}
+
+func (c *AdaptWebContext) AddRequestHeader(name, value string) {
+	c.echoc.Request().Header.Add(name, value)
 }
 
 func (c *AdaptWebContext) HeaderValues() (http.Header, bool) {
@@ -153,6 +162,10 @@ func (c *AdaptWebContext) RawRequest() interface{} {
 
 func (c *AdaptWebContext) RawResponse() interface{} {
 	return c.echoc.Response()
+}
+
+func (c *AdaptWebContext) HttpRequestContext() context.Context {
+	return c.echoc.Request().Context()
 }
 
 func (c *AdaptWebContext) HttpRequest() (*http.Request, error) {

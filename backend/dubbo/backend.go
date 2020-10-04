@@ -164,7 +164,7 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 				Internal:   err,
 			}
 		}
-		goctx = context.WithValue(goctx, constant.AttachmentKey, ssmap)
+		goctx = context.WithValue(fxctx.HttpRequestContext(), constant.AttachmentKey, ssmap)
 	}
 	if resp, err := service.Invoke(goctx, args); err != nil {
 		trace.Errorw("Dubbo rpc error", "service", serviceTag, "error", err)

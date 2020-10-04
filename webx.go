@@ -129,6 +129,12 @@ type WebContext interface {
 	// RequestRewrite 修改请求方法和路径；
 	RequestRewrite(method string, path string)
 
+	// SetRequestHeader 设置请求的Header
+	SetRequestHeader(key, value string)
+
+	// AddRequestHeader 添加请求的Header
+	AddRequestHeader(key, value string)
+
 	// HeaderValues 返回请求对象的Header
 	// 注意：部分Web框架返回只读http.Header
 	HeaderValues() (header http.Header, writable bool)
@@ -174,10 +180,10 @@ type WebContext interface {
 	GetResponseHeader(name string) string
 
 	// SetResponseHeader 设置的Header键值
-	SetResponseHeader(name, value string)
+	SetResponseHeader(key, value string)
 
 	// AddResponseHeader 添加指定Name的Header键值
-	AddResponseHeader(name, value string)
+	AddResponseHeader(key, value string)
 
 	// SetResponseWriter 设置ResponseWriter
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
@@ -192,6 +198,9 @@ type WebContext interface {
 	// HttpRequest 返回Http标准Request对象。
 	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
 	HttpRequest() (*http.Request, error)
+
+	// HttpRequestContext 返回请求的Context对象
+	HttpRequestContext() context.Context
 
 	// HttpResponseWriter 返回Http标准ResponseWriter对象。
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported

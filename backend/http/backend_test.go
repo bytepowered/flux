@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
 	"io"
@@ -23,7 +24,7 @@ func TestBackend_HttpbinMethods(t *testing.T) {
 			}
 		}
 		bodyReader, _ := inReq.GetBody()
-		newReq, err := backend.Assemble(newHttpBinEndpoint(method), inReq.URL, bodyReader)
+		newReq, err := backend.Assemble(newHttpBinEndpoint(method), inReq.URL, bodyReader, context.Background())
 		if nil != err {
 			t.Fatalf("invoke err: %s", err)
 		}

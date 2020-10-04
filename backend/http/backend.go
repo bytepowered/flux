@@ -33,7 +33,7 @@ func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
 func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
 	inURL, _ := ctx.Request().RequestURL()
 	bodyReader, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := ex.Assemble(target, inURL, bodyReader)
+	newRequest, err := ex.Assemble(target, inURL, bodyReader, ctx.HttpRequestContext())
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -68,7 +68,7 @@ func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interfac
 	return resp, nil
 }
 
-func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyReader io.ReadCloser) (*http.Request, error) {
+func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyReader io.ReadCloser, ctx context.Context) (*http.Request, error) {
 	inParams := endpoint.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
@@ -108,8 +108,8 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 		logger.Warnf("Illegal endpoint rpc-timeout: ", endpoint.RpcTimeout)
 		timeout = time.Second * 10
 	}
-	stdCtx, _ := context.WithTimeout(context.Background(), timeout)
-	newRequest, err := http.NewRequestWithContext(stdCtx, endpoint.UpstreamMethod, newUrl.String(), newBodyReader)
+	toctx, _ := context.WithTimeout(ctx, timeout)
+	newRequest, err := http.NewRequestWithContext(toctx, endpoint.UpstreamMethod, newUrl.String(), newBodyReader)
 	if nil != err {
 		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", endpoint.UpstreamMethod, newUrl, err)
 	}
