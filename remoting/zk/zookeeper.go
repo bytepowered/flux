@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func NewZkRetriever() *ZookeeperRetriever {
+func NewZookeeperRetriever() *ZookeeperRetriever {
 	return &ZookeeperRetriever{
 		listenerMap: make(map[string][]remoting.NodeChangedListener),
 		quit:        make(chan struct{}),
@@ -30,7 +30,8 @@ type ZookeeperRetriever struct {
 	timeout     time.Duration
 }
 
-func (r *ZookeeperRetriever) InitWith(config *flux.Configuration) error {
+// Init 初始化
+func (r *ZookeeperRetriever) Init(config *flux.Configuration) error {
 	addr := config.GetString("address")
 	if "" == addr {
 		r.servers = []string{config.GetString("host") + ":" + config.GetString("port")}
@@ -41,8 +42,9 @@ func (r *ZookeeperRetriever) InitWith(config *flux.Configuration) error {
 	return nil
 }
 
+// Startup 启动ZK客户端
 func (r *ZookeeperRetriever) Startup() error {
-	logger.Infow("ZkRetriver startup", "server", r.servers)
+	logger.Infow("Zookeeper retriever startup", "server", r.servers)
 	conn, _, err := zk.Connect(r.servers, r.timeout, zk.WithLogger(new(zkLogger)))
 	if err != nil {
 		return err
@@ -51,77 +53,60 @@ func (r *ZookeeperRetriever) Startup() error {
 	return nil
 }
 
+// Shutdown 关闭客户端
 func (r *ZookeeperRetriever) Shutdown(ctx context.Context) error {
 	select {
 	case <-r.quit:
 		return nil
 	default:
-		logger.Infow("ZkRetriver shutdown", "server", r.servers)
+		logger.Infow("Zookeeper retriever shutdown", "server", r.servers)
 		close(r.quit)
 	}
 	return nil
 }
 
+// Exists 判定指定Path是否存在。注意Path是完整路径。
 func (r *ZookeeperRetriever) Exists(path string) (bool, error) {
 	b, _, err := r.conn.Exists(path)
 	return b, err
 }
 
+// Create 创建指定Path的节点
 func (r *ZookeeperRetriever) Create(path string) error {
 	_, err := r.conn.Create(path, []byte{}, 0, zk.WorldACL(zk.PermAll))
 	return err
 }
 
-func (r *ZookeeperRetriever) WatchChildren(groupId, dirKey string, childChangedListener remoting.NodeChangedListener) error {
-	if init, err := r.setupListener(groupId, dirKey, childChangedListener); nil != err {
+func (r *ZookeeperRetriever) AddChildrenNodeChangedListener(groupId, parentNodePath string, nodeChangedListener remoting.NodeChangedListener) error {
+	if init, err := r.setupListener(groupId, parentNodePath, nodeChangedListener); nil != err {
 		return err
 	} else if init {
-		go r.watchChildrenChanged(dirKey)
+		go r.watchChildrenChanged(parentNodePath)
 	}
 	return nil
 }
 
-func (r *ZookeeperRetriever) WatchNodeData(groupId, nodeKey string, dataChangedListener remoting.NodeChangedListener) error {
-	if init, err := r.setupListener(groupId, nodeKey, dataChangedListener); nil != err {
+// AddNodeChangedListener 添加指定节点的数据变化监听接口
+func (r *ZookeeperRetriever) AddNodeChangedListener(groupId, nodePath string, dataChangedListener remoting.NodeChangedListener) error {
+	if init, err := r.setupListener(groupId, nodePath, dataChangedListener); nil != err {
 		return err
 	} else if init {
-		go r.watchDataNodeChanged(nodeKey)
+		go r.watchDataNodeChanged(nodePath)
 	}
 	return nil
 }
 
-func (r *ZookeeperRetriever) setupListener(groupId, nodeKey string, listener remoting.NodeChangedListener) (bool, error) {
-	if groupId != "" {
-		logger.Warnw("Zookeeper not support groupId", "groupId", groupId)
-	}
-	if nodeKey == "" {
-		return false, errors.New("invalid node key: empty")
-	}
-	if nil == listener {
-		return false, errors.New("invalid listener: nil")
-	}
-	r.listenerMu.Lock()
-	defer r.listenerMu.Unlock()
-	if ls, ok := r.listenerMap[nodeKey]; ok {
-		r.listenerMap[nodeKey] = append(ls, listener)
-		return false, nil
-	} else {
-		r.listenerMap[nodeKey] = []remoting.NodeChangedListener{listener}
-		return true, nil
-	}
-}
-
-func (r *ZookeeperRetriever) watchChildrenChanged(dirKey string) {
-	logger.Infow("Start watching zk node children", "path", dirKey)
+func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
+	logger.Infow("Start watching zk node children", "parent-path", parentNodePath)
 	defer func() {
-		logger.Errorw("Stop watching zk node children, purge listeners", "path", dirKey)
+		logger.Infow("Stop watching zk node children, purge listeners", "parent-path", parentNodePath)
 		r.listenerMu.Lock()
-		delete(r.listenerMap, dirKey)
+		delete(r.listenerMap, parentNodePath)
 		r.listenerMu.Unlock()
 	}()
 	handleChildChanged := func(event remoting.NodeEvent) {
 		r.listenerMu.RLock()
-		listeners, ok := r.listenerMap[dirKey]
+		listeners, ok := r.listenerMap[parentNodePath]
 		r.listenerMu.RUnlock()
 		if !ok || 0 == len(listeners) {
 			return
@@ -132,15 +117,15 @@ func (r *ZookeeperRetriever) watchChildrenChanged(dirKey string) {
 	}
 	cachedChildren := make([]string, 0)
 	for {
-		newChildren, _, w, err := r.conn.ChildrenW(dirKey)
+		newChildren, _, w, err := r.conn.ChildrenW(parentNodePath)
 		if nil != err {
-			logger.Errorw("Watching zk node children,", "path", dirKey, "error", err)
+			logger.Errorw("Watching zk node children", "parent-path", parentNodePath, "error", err)
 			return
 		}
 		// New: notify
 		if len(newChildren) > 0 && len(cachedChildren) == 0 {
 			for _, p := range newChildren {
-				newChild := path.Join(dirKey, p)
+				newChild := path.Join(parentNodePath, p)
 				cachedChildren = append(cachedChildren, newChild)
 				handleChildChanged(remoting.NodeEvent{
 					Path:      newChild,
@@ -158,12 +143,12 @@ func (r *ZookeeperRetriever) watchChildrenChanged(dirKey string) {
 			if zkEvent.Type == zk.EventNodeChildrenChanged {
 				newChildren, _, err := r.conn.Children(zkEvent.Path)
 				if nil != err {
-					logger.Errorw("get children data", "path", dirKey, "error", err)
+					logger.Errorw("get children data", "parent-path", parentNodePath, "error", err)
 					return
 				}
 				// Add
 				for i, p := range newChildren {
-					newChildren[i] = path.Join(dirKey, p) // Update full path
+					newChildren[i] = path.Join(parentNodePath, p) // Update full path
 					if !pkg.StringSliceContains(cachedChildren, newChildren[i]) {
 						handleChildChanged(remoting.NodeEvent{
 							Path:      newChildren[i],
@@ -187,9 +172,9 @@ func (r *ZookeeperRetriever) watchChildrenChanged(dirKey string) {
 }
 
 func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
-	logger.Infow("Start watching zk node data", "path", nodePath)
+	logger.Infow("Start watching zk node data", "node-path", nodePath)
 	defer func() {
-		logger.Errorw("Stop watching zk node data, purge listeners", "path", nodePath)
+		logger.Infow("Stop watching zk node data, purge listeners", "node-path", nodePath)
 		r.listenerMu.Lock()
 		delete(r.listenerMap, nodePath)
 		r.listenerMu.Unlock()
@@ -198,7 +183,7 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 	for {
 		_, _, w, err := r.conn.ExistsW(nodePath)
 		if nil != err {
-			logger.Errorw("Watching zk node data", "path", nodePath, "error", err)
+			logger.Errorw("Watching zk node data", "node-path", nodePath, "error", err)
 			return
 		}
 		if !inited {
@@ -230,7 +215,7 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 			case zk.EventNodeDataChanged:
 				data, _, err := r.conn.Get(zkEvent.Path)
 				if nil != err {
-					logger.Errorw(msgErrGetNodeData, "path", nodePath, "error", err)
+					logger.Errorw(msgErrGetNodeData, "node-path", nodePath, "error", err)
 					return
 				}
 				eventType = remoting.EventTypeNodeUpdate
@@ -238,7 +223,7 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 			case zk.EventNodeCreated:
 				data, _, err := r.conn.Get(zkEvent.Path)
 				if nil != err {
-					logger.Errorf(msgErrGetNodeData, "path", nodePath, "error", err)
+					logger.Errorf(msgErrGetNodeData, "node-path", nodePath, "error", err)
 					return
 				}
 				eventType = remoting.EventTypeNodeAdd
@@ -257,6 +242,27 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 				listener(event)
 			}
 		}
+	}
+}
+
+func (r *ZookeeperRetriever) setupListener(groupId, nodeKey string, listener remoting.NodeChangedListener) (bool, error) {
+	if groupId != "" {
+		logger.Warnw("Zookeeper not support groupId", "groupId", groupId)
+	}
+	if nodeKey == "" {
+		return false, errors.New("invalid node key: empty")
+	}
+	if nil == listener {
+		return false, errors.New("invalid listener: nil")
+	}
+	r.listenerMu.Lock()
+	defer r.listenerMu.Unlock()
+	if ls, ok := r.listenerMap[nodeKey]; ok {
+		r.listenerMap[nodeKey] = append(ls, listener)
+		return false, nil
+	} else {
+		r.listenerMap[nodeKey] = []remoting.NodeChangedListener{listener}
+		return true, nil
 	}
 }
 

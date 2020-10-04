@@ -30,7 +30,7 @@ type ZookeeperEndpointRegistry struct {
 
 func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 	return &ZookeeperEndpointRegistry{
-		retriever: zk.NewZkRetriever(),
+		retriever: zk.NewZookeeperRetriever(),
 		events:    make(chan flux.EndpointEvent, 4),
 	}
 }
@@ -48,7 +48,7 @@ func (r *ZookeeperEndpointRegistry) Init(config *flux.Configuration) error {
 		"database": "zookeeper.database",
 	})
 	r.path = config.GetString("root-path")
-	return r.retriever.InitWith(config)
+	return r.retriever.Init(config)
 }
 
 func (r *ZookeeperEndpointRegistry) WatchEvents() (<-chan flux.EndpointEvent, error) {
@@ -68,10 +68,10 @@ func (r *ZookeeperEndpointRegistry) WatchEvents() (<-chan flux.EndpointEvent, er
 			r.events <- evt
 		}
 	}
-	err := r.retriever.WatchChildren("", r.path, func(event remoting.NodeEvent) {
+	err := r.retriever.AddChildrenNodeChangedListener("", r.path, func(event remoting.NodeEvent) {
 		logger.Infow("Receive child change event", "event", event)
 		if event.EventType == remoting.EventTypeChildAdd {
-			if err := r.retriever.WatchNodeData("", event.Path, nodeListener); nil != err {
+			if err := r.retriever.AddNodeChangedListener("", event.Path, nodeListener); nil != err {
 				logger.Warnw("WatchEvents node data", "error", err)
 			}
 		}

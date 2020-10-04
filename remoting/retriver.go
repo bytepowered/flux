@@ -37,9 +37,9 @@ func (e NodeEvent) String() string {
 type NodeChangedListener func(event NodeEvent)
 
 type NodeRetriever interface {
-	// WatchNodeData 监听数据节点的数据变更
-	WatchNodeData(groupId, dataNodeKey string, dataListener NodeChangedListener) error
+	// AddNodeChangedListener 监听数据节点的数据变更
+	AddNodeChangedListener(groupId, dataNodeKey string, dataListener NodeChangedListener) error
 
-	// WatchChildren 监听目录节点的子节点变更
-	WatchChildren(groupId, dirNodeKey string, childrenListener NodeChangedListener) error
+	// AddChildrenNodeChangedListener 监听目录节点的子节点变更
+	AddChildrenNodeChangedListener(groupId, dirNodeKey string, childrenListener NodeChangedListener) error
 }
