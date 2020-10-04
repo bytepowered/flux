@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"github.com/bytepowered/flux/support"
 	"github.com/spf13/cast"
 	"io"
@@ -73,7 +72,9 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 	inParams := endpoint.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
-	defer pkg.SilentlyCloseFunc(bodyReader)
+	defer func() {
+		_ = bodyReader.Close()
+	}()
 	var newBodyReader io.Reader = bodyReader
 	if len(inParams) > 0 {
 		// 如果Endpoint定义了参数，即表示限定参数传递

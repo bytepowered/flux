@@ -32,4 +32,7 @@ func init() {
 	ext.SetTypedFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
 	ext.SetTypedFactory(filter.TypeIdPermissionVerification, filter.PermissionVerificationFactory)
 	ext.SetTypedFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
+	// Server
+	SetServerWriterSerializer(serializer)
+	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)
 }

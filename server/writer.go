@@ -3,13 +3,26 @@ package server
 import (
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/pkg"
 	"io"
 	"io/ioutil"
 	"net/http"
 )
+
+var (
+	_serverWriterSerializer    flux.Serializer
+	_serverResponseContentType string
+)
+
+// SetServerWriterSerializer 设置Http响应数据序列化接口实现；默认为JSON序列化实现。
+func SetServerWriterSerializer(s flux.Serializer) {
+	_serverWriterSerializer = s
+}
+
+// SetServerResponseContentType 设置Http响应的MIME类型字符串；默认为JSON/UTF8。
+func SetServerResponseContentType(ctype string) {
+	_serverResponseContentType = ctype
+}
 
 func DefaultServerErrorsWriter(webc flux.WebContext, requestId string, header http.Header, serr *flux.StateError) error {
 	SetupResponseDefaults(webc, requestId, header)
@@ -20,11 +33,11 @@ func DefaultServerErrorsWriter(webc flux.WebContext, requestId string, header ht
 	if nil != serr.Internal {
 		resp["error"] = serr.Internal.Error()
 	}
-	bytes, err := SerializeWith(GetHttpDefaultSerializer(), resp)
+	bytes, err := SerializeWith(_serverWriterSerializer, resp)
 	if nil != err {
 		return err
 	}
-	return WriteToHttpChannel(webc, serr.StatusCode, flux.MIMEApplicationJSONCharsetUTF8, bytes)
+	return WriteHttpResponse(webc, serr.StatusCode, _serverResponseContentType, bytes)
 }
 
 func DefaultServerResponseWriter(webc flux.WebContext, requestId string, header http.Header, status int, body interface{}) error {
@@ -32,7 +45,9 @@ func DefaultServerResponseWriter(webc flux.WebContext, requestId string, header 
 	var output []byte
 	if r, ok := body.(io.Reader); ok {
 		if c, ok := r.(io.Closer); ok {
-			defer pkg.SilentlyCloseFunc(c)
+			defer func() {
+				_ = c.Close()
+			}()
 		}
 		if bytes, err := ioutil.ReadAll(r); nil != err {
 			logger.Trace(requestId).Errorw("Http responseWriter, read body", "error", err)
@@ -41,7 +56,7 @@ func DefaultServerResponseWriter(webc flux.WebContext, requestId string, header 
 			output = bytes
 		}
 	} else {
-		if bytes, err := SerializeWith(GetHttpDefaultSerializer(), body); nil != err {
+		if bytes, err := SerializeWith(_serverWriterSerializer, body); nil != err {
 			logger.Trace(requestId).Errorw("Http responseWriter, serialize to json", "body", body, "error", err)
 			return err
 		} else {
@@ -52,9 +67,8 @@ func DefaultServerResponseWriter(webc flux.WebContext, requestId string, header 
 	go func() {
 		logger.Trace(requestId).Infow("Http responseWriter, logging", "data", string(output))
 	}()
-	// 写入Http响应发生的错误，没必要向上抛出Error错误处理。
-	// 因为已无法通过WriteError写到客户端
-	if err := WriteToHttpChannel(webc, status, flux.MIMEApplicationJSONCharsetUTF8, output); nil != err {
+	// 写入Http响应发生的错误，没必要向上抛出Error错误处理。因为已无法通过WriteError写到客户端
+	if err := WriteHttpResponse(webc, status, _serverResponseContentType, output); nil != err {
 		logger.Trace(requestId).Errorw("Http responseWriter, write channel", "data", string(output), "error", err)
 	}
 	return nil
@@ -73,12 +87,8 @@ func SerializeWith(serializer flux.Serializer, data interface{}) ([]byte, *flux.
 	}
 }
 
-func GetHttpDefaultSerializer() flux.Serializer {
-	return ext.GetSerializer(ext.TypeNameSerializerDefault)
-}
-
-func WriteToHttpChannel(webc flux.WebContext, status int, contentType string, bytes []byte) error {
-	err := webc.Write(status, contentType, bytes)
+func WriteHttpResponse(webc flux.WebContext, statusCode int, contentType string, bytes []byte) error {
+	err := webc.Write(statusCode, contentType, bytes)
 	if nil != err {
 		return fmt.Errorf("write http responseWriter: %w", err)
 	}
@@ -88,7 +98,7 @@ func WriteToHttpChannel(webc flux.WebContext, status int, contentType string, by
 func SetupResponseDefaults(webc flux.WebContext, requestId string, header http.Header) {
 	webc.SetResponseHeader(flux.HeaderXRequestId, requestId)
 	webc.SetResponseHeader(flux.HeaderServer, "Flux/Gateway")
-	webc.SetResponseHeader(flux.HeaderContentType, flux.MIMEApplicationJSONCharsetUTF8)
+	webc.SetResponseHeader(flux.HeaderContentType, _serverResponseContentType)
 	// 允许Override默认Header
 	for k, v := range header {
 		for _, iv := range v {
