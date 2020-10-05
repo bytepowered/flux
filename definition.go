@@ -85,6 +85,10 @@ type Permission struct {
 	Arguments      []Argument `json:"arguments"`      // 参数结构
 }
 
+func (p Permission) IsValid() bool {
+	return "" != p.UpstreamProto && "" != p.UpstreamUri && "" != p.UpstreamMethod && len(p.Arguments) > 0
+}
+
 // EndpointEvent  定义从注册中心接收到的Endpoint数据变更
 type EndpointEvent struct {
 	EventType   EventType

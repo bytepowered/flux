@@ -306,6 +306,10 @@ func (s *HttpServer) HandleEndpointEvent(event flux.EndpointEvent) {
 	routeKey := fmt.Sprintf("%s#%s", routeMethod, pattern)
 	// Refresh endpoint
 	endpoint := event.Endpoint
+	_initializeArguments(endpoint.Arguments)
+	if endpoint.Permission.IsValid() {
+		_initializeArguments(endpoint.Permission.Arguments)
+	}
 	multi, isRegister := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EndpointEventAdded:
@@ -381,6 +385,19 @@ func (s *HttpServer) handleServerError(err error, webc flux.WebContext) {
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	if err := s.serverErrorsWriter(webc, requestId, http.Header{}, serr); nil != err {
 		logger.Trace(requestId).Errorw("Server http responseWriter error", "error", err)
+	}
+}
+
+func _initializeArguments(args []flux.Argument) {
+	for i := range args {
+		_initializeArgument(&args[i])
+	}
+}
+
+func _initializeArgument(arg *flux.Argument) {
+	arg.HttpValue = flux.NewWrapValue(nil)
+	for i := range arg.Fields {
+		_initializeArgument(&arg.Fields[i])
 	}
 }
 

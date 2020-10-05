@@ -114,9 +114,6 @@ func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.Endpoin
 		logger.Infof("illegal http-pattern, data: %s", string(bytes))
 		return _invalidEndpointEvent, false
 	}
-	for i := range endpoint.Arguments {
-		_initializeArgument(&endpoint.Arguments[i])
-	}
 	event := flux.EndpointEvent{
 		HttpMethod:  endpoint.HttpMethod,
 		HttpPattern: endpoint.HttpPattern,
@@ -133,11 +130,4 @@ func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.Endpoin
 		return _invalidEndpointEvent, false
 	}
 	return event, true
-}
-
-func _initializeArgument(arg *flux.Argument) {
-	arg.HttpValue = flux.NewWrapValue(nil)
-	for i := range arg.Fields {
-		_initializeArgument(&arg.Fields[i])
-	}
 }
