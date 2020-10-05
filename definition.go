@@ -1,5 +1,7 @@
 package flux
 
+import "fmt"
+
 type (
 	EventType int
 )
@@ -87,6 +89,11 @@ type Permission struct {
 
 func (p Permission) IsValid() bool {
 	return "" != p.UpstreamProto && "" != p.UpstreamUri && "" != p.UpstreamMethod && len(p.Arguments) > 0
+}
+
+// NewServiceKey 构建标识一个Service的Key字符串
+func NewServiceKey(proto, host, method, uri string) string {
+	return fmt.Sprintf("%s@%s:%s/%s", proto, host, method, uri)
 }
 
 // EndpointEvent  定义从注册中心接收到的Endpoint数据变更
