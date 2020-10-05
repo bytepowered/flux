@@ -75,15 +75,9 @@ upstream-uri = "http://foo.bar.com:8080/jwt"
 upstream-method = "POST"
 
 
-# 访问权限验证
-[FILTER.PERM_VERIFICATION_HTTP]
+# 基于Permission定义元数据的访问权限验证Filter
+[FILTER.ENDPOINT_PERMISSION]
 disable = false
-type-id = "PermissionVerificationFilter"
-# 访问Subject在JWT数据中的Key
-subject-jwt-key = "uid"
-# Optional: 指定权限验收Dubbo接口。
-# 当interface非空时生效，接口定义：verify(String uid, String method, String pattern)
-upstream-proto = "HTTP"
-upstream-host = "http://bytepowered.net"
-upstream-uri = "/jwt/permission"
-upstream-method = "POST"
+type-id = "EndpointPermissionFilter"
+cache-size = 5000
+cache-expiration = "5m"

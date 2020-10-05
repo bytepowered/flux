@@ -96,7 +96,7 @@ func (p *EndpointPermissionFilter) Init(config *flux.Configuration) error {
 	expiration := config.GetDuration(ConfigKeyCacheExpiration)
 	cacheSize := config.GetInt(ConfigKeyCacheSize)
 	p.permissionCache = cache.New(cacheSize).Expiration(expiration).LRU().Build()
-	logger.Infow("Endpoint permission filter init", "cache-alg", "ExpireLRU", "cache-size", cacheSize, "cache-expire", expiration)
+	logger.Infow("Endpoint permission filter init", "cache-alg", "ExpireLRU", "cache-size", cacheSize, "cache-expire", expiration.String())
 	return nil
 }
 
