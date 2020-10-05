@@ -1,6 +1,9 @@
 package flux
 
-import jsoniter "github.com/json-iterator/go"
+import (
+	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go/extra"
+)
 
 // 序列化接口
 type Serializer interface {
@@ -26,5 +29,7 @@ func (s *JsonSerializer) Unmarshal(d []byte, v interface{}) error {
 }
 
 func NewJsonSerializer() Serializer {
+	// 容忍字符串和数字互转
+	extra.RegisterFuzzyDecoders()
 	return &JsonSerializer{json: jsoniter.ConfigCompatibleWithStandardLibrary}
 }
