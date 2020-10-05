@@ -50,7 +50,7 @@ type Argument struct {
 	Type        string     `json:"argType"`     // 参数结构类型
 	TypeClass   string     `json:"typeClass"`   // 参数类型
 	TypeGeneric []string   `json:"typeGeneric"` // 泛型类型
-	HttpKey     string     `json:"httpName"`    // 映射Http的参数Key
+	HttpName    string     `json:"httpName"`    // 映射Http的参数Key
 	HttpScope   string     `json:"httpScope"`   // 映射Http参数值域
 	HttpValue   Valuer     `json:"-"`           // 参数值
 	Fields      []Argument `json:"fields"`      // 子结构字段
@@ -58,19 +58,30 @@ type Argument struct {
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
-	Application    string     `json:"application"`    // 所属应用名
-	Version        string     `json:"version"`        // 定义的版本号
-	Protocol       string     `json:"protocol"`       // 支持的协议
-	RpcGroup       string     `json:"rpcGroup"`       // rpc接口分组
-	RpcVersion     string     `json:"rpcVersion"`     // rpc接口版本
-	RpcTimeout     string     `json:"rpcTimeout"`     // RPC调用超时
-	RpcRetries     string     `json:"rpcRetries"`     // RPC调用重试
-	Authorize      bool       `json:"authorize"`      // 此端点是否需要授权
+	Application    string                 `json:"application"`       // 所属应用名
+	Version        string                 `json:"version"`           // 端点版本号
+	RpcGroup       string                 `json:"rpcGroup"`          // rpc接口分组
+	RpcVersion     string                 `json:"rpcVersion"`        // rpc接口版本
+	RpcTimeout     string                 `json:"rpcTimeout"`        // RPC调用超时
+	RpcRetries     string                 `json:"rpcRetries,string"` // RPC调用重试
+	Authorize      bool                   `json:"authorize"`         // 此端点是否需要授权
+	UpstreamProto  string                 `json:"protocol"`          // 定义Upstream侧的协议
+	UpstreamHost   string                 `json:"upstreamHost"`      // 定义Upstream侧的Host
+	UpstreamUri    string                 `json:"upstreamUri"`       // 定义Upstream侧的URL
+	UpstreamMethod string                 `json:"upstreamMethod"`    // 定义Upstream侧的方法
+	HttpPattern    string                 `json:"httpPattern"`       // 映射Http侧的UriPattern
+	HttpMethod     string                 `json:"httpMethod"`        // 映射Http侧的Method
+	Arguments      []Argument             `json:"arguments"`         // 参数结构
+	Permission     Permission             `json:"permission"`        // 权限验证结果
+	Extensions     map[string]interface{} `json:"extensions"`        // 扩展信息
+}
+
+// Permission 后端RPC服务的权限验证的元数据
+type Permission struct {
+	UpstreamProto  string     `json:"protocol"`       // 定义Upstream侧的协议
 	UpstreamHost   string     `json:"upstreamHost"`   // 定义Upstream侧的Host
 	UpstreamUri    string     `json:"upstreamUri"`    // 定义Upstream侧的URL
 	UpstreamMethod string     `json:"upstreamMethod"` // 定义Upstream侧的方法
-	HttpPattern    string     `json:"httpPattern"`    // 映射Http侧的UriPattern
-	HttpMethod     string     `json:"httpMethod"`     // 映射Http侧的Method
 	Arguments      []Argument `json:"arguments"`      // 参数结构
 }
 

@@ -40,7 +40,7 @@ func (c *WrappedContext) Endpoint() flux.Endpoint {
 }
 
 func (c *WrappedContext) EndpointProto() string {
-	return c.endpoint.Protocol
+	return c.endpoint.UpstreamProto
 }
 
 func (c *WrappedContext) Method() string {

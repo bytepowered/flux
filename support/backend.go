@@ -20,7 +20,7 @@ func InvokeBackendExchange(ctx flux.Context, exchange flux.Backend) *flux.StateE
 		return err
 	}
 	// decode responseWriter
-	decoder, ok := ext.GetBackendResponseDecoder(endpoint.Protocol)
+	decoder, ok := ext.GetBackendResponseDecoder(endpoint.UpstreamProto)
 	if !ok {
 		return ErrBackendResponseDecoderNotFound
 	}

@@ -152,7 +152,7 @@ func hystrixServiceSkipper(ctx flux.Context) bool {
 func hystrixServiceTagger(ctx flux.Context) string {
 	endpoint := ctx.Endpoint()
 	// Proto/Host/Uri 可以标识一个服务。Host可能为空，直接在Url中展示
-	return fmt.Sprintf("%s:%s/%s", endpoint.Protocol, endpoint.UpstreamHost, endpoint.UpstreamUri)
+	return fmt.Sprintf("%s:%s/%s", endpoint.UpstreamProto, endpoint.UpstreamHost, endpoint.UpstreamUri)
 }
 
 func hystrixServiceCircuited(err *flux.StateError) bool {

@@ -47,7 +47,7 @@ func init() {
 	}
 	_filterFactories[_typeProtocol] = func(query string) _filter {
 		return func(ep *support.MultiVersionEndpoint) bool {
-			return strings.ToLower(query) == strings.ToLower(ep.RandomVersion().Protocol)
+			return strings.ToLower(query) == strings.ToLower(ep.RandomVersion().UpstreamProto)
 		}
 	}
 	_filterFactories[_typeHttpPattern] = func(query string) _filter {
