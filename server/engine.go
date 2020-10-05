@@ -106,12 +106,21 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 		}
 		return err
 	}
-	// Resolve arguments
-	if argumentNeedResolve(ctx, ctx.EndpointArguments()) {
-		if err := argumentResolveWith(ext.GetArgumentValueLookupFunc(), ctx.EndpointArguments(), ctx); nil != err {
+
+	// Resolve endpoint arguments
+	valueLookupFunc := ext.GetArgumentValueLookupFunc()
+	if argumentNeedResolve(ctx, ctx.endpoint.Arguments) {
+		if err := argumentResolveWith(valueLookupFunc, ctx.endpoint.Arguments, ctx); nil != err {
 			return doMetricEndpoint(err)
 		}
 	}
+	// Resolve endpoint permission arguments
+	if ctx.endpoint.Permission.IsValid() {
+		if err := argumentResolveWith(valueLookupFunc, ctx.endpoint.Permission.Arguments, ctx); nil != err {
+			return doMetricEndpoint(err)
+		}
+	}
+
 	// Select filters
 	globals := ext.GlobalFilters()
 	selectives := make([]flux.Filter, 0)
