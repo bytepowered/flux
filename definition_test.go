@@ -56,6 +56,29 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 				"key": "value",
 				"bool": true
 		},
+		"permission": {
+				"upstreamUri":"foo.bar.Service",
+    		"upstreamMethod":"checkPermission",
+				"protocol":"DUBBO",
+				"arguments":[
+						{
+								"typeClass":"java.lang.String",
+								"typeGeneric":[],
+								"argName":"devId",
+								"argType":"PRIMITIVE",
+								"httpName":"devId",
+								"httpScope":"AUTO"
+						},
+						{
+								"typeClass":"java.lang.Integer",
+								"typeGeneric":[],
+								"argName":"year",
+								"argType":"PRIMITIVE",
+								"httpName":"year",
+								"httpScope":"AUTO"
+						}
+				]
+		},
 		"f0": "bar",
 		"f1": "bar"
 }`
@@ -71,4 +94,10 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 	assert.Equal("PRIMITIVE", endpoint.Arguments[2].Type)
 
 	assert.Equal(map[string]interface{}{"key": "value", "bool": true}, endpoint.Extensions)
+
+	assert.Equal("checkPermission", endpoint.Permission.UpstreamMethod)
+	assert.Equal(2, len(endpoint.Permission.Arguments))
+	assert.Equal("year", endpoint.Permission.Arguments[1].Name)
+	assert.Equal("year", endpoint.Permission.Arguments[1].HttpName)
+	assert.Equal("PRIMITIVE", endpoint.Permission.Arguments[1].Type)
 }

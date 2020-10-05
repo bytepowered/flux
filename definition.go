@@ -72,7 +72,7 @@ type Endpoint struct {
 	HttpPattern    string                 `json:"httpPattern"`       // 映射Http侧的UriPattern
 	HttpMethod     string                 `json:"httpMethod"`        // 映射Http侧的Method
 	Arguments      []Argument             `json:"arguments"`         // 参数结构
-	Permission     Permission             `json:"permission"`        // 权限验证结果
+	Permission     Permission             `json:"permission"`        // 权限验证定义
 	Extensions     map[string]interface{} `json:"extensions"`        // 扩展信息
 }
 
