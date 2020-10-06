@@ -24,11 +24,27 @@ var (
 )
 
 func DefaultLoggerFactory(values context.Context) flux.Logger {
-	newLogger := _defZapLogger
-	if traceId := values.Value(logger.TraceId); nil != traceId {
-		newLogger = newLogger.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+	return SugaredLoggerFactoryFactory(_defZapLogger)(values)
+}
+
+func SugaredLoggerFactoryFactory(sugar *zap.SugaredLogger) flux.LoggerFactory {
+	return func(values context.Context) flux.Logger {
+		if values == nil {
+			return sugar
+		}
+		newLogger := sugar
+		if traceId := values.Value(logger.TraceId); nil != traceId {
+			newLogger = newLogger.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+		}
+		if extras, ok := values.Value(logger.Extras).(map[string]string); ok && len(extras) > 0 {
+			fields := make([]interface{}, 0, len(extras))
+			for name, val := range extras {
+				fields = append(fields, zap.String(name, val))
+			}
+			newLogger = newLogger.With(fields...)
+		}
+		return newLogger
 	}
-	return newLogger
 }
 
 func LoadLoggerConfig(file string) (zap.Config, error) {
