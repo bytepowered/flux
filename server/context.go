@@ -18,6 +18,7 @@ type WrappedContext struct {
 	values         *sync.Map
 	requestReader  *WrappedRequestReader
 	responseWriter *WrappedResponseWriter
+	ctxLogger      flux.Logger
 }
 
 func NewContextWrapper() interface{} {
@@ -84,6 +85,14 @@ func (c *WrappedContext) GetValue(name string) (interface{}, bool) {
 
 func (c *WrappedContext) HttpRequestContext() context.Context {
 	return c.webc.HttpRequestContext()
+}
+
+func (c *WrappedContext) SetContextLogger(logger flux.Logger) {
+	c.ctxLogger = logger
+}
+
+func (c *WrappedContext) GetContextLogger() (flux.Logger, bool) {
+	return c.ctxLogger, nil != c.ctxLogger
 }
 
 func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {

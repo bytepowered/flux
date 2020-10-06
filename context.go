@@ -141,4 +141,11 @@ type Context interface {
 
 	// HttpRequestContext 返回Http请求的Context对象。用于判定Http请求是否被Cancel。
 	HttpRequestContext() context.Context
+
+	// SetContextLogger 添加Context范围的Logger。
+	// 通常是将关联一些追踪字段的Logger设置为ContextLogger
+	SetContextLogger(logger Logger)
+
+	// GetContextLogger 返回Context范围的Logger。
+	GetContextLogger() (Logger, bool)
 }
