@@ -281,7 +281,7 @@ func (s *HttpServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *sup
 	}
 	if tracing {
 		requrl, _ := webc.RequestURL()
-		logger.Trace(ctxw.RequestId()).Infow("HttpServer routing: DISPATCHING",
+		logger.TraceContext(ctxw).Infow("HttpServer routing: DISPATCHING",
 			"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
 			"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
 		)

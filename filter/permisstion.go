@@ -103,7 +103,7 @@ func (p *EndpointPermissionFilter) Init(config *flux.Configuration) error {
 func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permission, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
 	provider, ok := ext.GetBackend(meta.UpstreamProto)
 	if !ok {
-		logger.Trace(ctx.RequestId()).Errorw("Provider backend unsupported protocol",
+		logger.TraceContext(ctx).Errorw("Provider backend unsupported protocol",
 			"provider-proto", meta.UpstreamProto, "provider-uri", meta.UpstreamUri, "provider-method", meta.UpstreamMethod)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -118,7 +118,7 @@ func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permissio
 		Arguments:      meta.Arguments,
 	}
 	if ret, err := provider.Invoke(provideEndpoint, ctx); nil != err {
-		logger.Trace(ctx.RequestId()).Errorw("Permission Provider backend load error",
+		logger.TraceContext(ctx).Errorw("Permission Provider backend load error",
 			"provider-proto", meta.UpstreamProto, "provider-uri", meta.UpstreamUri, "provider-method", meta.UpstreamMethod, "error", err)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -128,7 +128,7 @@ func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permissio
 	} else {
 		passed, expire, err := GetEndpointPermissionResponseDecoder()(ret, ctx)
 		if nil != err {
-			logger.Trace(ctx.RequestId()).Errorw("Permission decode response error",
+			logger.TraceContext(ctx).Errorw("Permission decode response error",
 				"provider-proto", meta.UpstreamProto, "provider-uri", meta.UpstreamUri, "provider-method", meta.UpstreamMethod, "error", err)
 			return false, cache.NoExpiration, &flux.StateError{
 				StatusCode: flux.StatusServerError,
@@ -150,7 +150,7 @@ func (*EndpointPermissionFilter) TypeId() string {
 }
 
 func defaultEndpointPermissionDecoder(response interface{}, ctx flux.Context) (bool, time.Duration, error) {
-	logger.Trace(ctx.RequestId()).Infow("Decode endpoint permission",
+	logger.TraceContext(ctx).Infow("Decode endpoint permission",
 		"response-type", reflect.TypeOf(response), "response", response)
 	// 默认支持响应JSON数据：
 	// {"status": "[success,error]", "permission": "[true,false]", "message": "OnErrorMessage", "expire": 5}

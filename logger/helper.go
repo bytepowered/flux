@@ -23,3 +23,12 @@ func TraceWith(traceId string, fields map[string]string) flux.Logger {
 func With(values context.Context) flux.Logger {
 	return ext.NewLoggerWith(values)
 }
+
+func TraceContext(ctx flux.Context) flux.Logger {
+	ctxLogger, ok := ctx.GetContextLogger()
+	if ok {
+		return ctxLogger
+	} else {
+		return Trace(ctx.RequestId())
+	}
+}

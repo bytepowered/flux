@@ -130,7 +130,7 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 			if f, ok := ext.GetSelectiveFilter(typeId); ok {
 				selectives = append(selectives, f)
 			} else {
-				logger.Trace(ctx.RequestId()).Warnw("Filter not found on selector", "type-id", typeId)
+				logger.TraceContext(ctx).Warnw("Filter not found on selector", "type-id", typeId)
 			}
 		}
 	}

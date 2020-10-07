@@ -105,7 +105,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 			}
 		}, func(err error) error {
 			_, ok := err.(hystrix.CircuitError)
-			logger.Trace(ctx.RequestId()).Infow("Hystrix check",
+			logger.TraceContext(ctx).Infow("Hystrix check",
 				"is-circuit-error", ok, "service", serviceKey, "error", err)
 			return err
 		})
