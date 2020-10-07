@@ -117,6 +117,9 @@ func _toHashMap(mimeV flux.MIMETypeValue) (interface{}, error) {
 			} else {
 				data = jbs
 			}
+		} else {
+			return nil, fmt.Errorf("unsupported mime-type to hashmap, value: %+v, value.type:%T, mime-type: %s",
+				mimeV.Value, mimeV.Value, mimeV.MIMEType)
 		}
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
