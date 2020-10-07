@@ -11,23 +11,23 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx Context) (value inter
 		return request.QueryValue(key), nil
 	case ScopePath:
 		return request.PathValue(key), nil
+	case ScopeHeader:
+		return request.HeaderValue(key), nil
+	case ScopeForm:
+		return request.FormValue(key), nil
+	case ScopeBody:
+		return request.RequestBodyReader()
+	case ScopeAttrs:
+		return ctx.Attributes(), nil
+	case ScopeAttr:
+		v, _ := ctx.GetAttribute(key)
+		return v, nil
 	case ScopeParam:
 		if v := request.QueryValue(key); "" == v {
 			return request.FormValue(key), nil
 		} else {
 			return v, nil
 		}
-	case ScopeHeader:
-		return request.HeaderValue(key), nil
-	case ScopeForm:
-		return request.FormValue(key), nil
-	case ScopeAttrs:
-		return ctx.Attributes(), nil
-	case ScopeAttr:
-		value, _ := ctx.GetAttribute(key)
-		return value, nil
-	case ScopeAuto:
-		fallthrough
 	default:
 		if v := request.PathValue(key); "" != v {
 			return v, nil

@@ -30,6 +30,8 @@ const (
 	ScopePath = "PATH"
 	// 从Query参数中获取
 	ScopeQuery = "QUERY"
+	// 获取Body数据
+	ScopeBody = "BODY"
 )
 
 const (

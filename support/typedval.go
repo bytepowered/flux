@@ -5,6 +5,8 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/spf13/cast"
+	"io"
+	"io/ioutil"
 )
 
 var (
@@ -27,7 +29,7 @@ var (
 		return cast.ToBool(value), nil
 	}).ResolveFunc
 	mapResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
-		return _toMap(value)
+		return _toHashMap(value)
 	}).ResolveFunc
 	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value interface{}) (interface{}, error) {
 		return _toList(genericTypes, value)
@@ -78,14 +80,39 @@ func init() {
 	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
 }
 
-func _toMap(value interface{}) (interface{}, error) {
+func _toHashMap(value interface{}) (interface{}, error) {
 	if sm, ok := value.(map[string]interface{}); ok {
 		return sm, nil
 	}
 	if om, ok := value.(map[interface{}]interface{}); ok {
 		return om, nil
 	}
-	return nil, fmt.Errorf("输入类型与目标类型map不匹配, input: %+v, type:%T", value, value)
+	decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+	var hashmap = map[string]interface{}{}
+	switch v := value.(type) {
+	// JSON String
+	case string:
+		err := decoder.Unmarshal([]byte(v), &hashmap)
+		return hashmap, err
+	// JSON Bytes
+	case []byte:
+		err := decoder.Unmarshal(v, &hashmap)
+		return hashmap, err
+	// JSON Body Reader
+	case io.Reader:
+		data, err := ioutil.ReadAll(v)
+		if c, ok := v.(io.Closer); ok {
+			_ = c.Close()
+		}
+		if nil != err {
+			return hashmap, err
+		} else {
+			err = decoder.Unmarshal(data, &hashmap)
+			return hashmap, err
+		}
+	default:
+		return hashmap, fmt.Errorf("输入类型与目标类型map不匹配, input: %+v, type:%T", value, value)
+	}
 }
 
 func _toList(genericTypes []string, value interface{}) (interface{}, error) {
