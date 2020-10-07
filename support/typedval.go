@@ -1,12 +1,15 @@
 package support
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/spf13/cast"
 	"io"
 	"io/ioutil"
+	"net/url"
+	"strings"
 )
 
 var (
@@ -28,16 +31,16 @@ var (
 	booleanResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToBool(value), nil
 	}).ResolveFunc
-	mapResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
+	mapResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
 		return _toHashMap(value)
-	}).ResolveFunc
-	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value interface{}) (interface{}, error) {
-		return _toList(genericTypes, value)
 	})
-	defaultResolver = flux.TypedValueResolver(func(className string, genericTypes []string, value interface{}) (interface{}, error) {
+	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
+		return _toArrayList(genericTypes, value)
+	})
+	defaultResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, value flux.MIMETypeValue) (interface{}, error) {
 		return map[string]interface{}{
-			"class":   className,
-			"generic": genericTypes,
+			"class":   typeClass,
+			"generic": typeGeneric,
 			"value":   value,
 		}, nil
 	})
@@ -80,47 +83,106 @@ func init() {
 	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
 }
 
-func _toHashMap(value interface{}) (interface{}, error) {
-	if sm, ok := value.(map[string]interface{}); ok {
-		return sm, nil
-	}
-	if om, ok := value.(map[interface{}]interface{}); ok {
-		return om, nil
-	}
-	decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
-	var hashmap = map[string]interface{}{}
-	switch v := value.(type) {
-	// JSON String
-	case string:
-		err := decoder.Unmarshal([]byte(v), &hashmap)
-		return hashmap, err
-	// JSON Bytes
-	case []byte:
-		err := decoder.Unmarshal(v, &hashmap)
-		return hashmap, err
-	// JSON Body Reader
-	case io.Reader:
-		data, err := ioutil.ReadAll(v)
-		if c, ok := v.(io.Closer); ok {
-			_ = c.Close()
+// FIXME need test
+func _toHashMap(mimeV flux.MIMETypeValue) (interface{}, error) {
+	switch mimeV.MIMEType {
+	case flux.ValueMIMETypeLangStringMap:
+		return mimeV.Value, nil
+	case flux.ValueMIMETypeLangText:
+		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+		var hashmap = map[string]interface{}{}
+		err := decoder.Unmarshal([]byte(mimeV.Value.(string)), &hashmap)
+		return hashmap, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mimeV.Value, err)
+	case flux.ValueMIMETypeLangObject:
+		if sm, ok := mimeV.Value.(map[string]interface{}); ok {
+			return sm, nil
 		}
-		if nil != err {
-			return hashmap, err
-		} else {
-			err = decoder.Unmarshal(data, &hashmap)
-			return hashmap, err
+		if om, ok := mimeV.Value.(map[interface{}]interface{}); ok {
+			return om, nil
 		}
+		return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", mimeV.Value, mimeV.Value)
 	default:
-		return hashmap, fmt.Errorf("输入类型与目标类型map不匹配, input: %+v, type:%T", value, value)
+		var data []byte
+		if strings.Contains(mimeV.MIMEType, "application/json") {
+			if bs, err := _toBytes(mimeV.Value); nil != err {
+				return nil, err
+			} else {
+				data = bs
+			}
+		} else if strings.Contains(mimeV.MIMEType, "application/x-www-form-urlencoded") {
+			if bs, err := _toBytes(mimeV.Value); nil != err {
+				return nil, err
+			} else if jbs, err := _queryToJsonBytes(bs); nil != err {
+				return nil, err
+			} else {
+				data = jbs
+			}
+		}
+		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+		var hashmap = map[string]interface{}{}
+		err := decoder.Unmarshal(data, &hashmap)
+		return hashmap, err
 	}
 }
 
-func _toList(genericTypes []string, value interface{}) (interface{}, error) {
+// FIXME need test
+func _toArrayList(genericTypes []string, mimeV flux.MIMETypeValue) (interface{}, error) {
 	if len(genericTypes) > 0 {
-		eleTypeName := genericTypes[0]
-		v, _ := ext.GetTypedValueResolver(eleTypeName)(eleTypeName, []string{}, value)
-		return []interface{}{v}, nil
+		elementType := genericTypes[0]
+		resolver := ext.GetTypedValueResolver(elementType)
+		if v, err := resolver(elementType, []string{}, mimeV); nil != err {
+			return nil, err
+		} else {
+			return []interface{}{v}, nil
+		}
 	} else {
-		return []interface{}{value}, nil
+		return []interface{}{mimeV}, nil
 	}
+}
+
+func _toBytes(v interface{}) ([]byte, error) {
+	switch v.(type) {
+	case []byte:
+		return v.([]byte), nil
+	case string:
+		return []byte(v.(string)), nil
+	case io.Reader:
+		bs, err := ioutil.ReadAll(v.(io.Reader))
+		if closer, ok := v.(io.Closer); ok {
+			_ = closer.Close()
+		}
+		if nil != err {
+			return nil, err
+		} else {
+			return bs, nil
+		}
+	default:
+		return nil, fmt.Errorf("cannot convert value to []byte, value: %+v, value.type:%T", v, v)
+	}
+}
+
+// Tested
+func _queryToJsonBytes(queryStr []byte) ([]byte, error) {
+	query, err := url.ParseQuery(string(queryStr))
+	if nil != err {
+		return nil, err
+	}
+	fields := make([]string, 0, len(query))
+	for key, values := range query {
+		if len(values) > 1 {
+			// wrap with ""
+			copied := make([]string, len(values))
+			for i, val := range values {
+				copied[i] = `"` + strings.Replace(val, "\"", "\\\"", -1) + `"`
+			}
+			fields = append(fields, fmt.Sprintf(`"%s":[%s]`, key, strings.Join(copied, ",")))
+		} else {
+			fields = append(fields, fmt.Sprintf(`"%s":"%s"`, key, strings.Replace(values[0], "\"", "\\\"", -1)))
+		}
+	}
+	bf := new(bytes.Buffer)
+	bf.WriteByte('{')
+	bf.WriteString(strings.Join(fields, ","))
+	bf.WriteByte('}')
+	return bf.Bytes(), nil
 }
