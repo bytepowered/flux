@@ -32,10 +32,10 @@ var (
 		return cast.ToBool(value), nil
 	}).ResolveFunc
 	mapResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
-		return _toHashMap(value)
+		return CastToStringMap(value)
 	})
 	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
-		return _toArrayList(genericTypes, value)
+		return CastToArrayList(genericTypes, value)
 	})
 	defaultResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, value flux.MIMETypeValue) (interface{}, error) {
 		return map[string]interface{}{
@@ -83,24 +83,24 @@ func init() {
 	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
 }
 
-// FIXME need test
-func _toHashMap(mimeV flux.MIMETypeValue) (interface{}, error) {
+func CastToStringMap(mimeV flux.MIMETypeValue) (map[string]interface{}, error) {
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeLangStringMap:
-		return mimeV.Value, nil
+		return cast.ToStringMap(mimeV.Value), nil
 	case flux.ValueMIMETypeLangText:
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
-		err := decoder.Unmarshal([]byte(mimeV.Value.(string)), &hashmap)
-		return hashmap, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mimeV.Value, err)
+		if err := decoder.Unmarshal([]byte(mimeV.Value.(string)), &hashmap); nil != err {
+			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mimeV.Value, err)
+		} else {
+			return hashmap, nil
+		}
 	case flux.ValueMIMETypeLangObject:
-		if sm, ok := mimeV.Value.(map[string]interface{}); ok {
+		if sm, err := cast.ToStringMapE(mimeV.Value); nil != err {
+			return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", mimeV.Value, mimeV.Value)
+		} else {
 			return sm, nil
 		}
-		if om, ok := mimeV.Value.(map[interface{}]interface{}); ok {
-			return om, nil
-		}
-		return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", mimeV.Value, mimeV.Value)
 	default:
 		var data []byte
 		if strings.Contains(mimeV.MIMEType, "application/json") {
@@ -112,14 +112,18 @@ func _toHashMap(mimeV flux.MIMETypeValue) (interface{}, error) {
 		} else if strings.Contains(mimeV.MIMEType, "application/x-www-form-urlencoded") {
 			if bs, err := _toBytes(mimeV.Value); nil != err {
 				return nil, err
-			} else if jbs, err := _queryToJsonBytes(bs); nil != err {
+			} else if jbs, err := JSONBytesFromQueryString(bs); nil != err {
 				return nil, err
 			} else {
 				data = jbs
 			}
 		} else {
-			return nil, fmt.Errorf("unsupported mime-type to hashmap, value: %+v, value.type:%T, mime-type: %s",
-				mimeV.Value, mimeV.Value, mimeV.MIMEType)
+			if sm, err := cast.ToStringMapE(mimeV.Value); nil == err {
+				return sm, nil
+			} else {
+				return nil, fmt.Errorf("unsupported mime-type to hashmap, value: %+v, value.type:%T, mime-type: %s",
+					mimeV.Value, mimeV.Value, mimeV.MIMEType)
+			}
 		}
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
@@ -128,18 +132,18 @@ func _toHashMap(mimeV flux.MIMETypeValue) (interface{}, error) {
 	}
 }
 
-// FIXME need test
-func _toArrayList(genericTypes []string, mimeV flux.MIMETypeValue) (interface{}, error) {
+func CastToArrayList(genericTypes []string, mimeV flux.MIMETypeValue) ([]interface{}, error) {
+	// SingleValue to arraylist
 	if len(genericTypes) > 0 {
-		elementType := genericTypes[0]
-		resolver := ext.GetTypedValueResolver(elementType)
-		if v, err := resolver(elementType, []string{}, mimeV); nil != err {
+		typeClass := genericTypes[0]
+		resolver := ext.GetTypedValueResolver(typeClass)
+		if v, err := resolver(typeClass, []string{}, mimeV); nil != err {
 			return nil, err
 		} else {
 			return []interface{}{v}, nil
 		}
 	} else {
-		return []interface{}{mimeV}, nil
+		return []interface{}{mimeV.Value}, nil
 	}
 }
 
@@ -165,22 +169,22 @@ func _toBytes(v interface{}) ([]byte, error) {
 }
 
 // Tested
-func _queryToJsonBytes(queryStr []byte) ([]byte, error) {
-	query, err := url.ParseQuery(string(queryStr))
+func JSONBytesFromQueryString(queryStr []byte) ([]byte, error) {
+	queryValues, err := url.ParseQuery(string(queryStr))
 	if nil != err {
 		return nil, err
 	}
-	fields := make([]string, 0, len(query))
-	for key, values := range query {
+	fields := make([]string, 0, len(queryValues))
+	for key, values := range queryValues {
 		if len(values) > 1 {
-			// wrap with ""
+			// quote with ""
 			copied := make([]string, len(values))
 			for i, val := range values {
-				copied[i] = `"` + strings.Replace(val, "\"", "\\\"", -1) + `"`
+				copied[i] = "\"" + string(JSONStringValueEncode(&val)) + "\""
 			}
-			fields = append(fields, fmt.Sprintf(`"%s":[%s]`, key, strings.Join(copied, ",")))
+			fields = append(fields, "\""+key+"\":["+strings.Join(copied, ",")+"]")
 		} else {
-			fields = append(fields, fmt.Sprintf(`"%s":"%s"`, key, strings.Replace(values[0], "\"", "\\\"", -1)))
+			fields = append(fields, "\""+key+"\":\""+string(JSONStringValueEncode(&values[0]))+"\"")
 		}
 	}
 	bf := new(bytes.Buffer)
@@ -188,4 +192,8 @@ func _queryToJsonBytes(queryStr []byte) ([]byte, error) {
 	bf.WriteString(strings.Join(fields, ","))
 	bf.WriteByte('}')
 	return bf.Bytes(), nil
+}
+
+func JSONStringValueEncode(str *string) []byte {
+	return []byte(strings.Replace(*str, `"`, `\"`, -1))
 }
