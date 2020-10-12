@@ -34,6 +34,8 @@ func Benchmark_QueryToJsonBytes(b *testing.B) {
 	}
 }
 
+//// ArrayList
+
 func TestValueToArrayList_Int(t *testing.T) {
 	a1, err := CastToArrayList([]string{"int"}, flux.MIMETypeValue{Value: "123", MIMEType: "text"})
 	assert := assert2.New(t)
@@ -50,15 +52,17 @@ func TestValueToArrayList_String(t *testing.T) {
 	assert.Equal([]interface{}{"123"}, a1)
 }
 
-func TestCastToStringMap(t *testing.T) {
+//// StringMap
+
+func TestCastToStringMapUnsupportedError(t *testing.T) {
 	assert := assert2.New(t)
-	_, err1 := CastToStringMap(flux.MIMETypeValue{Value: "123", MIMEType: "text"})
+	_, err1 := CastDecodeToStringMap(flux.MIMETypeValue{Value: "123", MIMEType: "unknown"})
 	assert.Error(err1)
 }
 
 func TestCastToStringMap_Text(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: `{"k":1,"e":"a"}`, MIMEType: flux.ValueMIMETypeLangText})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: `{"k":1,"e":"a"}`, MIMEType: flux.ValueMIMETypeLangText})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -67,7 +71,7 @@ func TestCastToStringMap_Text(t *testing.T) {
 
 func TestCastToStringMap_JSONText(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: `{"k":1,"e":"a"}`, MIMEType: "application/json"})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: `{"k":1,"e":"a"}`, MIMEType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -76,7 +80,7 @@ func TestCastToStringMap_JSONText(t *testing.T) {
 
 func TestCastToStringMap_JSONBytes(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: []byte(`{"k":1,"e":"a"}`), MIMEType: "application/json"})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: []byte(`{"k":1,"e":"a"}`), MIMEType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -85,7 +89,7 @@ func TestCastToStringMap_JSONBytes(t *testing.T) {
 
 func TestCastToStringMap_JSONReader(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: ioutil.NopCloser(strings.NewReader(`{"k":1,"e":"a"}`)), MIMEType: "application/json"})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: ioutil.NopCloser(strings.NewReader(`{"k":1,"e":"a"}`)), MIMEType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -94,7 +98,7 @@ func TestCastToStringMap_JSONReader(t *testing.T) {
 
 func TestCastToStringMap_QueryText(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: `k=1&e=a`, MIMEType: "application/x-www-form-urlencoded"})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: `k=1&e=a`, MIMEType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -103,7 +107,7 @@ func TestCastToStringMap_QueryText(t *testing.T) {
 
 func TestCastToStringMap_QueryBytes(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: []byte(`k=1&e=a`), MIMEType: "application/x-www-form-urlencoded"})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: []byte(`k=1&e=a`), MIMEType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -112,7 +116,7 @@ func TestCastToStringMap_QueryBytes(t *testing.T) {
 
 func TestCastToStringMap_QueryReader(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: ioutil.NopCloser(strings.NewReader(`k=1&e=a`)), MIMEType: "application/x-www-form-urlencoded"})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: ioutil.NopCloser(strings.NewReader(`k=1&e=a`)), MIMEType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -121,7 +125,7 @@ func TestCastToStringMap_QueryReader(t *testing.T) {
 
 func TestCastToStringMap_Object1(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeLangObject})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeLangObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])
@@ -129,7 +133,7 @@ func TestCastToStringMap_Object1(t *testing.T) {
 
 func TestCastToStringMap_Object2(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := CastToStringMap(flux.MIMETypeValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeLangObject})
+	sm, err := CastDecodeToStringMap(flux.MIMETypeValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeLangObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])

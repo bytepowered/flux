@@ -2,6 +2,7 @@ package support
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
@@ -13,9 +14,13 @@ import (
 )
 
 var (
-	stringResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
-		return cast.ToString(value), nil
-	}).ResolveFunc
+	errCastToByteTypeNotSupported = errors.New("cannot convert value to []byte")
+)
+
+var (
+	stringResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
+		return CastDecodeToString(value)
+	})
 	integerResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToInt(value), nil
 	}).ResolveFunc
@@ -32,7 +37,7 @@ var (
 		return cast.ToBool(value), nil
 	}).ResolveFunc
 	mapResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
-		return CastToStringMap(value)
+		return CastDecodeToStringMap(value)
 	})
 	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
 		return CastToArrayList(genericTypes, value)
@@ -83,7 +88,35 @@ func init() {
 	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
 }
 
-func CastToStringMap(mimeV flux.MIMETypeValue) (map[string]interface{}, error) {
+// CastDecodeToString 最大努力地将值转换成String类型。
+// 如果类型无法安全地转换成String或者解析异常，返回错误。
+func CastDecodeToString(mimeV flux.MIMETypeValue) (string, error) {
+	switch mimeV.MIMEType {
+	case flux.ValueMIMETypeLangText:
+		return mimeV.Value.(string), nil
+	case flux.ValueMIMETypeLangStringMap:
+		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+		if data, err := decoder.Marshal(mimeV.Value); nil != err {
+			return "", err
+		} else {
+			return string(data), nil
+		}
+	default:
+		if data, err := _toBytes0(mimeV.Value); nil != err {
+			if errCastToByteTypeNotSupported == err {
+				return cast.ToStringE(mimeV.Value)
+			} else {
+				return "", err
+			}
+		} else {
+			return string(data), nil
+		}
+	}
+}
+
+// CastDecodeToStringMap 最大努力地将值转换成map[string]any类型。
+// 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
+func CastDecodeToStringMap(mimeV flux.MIMETypeValue) (map[string]interface{}, error) {
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeLangStringMap:
 		return cast.ToStringMap(mimeV.Value), nil
@@ -132,6 +165,8 @@ func CastToStringMap(mimeV flux.MIMETypeValue) (map[string]interface{}, error) {
 	}
 }
 
+// CastToArrayList 最大努力地将值转换成[]any类型。
+// 如果类型无法安全地转换成[]any或者解析异常，返回错误。
 func CastToArrayList(genericTypes []string, mimeV flux.MIMETypeValue) ([]interface{}, error) {
 	// SingleValue to arraylist
 	if len(genericTypes) > 0 {
@@ -148,23 +183,31 @@ func CastToArrayList(genericTypes []string, mimeV flux.MIMETypeValue) ([]interfa
 }
 
 func _toBytes(v interface{}) ([]byte, error) {
+	if bs, err := _toBytes0(v); nil != err {
+		return nil, fmt.Errorf("value: %+v, value.type:%T, error: %w", v, v, err)
+	} else {
+		return bs, nil
+	}
+}
+
+func _toBytes0(v interface{}) ([]byte, error) {
 	switch v.(type) {
 	case []byte:
 		return v.([]byte), nil
 	case string:
 		return []byte(v.(string)), nil
 	case io.Reader:
-		bs, err := ioutil.ReadAll(v.(io.Reader))
+		data, err := ioutil.ReadAll(v.(io.Reader))
 		if closer, ok := v.(io.Closer); ok {
 			_ = closer.Close()
 		}
 		if nil != err {
 			return nil, err
 		} else {
-			return bs, nil
+			return data, nil
 		}
 	default:
-		return nil, fmt.Errorf("cannot convert value to []byte, value: %+v, value.type:%T", v, v)
+		return nil, errCastToByteTypeNotSupported
 	}
 }
 
