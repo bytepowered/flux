@@ -7,20 +7,20 @@ import (
 	"testing"
 )
 
-func Test_SetNilArgumentValueLookupFunc(t *testing.T) {
+func Test_SetNilArgumentValueResolver(t *testing.T) {
 	assert := assert2.New(t)
 	assert.Panicsf(func() {
-		SetArgumentValueLookupFunc(nil)
+		SetArgumentValueResolver(nil)
 	}, "Must panic")
 }
 
-func Test_SetGetArgumentValueLookupFunc(t *testing.T) {
+func Test_SetGetArgumentValueResolver(t *testing.T) {
 	assert := assert2.New(t)
 	f1 := func(scope, key string, context flux.Context) (value interface{}, err error) {
 		return "value", nil
 	}
-	SetArgumentValueLookupFunc(f1)
-	f2 := GetArgumentValueLookupFunc()
+	SetArgumentValueResolver(f1)
+	f2 := GetArgumentValueResolver()
 	assert.Equal(reflect.ValueOf(f1).Pointer(), reflect.ValueOf(f2).Pointer(), "Must equals func")
 }
 

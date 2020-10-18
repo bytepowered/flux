@@ -18,7 +18,7 @@ var (
 )
 
 var (
-	stringResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
+	stringResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.TypedValue) (interface{}, error) {
 		return CastDecodeToString(value)
 	})
 	integerResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
@@ -36,13 +36,13 @@ var (
 	booleanResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToBool(value), nil
 	}).ResolveFunc
-	mapResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
+	mapResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.TypedValue) (interface{}, error) {
 		return CastDecodeToStringMap(value)
 	})
-	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMETypeValue) (interface{}, error) {
+	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.TypedValue) (interface{}, error) {
 		return CastToArrayList(genericTypes, value)
 	})
-	defaultResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, value flux.MIMETypeValue) (interface{}, error) {
+	defaultResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, value flux.TypedValue) (interface{}, error) {
 		return map[string]interface{}{
 			"class":   typeClass,
 			"generic": typeGeneric,
@@ -90,7 +90,7 @@ func init() {
 
 // CastDecodeToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
-func CastDecodeToString(mimeV flux.MIMETypeValue) (string, error) {
+func CastDecodeToString(mimeV flux.TypedValue) (string, error) {
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeLangText:
 		return mimeV.Value.(string), nil
@@ -116,7 +116,7 @@ func CastDecodeToString(mimeV flux.MIMETypeValue) (string, error) {
 
 // CastDecodeToStringMap 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
-func CastDecodeToStringMap(mimeV flux.MIMETypeValue) (map[string]interface{}, error) {
+func CastDecodeToStringMap(mimeV flux.TypedValue) (map[string]interface{}, error) {
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeLangStringMap:
 		return cast.ToStringMap(mimeV.Value), nil
@@ -167,7 +167,7 @@ func CastDecodeToStringMap(mimeV flux.MIMETypeValue) (map[string]interface{}, er
 
 // CastToArrayList 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
-func CastToArrayList(genericTypes []string, mimeV flux.MIMETypeValue) ([]interface{}, error) {
+func CastToArrayList(genericTypes []string, mimeV flux.TypedValue) ([]interface{}, error) {
 	// SingleValue to arraylist
 	if len(genericTypes) > 0 {
 		typeClass := genericTypes[0]

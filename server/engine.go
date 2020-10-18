@@ -8,6 +8,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/support"
 	"github.com/prometheus/client_golang/prometheus"
+	"net/http"
 	"reflect"
 	"sort"
 )
@@ -107,33 +108,36 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 		return err
 	}
 
-	// Resolve endpoint arguments
-	valueLookupFunc := ext.GetArgumentValueLookupFunc()
-	if argumentNeedResolve(ctx, ctx.endpoint.Arguments) {
-		if err := argumentResolveWith(valueLookupFunc, ctx.endpoint.Arguments, ctx); nil != err {
-			return doMetricEndpoint(err)
-		}
-	}
-	// Resolve endpoint permission arguments
-	if ctx.endpoint.Permission.IsValid() {
-		if err := argumentResolveWith(valueLookupFunc, ctx.endpoint.Permission.Arguments, ctx); nil != err {
-			return doMetricEndpoint(err)
-		}
-	}
-
 	// Select filters
 	globals := ext.GlobalFilters()
-	selectives := make([]flux.Filter, 0)
-	host := ctx.Request().Host()
-	for _, selector := range ext.FindSelectors(host) {
-		for _, typeId := range selector.Select(ctx).Filters {
+	selective := make([]flux.Filter, 0, 16)
+	for _, selector := range ext.FindSelectors(ctx.Request().Host()) {
+		for _, typeId := range selector.Select(ctx).Activated {
 			if f, ok := ext.GetSelectiveFilter(typeId); ok {
-				selectives = append(selectives, f)
+				selective = append(selective, f)
 			} else {
 				logger.TraceContext(ctx).Warnw("Filter not found on selector", "type-id", typeId)
 			}
 		}
 	}
+
+	// Resolve endpoint arguments
+	// HEAD, OPTIONS 不需要解析参数
+	skip := http.MethodHead != ctx.Method() && http.MethodOptions != ctx.Method()
+	if skip && len(ctx.endpoint.Arguments) == 0 {
+		resolver := ext.GetArgumentValueResolver()
+		if err := resolveArgumentWith(resolver, ctx.endpoint.Arguments, ctx); nil != err {
+			return doMetricEndpoint(err)
+		}
+	}
+	// Resolve permission arguments
+	if ctx.endpoint.Permission.IsValid() {
+		resolver := ext.GetArgumentValueResolver()
+		if err := resolveArgumentWith(resolver, ctx.endpoint.Permission.Arguments, ctx); nil != err {
+			return doMetricEndpoint(err)
+		}
+	}
+
 	// Walk filters
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
 		protoName := ctx.UpstreamProto()
@@ -148,7 +152,7 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 			timer.ObserveDuration()
 			return ret
 		}
-	}, append(globals, selectives...)...)(ctx)
+	}, append(globals, selective...)...)(ctx)
 	return doMetricEndpoint(err)
 }
 

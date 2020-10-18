@@ -17,8 +17,8 @@ const (
 	ValueMIMETypeLangStringMap = "go:string-map"
 )
 
-// MIMETypeValue
-type MIMETypeValue struct {
+// TypedValue 包含值类型信息的Value包装结构
+type TypedValue struct {
 	Value    interface{}
 	MIMEType string
 }
@@ -27,11 +27,11 @@ type MIMETypeValue struct {
 // @param typeClass 值类型
 // @param typeGeneric 值泛型类型
 // @param value Http请求的值
-type TypedValueResolver func(typeClass string, typeGenerics []string, value MIMETypeValue) (typedValue interface{}, err error)
+type TypedValueResolver func(typeClass string, typeGenerics []string, value TypedValue) (typedValue interface{}, err error)
 
 // TypedValueResolveWrapper 包装转换函数
 type TypedValueResolveWrapper func(value interface{}) (typedValue interface{}, err error)
 
-func (s TypedValueResolveWrapper) ResolveFunc(_ string, _ []string, value MIMETypeValue) (typedValue interface{}, err error) {
-	return s(value.Value)
+func (f TypedValueResolveWrapper) ResolveFunc(_ string, _ []string, value TypedValue) (typedValue interface{}, err error) {
+	return f(value.Value)
 }

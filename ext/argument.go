@@ -9,14 +9,14 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义化参数值查找逻辑。
 var (
-	_argumentValueLookupFunc flux.ArgumentValueLookupFunc
+	_argumentValueLookupFunc flux.ArgumentValueResolver
 )
 
-func SetArgumentValueLookupFunc(r flux.ArgumentValueLookupFunc) {
-	_argumentValueLookupFunc = pkg.RequireNotNil(r, "ArgumentValueLookupFunc is nil").(flux.ArgumentValueLookupFunc)
+func SetArgumentValueResolver(r flux.ArgumentValueResolver) {
+	_argumentValueLookupFunc = pkg.RequireNotNil(r, "ArgumentValueResolver is nil").(flux.ArgumentValueResolver)
 }
 
-func GetArgumentValueLookupFunc() flux.ArgumentValueLookupFunc {
+func GetArgumentValueResolver() flux.ArgumentValueResolver {
 	return _argumentValueLookupFunc
 }
 

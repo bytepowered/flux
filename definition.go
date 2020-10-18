@@ -48,6 +48,9 @@ const (
 	ProtoHttp  = "HTTP"
 )
 
+// ArgumentValueResolver 参数值查找函数
+type ArgumentValueResolver func(scope, key string, context Context) (value TypedValue, err error)
+
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
 	Name        string     `json:"argName"`     // 参数名称
