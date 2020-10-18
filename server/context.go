@@ -40,8 +40,20 @@ func (c *WrappedContext) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *WrappedContext) EndpointProto() string {
+func (c *WrappedContext) Upstream() (proto, host, uri, method string) {
+	return c.endpoint.UpstreamProto, c.endpoint.UpstreamHost, c.endpoint.UpstreamUri, c.endpoint.UpstreamMethod
+}
+
+func (c *WrappedContext) UpstreamProto() string {
 	return c.endpoint.UpstreamProto
+}
+
+func (c *WrappedContext) UpstreamService() (uri, method string) {
+	return c.endpoint.UpstreamUri, c.endpoint.UpstreamMethod
+}
+
+func (c *WrappedContext) Authorize() bool {
+	return c.endpoint.Authorize
 }
 
 func (c *WrappedContext) Method() string {
@@ -79,12 +91,19 @@ func (c *WrappedContext) SetValue(name string, value interface{}) {
 }
 
 func (c *WrappedContext) GetValue(name string) (interface{}, bool) {
-	v, ok := c.values.Load(name)
-	return v, ok
+	// first: Local values
+	// then: WebContext values
+	if lv, ok := c.values.Load(name); ok {
+		return lv, true
+	} else if cv := c.webc.GetValue(name); nil != cv {
+		return cv, true
+	} else {
+		return nil, false
+	}
 }
 
-func (c *WrappedContext) HttpRequestContext() context.Context {
-	return c.webc.HttpRequestContext()
+func (c *WrappedContext) Context() context.Context {
+	return c.webc.Context()
 }
 
 func (c *WrappedContext) SetContextLogger(logger flux.Logger) {
@@ -96,12 +115,13 @@ func (c *WrappedContext) GetContextLogger() (flux.Logger, bool) {
 }
 
 func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {
-	c.webc = webc
-	c.requestReader.reattach(webc)
-	c.endpoint = endpoint
 	c.requestId = requestId
+	c.webc = webc
+	c.endpoint = endpoint
 	c.attachments = new(sync.Map)
 	c.values = new(sync.Map)
+	c.requestReader.reattach(webc)
+	// duplicated: c.responseWriter.reset()
 	c.SetAttribute(flux.XRequestTime, time.Now().Unix())
 	c.SetAttribute(flux.XRequestId, c.requestId)
 	c.SetAttribute(flux.XRequestHost, webc.Host())
@@ -109,10 +129,12 @@ func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoi
 }
 
 func (c *WrappedContext) Release() {
+	c.requestId = ""
 	c.webc = nil
 	c.endpoint = nil
 	c.attachments = nil
 	c.values = nil
 	c.requestReader.reset()
 	c.responseWriter.reset()
+	c.ctxLogger = nil
 }

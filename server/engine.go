@@ -98,7 +98,7 @@ func (r *RouterEngine) Shutdown(ctx context.Context) error {
 func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	doMetricEndpoint := func(err *flux.StateError) *flux.StateError {
 		// Access Counter: ProtoName, UpstreamUri, UpstreamMethod
-		proto, uri, method := ctx.EndpointProto(), ctx.endpoint.UpstreamUri, ctx.endpoint.UpstreamMethod
+		proto, _, uri, method := ctx.Upstream()
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, UpstreamUri, UpstreamMethod, ErrorCode
@@ -136,7 +136,7 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	}
 	// Walk filters
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
-		protoName := ctx.EndpointProto()
+		protoName := ctx.UpstreamProto()
 		if backend, ok := ext.GetBackend(protoName); !ok {
 			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,

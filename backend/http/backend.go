@@ -33,7 +33,7 @@ func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
 func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
 	inURL, _ := ctx.Request().RequestURL()
 	bodyReader, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := ex.Assemble(target, inURL, bodyReader, ctx.HttpRequestContext())
+	newRequest, err := ex.Assemble(target, inURL, bodyReader, ctx.Context())
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,

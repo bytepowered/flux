@@ -152,19 +152,19 @@ func (c *AdaptWebContext) GetValue(name string) interface{} {
 	return c.echoc.Get(name)
 }
 
-func (c *AdaptWebContext) RawContext() interface{} {
+func (c *AdaptWebContext) RawWebContext() interface{} {
 	return c.echoc
 }
 
-func (c *AdaptWebContext) RawRequest() interface{} {
+func (c *AdaptWebContext) RawWebRequest() interface{} {
 	return c.echoc.Request()
 }
 
-func (c *AdaptWebContext) RawResponse() interface{} {
+func (c *AdaptWebContext) RawWebResponse() interface{} {
 	return c.echoc.Response()
 }
 
-func (c *AdaptWebContext) HttpRequestContext() context.Context {
+func (c *AdaptWebContext) Context() context.Context {
 	return c.echoc.Request().Context()
 }
 

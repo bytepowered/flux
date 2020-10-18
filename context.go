@@ -121,8 +121,17 @@ type Context interface {
 	// Endpoint 返回请求路由定义的元数据
 	Endpoint() Endpoint
 
-	// EndpointProto 返回Endpoint的协议名称
-	EndpointProto() string
+	// Authorize 返回当前Endpoint是否需要授权
+	Authorize() bool
+
+	// Upstream 返回EndpointUpstream的信息
+	Upstream() (proto, host, uri, method string)
+
+	// UpstreamProto 返回EndpointUpstream的协议名称
+	UpstreamProto() string
+
+	// UpstreamService 返回EndpointUpstream的服务标识
+	UpstreamService() (uri, method string)
 
 	// Attributes 返回所有Attributes键值对；只读；
 	Attributes() map[string]interface{}
@@ -133,14 +142,15 @@ type Context interface {
 	// SetAttribute 向Context添加Attribute键值对
 	SetAttribute(name string, value interface{})
 
-	// GetValue 获取当前请求范围的值
+	// GetValue 获取当前请求范围的值；
+	// 首先查找Context通过SetValue的键值；如果不存在，则尝试查找WebContext的键值
 	GetValue(name string) (interface{}, bool)
 
 	// SetValue 设置当前请求范围的KV
 	SetValue(name string, value interface{})
 
-	// HttpRequestContext 返回Http请求的Context对象。用于判定Http请求是否被Cancel。
-	HttpRequestContext() context.Context
+	// Context 返回Http请求的Context对象。用于判定Http请求是否被Cancel。
+	Context() context.Context
 
 	// SetContextLogger 添加Context范围的Logger。
 	// 通常是将关联一些追踪字段的Logger设置为ContextLogger

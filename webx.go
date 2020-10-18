@@ -199,21 +199,21 @@ type WebContext interface {
 	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
 	HttpRequest() (*http.Request, error)
 
-	// HttpRequestContext 返回请求的Context对象
-	HttpRequestContext() context.Context
+	// Context 返回请求的Context对象
+	Context() context.Context
 
 	// HttpResponseWriter 返回Http标准ResponseWriter对象。
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
 	HttpResponseWriter() (http.ResponseWriter, error)
 
 	// Context 返回具体Web框架实现的WebContext对象
-	RawContext() interface{}
+	RawWebContext() interface{}
 
-	// RawRequest 返回具体Web框架实现的Request对象
-	RawRequest() interface{}
+	// RawWebRequest 返回具体Web框架实现的Request对象
+	RawWebRequest() interface{}
 
-	// RawResponse 返回具体Web框架实现的Response对象
-	RawResponse() interface{}
+	// RawWebResponse 返回具体Web框架实现的Response对象
+	RawWebResponse() interface{}
 }
 
 // RawWebServer 定义Web框架服务器的接口；通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。

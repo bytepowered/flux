@@ -143,7 +143,7 @@ func (*HystrixFilter) TypeId() string {
 
 func hystrixServiceSkipper(ctx flux.Context) bool {
 	// 只处理Http协议，Dubbo协议内部自带熔断逻辑
-	if flux.ProtoHttp != ctx.EndpointProto() {
+	if flux.ProtoHttp != ctx.UpstreamProto() {
 		return true
 	}
 	return false
