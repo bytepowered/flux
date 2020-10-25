@@ -62,7 +62,7 @@ func TestCastToStringMapUnsupportedError(t *testing.T) {
 
 func TestCastToStringMap_Text(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.TypedValue{Value: `{"k":1,"e":"a"}`, MIMEType: flux.ValueMIMETypeLangText})
+	sm, err := CastDecodeToStringMap(flux.TypedValue{Value: `{"k":1,"e":"a"}`, MIMEType: flux.ValueMIMETypeGoText})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -125,7 +125,7 @@ func TestCastToStringMap_QueryReader(t *testing.T) {
 
 func TestCastToStringMap_Object1(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := CastDecodeToStringMap(flux.TypedValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeLangObject})
+	sm, err := CastDecodeToStringMap(flux.TypedValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])
@@ -133,7 +133,7 @@ func TestCastToStringMap_Object1(t *testing.T) {
 
 func TestCastToStringMap_Object2(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := CastDecodeToStringMap(flux.TypedValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeLangObject})
+	sm, err := CastDecodeToStringMap(flux.TypedValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])

@@ -12,15 +12,27 @@ const (
 )
 
 const (
-	ValueMIMETypeLangText      = "go:text"
-	ValueMIMETypeLangObject    = "go:object"
-	ValueMIMETypeLangStringMap = "go:string-map"
+	ValueMIMETypeGoText      = "go:text"
+	ValueMIMETypeGoObject    = "go:object"
+	ValueMIMETypeGoStringMap = "go:string-map"
 )
 
 // TypedValue 包含值类型信息的Value包装结构
 type TypedValue struct {
 	Value    interface{}
 	MIMEType string
+}
+
+func NewTextTypedValue(value string) TypedValue {
+	return TypedValue{Value: value, MIMEType: ValueMIMETypeGoText}
+}
+
+func NewObjectTypedValue(value interface{}) TypedValue {
+	return TypedValue{Value: value, MIMEType: ValueMIMETypeGoObject}
+}
+
+func NewStrMapTypedValue(value map[string]interface{}) TypedValue {
+	return TypedValue{Value: value, MIMEType: ValueMIMETypeGoStringMap}
 }
 
 // TypedValueResolver 将未定类型的值，按指定类型以及泛型类型转换

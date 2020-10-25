@@ -92,9 +92,9 @@ func init() {
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
 func CastDecodeToString(mimeV flux.TypedValue) (string, error) {
 	switch mimeV.MIMEType {
-	case flux.ValueMIMETypeLangText:
+	case flux.ValueMIMETypeGoText:
 		return mimeV.Value.(string), nil
-	case flux.ValueMIMETypeLangStringMap:
+	case flux.ValueMIMETypeGoStringMap:
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
 		if data, err := decoder.Marshal(mimeV.Value); nil != err {
 			return "", err
@@ -118,9 +118,9 @@ func CastDecodeToString(mimeV flux.TypedValue) (string, error) {
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
 func CastDecodeToStringMap(mimeV flux.TypedValue) (map[string]interface{}, error) {
 	switch mimeV.MIMEType {
-	case flux.ValueMIMETypeLangStringMap:
+	case flux.ValueMIMETypeGoStringMap:
 		return cast.ToStringMap(mimeV.Value), nil
-	case flux.ValueMIMETypeLangText:
+	case flux.ValueMIMETypeGoText:
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
 		if err := decoder.Unmarshal([]byte(mimeV.Value.(string)), &hashmap); nil != err {
@@ -128,7 +128,7 @@ func CastDecodeToStringMap(mimeV flux.TypedValue) (map[string]interface{}, error
 		} else {
 			return hashmap, nil
 		}
-	case flux.ValueMIMETypeLangObject:
+	case flux.ValueMIMETypeGoObject:
 		if sm, err := cast.ToStringMapE(mimeV.Value); nil != err {
 			return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", mimeV.Value, mimeV.Value)
 		} else {

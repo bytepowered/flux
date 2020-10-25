@@ -12,26 +12,26 @@ func DefaultArgumentValueResolver(scope, key string, ctx flux.Context) (value fl
 	request := ctx.Request()
 	switch scope {
 	case flux.ScopeQuery:
-		return _wrapTextTypeValue(request.QueryValue(key)), nil
+		return flux.NewTextTypedValue(request.QueryValue(key)), nil
 	case flux.ScopePath:
-		return _wrapTextTypeValue(request.PathValue(key)), nil
+		return flux.NewTextTypedValue(request.PathValue(key)), nil
 	case flux.ScopeHeader:
-		return _wrapTextTypeValue(request.HeaderValue(key)), nil
+		return flux.NewTextTypedValue(request.HeaderValue(key)), nil
 	case flux.ScopeForm:
-		return _wrapTextTypeValue(request.FormValue(key)), nil
+		return flux.NewTextTypedValue(request.FormValue(key)), nil
 	case flux.ScopeBody:
 		reader, err := request.RequestBodyReader()
 		return flux.TypedValue{Value: reader, MIMEType: request.HeaderValue("Content-Type")}, err
 	case flux.ScopeAttrs:
-		return flux.TypedValue{Value: ctx.Attributes(), MIMEType: flux.ValueMIMETypeLangStringMap}, nil
+		return flux.NewStrMapTypedValue(ctx.Attributes()), nil
 	case flux.ScopeAttr:
 		v, _ := ctx.GetAttribute(key)
-		return _wrapObjectTypeValue(v), nil
+		return flux.NewObjectTypedValue(v), nil
 	case flux.ScopeParam:
 		if v := request.QueryValue(key); "" != v {
-			return _wrapTextTypeValue(v), nil
+			return flux.NewTextTypedValue(v), nil
 		} else {
-			return _wrapTextTypeValue(request.FormValue(key)), nil
+			return flux.NewTextTypedValue(request.FormValue(key)), nil
 		}
 	default:
 		find := func(key string, sources ...url.Values) (string, bool) {
@@ -43,13 +43,13 @@ func DefaultArgumentValueResolver(scope, key string, ctx flux.Context) (value fl
 			return "", false
 		}
 		if v, ok := find(key, request.PathValues(), request.QueryValues(), request.FormValues()); ok {
-			return _wrapTextTypeValue(v), nil
+			return flux.NewTextTypedValue(v), nil
 		} else if v := request.HeaderValue(key); "" != v {
-			return _wrapTextTypeValue(v), nil
+			return flux.NewTextTypedValue(v), nil
 		} else if v, _ := ctx.GetAttribute(key); "" != v {
-			return _wrapObjectTypeValue(v), nil
+			return flux.NewObjectTypedValue(v), nil
 		} else {
-			return _wrapObjectTypeValue(value), nil
+			return flux.NewObjectTypedValue(value), nil
 		}
 	}
 }
@@ -70,14 +70,6 @@ func resolveArgumentWith(lookupFunc flux.ArgumentValueResolver, arguments []flux
 		}
 	}
 	return nil
-}
-
-func _wrapTextTypeValue(value interface{}) flux.TypedValue {
-	return flux.TypedValue{Value: value, MIMEType: flux.ValueMIMETypeLangText}
-}
-
-func _wrapObjectTypeValue(value interface{}) flux.TypedValue {
-	return flux.TypedValue{Value: value, MIMEType: flux.ValueMIMETypeLangObject}
 }
 
 func _doResolve(resolver flux.ArgumentValueResolver, arg flux.Argument, ctx flux.Context) *flux.StateError {

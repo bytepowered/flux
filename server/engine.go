@@ -122,9 +122,9 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	}
 
 	// Resolve endpoint arguments
-	// HEAD, OPTIONS 不需要解析参数
-	skip := http.MethodHead != ctx.Method() && http.MethodOptions != ctx.Method()
-	if skip && len(ctx.endpoint.Arguments) == 0 {
+	// HEAD和OPTIONS不需要解析参数；参数数量要大于0；
+	if http.MethodHead != ctx.Method() && http.MethodOptions != ctx.Method() &&
+		len(ctx.endpoint.Arguments) > 0 {
 		resolver := ext.GetArgumentValueResolver()
 		if err := resolveArgumentWith(resolver, ctx.endpoint.Arguments, ctx); nil != err {
 			return doMetricEndpoint(err)
