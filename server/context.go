@@ -14,7 +14,7 @@ type WrappedContext struct {
 	requestId      string
 	webc           flux.WebContext
 	endpoint       *flux.Endpoint
-	attachments    *sync.Map
+	attributes     *sync.Map
 	values         *sync.Map
 	requestReader  *WrappedRequestReader
 	responseWriter *WrappedResponseWriter
@@ -70,7 +70,7 @@ func (c *WrappedContext) RequestId() string {
 
 func (c *WrappedContext) Attributes() map[string]interface{} {
 	copied := make(map[string]interface{})
-	c.attachments.Range(func(key, value interface{}) bool {
+	c.attributes.Range(func(key, value interface{}) bool {
 		copied[key.(string)] = value
 		return true
 	})
@@ -78,11 +78,11 @@ func (c *WrappedContext) Attributes() map[string]interface{} {
 }
 
 func (c *WrappedContext) SetAttribute(name string, value interface{}) {
-	c.attachments.Store(name, value)
+	c.attributes.Store(name, value)
 }
 
 func (c *WrappedContext) GetAttribute(name string) (interface{}, bool) {
-	v, ok := c.attachments.Load(name)
+	v, ok := c.attributes.Load(name)
 	return v, ok
 }
 
@@ -118,7 +118,7 @@ func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoi
 	c.requestId = requestId
 	c.webc = webc
 	c.endpoint = endpoint
-	c.attachments = new(sync.Map)
+	c.attributes = new(sync.Map)
 	c.values = new(sync.Map)
 	c.requestReader.reattach(webc)
 	// duplicated: c.responseWriter.reset()
@@ -132,7 +132,7 @@ func (c *WrappedContext) Release() {
 	c.requestId = ""
 	c.webc = nil
 	c.endpoint = nil
-	c.attachments = nil
+	c.attributes = nil
 	c.values = nil
 	c.requestReader.reset()
 	c.responseWriter.reset()
