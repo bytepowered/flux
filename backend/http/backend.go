@@ -30,10 +30,10 @@ func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
 	return support.InvokeBackendExchange(ctx, ex)
 }
 
-func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *HttpBackend) Invoke(service flux.Service, ctx flux.Context) (interface{}, *flux.StateError) {
 	inURL, _ := ctx.Request().RequestURL()
 	bodyReader, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := ex.Assemble(target, inURL, bodyReader, ctx.Context())
+	newRequest, err := ex.Assemble(&service, inURL, bodyReader, ctx.Context())
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -68,8 +68,8 @@ func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interfac
 	return resp, nil
 }
 
-func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyReader io.ReadCloser, ctx context.Context) (*http.Request, error) {
-	inParams := endpoint.Service.Arguments
+func (ex *HttpBackend) Assemble(service *flux.Service, inURL *url.URL, bodyReader io.ReadCloser, ctx context.Context) (*http.Request, error) {
+	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
 	defer func() {
@@ -80,7 +80,7 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 		// 如果Endpoint定义了参数，即表示限定参数传递
 		data := _toHttpUrlValues(inParams).Encode()
 		// GET：参数拼接到URL中；
-		if http.MethodGet == endpoint.Service.Method {
+		if http.MethodGet == service.Method {
 			if newQuery == "" {
 				newQuery = data
 			} else {
@@ -93,8 +93,8 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 	}
 	// 未定义参数，即透传Http请求：Rewrite inRequest path
 	newUrl := &url.URL{
-		Host:       endpoint.Service.Host,
-		Path:       endpoint.Service.Interface,
+		Host:       service.Host,
+		Path:       service.Interface,
 		Scheme:     inURL.Scheme,
 		Opaque:     inURL.Opaque,
 		User:       inURL.User,
@@ -103,18 +103,18 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 		RawQuery:   newQuery,
 		Fragment:   inURL.Fragment,
 	}
-	timeout, err := time.ParseDuration(endpoint.Service.Timeout)
+	timeout, err := time.ParseDuration(service.Timeout)
 	if err != nil {
-		logger.Warnf("Illegal endpoint rpc-timeout: ", endpoint.Service.Timeout)
+		logger.Warnf("Illegal endpoint rpc-timeout: ", service.Timeout)
 		timeout = time.Second * 10
 	}
 	toctx, _ := context.WithTimeout(ctx, timeout)
-	newRequest, err := http.NewRequestWithContext(toctx, endpoint.Service.Method, newUrl.String(), newBodyReader)
+	newRequest, err := http.NewRequestWithContext(toctx, service.Method, newUrl.String(), newBodyReader)
 	if nil != err {
-		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", endpoint.Service.Method, newUrl, err)
+		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", service.Method, newUrl, err)
 	}
 	// Body数据设置application/x-www-url-encoded
-	if http.MethodGet != endpoint.Service.Method {
+	if http.MethodGet != service.Method {
 		newRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 	newRequest.Header.Set("User-Agent", "FluxGo/Backend/v1")

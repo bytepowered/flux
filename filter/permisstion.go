@@ -100,28 +100,26 @@ func (p *EndpointPermissionFilter) Init(config *flux.Configuration) error {
 	return nil
 }
 
-func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permission, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
-	provider, ok := ext.GetBackend(meta.Protocol)
+func (p *EndpointPermissionFilter) doPermissionVerification(perm *flux.Permission, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
+	backend, ok := ext.GetBackend(perm.Protocol)
 	if !ok {
 		logger.TraceContext(ctx).Errorw("Provider backend unsupported protocol",
-			"provider-proto", meta.Protocol, "provider-uri", meta.Interface, "provider-method", meta.Method)
+			"provider-proto", perm.Protocol, "provider-uri", perm.Interface, "provider-method", perm.Method)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:UNKNOWN_PROTOCOL",
 			Internal:   err,
 		}
 	}
-	provideEndpoint := &flux.Endpoint{
-		Service: flux.Service{
-			Host:      meta.Host,
-			Method:    meta.Method,
-			Interface: meta.Interface,
-			Arguments: meta.Arguments,
-		},
+	service := flux.Service{
+		Host:      perm.Host,
+		Method:    perm.Method,
+		Interface: perm.Interface,
+		Arguments: perm.Arguments,
 	}
-	if ret, err := provider.Invoke(provideEndpoint, ctx); nil != err {
+	if ret, err := backend.Invoke(service, ctx); nil != err {
 		logger.TraceContext(ctx).Errorw("Permission Provider backend load error",
-			"provider-proto", meta.Protocol, "provider-uri", meta.Interface, "provider-method", meta.Method, "error", err)
+			"provider-proto", perm.Protocol, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:LOAD",
@@ -131,7 +129,7 @@ func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permissio
 		passed, expire, err := GetEndpointPermissionResponseDecoder()(ret, ctx)
 		if nil != err {
 			logger.TraceContext(ctx).Errorw("Permission decode response error",
-				"provider-proto", meta.Protocol, "provider-uri", meta.Interface, "provider-method", meta.Method, "error", err)
+				"provider-proto", perm.Protocol, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
 			return false, cache.NoExpiration, &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				Message:    "PERMISSION:RESPONSE:DECODE",

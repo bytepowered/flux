@@ -24,7 +24,8 @@ func TestBackend_HttpbinMethods(t *testing.T) {
 			}
 		}
 		bodyReader, _ := inReq.GetBody()
-		newReq, err := backend.Assemble(newHttpBinEndpoint(method), inReq.URL, bodyReader, context.Background())
+		service := newHttpBinService(method)
+		newReq, err := backend.Assemble(&service, inReq.URL, bodyReader, context.Background())
 		if nil != err {
 			t.Fatalf("invoke err: %s", err)
 		}
@@ -35,7 +36,7 @@ func TestBackend_HttpbinMethods(t *testing.T) {
 
 }
 
-func newHttpBinEndpoint(method string) *flux.Endpoint {
+func newHttpBinService(method string) flux.Service {
 	params := make([]flux.Argument, 0)
 	if "DELETE" != method {
 		params = []flux.Argument{
@@ -45,12 +46,12 @@ func newHttpBinEndpoint(method string) *flux.Endpoint {
 			{Name: "paramFrom", Value: flux.NewWrapValue("endpoint-define")},
 		}
 	}
-	return &flux.Endpoint{
-		RpcTimeout:     "10s",
-		UpstreamHost:   "httpbin.org",
-		UpstreamUri:    "/" + strings.ToLower(method),
-		UpstreamMethod: method,
-		Arguments:      params,
+	return flux.Service{
+		Timeout:   "10s",
+		Host:      "httpbin.org",
+		Interface: "/" + strings.ToLower(method),
+		Method:    method,
+		Arguments: params,
 	}
 }
 

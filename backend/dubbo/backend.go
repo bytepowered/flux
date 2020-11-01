@@ -132,8 +132,7 @@ func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
 	return support.InvokeBackendExchange(ctx, ex)
 }
 
-func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.StateError) {
-	service := target.Service
+func (ex *DubboBackend) Invoke(service flux.Service, fxctx flux.Context) (interface{}, *flux.StateError) {
 	types, values := ex.AssembleFunc(service.Arguments)
 	// 在测试场景中，fluxContext可能为nil
 	attachments := make(map[string]interface{})
@@ -164,8 +163,8 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 		}
 		goctx = context.WithValue(fxctx.Context(), constant.AttachmentKey, ssmap)
 	}
-	instance := ex.lookupService(&service)
-	if resp, err := instance.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
+	generic := ex.LookupGenericService(&service)
+	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
 		logger.Trace(traceId).Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
@@ -181,23 +180,23 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 	}
 }
 
-func (ex *DubboBackend) lookupService(endpoint *flux.Service) *dubgo.GenericService {
+func (ex *DubboBackend) LookupGenericService(service *flux.Service) *dubgo.GenericService {
 	ex.referenceMu.Lock()
 	defer ex.referenceMu.Unlock()
-	id := endpoint.Interface
+	id := service.Interface
 	if ref := dubgo.GetConsumerService(id); nil != ref {
 		return ref.(*dubgo.GenericService)
 	}
-	ref := NewReference(id, endpoint, ex.configuration)
+	ref := NewReference(id, service, ex.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
 	for _, opt := range ex.OptionFuncs {
 		if nil != opt {
-			ref = pkg.RequireNotNil(opt(endpoint, ex.configuration, ref), msg).(*dubgo.ReferenceConfig)
+			ref = pkg.RequireNotNil(opt(service, ex.configuration, ref), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("Create dubbo reference-config, referring",
-		"service-id", id, "interface", endpoint.Interface)
+		"service-id", id, "interface", service.Interface)
 	genericService := dubgo.NewGenericService(id)
 	dubgo.SetConsumerService(genericService)
 	ref.Refer(genericService)
@@ -208,7 +207,7 @@ func (ex *DubboBackend) lookupService(endpoint *flux.Service) *dubgo.GenericServ
 	}
 	<-time.After(t)
 	logger.Infow("Create dubbo reference-config: OK",
-		"service-id", id, "interface", endpoint.Interface)
+		"service-id", id, "interface", service.Interface)
 	return genericService
 }
 
