@@ -101,7 +101,7 @@ func _doResolve(resolver flux.ArgumentValueResolver, arg flux.Argument, ctx flux
 			Internal:   err,
 		}
 	} else {
-		arg.HttpValue.SetValue(value)
+		arg.Value.Set(value)
 		return nil
 	}
 }

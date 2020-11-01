@@ -283,7 +283,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 		requrl, _ := webc.RequestURL()
 		logger.TraceContext(ctxw).Infow("HttpWebServer routing: DISPATCHING",
 			"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
-			"endpoint", endpoint.UpstreamMethod+":"+endpoint.UpstreamUri,
+			"endpoint", endpoint.Service.Method+":"+endpoint.Service.Interface,
 		)
 	}
 	// Route and response
@@ -306,7 +306,7 @@ func (s *HttpWebServer) HandleEndpointEvent(event flux.EndpointEvent) {
 	routeKey := fmt.Sprintf("%s#%s", routeMethod, pattern)
 	// Refresh endpoint
 	endpoint := event.Endpoint
-	_initializeArguments(endpoint.Arguments)
+	_initializeArguments(endpoint.Service.Arguments)
 	if endpoint.Permission.IsValid() {
 		_initializeArguments(endpoint.Permission.Arguments)
 	}
@@ -395,7 +395,7 @@ func _initializeArguments(args []flux.Argument) {
 }
 
 func _initializeArgument(arg *flux.Argument) {
-	arg.HttpValue = flux.NewWrapValue(nil)
+	arg.Value = flux.NewWrapValue(nil)
 	for i := range arg.Fields {
 		_initializeArgument(&arg.Fields[i])
 	}

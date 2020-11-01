@@ -32,8 +32,8 @@ type (
 	}
 	// Valuer 用于定义值对象的读写接口
 	Valuer interface {
-		Value() interface{}
-		SetValue(interface{})
+		Get() interface{}
+		Set(interface{})
 	}
 )
 

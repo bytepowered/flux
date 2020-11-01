@@ -27,7 +27,7 @@ func NewPrimitiveArgument(typeClass, argName string, value interface{}) flux.Arg
 		TypeClass: typeClass,
 		Type:      flux.ArgumentTypePrimitive,
 		Name:      argName,
-		HttpValue: flux.NewWrapValue(value),
+		Value:     flux.NewWrapValue(value),
 	}
 }
 
@@ -36,7 +36,7 @@ func NewComplexArgument(typeClass, argName string, value interface{}) flux.Argum
 		TypeClass: typeClass,
 		Type:      flux.ArgumentTypeComplex,
 		Name:      argName,
-		HttpValue: flux.NewWrapValue(value),
+		Value:     flux.NewWrapValue(value),
 	}
 }
 

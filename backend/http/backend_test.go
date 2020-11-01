@@ -39,10 +39,10 @@ func newHttpBinEndpoint(method string) *flux.Endpoint {
 	params := make([]flux.Argument, 0)
 	if "DELETE" != method {
 		params = []flux.Argument{
-			{Name: "username", HttpValue: flux.NewWrapValue("yongjia")},
-			{Name: "email", HttpValue: flux.NewWrapValue("yongjia.chen@hotmail.com")},
-			{Name: "callMethod", HttpValue: flux.NewWrapValue(method)},
-			{Name: "paramFrom", HttpValue: flux.NewWrapValue("endpoint-define")},
+			{Name: "username", Value: flux.NewWrapValue("yongjia")},
+			{Name: "email", Value: flux.NewWrapValue("yongjia.chen@hotmail.com")},
+			{Name: "callMethod", Value: flux.NewWrapValue(method)},
+			{Name: "paramFrom", Value: flux.NewWrapValue("endpoint-define")},
 		}
 	}
 	return &flux.Endpoint{

@@ -48,7 +48,7 @@ var (
 )
 
 // DubboReference配置函数，可外部化配置Dubbo Reference
-type OptionFunc func(*flux.Endpoint, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+type OptionFunc func(*flux.Service, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 
 // 参数封装函数，可外部化配置为其它协议的值对象
 type AssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
@@ -133,7 +133,8 @@ func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
 }
 
 func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (interface{}, *flux.StateError) {
-	types, values := ex.AssembleFunc(target.Arguments)
+	service := target.Service
+	types, values := ex.AssembleFunc(service.Arguments)
 	// 在测试场景中，fluxContext可能为nil
 	attachments := make(map[string]interface{})
 	traceId := "no-trace-id"
@@ -141,14 +142,12 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 		attachments = fxctx.Attributes()
 		traceId = fxctx.RequestId()
 	}
-	serviceTag := target.UpstreamUri + "." + target.UpstreamMethod
+	serviceTag := service.Interface + "." + service.Method
 	if ex.traceEnable {
 		logger.Trace(traceId).Infow("Dubbo invoking",
 			"service", serviceTag, "arguments.type", types, "attachments", attachments,
 		)
 	}
-	args := []interface{}{target.UpstreamMethod, types, values}
-	service := ex.lookupService(target)
 	goctx := context.Background()
 	if nil != fxctx {
 		// Note: must be map[string]string
@@ -165,7 +164,8 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 		}
 		goctx = context.WithValue(fxctx.Context(), constant.AttachmentKey, ssmap)
 	}
-	if resp, err := service.Invoke(goctx, args); err != nil {
+	instance := ex.lookupService(&service)
+	if resp, err := instance.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
 		logger.Trace(traceId).Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
@@ -181,10 +181,10 @@ func (ex *DubboBackend) Invoke(target *flux.Endpoint, fxctx flux.Context) (inter
 	}
 }
 
-func (ex *DubboBackend) lookupService(endpoint *flux.Endpoint) *dubgo.GenericService {
+func (ex *DubboBackend) lookupService(endpoint *flux.Service) *dubgo.GenericService {
 	ex.referenceMu.Lock()
 	defer ex.referenceMu.Unlock()
-	id := endpoint.UpstreamUri
+	id := endpoint.Interface
 	if ref := dubgo.GetConsumerService(id); nil != ref {
 		return ref.(*dubgo.GenericService)
 	}
@@ -196,7 +196,8 @@ func (ex *DubboBackend) lookupService(endpoint *flux.Endpoint) *dubgo.GenericSer
 			ref = pkg.RequireNotNil(opt(endpoint, ex.configuration, ref), msg).(*dubgo.ReferenceConfig)
 		}
 	}
-	logger.Infow("Create dubbo reference-config, referring", "service-id", id, "interface", endpoint.UpstreamUri)
+	logger.Infow("Create dubbo reference-config, referring",
+		"service-id", id, "interface", endpoint.Interface)
 	genericService := dubgo.NewGenericService(id)
 	dubgo.SetConsumerService(genericService)
 	ref.Refer(genericService)
@@ -206,7 +207,8 @@ func (ex *DubboBackend) lookupService(endpoint *flux.Endpoint) *dubgo.GenericSer
 		t = time.Millisecond * 30
 	}
 	<-time.After(t)
-	logger.Infow("Create dubbo reference-config: OK", "service-id", id, "interface", endpoint.UpstreamUri)
+	logger.Infow("Create dubbo reference-config: OK",
+		"service-id", id, "interface", endpoint.Interface)
 	return genericService
 }
 

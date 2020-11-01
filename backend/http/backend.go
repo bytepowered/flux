@@ -69,7 +69,7 @@ func (ex *HttpBackend) Invoke(target *flux.Endpoint, ctx flux.Context) (interfac
 }
 
 func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyReader io.ReadCloser, ctx context.Context) (*http.Request, error) {
-	inParams := endpoint.Arguments
+	inParams := endpoint.Service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
 	defer func() {
@@ -80,7 +80,7 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 		// 如果Endpoint定义了参数，即表示限定参数传递
 		data := _toHttpUrlValues(inParams).Encode()
 		// GET：参数拼接到URL中；
-		if http.MethodGet == endpoint.UpstreamMethod {
+		if http.MethodGet == endpoint.Service.Method {
 			if newQuery == "" {
 				newQuery = data
 			} else {
@@ -93,8 +93,8 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 	}
 	// 未定义参数，即透传Http请求：Rewrite inRequest path
 	newUrl := &url.URL{
-		Host:       endpoint.UpstreamHost,
-		Path:       endpoint.UpstreamUri,
+		Host:       endpoint.Service.Host,
+		Path:       endpoint.Service.Interface,
 		Scheme:     inURL.Scheme,
 		Opaque:     inURL.Opaque,
 		User:       inURL.User,
@@ -103,18 +103,18 @@ func (ex *HttpBackend) Assemble(endpoint *flux.Endpoint, inURL *url.URL, bodyRea
 		RawQuery:   newQuery,
 		Fragment:   inURL.Fragment,
 	}
-	timeout, err := time.ParseDuration(endpoint.RpcTimeout)
+	timeout, err := time.ParseDuration(endpoint.Service.Timeout)
 	if err != nil {
-		logger.Warnf("Illegal endpoint rpc-timeout: ", endpoint.RpcTimeout)
+		logger.Warnf("Illegal endpoint rpc-timeout: ", endpoint.Service.Timeout)
 		timeout = time.Second * 10
 	}
 	toctx, _ := context.WithTimeout(ctx, timeout)
-	newRequest, err := http.NewRequestWithContext(toctx, endpoint.UpstreamMethod, newUrl.String(), newBodyReader)
+	newRequest, err := http.NewRequestWithContext(toctx, endpoint.Service.Method, newUrl.String(), newBodyReader)
 	if nil != err {
-		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", endpoint.UpstreamMethod, newUrl, err)
+		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", endpoint.Service.Method, newUrl, err)
 	}
 	// Body数据设置application/x-www-url-encoded
-	if http.MethodGet != endpoint.UpstreamMethod {
+	if http.MethodGet != endpoint.Service.Method {
 		newRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 	newRequest.Header.Set("User-Agent", "FluxGo/Backend/v1")

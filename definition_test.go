@@ -9,71 +9,73 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 	text := `{
     "version":"3.0",
     "application":"testapp",
-    "protocol":"DUBBO",
-    "rpcGroup":"myg",
-    "rpcVersion":"1.0.0",
-    "rpcRetries":0,
-    "authorize":true,
-    "upstreamUri":"foo.bar.Service",
-    "upstreamMethod":"reportDetail",
+		"authorize":true,
+    "service": {
+			"protocol":"DUBBO",
+			"group":"myg",
+			"version":"1.0.0",
+			"retries":0,
+			"interface":"foo.bar.Service",
+			"method":"reportDetail",
+			"arguments":[
+							{
+									"class":"java.lang.String",
+									"generic":[],
+									"name":"devId",
+									"type":"PRIMITIVE",
+									"httpName":"devId",
+									"httpScope":"AUTO"
+							},
+							{
+									"class":"java.lang.Integer",
+									"generic":[],
+									"name":"year",
+									"type":"PRIMITIVE",
+									"httpName":"year",
+									"httpScope":"AUTO"
+							},
+							{
+									"class":"java.lang.Integer",
+									"generic":[],
+									"name":"month",
+									"type":"PRIMITIVE",
+									"httpName":"month",
+									"httpScope":"AUTO"
+							},
+							{
+									"class":"java.lang.Integer",
+									"generic":[],
+									"name":"week",
+									"type":"PRIMITIVE",
+									"httpName":"week",
+									"httpScope":"AUTO"
+							}
+					]
+		},
     "httpPattern":"/api/foo/bar",
     "httpMethod":"POST",
-    "arguments":[
-        {
-            "typeClass":"java.lang.String",
-            "typeGeneric":[],
-            "argName":"devId",
-            "argType":"PRIMITIVE",
-            "httpName":"devId",
-            "httpScope":"AUTO"
-        },
-        {
-            "typeClass":"java.lang.Integer",
-            "typeGeneric":[],
-            "argName":"year",
-            "argType":"PRIMITIVE",
-            "httpName":"year",
-            "httpScope":"AUTO"
-        },
-        {
-            "typeClass":"java.lang.Integer",
-            "typeGeneric":[],
-            "argName":"month",
-            "argType":"PRIMITIVE",
-            "httpName":"month",
-            "httpScope":"AUTO"
-        },
-        {
-            "typeClass":"java.lang.Integer",
-            "typeGeneric":[],
-            "argName":"week",
-            "argType":"PRIMITIVE",
-            "httpName":"week",
-            "httpScope":"AUTO"
-        }
-    ],
 		"extensions": {
 				"key": "value",
 				"bool": true
 		},
 		"permission": {
-				"upstreamUri":"foo.bar.Service",
-    		"upstreamMethod":"checkPermission",
+				"interface":"foo.bar.Service",
+    		"method":"checkPermission",
 				"protocol":"DUBBO",
 				"arguments":[
 						{
-								"typeClass":"java.lang.String",
-								"typeGeneric":[],
-								"argName":"devId",
-								"argType":"PRIMITIVE",
+								"class":"java.lang.String",
+								"generic":[],
+								"name":"devId",
+								"type":"PRIMITIVE",
 								"httpName":"devId",
 								"httpScope":"AUTO"
 						},
 						{
-								"typeClass":"java.lang.Integer",
-								"typeGeneric":[],
-								"argName":"year",
-								"argType":"PRIMITIVE",
+								"class":"java.lang.Integer",
+								"generic":[],
+								"name":"year",
+								"type":"PRIMITIVE",
 								"httpName":"year",
 								"httpScope":"AUTO"
 						}
@@ -88,14 +90,17 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 	assert := assert2.New(t)
 	assert.NoError(err, "Should not error")
 	assert.Equal("/api/foo/bar", endpoint.HttpPattern)
-	assert.Equal(4, len(endpoint.Arguments))
-	assert.Equal("month", endpoint.Arguments[2].Name)
-	assert.Equal("month", endpoint.Arguments[2].HttpName)
-	assert.Equal("PRIMITIVE", endpoint.Arguments[2].Type)
+	assert.Equal(4, len(endpoint.Service.Arguments))
+	assert.Equal("month", endpoint.Service.Arguments[2].Name)
+	assert.Equal("month", endpoint.Service.Arguments[2].HttpName)
+	assert.Equal("PRIMITIVE", endpoint.Service.Arguments[2].Type)
+
+	assert.Equal("DUBBO", endpoint.Service.Protocol)
+	assert.Equal("reportDetail", endpoint.Service.Method)
 
 	assert.Equal(map[string]interface{}{"key": "value", "bool": true}, endpoint.Extensions)
 
-	assert.Equal("checkPermission", endpoint.Permission.UpstreamMethod)
+	assert.Equal("checkPermission", endpoint.Permission.Method)
 	assert.Equal(2, len(endpoint.Permission.Arguments))
 	assert.Equal("year", endpoint.Permission.Arguments[1].Name)
 	assert.Equal("year", endpoint.Permission.Arguments[1].HttpName)

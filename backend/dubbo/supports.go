@@ -19,7 +19,7 @@ func assembleHessianValues(arguments []flux.Argument) ([]string, interface{}) {
 	for i, arg := range arguments {
 		argTypes[i] = arg.TypeClass
 		if flux.ArgumentTypePrimitive == arg.Type {
-			argValues[i] = arg.HttpValue.Value()
+			argValues[i] = arg.Value.Get()
 		} else if flux.ArgumentTypeComplex == arg.Type {
 			argValues[i] = ComplexToMap(arg)
 		} else {
@@ -34,7 +34,7 @@ func ComplexToMap(arg flux.Argument) map[string]interface{} {
 	m["class"] = arg.TypeClass
 	for _, field := range arg.Fields {
 		if flux.ArgumentTypePrimitive == field.Type {
-			m[field.Name] = field.HttpValue.Value()
+			m[field.Name] = field.Value.Get()
 		} else if flux.ArgumentTypeComplex == arg.Type {
 			m[field.Name] = ComplexToMap(field)
 		} else {
@@ -44,12 +44,12 @@ func ComplexToMap(arg flux.Argument) map[string]interface{} {
 	return m
 }
 
-func NewReference(refid string, endpoint *flux.Endpoint, config *flux.Configuration) *dubgo.ReferenceConfig {
-	logger.Infow("Create dubbo reference-config", "service", endpoint.UpstreamUri)
+func NewReference(refid string, service *flux.Service, config *flux.Configuration) *dubgo.ReferenceConfig {
+	logger.Infow("Create dubbo reference-config", "service", service.Interface)
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
-	ref.InterfaceName = endpoint.UpstreamUri
-	ref.Version = endpoint.RpcVersion
-	ref.Group = endpoint.RpcGroup
+	ref.InterfaceName = service.Interface
+	ref.Version = service.Version
+	ref.Group = service.Group
 	ref.RequestTimeout = config.GetString("timeout")
 	ref.Cluster = config.GetString("cluster")
 	ref.Retries = config.GetString("retries")

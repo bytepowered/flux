@@ -98,11 +98,11 @@ func (r *RouterEngine) Shutdown(ctx context.Context) error {
 
 func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	doMetricEndpoint := func(err *flux.StateError) *flux.StateError {
-		// Access Counter: ProtoName, UpstreamUri, UpstreamMethod
-		proto, _, uri, method := ctx.Upstream()
+		// Access Counter: ProtoName, Interface, Method
+		proto, _, uri, method := ctx.ServiceInterface()
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
-			// Error Counter: ProtoName, UpstreamUri, UpstreamMethod, ErrorCode
+			// Error Counter: ProtoName, Interface, Method, ErrorCode
 			r.metrics.EndpointError.WithLabelValues(proto, uri, method, err.ErrorCode).Inc()
 		}
 		return err
@@ -124,9 +124,9 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	// Resolve endpoint arguments
 	// HEAD和OPTIONS不需要解析参数；参数数量要大于0；
 	if http.MethodHead != ctx.Method() && http.MethodOptions != ctx.Method() &&
-		len(ctx.endpoint.Arguments) > 0 {
+		len(ctx.endpoint.Service.Arguments) > 0 {
 		resolver := ext.GetArgumentValueResolver()
-		if err := resolveArgumentWith(resolver, ctx.endpoint.Arguments, ctx); nil != err {
+		if err := resolveArgumentWith(resolver, ctx.endpoint.Service.Arguments, ctx); nil != err {
 			return doMetricEndpoint(err)
 		}
 	}
@@ -140,7 +140,7 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 
 	// Walk filters
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
-		protoName := ctx.UpstreamProto()
+		protoName := ctx.ServiceProto()
 		if backend, ok := ext.GetBackend(protoName); !ok {
 			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,

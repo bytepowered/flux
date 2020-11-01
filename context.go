@@ -124,14 +124,14 @@ type Context interface {
 	// Authorize 返回当前Endpoint是否需要授权
 	Authorize() bool
 
-	// Upstream 返回EndpointUpstream的信息
-	Upstream() (proto, host, uri, method string)
+	// ServiceInterface 返回Endpoint Service的信息
+	ServiceInterface() (proto, host, interfaceName, methodName string)
 
-	// UpstreamProto 返回EndpointUpstream的协议名称
-	UpstreamProto() string
+	// Protocol 返回Endpoint Service的协议名称
+	ServiceProto() string
 
-	// UpstreamService 返回EndpointUpstream的服务标识
-	UpstreamService() (uri, method string)
+	// ServiceName 返回Endpoint Service的服务标识
+	ServiceName() (interfaceName, methodName string)
 
 	// Attributes 返回所有Attributes键值对；只读；
 	Attributes() map[string]interface{}

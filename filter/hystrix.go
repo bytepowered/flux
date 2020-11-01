@@ -143,16 +143,16 @@ func (*HystrixFilter) TypeId() string {
 
 func hystrixServiceSkipper(ctx flux.Context) bool {
 	// 只处理Http协议，Dubbo协议内部自带熔断逻辑
-	if flux.ProtoHttp != ctx.UpstreamProto() {
+	if flux.ProtoHttp != ctx.ServiceProto() {
 		return true
 	}
 	return false
 }
 
 func hystrixServiceTagger(ctx flux.Context) string {
-	endpoint := ctx.Endpoint()
-	// Proto/Host/Uri 可以标识一个服务。Host可能为空，直接在Url中展示
-	return fmt.Sprintf("%s:%s/%s", endpoint.UpstreamProto, endpoint.UpstreamHost, endpoint.UpstreamUri)
+	service := ctx.Endpoint().Service
+	// Protocol/Host/Uri 可以标识一个服务。Host可能为空，直接在Url中展示
+	return fmt.Sprintf("%s:%s/%s", service.Protocol, service.Host, service.Interface)
 }
 
 func hystrixServiceCircuited(err *flux.StateError) bool {

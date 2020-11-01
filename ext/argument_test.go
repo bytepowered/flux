@@ -136,6 +136,6 @@ func TestNewPrimitiveArgument(t *testing.T) {
 		assert.Equal(tcase.class, tcase.definition.TypeClass, "type class")
 		assert.Equal(tcase.argType, tcase.definition.Type, "arg type")
 		assert.Equal(tcase.name, tcase.definition.Name, "name")
-		assert.Equal(tcase.value, tcase.definition.HttpValue.Value(), "name")
+		assert.Equal(tcase.value, tcase.definition.Value.Get(), "name")
 	}
 }

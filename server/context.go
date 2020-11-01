@@ -40,16 +40,17 @@ func (c *WrappedContext) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *WrappedContext) Upstream() (proto, host, uri, method string) {
-	return c.endpoint.UpstreamProto, c.endpoint.UpstreamHost, c.endpoint.UpstreamUri, c.endpoint.UpstreamMethod
+func (c *WrappedContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
+	s := c.endpoint.Service
+	return s.Protocol, s.Host, s.Interface, s.Method
 }
 
-func (c *WrappedContext) UpstreamProto() string {
-	return c.endpoint.UpstreamProto
+func (c *WrappedContext) ServiceProto() string {
+	return c.endpoint.Service.Protocol
 }
 
-func (c *WrappedContext) UpstreamService() (uri, method string) {
-	return c.endpoint.UpstreamUri, c.endpoint.UpstreamMethod
+func (c *WrappedContext) ServiceName() (interfaceName, methodName string) {
+	return c.endpoint.Service.Interface, c.endpoint.Service.Method
 }
 
 func (c *WrappedContext) Authorize() bool {

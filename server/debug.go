@@ -12,13 +12,13 @@ const (
 	_typeApplication = "application"
 	_typeProtocol    = "protocol"
 	_typeHttpPattern = "http-pattern"
-	_typeUpstreamUri = "upstream-uri"
+	_typeInterface   = "interface"
 )
 
 type _filter func(ep *support.MultiVersionEndpoint) bool
 
 // 支持以下过滤条件
-var _typeKeys = []string{"application", "protocol", "http-pattern", "upstream-uri"}
+var _typeKeys = []string{"application", "protocol", "http-pattern", "interface"}
 
 var (
 	_filterFactories = make(map[string]func(string) _filter)
@@ -47,7 +47,8 @@ func init() {
 	}
 	_filterFactories[_typeProtocol] = func(query string) _filter {
 		return func(ep *support.MultiVersionEndpoint) bool {
-			return strings.ToLower(query) == strings.ToLower(ep.RandomVersion().UpstreamProto)
+			proto := ep.RandomVersion().Service.Protocol
+			return strings.ToLower(query) == strings.ToLower(proto)
 		}
 	}
 	_filterFactories[_typeHttpPattern] = func(query string) _filter {
@@ -55,9 +56,9 @@ func init() {
 			return query == ep.RandomVersion().HttpPattern
 		}
 	}
-	_filterFactories[_typeUpstreamUri] = func(query string) _filter {
+	_filterFactories[_typeInterface] = func(query string) _filter {
 		return func(ep *support.MultiVersionEndpoint) bool {
-			return query == ep.RandomVersion().UpstreamUri
+			return query == ep.RandomVersion().Service.Interface
 		}
 	}
 }

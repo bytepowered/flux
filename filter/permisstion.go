@@ -57,7 +57,7 @@ func (p *EndpointPermissionFilter) DoFilter(next flux.FilterHandler) flux.Filter
 			return next(ctx)
 		}
 		// 以Permission的(UpstreamServiceTag + 具体参数Value列表)来构建单个请求的缓存Key
-		serviceTag := flux.NewServiceKey(permission.UpstreamProto, permission.UpstreamHost, permission.UpstreamMethod, permission.UpstreamUri)
+		serviceTag := flux.NewServiceKey(permission.Protocol, permission.Host, permission.Method, permission.Interface)
 		cacheKey := serviceTag + "#" + _newArgumentsKey(permission.Arguments)
 		// 权限验证结果缓存
 		passed, err := p.permissionCache.GetOrLoad(cacheKey, func(_ interface{}) (interface{}, *time.Duration, error) {
@@ -101,10 +101,10 @@ func (p *EndpointPermissionFilter) Init(config *flux.Configuration) error {
 }
 
 func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permission, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
-	provider, ok := ext.GetBackend(meta.UpstreamProto)
+	provider, ok := ext.GetBackend(meta.Protocol)
 	if !ok {
 		logger.TraceContext(ctx).Errorw("Provider backend unsupported protocol",
-			"provider-proto", meta.UpstreamProto, "provider-uri", meta.UpstreamUri, "provider-method", meta.UpstreamMethod)
+			"provider-proto", meta.Protocol, "provider-uri", meta.Interface, "provider-method", meta.Method)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:UNKNOWN_PROTOCOL",
@@ -112,14 +112,16 @@ func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permissio
 		}
 	}
 	provideEndpoint := &flux.Endpoint{
-		UpstreamHost:   meta.UpstreamHost,
-		UpstreamMethod: meta.UpstreamMethod,
-		UpstreamUri:    meta.UpstreamUri,
-		Arguments:      meta.Arguments,
+		Service: flux.Service{
+			Host:      meta.Host,
+			Method:    meta.Method,
+			Interface: meta.Interface,
+			Arguments: meta.Arguments,
+		},
 	}
 	if ret, err := provider.Invoke(provideEndpoint, ctx); nil != err {
 		logger.TraceContext(ctx).Errorw("Permission Provider backend load error",
-			"provider-proto", meta.UpstreamProto, "provider-uri", meta.UpstreamUri, "provider-method", meta.UpstreamMethod, "error", err)
+			"provider-proto", meta.Protocol, "provider-uri", meta.Interface, "provider-method", meta.Method, "error", err)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:LOAD",
@@ -129,7 +131,7 @@ func (p *EndpointPermissionFilter) doPermissionVerification(meta *flux.Permissio
 		passed, expire, err := GetEndpointPermissionResponseDecoder()(ret, ctx)
 		if nil != err {
 			logger.TraceContext(ctx).Errorw("Permission decode response error",
-				"provider-proto", meta.UpstreamProto, "provider-uri", meta.UpstreamUri, "provider-method", meta.UpstreamMethod, "error", err)
+				"provider-proto", meta.Protocol, "provider-uri", meta.Interface, "provider-method", meta.Method, "error", err)
 			return false, cache.NoExpiration, &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				Message:    "PERMISSION:RESPONSE:DECODE",
@@ -198,7 +200,7 @@ func _newArgumentKey(arg flux.Argument) string {
 	if flux.ArgumentTypeComplex == arg.Type && len(arg.Fields) > 0 {
 		sb.WriteString(_newArgumentsKey(arg.Fields))
 	} else {
-		sb.WriteString(cast.ToString(arg.HttpValue.Value()))
+		sb.WriteString(cast.ToString(arg.Value.Get()))
 	}
 	sb.WriteByte(')')
 	return sb.String()
