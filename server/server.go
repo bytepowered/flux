@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	HttpServerConfigRootName              = "HttpWebServer"
+	HttpServerConfigRootName              = "HttpServer"
 	HttpServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
 	HttpServerConfigKeyFeatureDebugPort   = "feature-debug-port"
 	HttpServerConfigKeyFeatureCorsEnable  = "feature-cors-enable"
