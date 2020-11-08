@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"context"
 	"fmt"
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/bytepowered/flux"
@@ -30,10 +31,10 @@ func NewHystrixFilter() flux.Filter {
 }
 
 type (
-	// HystrixServiceTagFunc 用于构建服务标识的函数
-	HystrixServiceTagFunc func(ctx flux.Context) string
+	// HystrixServiceNameFunc 用于构建服务标识的函数
+	HystrixServiceNameFunc func(ctx flux.Context) (serviceName string)
 	// HystrixServiceTestFunc 用于测试StateError是否需要熔断
-	HystrixServiceTestFunc func(err *flux.StateError) bool
+	HystrixServiceTestFunc func(err *flux.StateError) (circuited bool)
 )
 
 // HystrixConfig
@@ -44,7 +45,7 @@ type HystrixConfig struct {
 	SleepWindow            int
 	ErrorPercentThreshold  int
 	ServiceSkipFunc        flux.FilterSkipper
-	ServiceTagFunc         HystrixServiceTagFunc
+	ServiceNameFunc        HystrixServiceNameFunc
 	ServiceTestFunc        HystrixServiceTestFunc
 }
 
@@ -78,8 +79,8 @@ func (r *HystrixFilter) SetHystrixConfig(config *HystrixConfig) {
 	if r.config.ServiceSkipFunc == nil {
 		r.config.ServiceSkipFunc = hystrixServiceSkipper
 	}
-	if r.config.ServiceTagFunc == nil {
-		r.config.ServiceTagFunc = hystrixServiceTagger
+	if r.config.ServiceNameFunc == nil {
+		r.config.ServiceNameFunc = hystrixServiceNamer
 	}
 	if r.config.ServiceTestFunc == nil {
 		r.config.ServiceTestFunc = hystrixServiceCircuited
@@ -95,18 +96,19 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		if r.config.ServiceSkipFunc(ctx) {
 			return next(ctx)
 		}
-		serviceKey := r.config.ServiceTagFunc(ctx)
-		r.initCommand(serviceKey)
-		err := hystrix.Do(serviceKey, func() error {
+		serviceName := r.config.ServiceNameFunc(ctx)
+		r.initCommand(serviceName)
+		// check circuit
+		err := hystrix.DoC(ctx.Context(), serviceName, func(_ context.Context) error {
 			if ierr := next(ctx); nil != ierr && r.config.ServiceTestFunc(ierr) {
 				return hystrix.CircuitError{Message: ierr.Message}
 			} else {
 				return nil
 			}
-		}, func(err error) error {
+		}, func(_ context.Context, err error) error {
 			_, ok := err.(hystrix.CircuitError)
 			logger.TraceContext(ctx).Infow("Hystrix check",
-				"is-circuit-error", ok, "service", serviceKey, "error", err)
+				"is-circuit-error", ok, "service-name", serviceName, "error", err)
 			return err
 		})
 		if nil == err {
@@ -125,9 +127,10 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	}
 }
 
-func (r *HystrixFilter) initCommand(serviceKey string) {
-	if _, exist := r.marks.LoadOrStore(serviceKey, true); !exist {
-		hystrix.ConfigureCommand(serviceKey, hystrix.CommandConfig{
+func (r *HystrixFilter) initCommand(serviceName string) {
+	if _, exist := r.marks.LoadOrStore(serviceName, true); !exist {
+		logger.Infof("Hystrix create command", "service-name", serviceName)
+		hystrix.ConfigureCommand(serviceName, hystrix.CommandConfig{
 			Timeout:                r.config.Timeout,
 			MaxConcurrentRequests:  r.config.MaxConcurrentRequests,
 			SleepWindow:            r.config.SleepWindow,
@@ -141,20 +144,21 @@ func (*HystrixFilter) TypeId() string {
 	return TypeIdHystrixFilter
 }
 
+// hystrixServiceSkipper 只处理Http协议，Dubbo协议内部自带熔断逻辑
 func hystrixServiceSkipper(ctx flux.Context) bool {
-	// 只处理Http协议，Dubbo协议内部自带熔断逻辑
 	if flux.ProtoHttp != ctx.ServiceProto() {
 		return true
 	}
 	return false
 }
 
-func hystrixServiceTagger(ctx flux.Context) string {
+// hystrixServiceNamer 构建服务名称，Protocol/Host/Uri 可以标识一个服务。Host可能为空
+func hystrixServiceNamer(ctx flux.Context) string {
 	service := ctx.Endpoint().Service
-	// Protocol/Host/Uri 可以标识一个服务。Host可能为空，直接在Url中展示
 	return fmt.Sprintf("%s:%s/%s", service.RpcProto, service.RemoteHost, service.Interface)
 }
 
+// hystrixServiceCircuited 判断是否熔断
 func hystrixServiceCircuited(err *flux.StateError) bool {
 	return nil != err
 }
