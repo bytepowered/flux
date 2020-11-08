@@ -144,7 +144,7 @@ func (ex *DubboBackend) Invoke(service flux.BackendService, fxctx flux.Context) 
 	serviceTag := service.Interface + "." + service.Method
 	if ex.traceEnable {
 		logger.Trace(traceId).Infow("Dubbo invoking",
-			"service", serviceTag, "arguments.type", types, "attachments", attachments,
+			"service", serviceTag, "arguments.values", values, "arguments.type", types, "attachments", attachments,
 		)
 	}
 	goctx := context.Background()
