@@ -195,8 +195,7 @@ func (ex *DubboBackend) LookupGenericService(service *flux.Service) *dubgo.Gener
 			ref = pkg.RequireNotNil(opt(service, ex.configuration, ref), msg).(*dubgo.ReferenceConfig)
 		}
 	}
-	logger.Infow("Create dubbo reference-config, referring",
-		"service-id", id, "interface", service.Interface)
+	logger.Infow("Create dubbo reference-config, referring", "interface", service.Interface)
 	genericService := dubgo.NewGenericService(id)
 	dubgo.SetConsumerService(genericService)
 	ref.Refer(genericService)
@@ -206,8 +205,7 @@ func (ex *DubboBackend) LookupGenericService(service *flux.Service) *dubgo.Gener
 		t = time.Millisecond * 30
 	}
 	<-time.After(t)
-	logger.Infow("Create dubbo reference-config: OK",
-		"service-id", id, "interface", service.Interface)
+	logger.Infow("Create dubbo reference-config: OK", "interface", service.Interface)
 	return genericService
 }
 
