@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/support"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
@@ -27,7 +27,7 @@ type HttpBackend struct {
 }
 
 func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
-	return support.InvokeBackendExchange(ctx, ex)
+	return backend.InvokeBackendExchange(ctx, ex)
 }
 
 func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {

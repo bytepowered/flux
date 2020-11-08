@@ -210,7 +210,7 @@ func _newArgumentKey(arg flux.Argument, lookup flux.ArgumentValueLookupFunc, res
 	// (T:val)
 	sb := new(strings.Builder)
 	sb.WriteByte('(')
-	sb.WriteString(arg.TypeClass)
+	sb.WriteString(arg.Class)
 	sb.WriteByte(':')
 	if flux.ArgumentTypeComplex == arg.Type && len(arg.Fields) > 0 {
 		if sv, err := _newArgumentsKey(arg.Fields, lookup, resolver, ctx); nil != err {

@@ -2,57 +2,50 @@ package dubbo
 
 import (
 	"context"
-	"fmt"
 	"github.com/apache/dubbo-go-hessian2"
 	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"go.uber.org/zap"
 )
 
 // Dubbo默认参数封装处理：转换成hession协议对象。
 // 注意：不能使用 interface{} 值类型。在Dubbogo 1.5.1 / hessian2 v1.6.1中，序列化值类型会被识别为 Ljava.util.List
 // 注意：函数定义的返回值类型不指定为hessian.Object，避免外部化实现或者其它协议实现时，直接依赖hessian.Object类型；
-func assembleHessianValues(args []flux.Argument, ctx flux.Context) ([]string, interface{}, error) {
+func assembleHessianArguments(args []flux.Argument, ctx flux.Context) ([]string, interface{}, error) {
 	size := len(args)
-	argTypes := make([]string, size)
-	argValues := make([]hessian.Object, size)
+	types := make([]string, size)
+	values := make([]hessian.Object, size)
 	lookup := ext.GetArgumentValueLookupFunc()
 	resolver := ext.GetArgumentValueResolveFunc()
 	for i, arg := range args {
-		argTypes[i] = arg.TypeClass
+		types[i] = arg.Class
 		if flux.ArgumentTypePrimitive == arg.Type {
-			mtValue, err := lookup(arg.HttpScope, arg.HttpName, ctx)
-			if nil != err {
-				logger.TraceContext(ctx).Warnw("Failed to lookup argument",
-					"http.key", arg.HttpName, "arg.name", arg.Name, "error", err)
-				return nil, nil, fmt.Errorf("ASSEMBLE:LOOKUP:%w", err)
-			}
-			if value, err := resolver(mtValue, arg, ctx); nil != err {
+			if value, err := backend.LookupResolveWith(arg, lookup, resolver, ctx); nil != err {
 				return nil, nil, err
 			} else {
-				argValues[i] = value
+				values[i] = value
 			}
 		} else if flux.ArgumentTypeComplex == arg.Type {
 			if value, err := ComplexToMap(arg, lookup, resolver, ctx); nil != err {
 				return nil, nil, err
 			} else {
-				argValues[i] = value
+				values[i] = value
 			}
 		} else {
-			logger.Warn("Unsupported parameter", zap.String("type", arg.Type))
+			logger.TraceContext(ctx).Warnw("Unsupported parameter type", "arg.type", arg.Type)
 		}
 	}
-	return argTypes, argValues, nil
+	return types, values, nil
 }
 
 func ComplexToMap(arg flux.Argument, lookup flux.ArgumentValueLookupFunc, resolver flux.ArgumentValueResolveFunc, ctx flux.Context) (map[string]interface{}, error) {
 	m := make(map[string]interface{}, 1+len(arg.Fields))
-	m["class"] = arg.TypeClass
+	m["class"] = arg.Class
 	for _, field := range arg.Fields {
 		if flux.ArgumentTypePrimitive == field.Type {
-			if value, err := resolver(lookup, arg, ctx); nil != err {
+			if value, err := backend.LookupResolveWith(arg, lookup, resolver, ctx); nil != err {
 				return nil, err
 			} else {
 				m[field.Name] = value
@@ -64,7 +57,7 @@ func ComplexToMap(arg flux.Argument, lookup flux.ArgumentValueLookupFunc, resolv
 				m[field.Name] = value
 			}
 		} else {
-			logger.Warn("Unsupported parameter", zap.String("type", arg.Type))
+			logger.TraceContext(ctx).Warnw("Unsupported parameter type", "arg.type", arg.Type)
 		}
 	}
 	return m, nil

@@ -3,7 +3,6 @@ package server
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/support"
 	"net/http"
 	"strings"
 )
@@ -15,7 +14,7 @@ const (
 	_typeInterface   = "interface"
 )
 
-type _filter func(ep *support.MultiVersionEndpoint) bool
+type _filter func(ep *MultiVersionEndpoint) bool
 
 // 支持以下过滤条件
 var _typeKeys = []string{"application", "protocol", "http-pattern", "interface"}
@@ -24,7 +23,7 @@ var (
 	_filterFactories = make(map[string]func(string) _filter)
 )
 
-func DebugQueryEndpoint(datamap map[string]*support.MultiVersionEndpoint) http.HandlerFunc {
+func DebugQueryEndpoint(datamap map[string]*MultiVersionEndpoint) http.HandlerFunc {
 	// Endpoint查询
 	serializer := ext.GetSerializer(ext.TypeNameSerializerJson)
 	return func(writer http.ResponseWriter, request *http.Request) {
@@ -41,29 +40,29 @@ func DebugQueryEndpoint(datamap map[string]*support.MultiVersionEndpoint) http.H
 
 func init() {
 	_filterFactories[_typeApplication] = func(query string) _filter {
-		return func(ep *support.MultiVersionEndpoint) bool {
+		return func(ep *MultiVersionEndpoint) bool {
 			return query == ep.RandomVersion().Application
 		}
 	}
 	_filterFactories[_typeProtocol] = func(query string) _filter {
-		return func(ep *support.MultiVersionEndpoint) bool {
+		return func(ep *MultiVersionEndpoint) bool {
 			proto := ep.RandomVersion().Service.RpcProto
 			return strings.ToLower(query) == strings.ToLower(proto)
 		}
 	}
 	_filterFactories[_typeHttpPattern] = func(query string) _filter {
-		return func(ep *support.MultiVersionEndpoint) bool {
+		return func(ep *MultiVersionEndpoint) bool {
 			return query == ep.RandomVersion().HttpPattern
 		}
 	}
 	_filterFactories[_typeInterface] = func(query string) _filter {
-		return func(ep *support.MultiVersionEndpoint) bool {
+		return func(ep *MultiVersionEndpoint) bool {
 			return query == ep.RandomVersion().Service.Interface
 		}
 	}
 }
 
-func queryEndpoints(data map[string]*support.MultiVersionEndpoint, request *http.Request) interface{} {
+func queryEndpoints(data map[string]*MultiVersionEndpoint, request *http.Request) interface{} {
 	filters := make([]_filter, 0)
 	query := request.URL.Query()
 	for _, key := range _typeKeys {
@@ -83,7 +82,7 @@ func queryEndpoints(data map[string]*support.MultiVersionEndpoint, request *http
 	return _queryWithFilters(data, filters...)
 }
 
-func _queryWithFilters(data map[string]*support.MultiVersionEndpoint, filters ..._filter) []map[string]*flux.Endpoint {
+func _queryWithFilters(data map[string]*MultiVersionEndpoint, filters ..._filter) []map[string]*flux.Endpoint {
 	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {

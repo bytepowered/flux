@@ -6,7 +6,7 @@ import (
 )
 
 // 提供一种可扩展的参数查找实现。
-// 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义化参数值查找逻辑。
+// 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义参数值查找逻辑。
 var (
 	_argumentValueLookupFunc  flux.ArgumentValueLookupFunc
 	_argumentValueResolveFunc flux.ArgumentValueResolveFunc
@@ -32,7 +32,7 @@ func GetArgumentValueResolveFunc() flux.ArgumentValueResolveFunc {
 
 func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
 	return flux.Argument{
-		TypeClass: typeClass,
+		Class:     typeClass,
 		Type:      flux.ArgumentTypePrimitive,
 		Name:      argName,
 		HttpScope: flux.ScopeAuto,
@@ -41,9 +41,10 @@ func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
 
 func NewComplexArgument(typeClass, argName string) flux.Argument {
 	return flux.Argument{
-		TypeClass: typeClass,
+		Class:     typeClass,
 		Type:      flux.ArgumentTypeComplex,
 		Name:      argName,
+		HttpScope: flux.ScopeAuto,
 	}
 }
 

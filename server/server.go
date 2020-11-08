@@ -6,7 +6,6 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/support"
 	"github.com/bytepowered/flux/webmidware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cast"
@@ -69,7 +68,7 @@ type HttpWebServer struct {
 	httpVersionHeader          string
 	routerEngine               *RouterEngine
 	endpointRegistry           flux.EndpointRegistry
-	mvEndpointMap              map[string]*support.MultiVersionEndpoint
+	mvEndpointMap              map[string]*MultiVersionEndpoint
 	contextWrappers            sync.Pool
 	stateStarted               chan struct{}
 	stateStopped               chan struct{}
@@ -80,7 +79,7 @@ func NewHttpServer() *HttpWebServer {
 		serverResponseWriter:       DefaultServerResponseWriter,
 		serverErrorsWriter:         DefaultServerErrorsWriter,
 		routerEngine:               NewRouteEngine(),
-		mvEndpointMap:              make(map[string]*support.MultiVersionEndpoint),
+		mvEndpointMap:              make(map[string]*MultiVersionEndpoint),
 		contextWrappers:            sync.Pool{New: NewContextWrapper},
 		serverContextExchangeHooks: make([]flux.ServerContextExchangeHook, 0, 4),
 		stateStarted:               make(chan struct{}),
@@ -253,7 +252,7 @@ func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextExchang
 	s.serverContextExchangeHooks = append(s.serverContextExchangeHooks, f)
 }
 
-func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *support.MultiVersionEndpoint, tracing bool) error {
+func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *MultiVersionEndpoint, tracing bool) error {
 	version := webc.HeaderValue(s.httpVersionHeader)
 	endpoint, found := mvendpoint.FindByVersion(version)
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
@@ -324,18 +323,18 @@ func (s *HttpWebServer) HandleEndpointEvent(event flux.EndpointEvent) {
 	}
 }
 
-func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *support.MultiVersionEndpoint) flux.WebHandler {
+func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MultiVersionEndpoint) flux.WebHandler {
 	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
 }
 
-func (s *HttpWebServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*support.MultiVersionEndpoint, bool) {
+func (s *HttpWebServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*MultiVersionEndpoint, bool) {
 	if mve, ok := s.mvEndpointMap[routeKey]; ok {
 		return mve, false
 	} else {
-		mve = support.NewMultiVersionEndpoint(endpoint)
+		mve = NewMultiVersionEndpoint(endpoint)
 		s.mvEndpointMap[routeKey] = mve
 		return mve, true
 	}

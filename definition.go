@@ -37,7 +37,7 @@ const (
 const (
 	// 原始参数类型：int,long...
 	ArgumentTypePrimitive = "PRIMITIVE"
-	// 复杂参数类型：COMPLEX
+	// 复杂参数类型：POJO
 	ArgumentTypeComplex = "COMPLEX"
 )
 
@@ -56,13 +56,13 @@ type ArgumentValueResolveFunc func(mimeValue MIMEValue, argument Argument, conte
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
-	Name        string     `json:"name"`      // 参数名称
-	Type        string     `json:"type"`      // 参数结构类型
-	TypeClass   string     `json:"class"`     // 参数类型
-	TypeGeneric []string   `json:"generic"`   // 泛型类型
-	HttpName    string     `json:"httpName"`  // 映射Http的参数Key
-	HttpScope   string     `json:"httpScope"` // 映射Http参数值域
-	Fields      []Argument `json:"fields"`    // 子结构字段
+	Name      string     `json:"name"`      // 参数名称
+	Type      string     `json:"type"`      // 参数结构类型
+	Class     string     `json:"class"`     // 参数类型
+	Generic   []string   `json:"generic"`   // 泛型类型
+	HttpName  string     `json:"httpName"`  // 映射Http的参数Key
+	HttpScope string     `json:"httpScope"` // 映射Http参数值域
+	Fields    []Argument `json:"fields"`    // 子结构字段
 }
 
 // BackendService 定义连接上游目标服务的信息
@@ -108,24 +108,4 @@ type EndpointEvent struct {
 	HttpMethod  string `json:"method"`
 	HttpPattern string `json:"pattern"`
 	Endpoint    Endpoint
-}
-
-/// Value
-
-func NewWrapValue(v interface{}) Valuer {
-	return &ValueWrapper{
-		value: v,
-	}
-}
-
-type ValueWrapper struct {
-	value interface{}
-}
-
-func (v *ValueWrapper) Get() interface{} {
-	return v.value
-}
-
-func (v *ValueWrapper) Set(value interface{}) {
-	v.value = value
 }

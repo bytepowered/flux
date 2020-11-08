@@ -14,9 +14,9 @@ import (
 	_ "github.com/apache/dubbo-go/registry/protocol"
 	_ "github.com/apache/dubbo-go/registry/zookeeper"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	"github.com/bytepowered/flux/support"
 	"github.com/spf13/cast"
 	"reflect"
 	"sync"
@@ -77,7 +77,7 @@ type DubboBackend struct {
 func NewDubboBackend() flux.Backend {
 	return &DubboBackend{
 		OptionFuncs:  make([]OptionFunc, 0),
-		AssembleFunc: assembleHessianValues,
+		AssembleFunc: assembleHessianArguments,
 	}
 }
 
@@ -104,7 +104,7 @@ func (ex *DubboBackend) Init(config *flux.Configuration) error {
 		ex.OptionFuncs = make([]OptionFunc, 0)
 	}
 	if pkg.IsNil(ex.AssembleFunc) {
-		ex.AssembleFunc = assembleHessianValues
+		ex.AssembleFunc = assembleHessianArguments
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
@@ -129,7 +129,7 @@ func (ex *DubboBackend) Shutdown(_ context.Context) error {
 }
 
 func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
-	return support.InvokeBackendExchange(ctx, ex)
+	return backend.InvokeBackendExchange(ctx, ex)
 }
 
 func (ex *DubboBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {

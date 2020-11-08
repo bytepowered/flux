@@ -17,7 +17,7 @@ func Test_SetNilArgumentValueLookupFunc(t *testing.T) {
 func Test_SetGetArgumentValueLookupFunc(t *testing.T) {
 	assert := assert2.New(t)
 	f1 := func(scope, key string, context flux.Context) (value flux.MIMEValue, err error) {
-		return flux.NewTextTypedValue("value"), nil
+		return flux.WrapTextMIMEValue("value"), nil
 	}
 	SetArgumentValueLookupFunc(f1)
 	f2 := GetArgumentValueLookupFunc()
@@ -133,7 +133,7 @@ func TestNewPrimitiveArgument(t *testing.T) {
 	}
 	for _, tcase := range cases {
 		assert := assert2.New(t)
-		assert.Equal(tcase.class, tcase.definition.TypeClass, "type class")
+		assert.Equal(tcase.class, tcase.definition.Class, "type class")
 		assert.Equal(tcase.argType, tcase.definition.Type, "arg type")
 		assert.Equal(tcase.name, tcase.definition.Name, "name")
 	}
