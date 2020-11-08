@@ -15,7 +15,7 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 			"group":"myg",
 			"version":"1.0.0",
 			"retries":0,
-			"interface":"foo.bar.Service",
+			"interface":"foo.bar.BackendService",
 			"method":"reportDetail",
 			"arguments":[
 							{
@@ -59,7 +59,7 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 				"bool": true
 		},
 		"permission": {
-				"interface":"foo.bar.Service",
+				"interface":"foo.bar.BackendService",
     		"method":"checkPermission",
 				"protocol":"DUBBO",
 				"arguments":[
@@ -95,7 +95,7 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 	assert.Equal("month", endpoint.Service.Arguments[2].HttpName)
 	assert.Equal("PRIMITIVE", endpoint.Service.Arguments[2].Type)
 
-	assert.Equal("DUBBO", endpoint.Service.Protocol)
+	assert.Equal("DUBBO", endpoint.Service.RpcProto)
 	assert.Equal("reportDetail", endpoint.Service.Method)
 
 	assert.Equal(map[string]interface{}{"key": "value", "bool": true}, endpoint.Extensions)

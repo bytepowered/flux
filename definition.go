@@ -63,17 +63,17 @@ type Argument struct {
 	Value       Valuer     `json:"-"`         // 参数值
 }
 
-// Service 定义连接上游目标服务的信息
-type Service struct {
-	Protocol  string     `json:"protocol"`       // Service侧的协议
-	Host      string     `json:"host"`           // Service侧的Host
-	Interface string     `json:"interface"`      // Service侧的URL
-	Method    string     `json:"method"`         // Service侧的方法
-	Arguments []Argument `json:"arguments"`      // Service侧的参数结构
-	Group     string     `json:"group"`          // Service侧的接口分组
-	Version   string     `json:"version"`        // Service侧的接口版本
-	Timeout   string     `json:"timeout"`        // Service侧的调用超时
-	Retries   string     `json:"retries,string"` // Service侧的调用重试
+// BackendService 定义连接上游目标服务的信息
+type BackendService struct {
+	RemoteHost string     `json:"remoteHost"` // Service侧的Host
+	Interface  string     `json:"interface"`  // Service侧的URL
+	Method     string     `json:"method"`     // Service侧的方法
+	Arguments  []Argument `json:"arguments"`  // Service侧的参数结构
+	RpcProto   string     `json:"rpcProto"`   // Service侧的协议
+	RpcGroup   string     `json:"rpcGroup"`   // Service侧的接口分组
+	RpcVersion string     `json:"rpcVersion"` // Service侧的接口版本
+	RpcTimeout string     `json:"rpcTimeout"` // Service侧的调用超时
+	RpcRetries string     `json:"rpcRetries"` // Service侧的调用重试
 }
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
@@ -83,16 +83,16 @@ type Endpoint struct {
 	HttpPattern string                 `json:"httpPattern"` // 映射Http侧的UriPattern
 	HttpMethod  string                 `json:"httpMethod"`  // 映射Http侧的Method
 	Authorize   bool                   `json:"authorize"`   // 此端点是否需要授权
-	Service     Service                `json:"service"`     // 上游服务
-	Permission  Permission             `json:"permission"`  // 权限验证定义
+	Service     BackendService         `json:"service"`     // 上游服务
+	Permission  PermissionService      `json:"permission"`  // 权限验证定义
 	Extensions  map[string]interface{} `json:"extensions"`  // 扩展信息
 }
 
-// Permission 后端RPC服务的权限验证的元数据
-type Permission Service
+// PermissionService 后端RPC服务的权限验证的元数据
+type PermissionService BackendService
 
-func (p Permission) IsValid() bool {
-	return "" != p.Protocol && "" != p.Interface && "" != p.Method && len(p.Arguments) > 0
+func (p PermissionService) IsValid() bool {
+	return "" != p.RpcProto && "" != p.Interface && "" != p.Method && len(p.Arguments) > 0
 }
 
 // NewServiceKey 构建标识一个Service的Key字符串

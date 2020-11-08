@@ -36,7 +36,7 @@ func TestBackend_HttpbinMethods(t *testing.T) {
 
 }
 
-func newHttpBinService(method string) flux.Service {
+func newHttpBinService(method string) flux.BackendService {
 	params := make([]flux.Argument, 0)
 	if "DELETE" != method {
 		params = []flux.Argument{
@@ -46,12 +46,12 @@ func newHttpBinService(method string) flux.Service {
 			{Name: "paramFrom", Value: flux.NewWrapValue("endpoint-define")},
 		}
 	}
-	return flux.Service{
-		Timeout:   "10s",
-		Host:      "httpbin.org",
-		Interface: "/" + strings.ToLower(method),
-		Method:    method,
-		Arguments: params,
+	return flux.BackendService{
+		RpcTimeout: "10s",
+		RemoteHost: "httpbin.org",
+		Interface:  "/" + strings.ToLower(method),
+		Method:     method,
+		Arguments:  params,
 	}
 }
 

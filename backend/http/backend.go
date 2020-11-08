@@ -30,7 +30,7 @@ func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
 	return support.InvokeBackendExchange(ctx, ex)
 }
 
-func (ex *HttpBackend) Invoke(service flux.Service, ctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
 	inURL, _ := ctx.Request().RequestURL()
 	bodyReader, _ := ctx.Request().RequestBodyReader()
 	newRequest, err := ex.Assemble(&service, inURL, bodyReader, ctx.Context())
@@ -68,7 +68,7 @@ func (ex *HttpBackend) Invoke(service flux.Service, ctx flux.Context) (interface
 	return resp, nil
 }
 
-func (ex *HttpBackend) Assemble(service *flux.Service, inURL *url.URL, bodyReader io.ReadCloser, ctx context.Context) (*http.Request, error) {
+func (ex *HttpBackend) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx context.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
@@ -93,7 +93,7 @@ func (ex *HttpBackend) Assemble(service *flux.Service, inURL *url.URL, bodyReade
 	}
 	// 未定义参数，即透传Http请求：Rewrite inRequest path
 	newUrl := &url.URL{
-		Host:       service.Host,
+		Host:       service.RemoteHost,
 		Path:       service.Interface,
 		Scheme:     inURL.Scheme,
 		Opaque:     inURL.Opaque,
@@ -103,9 +103,9 @@ func (ex *HttpBackend) Assemble(service *flux.Service, inURL *url.URL, bodyReade
 		RawQuery:   newQuery,
 		Fragment:   inURL.Fragment,
 	}
-	timeout, err := time.ParseDuration(service.Timeout)
+	timeout, err := time.ParseDuration(service.RpcTimeout)
 	if err != nil {
-		logger.Warnf("Illegal endpoint rpc-timeout: ", service.Timeout)
+		logger.Warnf("Illegal endpoint rpc-timeout: ", service.RpcTimeout)
 		timeout = time.Second * 10
 	}
 	toctx, _ := context.WithTimeout(ctx, timeout)

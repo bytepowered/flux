@@ -47,7 +47,7 @@ func init() {
 	}
 	_filterFactories[_typeProtocol] = func(query string) _filter {
 		return func(ep *support.MultiVersionEndpoint) bool {
-			proto := ep.RandomVersion().Service.Protocol
+			proto := ep.RandomVersion().Service.RpcProto
 			return strings.ToLower(query) == strings.ToLower(proto)
 		}
 	}

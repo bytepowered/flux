@@ -10,7 +10,7 @@ type Backend interface {
 	// Exchange 完成前端Http请求与后端服务的数据交互
 	Exchange(Context) *StateError
 	// Invoke 真正执行指定目标EndpointService的通讯，返回响应结果
-	Invoke(Service, Context) (interface{}, *StateError)
+	Invoke(BackendService, Context) (interface{}, *StateError)
 }
 
 // BackendResponseDecoder 解析Backend返回的数据

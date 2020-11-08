@@ -44,15 +44,15 @@ func ComplexToMap(arg flux.Argument) map[string]interface{} {
 	return m
 }
 
-func NewReference(refid string, service *flux.Service, config *flux.Configuration) *dubgo.ReferenceConfig {
+func NewReference(refid string, service *flux.BackendService, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("Create dubbo reference-config",
-		"service", service.Interface, "group", service.Group, "version", service.Version)
+		"service", service.Interface, "group", service.RpcGroup, "version", service.RpcVersion)
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
 	ref.InterfaceName = service.Interface
-	ref.Version = service.Version
-	ref.Group = service.Group
-	ref.RequestTimeout = service.Timeout
-	ref.Retries = service.Retries
+	ref.Version = service.RpcVersion
+	ref.Group = service.RpcGroup
+	ref.RequestTimeout = service.RpcTimeout
+	ref.Retries = service.RpcRetries
 	ref.Cluster = config.GetString("cluster")
 	ref.Protocol = config.GetString("protocol")
 	ref.Loadbalance = config.GetString("load-balance")

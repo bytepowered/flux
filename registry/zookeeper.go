@@ -115,7 +115,7 @@ func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.Endpoin
 		logger.Warnw("illegal http-pattern", "data", string(bytes))
 		return _invalidEndpointEvent, false
 	}
-	if endpoint.Service.Interface == "" || endpoint.Service.Method == "" || endpoint.Service.Protocol == "" {
+	if endpoint.Service.Interface == "" || endpoint.Service.Method == "" || endpoint.Service.RpcProto == "" {
 		logger.Warnw("illegal service definition", "service", endpoint.Service, "data", string(bytes))
 		return _invalidEndpointEvent, false
 	}

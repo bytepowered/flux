@@ -48,7 +48,7 @@ var (
 )
 
 // DubboReference配置函数，可外部化配置Dubbo Reference
-type OptionFunc func(*flux.Service, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+type OptionFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 
 // 参数封装函数，可外部化配置为其它协议的值对象
 type AssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
@@ -132,7 +132,7 @@ func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
 	return support.InvokeBackendExchange(ctx, ex)
 }
 
-func (ex *DubboBackend) Invoke(service flux.Service, fxctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *DubboBackend) Invoke(service flux.BackendService, fxctx flux.Context) (interface{}, *flux.StateError) {
 	types, values := ex.AssembleFunc(service.Arguments)
 	// 在测试场景中，fluxContext可能为nil
 	attachments := make(map[string]interface{})
@@ -180,7 +180,7 @@ func (ex *DubboBackend) Invoke(service flux.Service, fxctx flux.Context) (interf
 	}
 }
 
-func (ex *DubboBackend) LookupGenericService(service *flux.Service) *dubgo.GenericService {
+func (ex *DubboBackend) LookupGenericService(service *flux.BackendService) *dubgo.GenericService {
 	ex.referenceMu.Lock()
 	defer ex.referenceMu.Unlock()
 	id := service.Interface

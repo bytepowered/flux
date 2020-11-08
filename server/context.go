@@ -42,11 +42,11 @@ func (c *WrappedContext) Endpoint() flux.Endpoint {
 
 func (c *WrappedContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
 	s := c.endpoint.Service
-	return s.Protocol, s.Host, s.Interface, s.Method
+	return s.RpcProto, s.RemoteHost, s.Interface, s.Method
 }
 
 func (c *WrappedContext) ServiceProto() string {
-	return c.endpoint.Service.Protocol
+	return c.endpoint.Service.RpcProto
 }
 
 func (c *WrappedContext) ServiceName() (interfaceName, methodName string) {

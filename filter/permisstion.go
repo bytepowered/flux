@@ -57,7 +57,7 @@ func (p *EndpointPermissionFilter) DoFilter(next flux.FilterHandler) flux.Filter
 			return next(ctx)
 		}
 		// 以Permission的(UpstreamServiceTag + 具体参数Value列表)来构建单个请求的缓存Key
-		serviceTag := flux.NewServiceKey(permission.Protocol, permission.Host, permission.Method, permission.Interface)
+		serviceTag := flux.NewServiceKey(permission.RpcProto, permission.RemoteHost, permission.Method, permission.Interface)
 		cacheKey := serviceTag + "#" + _newArgumentsKey(permission.Arguments)
 		// 权限验证结果缓存
 		passed, err := p.permissionCache.GetOrLoad(cacheKey, func(_ interface{}) (interface{}, *time.Duration, error) {
@@ -100,26 +100,26 @@ func (p *EndpointPermissionFilter) Init(config *flux.Configuration) error {
 	return nil
 }
 
-func (p *EndpointPermissionFilter) doPermissionVerification(perm *flux.Permission, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
-	backend, ok := ext.GetBackend(perm.Protocol)
+func (p *EndpointPermissionFilter) doPermissionVerification(perm *flux.PermissionService, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
+	backend, ok := ext.GetBackend(perm.RpcProto)
 	if !ok {
 		logger.TraceContext(ctx).Errorw("Provider backend unsupported protocol",
-			"provider-proto", perm.Protocol, "provider-uri", perm.Interface, "provider-method", perm.Method)
+			"provider-proto", perm.RpcProto, "provider-uri", perm.Interface, "provider-method", perm.Method)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:UNKNOWN_PROTOCOL",
 			Internal:   err,
 		}
 	}
-	service := flux.Service{
-		Host:      perm.Host,
-		Method:    perm.Method,
-		Interface: perm.Interface,
-		Arguments: perm.Arguments,
+	service := flux.BackendService{
+		RemoteHost: perm.RemoteHost,
+		Method:     perm.Method,
+		Interface:  perm.Interface,
+		Arguments:  perm.Arguments,
 	}
 	if ret, err := backend.Invoke(service, ctx); nil != err {
 		logger.TraceContext(ctx).Errorw("Permission Provider backend load error",
-			"provider-proto", perm.Protocol, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
+			"provider-proto", perm.RpcProto, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:LOAD",
@@ -129,7 +129,7 @@ func (p *EndpointPermissionFilter) doPermissionVerification(perm *flux.Permissio
 		passed, expire, err := GetEndpointPermissionResponseDecoder()(ret, ctx)
 		if nil != err {
 			logger.TraceContext(ctx).Errorw("Permission decode response error",
-				"provider-proto", perm.Protocol, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
+				"provider-proto", perm.RpcProto, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
 			return false, cache.NoExpiration, &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				Message:    "PERMISSION:RESPONSE:DECODE",
