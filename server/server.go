@@ -27,17 +27,17 @@ const (
 )
 
 const (
-	HttpServerConfigRootName              = "HttpServer"
-	HttpServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
-	HttpServerConfigKeyFeatureDebugPort   = "feature-debug-port"
-	HttpServerConfigKeyFeatureCorsEnable  = "feature-cors-enable"
-	HttpServerConfigKeyVersionHeader      = "version-header"
-	HttpServerConfigKeyRequestIdHeaders   = "requestReader-id-headers"
-	HttpServerConfigKeyRequestLogEnable   = "requestReader-log-enable"
-	HttpServerConfigKeyAddress            = "address"
-	HttpServerConfigKeyPort               = "port"
-	HttpServerConfigKeyTlsCertFile        = "tls-cert-file"
-	HttpServerConfigKeyTlsKeyFile         = "tls-key-file"
+	HttpWebServerConfigRootName              = "HttpWebServer"
+	HttpWebServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
+	HttpWebServerConfigKeyFeatureDebugPort   = "feature-debug-port"
+	HttpWebServerConfigKeyFeatureCorsEnable  = "feature-cors-enable"
+	HttpWebServerConfigKeyVersionHeader      = "version-header"
+	HttpWebServerConfigKeyRequestIdHeaders   = "request-id-headers"
+	HttpWebServerConfigKeyRequestLogEnable   = "request-log-enable"
+	HttpWebServerConfigKeyAddress            = "address"
+	HttpWebServerConfigKeyPort               = "port"
+	HttpWebServerConfigKeyTlsCertFile        = "tls-cert-file"
+	HttpWebServerConfigKeyTlsKeyFile         = "tls-key-file"
 )
 
 var (
@@ -49,12 +49,12 @@ var (
 )
 
 var (
-	HttpServerConfigDefaults = map[string]interface{}{
-		HttpServerConfigKeyVersionHeader:      DefaultHttpHeaderVersion,
-		HttpServerConfigKeyFeatureDebugEnable: false,
-		HttpServerConfigKeyFeatureDebugPort:   9527,
-		HttpServerConfigKeyAddress:            "0.0.0.0",
-		HttpServerConfigKeyPort:               8080,
+	HttpWebServerConfigDefaults = map[string]interface{}{
+		HttpWebServerConfigKeyVersionHeader:      DefaultHttpHeaderVersion,
+		HttpWebServerConfigKeyFeatureDebugEnable: false,
+		HttpWebServerConfigKeyFeatureDebugPort:   9527,
+		HttpWebServerConfigKeyAddress:            "0.0.0.0",
+		HttpWebServerConfigKeyPort:               8080,
 	}
 )
 
@@ -101,9 +101,9 @@ func (s *HttpWebServer) Prepare(hooks ...flux.PrepareHookFunc) error {
 // Initial
 func (s *HttpWebServer) Initial() error {
 	// Http server
-	s.httpConfig = flux.NewConfigurationOf(HttpServerConfigRootName)
-	s.httpConfig.SetDefaults(HttpServerConfigDefaults)
-	s.httpVersionHeader = s.httpConfig.GetString(HttpServerConfigKeyVersionHeader)
+	s.httpConfig = flux.NewConfigurationOf(HttpWebServerConfigRootName)
+	s.httpConfig.SetDefaults(HttpWebServerConfigDefaults)
+	s.httpVersionHeader = s.httpConfig.GetString(HttpWebServerConfigKeyVersionHeader)
 	// 创建WebServer
 	s.webServer = ext.GetWebServerFactory()()
 	// 默认必备的WebServer功能
@@ -111,20 +111,20 @@ func (s *HttpWebServer) Initial() error {
 	s.webServer.SetWebNotFoundHandler(s.handleNotFoundError)
 
 	// - 请求CORS跨域支持：默认关闭，需要配置开启
-	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureCorsEnable) {
+	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureCorsEnable) {
 		s.AddWebInterceptor(webmidware.NewCORSMiddleware())
 	}
 
 	// - RequestId是重要的参数，不可关闭；
-	headers := s.httpConfig.GetStringSlice(HttpServerConfigKeyRequestIdHeaders)
+	headers := s.httpConfig.GetStringSlice(HttpWebServerConfigKeyRequestIdHeaders)
 	s.AddWebInterceptor(webmidware.NewRequestIdMiddlewareWithinHeader(headers...))
 
 	// - Debug特性支持：默认关闭，需要配置开启
-	if s.httpConfig.GetBool(HttpServerConfigKeyFeatureDebugEnable) {
+	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
 		servemux := http.DefaultServeMux
 		s.debugServer = &http.Server{
 			Handler: servemux,
-			Addr:    fmt.Sprintf("0.0.0.0:%d", s.httpConfig.GetInt(HttpServerConfigKeyFeatureDebugPort)),
+			Addr:    fmt.Sprintf("0.0.0.0:%d", s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)),
 		}
 		servemux.Handle("/debug/endpoints", DebugQueryEndpoint(s.mvEndpointMap))
 		servemux.Handle("/debug/metrics", promhttp.Handler())
@@ -164,8 +164,8 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 		}()
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
-	certFile := config.GetString(HttpServerConfigKeyTlsCertFile)
-	keyFile := config.GetString(HttpServerConfigKeyTlsKeyFile)
+	certFile := config.GetString(HttpWebServerConfigKeyTlsCertFile)
+	keyFile := config.GetString(HttpWebServerConfigKeyTlsKeyFile)
 	close(s.stateStarted)
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
@@ -329,7 +329,7 @@ func (s *HttpWebServer) HandleEndpointEvent(event flux.EndpointEvent) {
 }
 
 func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *support.MultiVersionEndpoint) flux.WebHandler {
-	enabled := s.httpConfig.GetBool(HttpServerConfigKeyRequestLogEnable)
+	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
