@@ -16,8 +16,8 @@ func Test_SetNilArgumentValueResolver(t *testing.T) {
 
 func Test_SetGetArgumentValueResolver(t *testing.T) {
 	assert := assert2.New(t)
-	f1 := func(scope, key string, context flux.Context) (value interface{}, err error) {
-		return "value", nil
+	f1 := func(scope, key string, context flux.Context) (value flux.TypedValue, err error) {
+		return flux.NewTextTypedValue("value"), nil
 	}
 	SetArgumentValueResolver(f1)
 	f2 := GetArgumentValueResolver()
