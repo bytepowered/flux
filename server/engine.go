@@ -97,7 +97,8 @@ func (r *RouterEngine) Shutdown(ctx context.Context) error {
 }
 
 func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
-	doMetricEndpoint := func(err *flux.StateError) *flux.StateError {
+	// 统计异常
+	doMetricEndpointFunc := func(err *flux.StateError) *flux.StateError {
 		// Access Counter: ProtoName, Interface, Method
 		proto, _, uri, method := ctx.ServiceInterface()
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
@@ -107,7 +108,6 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 		}
 		return err
 	}
-
 	// Select filters
 	globals := ext.GlobalFilters()
 	selective := make([]flux.Filter, 0, 16)
@@ -120,24 +120,21 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 			}
 		}
 	}
-
 	// Resolve endpoint arguments
-	// HEAD和OPTIONS不需要解析参数；参数数量要大于0；
+	resolver := ext.GetArgumentValueResolver()
+	// 忽略Head/Option请求
 	if http.MethodHead != ctx.Method() && http.MethodOptions != ctx.Method() &&
 		len(ctx.endpoint.Service.Arguments) > 0 {
-		resolver := ext.GetArgumentValueResolver()
-		if err := resolveArgumentWith(resolver, ctx.endpoint.Service.Arguments, ctx); nil != err {
-			return doMetricEndpoint(err)
+		if err := resolveArguments(resolver, ctx.endpoint.Service.Arguments, ctx); nil != err {
+			return doMetricEndpointFunc(err)
 		}
 	}
 	// Resolve permission arguments
 	if ctx.endpoint.Permission.IsValid() {
-		resolver := ext.GetArgumentValueResolver()
-		if err := resolveArgumentWith(resolver, ctx.endpoint.Permission.Arguments, ctx); nil != err {
-			return doMetricEndpoint(err)
+		if err := resolveArguments(resolver, ctx.endpoint.Permission.Arguments, ctx); nil != err {
+			return doMetricEndpointFunc(err)
 		}
 	}
-
 	// Walk filters
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
 		protoName := ctx.ServiceProto()
@@ -148,13 +145,14 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName)}
 		} else {
+			// Backend exchange
 			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Backend", protoName))
 			ret := backend.Exchange(ctx)
 			timer.ObserveDuration()
 			return ret
 		}
 	}, append(globals, selective...)...)(ctx)
-	return doMetricEndpoint(err)
+	return doMetricEndpointFunc(err)
 }
 
 func (r *RouterEngine) walk(next flux.FilterHandler, filters ...flux.Filter) flux.FilterHandler {

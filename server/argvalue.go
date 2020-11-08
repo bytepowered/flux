@@ -54,14 +54,14 @@ func DefaultArgumentValueResolver(scope, key string, ctx flux.Context) (value fl
 	}
 }
 
-func resolveArgumentWith(lookupFunc flux.ArgumentValueResolver, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
+func resolveArguments(resolver flux.ArgumentValueResolver, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
 	for _, arg := range arguments {
 		if flux.ArgumentTypePrimitive == arg.Type {
-			if err := _doResolve(lookupFunc, arg, ctx); nil != err {
+			if err := _doResolve(resolver, arg, ctx); nil != err {
 				return err
 			}
 		} else if flux.ArgumentTypeComplex == arg.Type {
-			if err := resolveArgumentWith(lookupFunc, arg.Fields, ctx); nil != err {
+			if err := resolveArguments(resolver, arg.Fields, ctx); nil != err {
 				return err
 			}
 		} else {
