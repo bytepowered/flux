@@ -17,33 +17,33 @@ const (
 	ValueMIMETypeGoStringMap = "go:string-map"
 )
 
-// TypedValue 包含值类型信息的Value包装结构
-type TypedValue struct {
+// MIMEValue 包含值类型信息的Value包装结构
+type MIMEValue struct {
 	Value    interface{}
 	MIMEType string
 }
 
-func NewTextTypedValue(value string) TypedValue {
-	return TypedValue{Value: value, MIMEType: ValueMIMETypeGoText}
+func NewTextTypedValue(value string) MIMEValue {
+	return MIMEValue{Value: value, MIMEType: ValueMIMETypeGoText}
 }
 
-func NewObjectTypedValue(value interface{}) TypedValue {
-	return TypedValue{Value: value, MIMEType: ValueMIMETypeGoObject}
+func NewObjectTypedValue(value interface{}) MIMEValue {
+	return MIMEValue{Value: value, MIMEType: ValueMIMETypeGoObject}
 }
 
-func NewStrMapTypedValue(value map[string]interface{}) TypedValue {
-	return TypedValue{Value: value, MIMEType: ValueMIMETypeGoStringMap}
+func NewStrMapTypedValue(value map[string]interface{}) MIMEValue {
+	return MIMEValue{Value: value, MIMEType: ValueMIMETypeGoStringMap}
 }
 
 // TypedValueResolver 将未定类型的值，按指定类型以及泛型类型转换
 // @param typeClass 值类型
 // @param typeGeneric 值泛型类型
 // @param value Http请求的值
-type TypedValueResolver func(typeClass string, typeGenerics []string, value TypedValue) (typedValue interface{}, err error)
+type TypedValueResolver func(typeClass string, typeGenerics []string, value MIMEValue) (typedValue interface{}, err error)
 
 // TypedValueResolveWrapper 包装转换函数
 type TypedValueResolveWrapper func(value interface{}) (typedValue interface{}, err error)
 
-func (f TypedValueResolveWrapper) ResolveFunc(_ string, _ []string, value TypedValue) (typedValue interface{}, err error) {
+func (f TypedValueResolveWrapper) ResolveFunc(_ string, _ []string, value MIMEValue) (typedValue interface{}, err error) {
 	return f(value.Value)
 }

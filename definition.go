@@ -48,8 +48,11 @@ const (
 	ProtoHttp  = "HTTP"
 )
 
-// ArgumentValueResolver 参数值查找函数
-type ArgumentValueResolver func(scope, key string, context Context) (value TypedValue, err error)
+// ArgumentValueLookupFunc 参数值查找函数
+type ArgumentValueLookupFunc func(scope, key string, context Context) (value MIMEValue, err error)
+
+// ArgumentValueResolveFunc 参数值解析函数
+type ArgumentValueResolveFunc func(mimeValue MIMEValue, argument Argument, context Context) (value interface{}, err error)
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
@@ -60,7 +63,6 @@ type Argument struct {
 	HttpName    string     `json:"httpName"`  // 映射Http的参数Key
 	HttpScope   string     `json:"httpScope"` // 映射Http参数值域
 	Fields      []Argument `json:"fields"`    // 子结构字段
-	Value       Valuer     `json:"-"`         // 参数值
 }
 
 // BackendService 定义连接上游目标服务的信息

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
@@ -8,7 +9,7 @@ import (
 )
 
 // 默认实现：查找Argument的值函数
-func DefaultArgumentValueResolver(scope, key string, ctx flux.Context) (value flux.TypedValue, err error) {
+func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value flux.MIMEValue, err error) {
 	request := ctx.Request()
 	switch scope {
 	case flux.ScopeQuery:
@@ -21,7 +22,7 @@ func DefaultArgumentValueResolver(scope, key string, ctx flux.Context) (value fl
 		return flux.NewTextTypedValue(request.FormValue(key)), nil
 	case flux.ScopeBody:
 		reader, err := request.RequestBodyReader()
-		return flux.TypedValue{Value: reader, MIMEType: request.HeaderValue("Content-Type")}, err
+		return flux.MIMEValue{Value: reader, MIMEType: request.HeaderValue("Content-Type")}, err
 	case flux.ScopeAttrs:
 		return flux.NewStrMapTypedValue(ctx.Attributes()), nil
 	case flux.ScopeAttr:
@@ -54,36 +55,8 @@ func DefaultArgumentValueResolver(scope, key string, ctx flux.Context) (value fl
 	}
 }
 
-func resolveArguments(resolver flux.ArgumentValueResolver, arguments []flux.Argument, ctx flux.Context) *flux.StateError {
-	for _, arg := range arguments {
-		if flux.ArgumentTypePrimitive == arg.Type {
-			if err := _doResolve(resolver, arg, ctx); nil != err {
-				return err
-			}
-		} else if flux.ArgumentTypeComplex == arg.Type {
-			if err := resolveArguments(resolver, arg.Fields, ctx); nil != err {
-				return err
-			}
-		} else {
-			logger.TraceContext(ctx).Warnw("Unsupported argument type",
-				"class", arg.TypeClass, "generic", arg.TypeGeneric, "type", arg.Type)
-		}
-	}
-	return nil
-}
-
-func _doResolve(resolver flux.ArgumentValueResolver, arg flux.Argument, ctx flux.Context) *flux.StateError {
-	mtValue, err := resolver(arg.HttpScope, arg.HttpName, ctx)
-	if nil != err {
-		logger.TraceContext(ctx).Warnw("Failed to lookup argument",
-			"http.key", arg.HttpName, "arg.name", arg.Name, "error", err)
-		return &flux.StateError{
-			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    "PARAMETERS:LOOKUP_VALUE",
-			Internal:   err,
-		}
-	}
+// 默认实现：查找Argument的值解析函数
+func DefaultArgumentValueResolveFunc(mtValue flux.MIMEValue, arg flux.Argument, ctx flux.Context) (interface{}, error) {
 	valueResolver := ext.GetTypedValueResolver(arg.TypeClass)
 	if nil == valueResolver {
 		logger.TraceContext(ctx).Warnw("Not supported argument type",
@@ -94,14 +67,8 @@ func _doResolve(resolver flux.ArgumentValueResolver, arg flux.Argument, ctx flux
 		logger.TraceContext(ctx).Warnw("Failed to resolve argument",
 			"http.key", arg.HttpName, "arg.name", arg.Name, "class", arg.TypeClass, "generic", arg.TypeGeneric,
 			"http.value", mtValue.Value, "error", err)
-		return &flux.StateError{
-			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    "PARAMETERS:RESOLVE_VALUE",
-			Internal:   err,
-		}
+		return nil, fmt.Errorf("PARAMETERS:RESOLVE_VALUE:%w", err)
 	} else {
-		arg.Value.Set(value)
-		return nil
+		return value, nil
 	}
 }

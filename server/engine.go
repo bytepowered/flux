@@ -8,7 +8,6 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/support"
 	"github.com/prometheus/client_golang/prometheus"
-	"net/http"
 	"reflect"
 	"sort"
 )
@@ -118,21 +117,6 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 			} else {
 				logger.TraceContext(ctx).Warnw("Filter not found on selector", "type-id", typeId)
 			}
-		}
-	}
-	// Resolve endpoint arguments
-	resolver := ext.GetArgumentValueResolver()
-	// 忽略Head/Option请求
-	if http.MethodHead != ctx.Method() && http.MethodOptions != ctx.Method() &&
-		len(ctx.endpoint.Service.Arguments) > 0 {
-		if err := resolveArguments(resolver, ctx.endpoint.Service.Arguments, ctx); nil != err {
-			return doMetricEndpointFunc(err)
-		}
-	}
-	// Resolve permission arguments
-	if ctx.endpoint.Permission.IsValid() {
-		if err := resolveArguments(resolver, ctx.endpoint.Permission.Arguments, ctx); nil != err {
-			return doMetricEndpointFunc(err)
 		}
 	}
 	// Walk filters

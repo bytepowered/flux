@@ -33,7 +33,7 @@ func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
 func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
 	inURL, _ := ctx.Request().RequestURL()
 	bodyReader, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := ex.Assemble(&service, inURL, bodyReader, ctx.Context())
+	newRequest, err := ex.Assemble(&service, inURL, bodyReader, ctx)
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -68,7 +68,7 @@ func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (in
 	return resp, nil
 }
 
-func (ex *HttpBackend) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx context.Context) (*http.Request, error) {
+func (ex *HttpBackend) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
@@ -78,7 +78,12 @@ func (ex *HttpBackend) Assemble(service *flux.BackendService, inURL *url.URL, bo
 	var newBodyReader io.Reader = bodyReader
 	if len(inParams) > 0 {
 		// 如果Endpoint定义了参数，即表示限定参数传递
-		data := _toHttpUrlValues(inParams).Encode()
+		var data string
+		if values, err := _toHttpUrlValues(inParams, ctx); nil != err {
+			return nil, err
+		} else {
+			data = values.Encode()
+		}
 		// GET：参数拼接到URL中；
 		if http.MethodGet == service.Method {
 			if newQuery == "" {
@@ -108,7 +113,7 @@ func (ex *HttpBackend) Assemble(service *flux.BackendService, inURL *url.URL, bo
 		logger.Warnf("Illegal endpoint rpc-timeout: ", service.RpcTimeout)
 		timeout = time.Second * 10
 	}
-	toctx, _ := context.WithTimeout(ctx, timeout)
+	toctx, _ := context.WithTimeout(ctx.Context(), timeout)
 	newRequest, err := http.NewRequestWithContext(toctx, service.Method, newUrl.String(), newBodyReader)
 	if nil != err {
 		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", service.Method, newUrl, err)

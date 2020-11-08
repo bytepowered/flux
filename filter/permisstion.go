@@ -2,6 +2,7 @@ package filter
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bytepowered/cache"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
@@ -56,9 +57,20 @@ func (p *EndpointPermissionFilter) DoFilter(next flux.FilterHandler) flux.Filter
 		if false == endpoint.Authorize || !permission.IsValid() {
 			return next(ctx)
 		}
+		// Lookup & resolve arguments
+		lookup := ext.GetArgumentValueLookupFunc()
+		resolver := ext.GetArgumentValueResolveFunc()
+		argsKey, err := _newArgumentsKey(permission.Arguments, lookup, resolver, ctx)
+		if nil != err {
+			return &flux.StateError{
+				StatusCode: flux.StatusServerError,
+				Message:    "PERMISSION:LOOKUP/RESOLVE:ERROR",
+				Internal:   err,
+			}
+		}
 		// 以Permission的(UpstreamServiceTag + 具体参数Value列表)来构建单个请求的缓存Key
 		serviceTag := flux.NewServiceKey(permission.RpcProto, permission.RemoteHost, permission.Method, permission.Interface)
-		cacheKey := serviceTag + "#" + _newArgumentsKey(permission.Arguments)
+		cacheKey := serviceTag + "#" + argsKey
 		// 权限验证结果缓存
 		passed, err := p.permissionCache.GetOrLoad(cacheKey, func(_ interface{}) (interface{}, *time.Duration, error) {
 			return p.doPermissionVerification(&permission, ctx)
@@ -177,29 +189,48 @@ func defaultEndpointPermissionDecoder(response interface{}, ctx flux.Context) (b
 	return pass, time.Minute * 5, nil
 }
 
-func _newArgumentsKey(args []flux.Argument) string {
+func _newArgumentsKey(args []flux.Argument,
+	lookup flux.ArgumentValueLookupFunc, resolver flux.ArgumentValueResolveFunc, ctx flux.Context) (string, error) {
 	// [(T:v1),(T:v2),]
 	sb := new(strings.Builder)
 	sb.WriteByte('[')
 	for _, arg := range args {
-		sb.WriteString(_newArgumentKey(arg))
+		if sv, err := _newArgumentKey(arg, lookup, resolver, ctx); nil != err {
+			return "", err
+		} else {
+			sb.WriteString(sv)
+		}
 		sb.WriteByte(',')
 	}
 	sb.WriteByte(']')
-	return sb.String()
+	return sb.String(), nil
 }
 
-func _newArgumentKey(arg flux.Argument) string {
+func _newArgumentKey(arg flux.Argument, lookup flux.ArgumentValueLookupFunc, resolver flux.ArgumentValueResolveFunc, ctx flux.Context) (string, error) {
 	// (T:val)
 	sb := new(strings.Builder)
 	sb.WriteByte('(')
 	sb.WriteString(arg.TypeClass)
 	sb.WriteByte(':')
 	if flux.ArgumentTypeComplex == arg.Type && len(arg.Fields) > 0 {
-		sb.WriteString(_newArgumentsKey(arg.Fields))
+		if sv, err := _newArgumentsKey(arg.Fields, lookup, resolver, ctx); nil != err {
+			return "", err
+		} else {
+			sb.WriteString(sv)
+		}
 	} else {
-		sb.WriteString(cast.ToString(arg.Value.Get()))
+		mtValue, err := lookup(arg.HttpScope, arg.HttpName, ctx)
+		if nil != err {
+			logger.TraceContext(ctx).Warnw("Failed to lookup argument",
+				"http.key", arg.HttpName, "arg.name", arg.Name, "error", err)
+			return "", fmt.Errorf("ARGUMENT:LOOKUP:%w", err)
+		}
+		if sv, err := resolver(mtValue, arg, ctx); nil != err {
+			return "", err
+		} else {
+			sb.WriteString(cast.ToString(sv))
+		}
 	}
 	sb.WriteByte(')')
-	return sb.String()
+	return sb.String(), nil
 }

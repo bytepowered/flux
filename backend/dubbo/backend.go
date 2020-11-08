@@ -51,7 +51,7 @@ var (
 type OptionFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 
 // 参数封装函数，可外部化配置为其它协议的值对象
-type AssembleFunc func(arguments []flux.Argument) (types []string, values interface{})
+type AssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
 
 // GetRegistryAlias
 func GetRegistryGlobalAlias() map[string]string {
@@ -132,40 +132,38 @@ func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
 	return support.InvokeBackendExchange(ctx, ex)
 }
 
-func (ex *DubboBackend) Invoke(service flux.BackendService, fxctx flux.Context) (interface{}, *flux.StateError) {
-	types, values := ex.AssembleFunc(service.Arguments)
-	// 在测试场景中，fluxContext可能为nil
-	attachments := make(map[string]interface{})
-	traceId := "no-trace-id"
-	if nil != fxctx {
-		attachments = fxctx.Attributes()
-		traceId = fxctx.RequestId()
+func (ex *DubboBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+	types, values, err := ex.AssembleFunc(service.Arguments, ctx)
+	if nil != err {
+		return nil, &flux.StateError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    ErrMessageAssemble,
+			Internal:   err,
+		}
 	}
 	serviceTag := service.Interface + "." + service.Method
 	if ex.traceEnable {
-		logger.Trace(traceId).Infow("Dubbo invoking",
-			"service", serviceTag, "arguments.values", values, "arguments.type", types, "attachments", attachments,
+		logger.TraceContext(ctx).Infow("Dubbo invoking",
+			"service", serviceTag, "arguments.values", values, "arguments.type", types, "attachments", ctx.Attributes(),
 		)
 	}
-	goctx := context.Background()
-	if nil != fxctx {
-		// Note: must be map[string]string
-		// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
-		ssmap, err := cast.ToStringMapStringE(attachments)
-		if nil != err {
-			logger.Trace(traceId).Errorw("Dubbo attachment error", "service", serviceTag, "error", err)
-			return nil, &flux.StateError{
-				StatusCode: flux.StatusServerError,
-				ErrorCode:  flux.ErrorCodeGatewayInternal,
-				Message:    ErrMessageAssemble,
-				Internal:   err,
-			}
+	// Note: must be map[string]string
+	// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
+	ssmap, err := cast.ToStringMapStringE(ctx.Attributes())
+	if nil != err {
+		logger.TraceContext(ctx).Errorw("Dubbo attachment error", "service", serviceTag, "error", err)
+		return nil, &flux.StateError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    ErrMessageAssemble,
+			Internal:   err,
 		}
-		goctx = context.WithValue(fxctx.Context(), constant.AttachmentKey, ssmap)
 	}
+	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, ssmap)
 	generic := ex.LookupGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
-		logger.Trace(traceId).Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
+		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
@@ -174,7 +172,7 @@ func (ex *DubboBackend) Invoke(service flux.BackendService, fxctx flux.Context) 
 		}
 	} else {
 		if ex.traceEnable {
-			logger.Trace(traceId).Infow("Dubbo invoked: OK", "service", serviceTag, "return.type", reflect.TypeOf(resp))
+			logger.TraceContext(ctx).Infow("Dubbo invoked: OK", "service", serviceTag, "return.type", reflect.TypeOf(resp))
 		}
 		return resp, nil
 	}
