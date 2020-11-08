@@ -142,10 +142,11 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
 		protoName := ctx.ServiceProto()
 		if backend, ok := ext.GetBackend(protoName); !ok {
+			logger.TraceContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
-				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL: %s", protoName)}
+				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName)}
 		} else {
 			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Backend", protoName))
 			ret := backend.Exchange(ctx)

@@ -110,8 +110,13 @@ func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.Endpoin
 	}
 	logger.Infow("Received endpoint event",
 		"event-type", etype, "method", endpoint.HttpMethod, "pattern", endpoint.HttpPattern, "data", string(bytes))
+	// 检查有效性
 	if endpoint.HttpPattern == "" || endpoint.HttpMethod == "" {
-		logger.Infof("illegal http-pattern, data: %s", string(bytes))
+		logger.Warnw("illegal http-pattern", "data", string(bytes))
+		return _invalidEndpointEvent, false
+	}
+	if endpoint.Service.Interface == "" || endpoint.Service.Method == "" || endpoint.Service.Protocol == "" {
+		logger.Warnw("illegal service definition", "service", endpoint.Service, "data", string(bytes))
 		return _invalidEndpointEvent, false
 	}
 	event := flux.EndpointEvent{
