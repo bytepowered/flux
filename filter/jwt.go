@@ -57,8 +57,8 @@ type JwtVerificationFilter struct {
 
 func (j *JwtVerificationFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		ConfigKeyCacheExpiration: defValueCacheExpiration,
-		ConfigKeyCacheSize:       defValueCacheSize,
+		ConfigKeyCacheExpiration: DefaultValueCacheExpiration,
+		ConfigKeyCacheSize:       DefaultValueCacheSize,
 		ConfigKeyDisabled:        false,
 		JwtConfigKeyLookupToken:  keyHeaderAuthorization,
 		JwtConfigKeyIssuer:       "iss",
@@ -87,10 +87,6 @@ func (j *JwtVerificationFilter) Init(config *flux.Configuration) error {
 
 func (*JwtVerificationFilter) TypeId() string {
 	return TypeIdJWTVerification
-}
-
-func (*JwtVerificationFilter) Order() int {
-	return OrderFilterJwtVerification
 }
 
 func (j *JwtVerificationFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
@@ -163,10 +159,11 @@ func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject str
 		Method:    j.config.upstreamMethod,
 		Interface: j.config.upstreamUri,
 		Arguments: []flux.Argument{
-			ext.NewStringArgument("issuer", issuer),
-			ext.NewStringArgument("subject", subject),
-			ext.NewStringMapArgument("claims", claims),
+			ext.NewStringArgument("issuer"),
+			ext.NewStringArgument("subject"),
+			ext.NewStringMapArgument("claims"),
 		},
+		// FIXME Argument的值未正确解析
 	}, nil); nil != err {
 		return false, cache.NoExpiration, err
 	} else {

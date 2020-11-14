@@ -1,11 +1,5 @@
 package filter
 
-// 全局Filter排序
-const (
-	OrderFilterJwtVerification    = -90
-	OrderFilterEndpointPermission = -80
-)
-
 const (
 	ConfigKeyCacheExpiration  = "cache-expiration"
 	ConfigKeyCacheSize        = "cache-size"
@@ -24,6 +18,6 @@ const (
 )
 
 const (
-	defValueCacheExpiration = 30
-	defValueCacheSize       = 1_0000
+	DefaultValueCacheExpiration = 30
+	DefaultValueCacheSize       = 1_0000
 )

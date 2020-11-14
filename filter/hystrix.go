@@ -51,7 +51,7 @@ type HystrixConfig struct {
 
 // HystrixFilter
 type HystrixFilter struct {
-	config *HystrixConfig
+	Config *HystrixConfig
 	marks  sync.Map
 }
 
@@ -75,32 +75,32 @@ func (r *HystrixFilter) Init(config *flux.Configuration) error {
 }
 
 func (r *HystrixFilter) SetHystrixConfig(config *HystrixConfig) {
-	r.config = config
-	if r.config.ServiceSkipFunc == nil {
-		r.config.ServiceSkipFunc = hystrixServiceSkipper
+	r.Config = config
+	if r.Config.ServiceSkipFunc == nil {
+		r.Config.ServiceSkipFunc = hystrixServiceSkipper
 	}
-	if r.config.ServiceNameFunc == nil {
-		r.config.ServiceNameFunc = hystrixServiceNamer
+	if r.Config.ServiceNameFunc == nil {
+		r.Config.ServiceNameFunc = hystrixServiceNamer
 	}
-	if r.config.ServiceTestFunc == nil {
-		r.config.ServiceTestFunc = hystrixServiceCircuited
+	if r.Config.ServiceTestFunc == nil {
+		r.Config.ServiceTestFunc = hystrixServiceCircuited
 	}
 }
 
 func (r *HystrixFilter) GetHystrixConfig() HystrixConfig {
-	return *(r.config)
+	return *(r.Config)
 }
 
 func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	return func(ctx flux.Context) *flux.StateError {
-		if r.config.ServiceSkipFunc(ctx) {
+		if r.Config.ServiceSkipFunc(ctx) {
 			return next(ctx)
 		}
-		serviceName := r.config.ServiceNameFunc(ctx)
+		serviceName := r.Config.ServiceNameFunc(ctx)
 		r.initCommand(serviceName)
 		// check circuit
 		err := hystrix.DoC(ctx.Context(), serviceName, func(_ context.Context) error {
-			if ierr := next(ctx); nil != ierr && r.config.ServiceTestFunc(ierr) {
+			if ierr := next(ctx); nil != ierr && r.Config.ServiceTestFunc(ierr) {
 				return hystrix.CircuitError{Message: ierr.Message}
 			} else {
 				return nil
@@ -131,11 +131,11 @@ func (r *HystrixFilter) initCommand(serviceName string) {
 	if _, exist := r.marks.LoadOrStore(serviceName, true); !exist {
 		logger.Infof("Hystrix create command", "service-name", serviceName)
 		hystrix.ConfigureCommand(serviceName, hystrix.CommandConfig{
-			Timeout:                r.config.Timeout,
-			MaxConcurrentRequests:  r.config.MaxConcurrentRequests,
-			SleepWindow:            r.config.SleepWindow,
-			ErrorPercentThreshold:  r.config.ErrorPercentThreshold,
-			RequestVolumeThreshold: r.config.RequestVolumeThreshold,
+			Timeout:                r.Config.Timeout,
+			MaxConcurrentRequests:  r.Config.MaxConcurrentRequests,
+			SleepWindow:            r.Config.SleepWindow,
+			ErrorPercentThreshold:  r.Config.ErrorPercentThreshold,
+			RequestVolumeThreshold: r.Config.RequestVolumeThreshold,
 		})
 	}
 }

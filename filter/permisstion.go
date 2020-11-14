@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/pkg"
 	"github.com/spf13/cast"
 	"reflect"
 	"strings"
@@ -14,39 +15,40 @@ import (
 )
 
 const (
-	TypeIdEndpointPermission = "EndpointPermissionFilter"
+	TypeIdEndpointPermission = "PermissionFilter"
 )
 
 func init() {
-	SetEndpointPermissionResponseDecoder(defaultEndpointPermissionDecoder)
+	SetPermissionResponseDecoder(defaultPermissionDecoder)
+	SetPermissionKeyFunc(defaultPermissionKey)
 }
 
 var (
-	endpointPermissionResponseDecoder EndpointPermissionResponseDecoder
+	_permissionResponseDecoder PermissionResponseDecoder
+	_permissionKeyFunc         PermissionKeyFunc
 )
 
-func SetEndpointPermissionResponseDecoder(decoder EndpointPermissionResponseDecoder) {
-	endpointPermissionResponseDecoder = decoder
+type (
+	// PermissionKeyFunc 生成权限Key的函数
+	PermissionKeyFunc func(ctx flux.Context) (key string, err error)
+	// ResponseDecoder 权限验证结果解析函数
+	PermissionResponseDecoder func(response interface{}, ctx flux.Context) (pass bool, expire time.Duration, err error)
+)
+
+func PermissionFilterFactory() interface{} {
+	return &PermissionFilter{}
 }
 
-func GetEndpointPermissionResponseDecoder() EndpointPermissionResponseDecoder {
-	return endpointPermissionResponseDecoder
+// PermissionFilter 提供基于Endpoint.Permission元数据的权限验证
+type PermissionFilter struct {
+	disabled           bool
+	permissions        cache.Cache
+	ResponseDecoder    PermissionResponseDecoder
+	PermissionSkipFunc flux.FilterSkipper
+	PermissionKeyFunc  PermissionKeyFunc
 }
 
-// 权限验证结果解析函数
-type EndpointPermissionResponseDecoder func(response interface{}, ctx flux.Context) (pass bool, expire time.Duration, err error)
-
-func EndpointPermissionFactory() interface{} {
-	return &EndpointPermissionFilter{}
-}
-
-// EndpointPermissionFilter 提供基于EndpointPermission的权限验证
-type EndpointPermissionFilter struct {
-	disabled        bool
-	permissionCache cache.Cache
-}
-
-func (p *EndpointPermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
+func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	if p.disabled {
 		return next
 	}
@@ -57,34 +59,30 @@ func (p *EndpointPermissionFilter) DoFilter(next flux.FilterHandler) flux.Filter
 		if false == endpoint.Authorize || !permission.IsValid() {
 			return next(ctx)
 		}
-		// Lookup & resolve arguments
-		lookup := ext.GetArgumentValueLookupFunc()
-		resolver := ext.GetArgumentValueResolveFunc()
-		argsKey, err := _newArgumentsKey(permission.Arguments, lookup, resolver, ctx)
-		if nil != err {
-			return &flux.StateError{
-				StatusCode: flux.StatusServerError,
-				Message:    "PERMISSION:LOOKUP/RESOLVE:ERROR",
-				Internal:   err,
-			}
+		if p.PermissionSkipFunc(ctx) {
+			return next(ctx)
 		}
-		// 以Permission的(UpstreamServiceTag + 具体参数Value列表)来构建单个请求的缓存Key
-		serviceTag := flux.NewServiceKey(permission.RpcProto, permission.RemoteHost, permission.Method, permission.Interface)
-		cacheKey := serviceTag + "#" + argsKey
-		// 权限验证结果缓存
-		passed, err := p.permissionCache.GetOrLoad(cacheKey, func(_ interface{}) (interface{}, *time.Duration, error) {
-			return p.doPermissionVerification(&permission, ctx)
-		})
-		if nil != err {
+		toStateError := func(err error, msg string) *flux.StateError {
 			if serr, ok := err.(*flux.StateError); ok {
 				return serr
 			} else {
 				return &flux.StateError{
 					StatusCode: flux.StatusServerError,
-					Message:    "PERMISSION:LOAD:ERROR",
+					Message:    msg,
 					Internal:   err,
 				}
 			}
+		}
+		// 权限验证结果缓存
+		permissionKey, err := p.PermissionKeyFunc(ctx)
+		if nil != err {
+			return toStateError(err, "PERMISSION:GENERATE:ERROR")
+		}
+		passed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
+			return p.doPermissionVerify(&permission, ctx)
+		})
+		if nil != err {
+			return toStateError(err, "PERMISSION:LOAD:ERROR")
 		}
 		if !cast.ToBool(passed) {
 			return err.(*flux.StateError)
@@ -94,10 +92,10 @@ func (p *EndpointPermissionFilter) DoFilter(next flux.FilterHandler) flux.Filter
 	}
 }
 
-func (p *EndpointPermissionFilter) Init(config *flux.Configuration) error {
+func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		ConfigKeyCacheExpiration: defValueCacheExpiration,
-		ConfigKeyCacheSize:       defValueCacheSize,
+		ConfigKeyCacheExpiration: DefaultValueCacheExpiration,
+		ConfigKeyCacheSize:       DefaultValueCacheSize,
 		ConfigKeyDisabled:        false,
 	})
 	p.disabled = config.GetBool(ConfigKeyDisabled)
@@ -106,42 +104,57 @@ func (p *EndpointPermissionFilter) Init(config *flux.Configuration) error {
 		return nil
 	}
 	expiration := config.GetDuration(ConfigKeyCacheExpiration)
-	cacheSize := config.GetInt(ConfigKeyCacheSize)
-	p.permissionCache = cache.New(cacheSize).Expiration(expiration).LRU().Build()
-	logger.Infow("Endpoint permission filter init", "cache-alg", "ExpireLRU", "cache-size", cacheSize, "cache-expire", expiration.String())
+	size := config.GetInt(ConfigKeyCacheSize)
+	p.permissions = cache.New(size).Expiration(expiration).LRU().Build()
+	logger.Infow("Endpoint permission filter init", "cache-alg", "ExpireLRU", "cache-size", size, "cache-expire", expiration.String())
+	if pkg.IsNil(p.PermissionKeyFunc) {
+		p.PermissionKeyFunc = GetPermissionKeyFunc()
+	}
+	if pkg.IsNil(p.ResponseDecoder) {
+		p.ResponseDecoder = GetPermissionResponseDecoder()
+	}
+	if pkg.IsNil(p.PermissionSkipFunc) {
+		p.PermissionSkipFunc = func(_ flux.Context) bool {
+			return false
+		}
+	}
 	return nil
 }
 
-func (p *EndpointPermissionFilter) doPermissionVerification(perm *flux.PermissionService, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
-	backend, ok := ext.GetBackend(perm.RpcProto)
+func (*PermissionFilter) TypeId() string {
+	return TypeIdEndpointPermission
+}
+
+func (p *PermissionFilter) doPermissionVerify(service *flux.PermissionService, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
+	backend, ok := ext.GetBackend(service.RpcProto)
 	if !ok {
 		logger.TraceContext(ctx).Errorw("Provider backend unsupported protocol",
-			"provider-proto", perm.RpcProto, "provider-uri", perm.Interface, "provider-method", perm.Method)
+			"provider-proto", service.RpcProto, "provider-uri", service.Interface, "provider-method", service.Method)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:UNKNOWN_PROTOCOL",
 			Internal:   err,
 		}
 	}
-	service := flux.BackendService{
-		RemoteHost: perm.RemoteHost,
-		Method:     perm.Method,
-		Interface:  perm.Interface,
-		Arguments:  perm.Arguments,
-	}
-	if ret, err := backend.Invoke(service, ctx); nil != err {
+	// Invoke to check permission
+	if ret, err := backend.Invoke(flux.BackendService{
+		RemoteHost: service.RemoteHost,
+		Method:     service.Method,
+		Interface:  service.Interface,
+		Arguments:  service.Arguments,
+	}, ctx); nil != err {
 		logger.TraceContext(ctx).Errorw("Permission Provider backend load error",
-			"provider-proto", perm.RpcProto, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
+			"provider-proto", service.RpcProto, "provider-uri", service.Interface, "provider-method", service.Method, "error", err)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			Message:    "PERMISSION:PROVIDER:LOAD",
 			Internal:   err,
 		}
 	} else {
-		passed, expire, err := GetEndpointPermissionResponseDecoder()(ret, ctx)
+		passed, expire, err := p.ResponseDecoder(ret, ctx)
 		if nil != err {
 			logger.TraceContext(ctx).Errorw("Permission decode response error",
-				"provider-proto", perm.RpcProto, "provider-uri", perm.Interface, "provider-method", perm.Method, "error", err)
+				"provider-proto", service.RpcProto, "provider-uri", service.Interface, "provider-method", service.Method, "error", err)
 			return false, cache.NoExpiration, &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				Message:    "PERMISSION:RESPONSE:DECODE",
@@ -153,15 +166,23 @@ func (p *EndpointPermissionFilter) doPermissionVerification(perm *flux.Permissio
 	}
 }
 
-func (p *EndpointPermissionFilter) Order() int {
-	return OrderFilterEndpointPermission
+func SetPermissionResponseDecoder(decoder PermissionResponseDecoder) {
+	_permissionResponseDecoder = decoder
 }
 
-func (*EndpointPermissionFilter) TypeId() string {
-	return TypeIdEndpointPermission
+func GetPermissionResponseDecoder() PermissionResponseDecoder {
+	return _permissionResponseDecoder
 }
 
-func defaultEndpointPermissionDecoder(response interface{}, ctx flux.Context) (bool, time.Duration, error) {
+func SetPermissionKeyFunc(f PermissionKeyFunc) {
+	_permissionKeyFunc = f
+}
+
+func GetPermissionKeyFunc() PermissionKeyFunc {
+	return _permissionKeyFunc
+}
+
+func defaultPermissionDecoder(response interface{}, ctx flux.Context) (bool, time.Duration, error) {
 	logger.TraceContext(ctx).Infow("Decode endpoint permission",
 		"response-type", reflect.TypeOf(response), "response", response)
 	// 默认支持响应JSON数据：
@@ -187,6 +208,20 @@ func defaultEndpointPermissionDecoder(response interface{}, ctx flux.Context) (b
 	text := cast.ToString(response)
 	pass := strings.Contains(text, "success")
 	return pass, time.Minute * 5, nil
+}
+
+// defaultPermissionKey 默认生成权限Key
+func defaultPermissionKey(ctx flux.Context) (string, error) {
+	permission := ctx.Endpoint().Permission
+	lookup := ext.GetArgumentValueLookupFunc()
+	resolver := ext.GetArgumentValueResolveFunc()
+	argsKey, err := _newArgumentsKey(permission.Arguments, lookup, resolver, ctx)
+	if nil != err {
+		return "", err
+	}
+	// 以Permission的(ServiceTag + 具体参数Value列表)来构建单个请求的缓存Key
+	serviceName := flux.NewServiceKey(permission.RpcProto, permission.RemoteHost, permission.Method, permission.Interface)
+	return serviceName + "#" + argsKey, nil
 }
 
 func _newArgumentsKey(args []flux.Argument,
