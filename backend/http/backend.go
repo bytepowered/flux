@@ -27,13 +27,13 @@ type HttpBackend struct {
 }
 
 func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
-	return backend.InvokeBackendExchange(ctx, ex)
+	return backend.DoExchange(ctx, ex)
 }
 
 func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
-	inURL, _ := ctx.Request().RequestURL()
-	bodyReader, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := ex.Assemble(&service, inURL, bodyReader, ctx)
+	inurl, _ := ctx.Request().RequestURL()
+	body, _ := ctx.Request().RequestBodyReader()
+	newRequest, err := ex.Assemble(&service, inurl, body, ctx)
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -41,16 +41,19 @@ func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (in
 			Message:    "HTTPEX:ASSEMBLE",
 			Internal:   err,
 		}
+	}
+	return ex.ExecuteRequest(newRequest, service, ctx)
+}
+
+func (ex *HttpBackend) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+	// Header透传以及传递AttrValues
+	if header, writable := ctx.Request().HeaderValues(); writable {
+		newRequest.Header = header.Clone()
 	} else {
-		// Header透传以及传递AttrValues
-		if header, writable := ctx.Request().HeaderValues(); writable {
-			newRequest.Header = header.Clone()
-		} else {
-			newRequest.Header = header
-		}
-		for k, v := range ctx.Attributes() {
-			newRequest.Header.Set(k, cast.ToString(v))
-		}
+		newRequest.Header = header
+	}
+	for k, v := range ctx.Attributes() {
+		newRequest.Header.Set(k, cast.ToString(v))
 	}
 	resp, err := ex.httpClient.Do(newRequest)
 	if nil != err {

@@ -13,7 +13,7 @@ var (
 	}
 )
 
-func InvokeBackendExchange(ctx flux.Context, exchange flux.Backend) *flux.StateError {
+func DoExchange(ctx flux.Context, exchange flux.Backend) *flux.StateError {
 	endpoint := ctx.Endpoint()
 	resp, err := exchange.Invoke(endpoint.Service, ctx)
 	if err != nil {

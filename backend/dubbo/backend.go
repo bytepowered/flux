@@ -133,7 +133,7 @@ func (ex *DubboBackend) Shutdown(_ context.Context) error {
 }
 
 func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
-	return backend.InvokeBackendExchange(ctx, ex)
+	return backend.DoExchange(ctx, ex)
 }
 
 func (ex *DubboBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
@@ -145,7 +145,12 @@ func (ex *DubboBackend) Invoke(service flux.BackendService, ctx flux.Context) (i
 			Message:    ErrMessageAssemble,
 			Internal:   err,
 		}
+	} else {
+		return ex.ExecuteWith(types, values, service, ctx)
 	}
+}
+
+func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
 	serviceTag := service.Interface + "." + service.Method
 	if ex.traceEnable {
 		logger.TraceContext(ctx).Infow("Dubbo invoking",
