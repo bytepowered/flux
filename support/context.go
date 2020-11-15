@@ -84,7 +84,7 @@ func (v *ValuesRequestReader) FormValue(name string) string {
 }
 
 func (v *ValuesRequestReader) CookieValue(name string) (cookie *http.Cookie, ok bool) {
-	panic("not supported")
+	return nil, false
 }
 
 ////
@@ -168,7 +168,7 @@ func (v *ValuesContext) SetValue(name string, value interface{}) {
 }
 
 func (v *ValuesContext) Context() context.Context {
-	panic("not supported")
+	return context.Background()
 }
 
 func (v *ValuesContext) SetContextLogger(logger flux.Logger) {
@@ -176,5 +176,5 @@ func (v *ValuesContext) SetContextLogger(logger flux.Logger) {
 }
 
 func (v *ValuesContext) GetContextLogger() (flux.Logger, bool) {
-	panic("not supported")
+	return nil, false
 }
