@@ -19,71 +19,99 @@ type ValuesRequestReader struct {
 	values map[string]interface{}
 }
 
-func (v *ValuesRequestReader) Method() string {
-	return cast.ToString(v.values["method"])
+func (r *ValuesRequestReader) Method() string {
+	return cast.ToString(r.values["method"])
 }
 
-func (v *ValuesRequestReader) Host() string {
-	return cast.ToString(v.values["host"])
+func (r *ValuesRequestReader) Host() string {
+	return cast.ToString(r.values["host"])
 }
 
-func (v *ValuesRequestReader) UserAgent() string {
-	return cast.ToString(v.values["user-agent"])
+func (r *ValuesRequestReader) UserAgent() string {
+	return cast.ToString(r.values["user-agent"])
 }
 
-func (v *ValuesRequestReader) RequestURI() string {
-	return cast.ToString(v.values["request-uri"])
+func (r *ValuesRequestReader) RequestURI() string {
+	return cast.ToString(r.values["request-uri"])
 }
 
-func (v *ValuesRequestReader) RequestURL() (rurl *url.URL, writable bool) {
-	return v.values["url"].(*url.URL), false
+func (r *ValuesRequestReader) RequestURL() (u *url.URL, writable bool) {
+	if v, ok := r.values["url"]; ok {
+		return v.(*url.URL), false
+	} else {
+		return nil, false
+	}
 }
 
-func (v *ValuesRequestReader) RequestBodyReader() (io.ReadCloser, error) {
-	return v.values["body"].(io.ReadCloser), nil
+func (r *ValuesRequestReader) RequestBodyReader() (io.ReadCloser, error) {
+	if v, ok := r.values["body"]; ok {
+		return v.(io.ReadCloser), nil
+	} else {
+		return nil, nil
+	}
 }
 
-func (v *ValuesRequestReader) RequestRewrite(method string, path string) {
+func (r *ValuesRequestReader) RequestRewrite(method string, path string) {
 	// nop
 }
 
-func (v *ValuesRequestReader) HeaderValues() (header http.Header, writable bool) {
-	return v.values["header-values"].(http.Header), false
+func (r *ValuesRequestReader) HeaderValues() (header http.Header, writable bool) {
+	if v, ok := r.values["header-values"]; ok {
+		return v.(http.Header), false
+	} else {
+		return header, false
+	}
 }
 
-func (v *ValuesRequestReader) QueryValues() url.Values {
-	return v.values["query-values"].(url.Values)
+func (r *ValuesRequestReader) QueryValues() url.Values {
+	if v, ok := r.values["query-values"]; ok {
+		return v.(url.Values)
+	} else {
+		return url.Values{}
+	}
 }
 
-func (v *ValuesRequestReader) PathValues() url.Values {
-	return v.values["path-values"].(url.Values)
+func (r *ValuesRequestReader) PathValues() url.Values {
+	if v, ok := r.values["path-values"]; ok {
+		return v.(url.Values)
+	} else {
+		return url.Values{}
+	}
 }
 
-func (v *ValuesRequestReader) FormValues() url.Values {
-	return v.values["form-values"].(url.Values)
+func (r *ValuesRequestReader) FormValues() url.Values {
+	if v, ok := r.values["form-values"]; ok {
+		return v.(url.Values)
+	} else {
+		return url.Values{}
+	}
 }
 
-func (v *ValuesRequestReader) CookieValues() []*http.Cookie {
-	return v.values["cookie-values"].([]*http.Cookie)
+func (r *ValuesRequestReader) CookieValues() []*http.Cookie {
+	if v, ok := r.values["cookie-values"]; ok {
+		return v.([]*http.Cookie)
+	} else {
+		return nil
+	}
 }
 
-func (v *ValuesRequestReader) HeaderValue(name string) string {
-	return cast.ToString(v.values[name])
+func (r *ValuesRequestReader) HeaderValue(name string) string {
+	return cast.ToString(r.values[name])
 }
 
-func (v *ValuesRequestReader) QueryValue(name string) string {
-	return cast.ToString(v.values[name])
+func (r *ValuesRequestReader) QueryValue(name string) string {
+	return cast.ToString(r.values[name])
 }
 
-func (v *ValuesRequestReader) PathValue(name string) string {
-	return cast.ToString(v.values[name])
+func (r *ValuesRequestReader) PathValue(name string) string {
+	return cast.ToString(r.values[name])
 }
 
-func (v *ValuesRequestReader) FormValue(name string) string {
-	return cast.ToString(v.values[name])
+func (r *ValuesRequestReader) FormValue(name string) string {
+	return cast.ToString(r.values[name])
 }
 
-func (v *ValuesRequestReader) CookieValue(name string) (cookie *http.Cookie, ok bool) {
+func (r *ValuesRequestReader) CookieValue(name string) (cookie *http.Cookie, ok bool) {
 	return nil, false
 }
 
