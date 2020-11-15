@@ -76,21 +76,22 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		// 权限验证结果缓存
 		permissionKey, err := p.PermissionKeyFunc(ctx)
 		if nil != err {
-			return toStateError(err, "PERMISSION:GENERATE:ERROR")
+			return toStateError(err, "PERMISSION:GENERATE:KEY")
 		}
 		passed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
 			return p.doPermissionVerify(&provider, ctx)
 		})
+		siface, sname := ctx.ServiceName()
+		logger.TraceContext(ctx).Infow("Permission verified",
+			"error", err, "service", siface+"."+sname,
+			"passed", passed, "permission-key", permissionKey, "provider", provider.Interface+"."+provider.Method)
 		if nil != err {
 			return toStateError(err, "PERMISSION:LOAD:ERROR")
 		}
-		siface, sname := ctx.ServiceName()
-		logger.TraceContext(ctx).Infow("Permission verified",
-			"service", siface+"."+sname, "passed", passed, "permission-key", permissionKey, "provider", provider.Interface+"."+provider.Method)
-		if !cast.ToBool(passed) {
-			return err.(*flux.StateError)
-		} else {
+		if true == cast.ToBool(passed) {
 			return next(ctx)
+		} else {
+			return err.(*flux.StateError)
 		}
 	}
 }
