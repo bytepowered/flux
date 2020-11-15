@@ -35,36 +35,36 @@ func (v *ValuesRequestReader) RequestURI() string {
 	return cast.ToString(v.values["request-uri"])
 }
 
-func (v *ValuesRequestReader) RequestURL() (url *url.URL, writable bool) {
-	panic("not supported")
+func (v *ValuesRequestReader) RequestURL() (rurl *url.URL, writable bool) {
+	return v.values["url"].(*url.URL), false
 }
 
 func (v *ValuesRequestReader) RequestBodyReader() (io.ReadCloser, error) {
-	panic("not supported")
+	return v.values["body"].(io.ReadCloser), nil
 }
 
 func (v *ValuesRequestReader) RequestRewrite(method string, path string) {
-	panic("not supported")
+	// nop
 }
 
 func (v *ValuesRequestReader) HeaderValues() (header http.Header, writable bool) {
-	panic("not supported")
+	return v.values["header-values"].(http.Header), false
 }
 
 func (v *ValuesRequestReader) QueryValues() url.Values {
-	panic("not supported")
+	return v.values["query-values"].(url.Values)
 }
 
 func (v *ValuesRequestReader) PathValues() url.Values {
-	panic("not supported")
+	return v.values["path-values"].(url.Values)
 }
 
 func (v *ValuesRequestReader) FormValues() url.Values {
-	panic("not supported")
+	return v.values["form-values"].(url.Values)
 }
 
 func (v *ValuesRequestReader) CookieValues() []*http.Cookie {
-	panic("not supported")
+	return v.values["cookie-values"].([]*http.Cookie)
 }
 
 func (v *ValuesRequestReader) HeaderValue(name string) string {
@@ -118,7 +118,7 @@ func (v *ValuesContext) RequestId() string {
 }
 
 func (v *ValuesContext) Request() flux.RequestReader {
-	panic("not supported")
+	return v.reader
 }
 
 func (v *ValuesContext) Response() flux.ResponseWriter {
@@ -130,19 +130,22 @@ func (v *ValuesContext) Endpoint() flux.Endpoint {
 }
 
 func (v *ValuesContext) Authorize() bool {
-	panic("not supported")
+	return cast.ToBool(v.reader.values["authorize"])
 }
 
 func (v *ValuesContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
-	panic("not supported")
+	return cast.ToString(v.reader.values["service.proto"]),
+		cast.ToString(v.reader.values["service.host"]),
+		cast.ToString(v.reader.values["service.interface"]),
+		cast.ToString(v.reader.values["service.method"])
 }
 
 func (v *ValuesContext) ServiceProto() string {
-	panic("not supported")
+	return cast.ToString(v.reader.values["service.proto"])
 }
 
 func (v *ValuesContext) ServiceName() (interfaceName, methodName string) {
-	panic("not supported")
+	return cast.ToString(v.reader.values["service.interface"]), cast.ToString(v.reader.values["service.method"])
 }
 
 func (v *ValuesContext) Attributes() map[string]interface{} {
