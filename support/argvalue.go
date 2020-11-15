@@ -1,17 +1,25 @@
-package server
+package support
 
 import (
+	"errors"
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"net/url"
+	"strings"
 )
 
 // 默认实现：查找Argument的值函数
 func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value flux.MIMEValue, err error) {
+	if "" == scope || "" == key {
+		return flux.WrapObjectMIMEValue(nil), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
+	}
+	if nil == ctx {
+		return flux.WrapObjectMIMEValue(nil), errors.New("lookup nil context")
+	}
 	request := ctx.Request()
-	switch scope {
+	switch strings.ToUpper(scope) {
 	case flux.ScopeQuery:
 		return flux.WrapTextMIMEValue(request.QueryValue(key)), nil
 	case flux.ScopePath:

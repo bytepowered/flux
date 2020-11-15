@@ -7,14 +7,15 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/filter"
 	"github.com/bytepowered/flux/registry"
+	"github.com/bytepowered/flux/support"
 )
 
 func init() {
 	// Default logger factory
 	ext.SetLoggerFactory(DefaultLoggerFactory)
 	// 参数查找与解析函数
-	ext.SetArgumentValueLookupFunc(DefaultArgumentValueLookupFunc)
-	ext.SetArgumentValueResolveFunc(DefaultArgumentValueResolveFunc)
+	ext.SetArgumentValueLookupFunc(support.DefaultArgumentValueLookupFunc)
+	ext.SetArgumentValueResolveFunc(support.DefaultArgumentValueResolveFunc)
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()

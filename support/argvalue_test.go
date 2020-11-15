@@ -1,8 +1,7 @@
-package server
+package support
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/support"
 	"github.com/spf13/cast"
 	assert2 "github.com/stretchr/testify/assert"
 	"testing"
@@ -19,7 +18,7 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 		"attrs":  map[string]string{"key": "value"},
 		"auto":   "auto",
 	}
-	valctx := support.NewValuesContext(values)
+	valctx := NewValuesContext(values)
 	assert := assert2.New(t)
 	cases := []struct {
 		scope  string

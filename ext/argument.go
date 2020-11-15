@@ -35,6 +35,7 @@ func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
 		Class:     typeClass,
 		Type:      flux.ArgumentTypePrimitive,
 		Name:      argName,
+		HttpName:  argName,
 		HttpScope: flux.ScopeAuto,
 	}
 }
@@ -44,6 +45,7 @@ func NewComplexArgument(typeClass, argName string) flux.Argument {
 		Class:     typeClass,
 		Type:      flux.ArgumentTypeComplex,
 		Name:      argName,
+		HttpName:  argName,
 		HttpScope: flux.ScopeAuto,
 	}
 }
