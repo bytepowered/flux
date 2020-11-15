@@ -31,8 +31,8 @@ func init() {
 	ext.SetBackend(flux.ProtoDubbo, dubbo.NewDubboBackend())
 	ext.SetBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendResponseDecoder())
 	// Dynamic factories
-	ext.SetTypedFactory(filter.TypeIdJWTVerification, filter.JwtVerificationFilterFactory)
-	ext.SetTypedFactory(filter.TypeIdEndpointPermission, filter.PermissionFilterFactory)
+	ext.SetTypedFactory(filter.TypeIdJWTVerificationFilter, filter.JwtVerificationFilterFactory)
+	ext.SetTypedFactory(filter.TypeIdPermissionFilter, filter.PermissionFilterFactory)
 	ext.SetTypedFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
 	// Server
 	SetServerWriterSerializer(serializer)

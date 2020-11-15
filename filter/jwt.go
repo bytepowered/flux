@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	TypeIdJWTVerification = "JwtVerificationFilter"
+	TypeIdJWTVerificationFilter = "JwtVerificationFilter"
 )
 
 const (
@@ -86,7 +86,7 @@ func (j *JwtVerificationFilter) Init(config *flux.Configuration) error {
 }
 
 func (*JwtVerificationFilter) TypeId() string {
-	return TypeIdJWTVerification
+	return TypeIdJWTVerificationFilter
 }
 
 func (j *JwtVerificationFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {

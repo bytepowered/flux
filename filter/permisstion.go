@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	TypeIdEndpointPermission = "PermissionFilter"
+	TypeIdPermissionFilter = "PermissionFilter"
 )
 
 func init() {
@@ -48,54 +48,6 @@ type PermissionFilter struct {
 	PermissionKeyFunc  PermissionKeyFunc
 }
 
-func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
-	if p.disabled {
-		return next
-	}
-	return func(ctx flux.Context) *flux.StateError {
-		// 必须开启Authorize才进行权限校验
-		endpoint := ctx.Endpoint()
-		provider := endpoint.Permission
-		if false == endpoint.Authorize || !provider.IsValid() {
-			return next(ctx)
-		}
-		if p.PermissionSkipFunc(ctx) {
-			return next(ctx)
-		}
-		toStateError := func(err error, msg string) *flux.StateError {
-			if serr, ok := err.(*flux.StateError); ok {
-				return serr
-			} else {
-				return &flux.StateError{
-					StatusCode: flux.StatusServerError,
-					Message:    msg,
-					Internal:   err,
-				}
-			}
-		}
-		// 权限验证结果缓存
-		permissionKey, err := p.PermissionKeyFunc(ctx)
-		if nil != err {
-			return toStateError(err, "PERMISSION:GENERATE:KEY")
-		}
-		passed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
-			return p.doPermissionVerify(&provider, ctx)
-		})
-		siface, sname := ctx.ServiceName()
-		logger.TraceContext(ctx).Infow("Permission verified",
-			"error", err, "service", siface+"."+sname,
-			"passed", passed, "permission-key", permissionKey, "provider", provider.Interface+"."+provider.Method)
-		if nil != err {
-			return toStateError(err, "PERMISSION:LOAD:ERROR")
-		}
-		if true == cast.ToBool(passed) {
-			return next(ctx)
-		} else {
-			return err.(*flux.StateError)
-		}
-	}
-}
-
 func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		ConfigKeyCacheExpiration: DefaultValueCacheExpiration,
@@ -125,14 +77,64 @@ func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	return nil
 }
 
+func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
+	if p.disabled {
+		return next
+	}
+	return func(ctx flux.Context) *flux.StateError {
+		// 必须开启Authorize才进行权限校验
+		endpoint := ctx.Endpoint()
+		provider := endpoint.Permission
+		if false == endpoint.Authorize || !provider.IsValid() {
+			return next(ctx)
+		}
+		if p.PermissionSkipFunc(ctx) {
+			return next(ctx)
+		}
+		toStateError := func(err error, msg string) *flux.StateError {
+			if serr, ok := err.(*flux.StateError); ok {
+				return serr
+			} else {
+				return &flux.StateError{
+					StatusCode: flux.StatusServerError,
+					ErrorCode:  msg,
+					Message:    msg,
+					Internal:   err,
+				}
+			}
+		}
+		// 权限验证结果缓存
+		permissionKey, err := p.PermissionKeyFunc(ctx)
+		if nil != err {
+			return toStateError(err, "PERMISSION:GENERATE:KEY")
+		}
+		passed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
+			return p.doPermissionVerify(&provider, ctx)
+		})
+		servInface, servMethod := ctx.ServiceName()
+		serviceName := servInface + "." + servMethod
+		providerName := provider.Interface + "." + provider.Method
+		logger.TraceContext(ctx).Infow("Permission verified",
+			"target-service", serviceName, "passed", passed, "permission-key", permissionKey, "provider", providerName)
+		if nil != err {
+			return toStateError(err, "PERMISSION:LOAD:ERROR")
+		}
+		if true == cast.ToBool(passed) {
+			return next(ctx)
+		} else {
+			return err.(*flux.StateError)
+		}
+	}
+}
+
 func (*PermissionFilter) TypeId() string {
-	return TypeIdEndpointPermission
+	return TypeIdPermissionFilter
 }
 
 func (p *PermissionFilter) doPermissionVerify(provider *flux.PermissionService, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
 	backend, ok := ext.GetBackend(provider.RpcProto)
 	if !ok {
-		logger.TraceContext(ctx).Errorw("Permission Provider backend unsupported protocol",
+		logger.TraceContext(ctx).Errorw("Permission provider backend unsupported protocol",
 			"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -147,7 +149,7 @@ func (p *PermissionFilter) doPermissionVerify(provider *flux.PermissionService, 
 		Interface:  provider.Interface,
 		Arguments:  provider.Arguments,
 	}, ctx); nil != err {
-		logger.TraceContext(ctx).Errorw("Permission Provider backend load error",
+		logger.TraceContext(ctx).Errorw("Permission provider backend load error",
 			"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method, "error", err)
 		return false, cache.NoExpiration, &flux.StateError{
 			StatusCode: flux.StatusServerError,
