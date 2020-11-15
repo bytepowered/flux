@@ -106,7 +106,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			return next(ctx)
 		}
 		loader := func(k interface{}) (interface{}, *time.Duration, error) {
-			resp, err := p.doVerify(&provider, ctx)
+			resp, err := p.doVerify(provider, ctx)
 			if nil != err {
 				return nil, nil, err
 			}
@@ -133,7 +133,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 				return &flux.StateError{
 					StatusCode: flux.StatusServerError,
 					ErrorCode:  "PERMISSION:GENERATE:KEY",
-					Message:    ex.Error(),
+					Message:    "PERMISSION:" + ex.Error(),
 					Internal:   ex,
 				}
 			} else if v, ex := p.caching.GetOrLoad(key, loader); nil != ex {
@@ -146,7 +146,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			return &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				ErrorCode:  "PERMISSION:LOAD:ERROR",
-				Message:    err.Error(),
+				Message:    "PERMISSION:" + err.Error(),
 				Internal:   err,
 			}
 		}
@@ -165,11 +165,9 @@ func (*PermissionFilter) TypeId() string {
 	return TypeIdPermissionFilter
 }
 
-func (p *PermissionFilter) doVerify(provider *flux.PermissionService, ctx flux.Context) (response interface{}, err error) {
+func (p *PermissionFilter) doVerify(provider flux.PermissionService, ctx flux.Context) (response interface{}, err error) {
 	backend, ok := ext.GetBackend(provider.RpcProto)
 	if !ok {
-		logger.TraceContext(ctx).Errorw("Permission provider backend unsupported protocol",
-			"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method)
 		return nil, fmt.Errorf("provider unknown protocol:%s", provider.RpcProto)
 	}
 	// Invoke to check permission
@@ -180,8 +178,6 @@ func (p *PermissionFilter) doVerify(provider *flux.PermissionService, ctx flux.C
 		Arguments:  provider.Arguments,
 	}, ctx)
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("Permission provider backend load error",
-			"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method, "error", err)
 		return nil, fmt.Errorf("provider load, error:%w", err)
 	} else {
 		return resp, nil
