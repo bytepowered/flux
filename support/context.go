@@ -97,6 +97,10 @@ func NewValuesContext(values map[string]interface{}) flux.Context {
 	}
 }
 
+func NewEmptyContext() flux.Context {
+	return NewValuesContext(map[string]interface{}{})
+}
+
 type ValuesContext struct {
 	reader *ValuesRequestReader
 }
