@@ -20,7 +20,11 @@ type StateError struct {
 }
 
 func (e *StateError) Error() string {
-	return fmt.Sprintf("StateError: StatusCode=%d, ErrorCode=%s, Message=%s, Error=%s", e.StatusCode, e.ErrorCode, e.Message, e.Internal)
+	if nil != e.Internal {
+		return fmt.Sprintf("StateError: StatusCode=%d, ErrorCode=%s, Message=%s, Error=%s", e.StatusCode, e.ErrorCode, e.Message, e.Internal)
+	} else {
+		return fmt.Sprintf("StateError: StatusCode=%d, ErrorCode=%s, Message=%s", e.StatusCode, e.ErrorCode, e.Message)
+	}
 }
 
 type (
