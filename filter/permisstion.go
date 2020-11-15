@@ -9,6 +9,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/spf13/cast"
+	"math"
 	"net/http"
 	"reflect"
 	"strings"
@@ -20,20 +21,26 @@ const (
 )
 
 func init() {
-	SetPermissionResponseDecoder(defaultPermissionDecoder)
-	SetPermissionKeyFunc(defaultPermissionKey)
+	SetPermissionResponseDecodeFunc(defaultPermissionResponseDecoder)
+	SetPermissionKeyGenerateFunc(defaultPermissionGenerateKey)
 }
 
 var (
-	_permissionResponseDecoder PermissionResponseDecoder
-	_permissionKeyFunc         PermissionKeyFunc
+	_permissionResponseDecodeFunc PermissionResponseDecodeFunc
+	_permissionKeyGenerateFunc    PermissionKeyGenerateFunc
 )
 
 type (
-	// PermissionKeyFunc 生成权限Key的函数
-	PermissionKeyFunc func(ctx flux.Context) (key string, err error)
-	// ResponseDecoder 权限验证结果解析函数
-	PermissionResponseDecoder func(response interface{}, ctx flux.Context) (pass bool, expire time.Duration, err error)
+	// PermissionKeyGenerateFunc 生成权限Key的函数
+	PermissionKeyGenerateFunc func(ctx flux.Context) (key string, err error)
+	// PermissionVerifyReport 权限验证结果
+	PermissionVerifyReport struct {
+		AllowCache bool
+		Passed     bool
+		Expire     time.Duration
+	}
+	// ResponseDecodeFunc 权限验证结果解析函数
+	PermissionResponseDecodeFunc func(response interface{}, ctx flux.Context) (report PermissionVerifyReport, err error)
 )
 
 func PermissionFilterFactory() interface{} {
@@ -44,9 +51,9 @@ func PermissionFilterFactory() interface{} {
 type PermissionFilter struct {
 	disabled           bool
 	permissions        cache.Cache
-	ResponseDecoder    PermissionResponseDecoder
 	PermissionSkipFunc flux.FilterSkipper
-	PermissionKeyFunc  PermissionKeyFunc
+	ResponseDecodeFunc PermissionResponseDecodeFunc
+	KeyGenerateFunc    PermissionKeyGenerateFunc
 }
 
 func (p *PermissionFilter) Init(config *flux.Configuration) error {
@@ -62,13 +69,13 @@ func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	}
 	expiration := config.GetDuration(ConfigKeyCacheExpiration)
 	size := config.GetInt(ConfigKeyCacheSize)
-	p.permissions = cache.New(size).Expiration(expiration).LRU().Build()
+	p.permissions = cache.New(size).LRU().Expiration(expiration).Build()
 	logger.Infow("Endpoint permission filter init", "cache-alg", "ExpireLRU", "cache-size", size, "cache-expire", expiration.String())
-	if pkg.IsNil(p.PermissionKeyFunc) {
-		p.PermissionKeyFunc = GetPermissionKeyFunc()
+	if pkg.IsNil(p.KeyGenerateFunc) {
+		p.KeyGenerateFunc = GetPermissionKeyGenerateFunc()
 	}
-	if pkg.IsNil(p.ResponseDecoder) {
-		p.ResponseDecoder = GetPermissionResponseDecoder()
+	if pkg.IsNil(p.ResponseDecodeFunc) {
+		p.ResponseDecodeFunc = GetPermissionResponseDecodeFunc()
 	}
 	if pkg.IsNil(p.PermissionSkipFunc) {
 		p.PermissionSkipFunc = func(_ flux.Context) bool {
@@ -92,40 +99,42 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		if p.PermissionSkipFunc(ctx) {
 			return next(ctx)
 		}
-		toStateError := func(err error, msg string) *flux.StateError {
-			if serr, ok := err.(*flux.StateError); ok {
-				return serr
-			} else {
-				return &flux.StateError{
-					StatusCode: flux.StatusServerError,
-					ErrorCode:  msg,
-					Message:    msg,
-					Internal:   err,
-				}
+		permissionKey, err := p.KeyGenerateFunc(ctx)
+		if nil != err {
+			return &flux.StateError{
+				StatusCode: flux.StatusServerError,
+				ErrorCode:  "PERMISSION:GENERATE:KEY",
+				Message:    "PERMISSION:INTERNAL:ERROR",
+				Internal:   err,
 			}
 		}
-		// 权限验证结果缓存
-		permissionKey, err := p.PermissionKeyFunc(ctx)
-		if nil != err {
-			return toStateError(err, "PERMISSION:GENERATE:KEY")
-		}
-		vpassed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
-			ret, expire, err := p.doPermissionVerify(&provider, ctx)
-			return ret, expire, err
+		passed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
+			resp, err := p.doVerify(&provider, ctx)
+			if nil != err {
+				return nil, nil, err
+			}
+			report, err := p.ResponseDecodeFunc(resp, ctx)
+			if nil != err {
+				return nil, nil, err
+			}
+			if report.AllowCache {
+				return report.Passed, &report.Expire, nil
+			} else {
+				return report.Passed, cache.NoExpiration, nil
+			}
 		})
-		passed := cast.ToBool(vpassed)
-		servInface, servMethod := ctx.ServiceName()
-		serviceName := servInface + "." + servMethod
-		providerName := provider.Interface + "." + provider.Method
-		logger.TraceContext(ctx).Infow("Permission verified",
-			"target-service", serviceName, "passed", passed, "permission-key", permissionKey, "provider", providerName)
 		if nil != err {
-			return toStateError(err, "PERMISSION:LOAD:ERROR")
+			return &flux.StateError{
+				StatusCode: flux.StatusServerError,
+				ErrorCode:  "PERMISSION:LOAD:ERROR",
+				Message:    "PERMISSION:INTERNAL:ERROR",
+				Internal:   err,
+			}
 		}
-		if !passed {
+		if true != passed {
 			return &flux.StateError{
 				StatusCode: http.StatusForbidden,
-				ErrorCode:  "PERMISSION:VERIFY:ACCESS_DENIED",
+				ErrorCode:  "PERMISSION:ACCESS_DENIED",
 				Message:    "PERMISSION:VERIFY:ACCESS_DENIED",
 			}
 		}
@@ -137,63 +146,46 @@ func (*PermissionFilter) TypeId() string {
 	return TypeIdPermissionFilter
 }
 
-func (p *PermissionFilter) doPermissionVerify(provider *flux.PermissionService, ctx flux.Context) (pass bool, expire *time.Duration, err *flux.StateError) {
+func (p *PermissionFilter) doVerify(provider *flux.PermissionService, ctx flux.Context) (response interface{}, err error) {
 	backend, ok := ext.GetBackend(provider.RpcProto)
 	if !ok {
 		logger.TraceContext(ctx).Errorw("Permission provider backend unsupported protocol",
 			"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method)
-		return false, cache.NoExpiration, &flux.StateError{
-			StatusCode: flux.StatusServerError,
-			Message:    "PERMISSION:PROVIDER:UNKNOWN_PROTOCOL",
-			Internal:   err,
-		}
+		return nil, fmt.Errorf("provider unknown protocol:%s", provider.RpcProto)
 	}
 	// Invoke to check permission
-	if ret, err := backend.Invoke(flux.BackendService{
+	resp, err := backend.Invoke(flux.BackendService{
 		RemoteHost: provider.RemoteHost,
 		Method:     provider.Method,
 		Interface:  provider.Interface,
 		Arguments:  provider.Arguments,
-	}, ctx); nil != err {
+	}, ctx)
+	if nil != err {
 		logger.TraceContext(ctx).Errorw("Permission provider backend load error",
 			"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method, "error", err)
-		return false, cache.NoExpiration, &flux.StateError{
-			StatusCode: flux.StatusServerError,
-			Message:    "PERMISSION:PROVIDER:LOAD",
-			Internal:   err,
-		}
+		return nil, fmt.Errorf("provider load, error:%w", err)
 	} else {
-		if passed, expire, err := p.ResponseDecoder(ret, ctx); nil != err {
-			logger.TraceContext(ctx).Errorw("Permission decode response error",
-				"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method, "error", err)
-			return false, cache.NoExpiration, &flux.StateError{
-				StatusCode: flux.StatusServerError,
-				Message:    "PERMISSION:RESPONSE:DECODE",
-				Internal:   err,
-			}
-		} else {
-			return passed == true, &expire, nil
-		}
+		return resp, nil
 	}
 }
 
-func SetPermissionResponseDecoder(decoder PermissionResponseDecoder) {
-	_permissionResponseDecoder = decoder
+func SetPermissionResponseDecodeFunc(decoder PermissionResponseDecodeFunc) {
+	_permissionResponseDecodeFunc = decoder
 }
 
-func GetPermissionResponseDecoder() PermissionResponseDecoder {
-	return _permissionResponseDecoder
+func GetPermissionResponseDecodeFunc() PermissionResponseDecodeFunc {
+	return _permissionResponseDecodeFunc
 }
 
-func SetPermissionKeyFunc(f PermissionKeyFunc) {
-	_permissionKeyFunc = f
+func SetPermissionKeyGenerateFunc(f PermissionKeyGenerateFunc) {
+	_permissionKeyGenerateFunc = f
 }
 
-func GetPermissionKeyFunc() PermissionKeyFunc {
-	return _permissionKeyFunc
+func GetPermissionKeyGenerateFunc() PermissionKeyGenerateFunc {
+	return _permissionKeyGenerateFunc
 }
 
-func defaultPermissionDecoder(response interface{}, ctx flux.Context) (bool, time.Duration, error) {
+func defaultPermissionResponseDecoder(response interface{}, ctx flux.Context) (PermissionVerifyReport, error) {
 	logger.TraceContext(ctx).Infow("Decode endpoint permission",
 		"response-type", reflect.TypeOf(response), "response", response)
 	// 默认支持响应JSON数据：
@@ -202,27 +194,36 @@ func defaultPermissionDecoder(response interface{}, ctx flux.Context) (bool, tim
 	if ok {
 		if "success" == cast.ToString(strmap["status"]) {
 			passed := cast.ToBool(strmap["permission"])
+			nocache := cast.ToBool(strmap["nocache"])
 			minutes := cast.ToInt(strmap["expire"])
-			if minutes < 1 {
-				minutes = 1
-			}
-			return passed, time.Minute * time.Duration(minutes), nil
+			return PermissionVerifyReport{
+				AllowCache: nocache,
+				Expire:     time.Minute * time.Duration(math.Max(float64(minutes), 5)),
+				Passed:     passed,
+			}, nil
 		} else {
 			message := cast.ToString(strmap["message"])
 			if "" == message {
 				message = "Permission NOT SUCCESS, error message NOT FOUND"
 			}
-			return false, time.Duration(0), errors.New(message)
+			return PermissionVerifyReport{
+				AllowCache: false,
+				Expire:     time.Duration(0),
+				Passed:     false,
+			}, errors.New(message)
 		}
 	}
 	// 如果不是默认JSON结构的数据，只是包含success字符串，就是验证成功
 	text := cast.ToString(response)
-	pass := strings.Contains(text, "success")
-	return pass, time.Minute * 5, nil
+	return PermissionVerifyReport{
+		AllowCache: strings.Contains(text, "success"),
+		Expire:     time.Minute * 5,
+		Passed:     false,
+	}, nil
 }
 
-// defaultPermissionKey 默认生成权限Key
-func defaultPermissionKey(ctx flux.Context) (string, error) {
+// defaultPermissionGenerateKey 默认生成权限Key
+func defaultPermissionGenerateKey(ctx flux.Context) (string, error) {
 	permission := ctx.Endpoint().Permission
 	lookup := ext.GetArgumentValueLookupFunc()
 	resolver := ext.GetArgumentValueResolveFunc()
