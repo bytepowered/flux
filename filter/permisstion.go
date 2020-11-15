@@ -50,7 +50,8 @@ func PermissionFilterFactory() interface{} {
 // PermissionFilter 提供基于Endpoint.Permission元数据的权限验证
 type PermissionFilter struct {
 	disabled           bool
-	permissions        cache.Cache
+	cacheDisabled      bool
+	caching            cache.Cache
 	PermissionSkipFunc flux.FilterSkipper
 	ResponseDecodeFunc PermissionResponseDecodeFunc
 	KeyGenerateFunc    PermissionKeyGenerateFunc
@@ -69,8 +70,13 @@ func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	}
 	expiration := config.GetDuration(ConfigKeyCacheExpiration)
 	size := config.GetInt(ConfigKeyCacheSize)
-	p.permissions = cache.New(size).LRU().Expiration(expiration).Build()
-	logger.Infow("Endpoint permission filter init", "cache-alg", "ExpireLRU", "cache-size", size, "cache-expire", expiration.String())
+	p.cacheDisabled = config.GetBool(ConfigKeyCacheDisabled)
+	if !p.cacheDisabled {
+		p.caching = cache.New(size).LRU().Expiration(expiration).Build()
+		logger.Infow("Endpoint permission filter init (use cached)", "cache-alg", "ExpireLRU", "cache-size", size, "cache-expire", expiration.String())
+	} else {
+		logger.Info("Endpoint permission filter init")
+	}
 	if pkg.IsNil(p.KeyGenerateFunc) {
 		p.KeyGenerateFunc = GetPermissionKeyGenerateFunc()
 	}
@@ -99,16 +105,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		if p.PermissionSkipFunc(ctx) {
 			return next(ctx)
 		}
-		permissionKey, err := p.KeyGenerateFunc(ctx)
-		if nil != err {
-			return &flux.StateError{
-				StatusCode: flux.StatusServerError,
-				ErrorCode:  "PERMISSION:GENERATE:KEY",
-				Message:    "PERMISSION:INTERNAL:ERROR",
-				Internal:   err,
-			}
-		}
-		passed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
+		loader := func(k interface{}) (interface{}, *time.Duration, error) {
 			resp, err := p.doVerify(&provider, ctx)
 			if nil != err {
 				return nil, nil, err
@@ -122,12 +119,34 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			} else {
 				return report.Passed, cache.NoExpiration, nil
 			}
-		})
-		if nil != err {
+		}
+		var passed = false
+		var err error = nil
+		if p.cacheDisabled {
+			if v, _, ex := loader(nil); nil != ex {
+				err = ex
+			} else {
+				passed = cast.ToBool(v)
+			}
+		} else {
+			if key, ex := p.KeyGenerateFunc(ctx); nil != ex {
+				return &flux.StateError{
+					StatusCode: flux.StatusServerError,
+					ErrorCode:  "PERMISSION:GENERATE:KEY",
+					Message:    ex.Error(),
+					Internal:   ex,
+				}
+			} else if v, ex := p.caching.GetOrLoad(key, loader); nil != ex {
+				err = ex
+			} else {
+				passed = cast.ToBool(v)
+			}
+		}
+		if !pkg.IsNil(err) {
 			return &flux.StateError{
 				StatusCode: flux.StatusServerError,
 				ErrorCode:  "PERMISSION:LOAD:ERROR",
-				Message:    "PERMISSION:INTERNAL:ERROR",
+				Message:    err.Error(),
 				Internal:   err,
 			}
 		}
