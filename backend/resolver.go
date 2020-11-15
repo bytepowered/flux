@@ -6,8 +6,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 )
 
-func LookupResolveWith(arg flux.Argument,
-	lookup flux.ArgumentValueLookupFunc, resolver flux.ArgumentValueResolveFunc, ctx flux.Context) (interface{}, error) {
+func LookupResolveWith(arg flux.Argument, lookup flux.ArgumentValueLookupFunc, resolver flux.ArgumentValueResolveFunc, ctx flux.Context) (interface{}, error) {
 	mtValue, err := lookup(arg.HttpScope, arg.HttpName, ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Warnw("Failed to lookup argument",

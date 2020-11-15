@@ -2,7 +2,6 @@ package support
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/spf13/cast"
 	assert2 "github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -15,27 +14,26 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 		"param":  true,
 		"header": "UA",
 		"attr":   "attr",
-		"attrs":  map[string]string{"key": "value"},
 		"auto":   "auto",
 	}
 	valctx := NewValuesContext(values)
-	assert := assert2.New(t)
 	cases := []struct {
 		scope  string
 		key    string
-		expect interface{}
+		expect flux.MIMEValue
 	}{
-		{scope: flux.ScopePath, key: "path", expect: "hahaha"},
-		{scope: flux.ScopeQuery, key: "query", expect: "query-val"},
-		{scope: flux.ScopeForm, key: "form", expect: 123},
-		{scope: flux.ScopeForm, key: "param", expect: true},
-		{scope: flux.ScopeHeader, key: "header", expect: "UA"},
-		{scope: flux.ScopeAttr, key: "attr", expect: "attr"},
-		{scope: flux.ScopeAuto, key: "auto", expect: "auto"},
+		{scope: flux.ScopePath, key: "path", expect: flux.WrapTextMIMEValue("hahaha")},
+		{scope: flux.ScopeQuery, key: "query", expect: flux.WrapTextMIMEValue("query-val")},
+		{scope: flux.ScopeForm, key: "form", expect: flux.WrapTextMIMEValue("123")},
+		{scope: flux.ScopeForm, key: "param", expect: flux.WrapTextMIMEValue("true")},
+		{scope: flux.ScopeHeader, key: "header", expect: flux.WrapTextMIMEValue("UA")},
+		{scope: flux.ScopeAuto, key: "auto", expect: flux.WrapTextMIMEValue("auto")},
+		{scope: flux.ScopeAttr, key: "attr", expect: flux.WrapObjectMIMEValue("attr")},
 	}
+	assert := assert2.New(t)
 	for _, c := range cases {
 		mtv, err := DefaultArgumentValueLookupFunc(c.scope, c.key, valctx)
 		assert.NoError(err, "must no error")
-		assert.Equal(cast.ToString(c.expect), mtv.Value)
+		assert.Equal(c.expect, mtv)
 	}
 }

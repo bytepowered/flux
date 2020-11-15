@@ -52,7 +52,8 @@ func (r *ValuesRequestReader) RequestBodyReader() (io.ReadCloser, error) {
 }
 
 func (r *ValuesRequestReader) RequestRewrite(method string, path string) {
-	// nop
+	r.values["method"] = method
+	r.values["path"] = path
 }
 
 func (r *ValuesRequestReader) HeaderValues() (header http.Header, writable bool) {
@@ -121,7 +122,7 @@ var _ flux.Context = new(ValuesContext)
 
 func NewValuesContext(values map[string]interface{}) flux.Context {
 	return &ValuesContext{
-		reader: NewValuesRequestReader(values),
+		request: NewValuesRequestReader(values),
 	}
 }
 
@@ -130,76 +131,76 @@ func NewEmptyContext() flux.Context {
 }
 
 type ValuesContext struct {
-	reader *ValuesRequestReader
+	request *ValuesRequestReader
 }
 
 func (v *ValuesContext) Method() string {
-	return v.reader.Method()
+	return v.request.Method()
 }
 
 func (v *ValuesContext) RequestURI() string {
-	return v.reader.RequestURI()
+	return v.request.RequestURI()
 }
 
 func (v *ValuesContext) RequestId() string {
-	return cast.ToString(v.reader.values["request-id"])
+	return cast.ToString(v.request.values["request-id"])
 }
 
 func (v *ValuesContext) Request() flux.RequestReader {
-	return v.reader
+	return v.request
 }
 
 func (v *ValuesContext) Response() flux.ResponseWriter {
-	panic("not supported")
+	panic("values-context.response() not supported")
 }
 
 func (v *ValuesContext) Endpoint() flux.Endpoint {
-	panic("not supported")
+	panic("values-context.endpoint() not supported")
 }
 
 func (v *ValuesContext) Authorize() bool {
-	return cast.ToBool(v.reader.values["authorize"])
+	return cast.ToBool(v.request.values["authorize"])
 }
 
 func (v *ValuesContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
-	return cast.ToString(v.reader.values["service.proto"]),
-		cast.ToString(v.reader.values["service.host"]),
-		cast.ToString(v.reader.values["service.interface"]),
-		cast.ToString(v.reader.values["service.method"])
+	return cast.ToString(v.request.values["service.proto"]),
+		cast.ToString(v.request.values["service.host"]),
+		cast.ToString(v.request.values["service.interface"]),
+		cast.ToString(v.request.values["service.method"])
 }
 
 func (v *ValuesContext) ServiceProto() string {
-	return cast.ToString(v.reader.values["service.proto"])
+	return cast.ToString(v.request.values["service.proto"])
 }
 
 func (v *ValuesContext) ServiceName() (interfaceName, methodName string) {
-	return cast.ToString(v.reader.values["service.interface"]), cast.ToString(v.reader.values["service.method"])
+	return cast.ToString(v.request.values["service.interface"]), cast.ToString(v.request.values["service.method"])
 }
 
 func (v *ValuesContext) Attributes() map[string]interface{} {
-	m := make(map[string]interface{}, len(v.reader.values))
-	for k, v := range v.reader.values {
+	m := make(map[string]interface{}, len(v.request.values))
+	for k, v := range v.request.values {
 		m[k] = v
 	}
 	return m
 }
 
 func (v *ValuesContext) GetAttribute(key string) (interface{}, bool) {
-	a, ok := v.reader.values[key]
+	a, ok := v.request.values[key]
 	return a, ok
 }
 
 func (v *ValuesContext) SetAttribute(name string, value interface{}) {
-	v.reader.values[name] = value
+	v.request.values[name] = value
 }
 
 func (v *ValuesContext) GetValue(name string) (interface{}, bool) {
-	a, ok := v.reader.values[name]
+	a, ok := v.request.values[name]
 	return a, ok
 }
 
 func (v *ValuesContext) SetValue(name string, value interface{}) {
-	v.reader.values[name] = value
+	v.request.values[name] = value
 }
 
 func (v *ValuesContext) Context() context.Context {
@@ -207,7 +208,7 @@ func (v *ValuesContext) Context() context.Context {
 }
 
 func (v *ValuesContext) SetContextLogger(logger flux.Logger) {
-	panic("not supported")
+	panic("values-context.setcontextlogger() not supported")
 }
 
 func (v *ValuesContext) GetContextLogger() (flux.Logger, bool) {
