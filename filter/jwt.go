@@ -163,8 +163,11 @@ func (j *JwtVerificationFilter) loadJwtCertKey(proto string, issuer, subject str
 			ext.NewStringArgument("subject"),
 			ext.NewStringMapArgument("claims"),
 		},
-		// FIXME Argument的值未正确解析
-	}, nil); nil != err {
+	}, support.NewValuesContext(map[string]interface{}{
+		"issuer":  issuer,
+		"subject": subject,
+		"claims":  claims,
+	})); nil != err {
 		return false, cache.NoExpiration, err
 	} else {
 		return strings.Contains(cast.ToString(ret), "success"), cache.NoExpiration, nil

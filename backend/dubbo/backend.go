@@ -70,7 +70,7 @@ func SetRegistryGlobalAlias(alias map[string]string) {
 // 集成DubboRPC框架的Backend
 type DubboBackend struct {
 	// 可外部配置
-	ReferenceOptionFuncs  []ReferenceOptionFunc
+	ReferenceOptionsFuncs []ReferenceOptionFunc
 	ParameterAssembleFunc ParameterAssembleFunc
 	// 内部私有
 	traceEnable   bool
@@ -80,8 +80,8 @@ type DubboBackend struct {
 
 func NewDubboBackend() flux.Backend {
 	return &DubboBackend{
-		ReferenceOptionFuncs:  make([]ReferenceOptionFunc, 0),
-		ParameterAssembleFunc: assembleHessianArguments,
+		ReferenceOptionsFuncs: make([]ReferenceOptionFunc, 0),
+		ParameterAssembleFunc: AssembleHessianArguments,
 	}
 }
 
@@ -104,11 +104,11 @@ func (ex *DubboBackend) Init(config *flux.Configuration) error {
 	ex.traceEnable = config.GetBool(configKeyTraceEnable)
 	logger.Infow("Dubbo backend request trace", "enable", ex.traceEnable)
 	// Set default impl if not present
-	if nil == ex.ReferenceOptionFuncs {
-		ex.ReferenceOptionFuncs = make([]ReferenceOptionFunc, 0)
+	if nil == ex.ReferenceOptionsFuncs {
+		ex.ReferenceOptionsFuncs = make([]ReferenceOptionFunc, 0)
 	}
 	if pkg.IsNil(ex.ParameterAssembleFunc) {
-		ex.ParameterAssembleFunc = assembleHessianArguments
+		ex.ParameterAssembleFunc = AssembleHessianArguments
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
@@ -191,9 +191,9 @@ func (ex *DubboBackend) LoadGenericService(service *flux.BackendService) *dubgo.
 	newRef := NewReference(service.Interface, service, ex.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
-	for _, optFunc := range ex.ReferenceOptionFuncs {
-		if nil != optFunc {
-			newRef = pkg.RequireNotNil(optFunc(service, ex.configuration, newRef), msg).(*dubgo.ReferenceConfig)
+	for _, optsFunc := range ex.ReferenceOptionsFuncs {
+		if nil != optsFunc {
+			newRef = pkg.RequireNotNil(optsFunc(service, ex.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("Create dubbo reference-config, referring", "interface", service.Interface)
