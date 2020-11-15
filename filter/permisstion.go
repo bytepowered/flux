@@ -9,6 +9,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/spf13/cast"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -108,9 +109,11 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		if nil != err {
 			return toStateError(err, "PERMISSION:GENERATE:KEY")
 		}
-		passed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
-			return p.doPermissionVerify(&provider, ctx)
+		vpassed, err := p.permissions.GetOrLoad(permissionKey, func(_ interface{}) (interface{}, *time.Duration, error) {
+			ret, expire, err := p.doPermissionVerify(&provider, ctx)
+			return ret, expire, err
 		})
+		passed := cast.ToBool(vpassed)
 		servInface, servMethod := ctx.ServiceName()
 		serviceName := servInface + "." + servMethod
 		providerName := provider.Interface + "." + provider.Method
@@ -119,11 +122,14 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		if nil != err {
 			return toStateError(err, "PERMISSION:LOAD:ERROR")
 		}
-		if true == cast.ToBool(passed) {
-			return next(ctx)
-		} else {
-			return err.(*flux.StateError)
+		if !passed {
+			return &flux.StateError{
+				StatusCode: http.StatusForbidden,
+				ErrorCode:  "PERMISSION:VERIFY:ACCESS_DENIED",
+				Message:    "PERMISSION:VERIFY:ACCESS_DENIED",
+			}
 		}
+		return next(ctx)
 	}
 }
 
@@ -157,8 +163,7 @@ func (p *PermissionFilter) doPermissionVerify(provider *flux.PermissionService, 
 			Internal:   err,
 		}
 	} else {
-		passed, expire, err := p.ResponseDecoder(ret, ctx)
-		if nil != err {
+		if passed, expire, err := p.ResponseDecoder(ret, ctx); nil != err {
 			logger.TraceContext(ctx).Errorw("Permission decode response error",
 				"provider-proto", provider.RpcProto, "provider-uri", provider.Interface, "provider-method", provider.Method, "error", err)
 			return false, cache.NoExpiration, &flux.StateError{
@@ -167,7 +172,7 @@ func (p *PermissionFilter) doPermissionVerify(provider *flux.PermissionService, 
 				Internal:   err,
 			}
 		} else {
-			return passed, &expire, nil
+			return passed == true, &expire, nil
 		}
 	}
 }
