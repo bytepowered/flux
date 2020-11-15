@@ -51,8 +51,8 @@ func init() {
 	})
 }
 
-// ReferenceOptionFunc DubboReference配置函数，可外部化配置Dubbo Reference
-type ReferenceOptionFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+// ReferenceOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
+type ReferenceOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 
 // ParameterAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
 type ParameterAssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
@@ -70,7 +70,7 @@ func SetRegistryGlobalAlias(alias map[string]string) {
 // 集成DubboRPC框架的Backend
 type DubboBackend struct {
 	// 可外部配置
-	ReferenceOptionsFuncs []ReferenceOptionFunc
+	ReferenceOptionsFuncs []ReferenceOptionsFunc
 	ParameterAssembleFunc ParameterAssembleFunc
 	// 内部私有
 	traceEnable   bool
@@ -80,7 +80,7 @@ type DubboBackend struct {
 
 func NewDubboBackend() flux.Backend {
 	return &DubboBackend{
-		ReferenceOptionsFuncs: make([]ReferenceOptionFunc, 0),
+		ReferenceOptionsFuncs: make([]ReferenceOptionsFunc, 0),
 		ParameterAssembleFunc: AssembleHessianArguments,
 	}
 }
@@ -105,7 +105,7 @@ func (ex *DubboBackend) Init(config *flux.Configuration) error {
 	logger.Infow("Dubbo backend request trace", "enable", ex.traceEnable)
 	// Set default impl if not present
 	if nil == ex.ReferenceOptionsFuncs {
-		ex.ReferenceOptionsFuncs = make([]ReferenceOptionFunc, 0)
+		ex.ReferenceOptionsFuncs = make([]ReferenceOptionsFunc, 0)
 	}
 	if pkg.IsNil(ex.ParameterAssembleFunc) {
 		ex.ParameterAssembleFunc = AssembleHessianArguments
