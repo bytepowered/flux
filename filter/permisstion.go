@@ -106,18 +106,16 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			return next(ctx)
 		}
 		loader := func(k interface{}) (interface{}, *time.Duration, error) {
-			resp, err := p.doVerify(provider, ctx)
-			if nil != err {
+			if resp, err := p.doVerify(provider, ctx); nil != err {
 				return nil, nil, err
-			}
-			report, err := p.ResponseDecodeFunc(resp, ctx)
-			if nil != err {
+			} else if report, err := p.ResponseDecodeFunc(resp, ctx); nil != err {
 				return nil, nil, err
-			}
-			if report.AllowCache {
-				return report.Passed, &report.Expire, nil
 			} else {
-				return report.Passed, cache.NoExpiration, nil
+				if report.AllowCache {
+					return report.Passed, &report.Expire, nil
+				} else {
+					return report.Passed, cache.NoExpiration, nil
+				}
 			}
 		}
 		var passed = false
@@ -165,20 +163,26 @@ func (*PermissionFilter) TypeId() string {
 	return TypeIdPermissionFilter
 }
 
-func (p *PermissionFilter) doVerify(provider flux.PermissionService, ctx flux.Context) (response interface{}, err error) {
+func (p *PermissionFilter) doVerify(provider flux.PermissionService, ctx flux.Context) (interface{}, *flux.StateError) {
 	backend, ok := ext.GetBackend(provider.RpcProto)
 	if !ok {
-		return nil, fmt.Errorf("provider unknown protocol:%s", provider.RpcProto)
+		return nil, &flux.StateError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  "PERMISSION:INTERNAL:PROTOCOL",
+			Message:    "PERMISSION:UNKNOWN_PROTOCOL",
+			Internal:   fmt.Errorf("unknown protocol:%s", provider.RpcProto),
+		}
 	}
 	// Invoke to check permission
-	resp, err := backend.Invoke(flux.BackendService{
+	service := flux.BackendService{
 		RemoteHost: provider.RemoteHost,
 		Method:     provider.Method,
 		Interface:  provider.Interface,
 		Arguments:  provider.Arguments,
-	}, ctx)
+	}
+	resp, err := backend.Invoke(service, ctx)
 	if nil != err {
-		return nil, fmt.Errorf("provider load, error:%w", err)
+		return nil, err
 	} else {
 		return resp, nil
 	}
