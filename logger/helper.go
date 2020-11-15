@@ -25,8 +25,10 @@ func With(values context.Context) flux.Logger {
 }
 
 func TraceContext(ctx flux.Context) flux.Logger {
-	ctxLogger, ok := ctx.GetContextLogger()
-	if ok {
+	if nil == ctx {
+		return Trace("no-trace-id")
+	}
+	if ctxLogger, ok := ctx.GetContextLogger(); ok {
 		return ctxLogger
 	} else {
 		return Trace(ctx.RequestId())

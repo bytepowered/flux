@@ -78,6 +78,6 @@ upstream-method = "POST"
 # 基于Permission定义元数据的访问权限验证Filter
 [FILTER.ENDPOINT_PERMISSION]
 disable = false
-type-id = "EndpointPermissionFilter"
+type-id = "PermissionFilter"
 cache-size = 5000
 cache-expiration = "5m"
