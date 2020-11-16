@@ -257,17 +257,22 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	endpoint, found := mvendpoint.FindByVersion(version)
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	defer func() {
-		if err := recover(); err != nil {
-			tl := logger.Trace(requestId)
-			tl.Errorw("Server dispatch: unexpected error", "error", err)
-			tl.Error(string(debug.Stack()))
+		if r := recover(); r != nil {
+			trace := logger.Trace(requestId)
+			if err, ok := r.(error); ok {
+				trace.Errorw("HttpWebServer panics", "error", err)
+			} else {
+				trace.Errorw("HttpWebServer panics", "recover", r)
+			}
+			trace.Error(string(debug.Stack()))
 		}
 	}()
 	if !found {
 		if tracing {
-			requrl, _ := webc.RequestURL()
-			logger.Trace(requestId).Infow("HttpWebServer routing: ENDPOINT_NOT_FOUND",
-				"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
+			url, _ := webc.RequestURL()
+			logger.Trace(requestId).Infow("HttpWebServer route not found",
+				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
+				"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
 			)
 		}
 		return s.serverErrorsWriter(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
@@ -275,14 +280,14 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
 	// Context hook
-	for _, ctxex := range s.serverContextExchangeHooks {
-		ctxex(webc, ctxw)
+	for _, ctxhook := range s.serverContextExchangeHooks {
+		ctxhook(webc, ctxw)
 	}
 	if tracing {
-		requrl, _ := webc.RequestURL()
-		logger.TraceContext(ctxw).Infow("HttpWebServer routing: DISPATCHING",
-			"method", webc.Method(), "uri", webc.RequestURI(), "path", requrl.Path, "version", version,
-			"endpoint", endpoint.Service.Method+":"+endpoint.Service.Interface,
+		url, _ := webc.RequestURL()
+		logger.TraceContext(ctxw).Infow("HttpWebServer routing",
+			"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
+			"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
 		)
 	}
 	// Route and response
@@ -368,9 +373,9 @@ func (s *HttpWebServer) handleNotFoundError(webc flux.WebContext) error {
 
 func (s *HttpWebServer) handleServerError(err error, webc flux.WebContext) {
 	// Http中间件等返回InvokeError错误
-	serr, ok := err.(*flux.StateError)
+	stateError, ok := err.(*flux.StateError)
 	if !ok {
-		serr = &flux.StateError{
+		stateError = &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    err.Error(),
@@ -378,8 +383,8 @@ func (s *HttpWebServer) handleServerError(err error, webc flux.WebContext) {
 		}
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
-	if err := s.serverErrorsWriter(webc, requestId, http.Header{}, serr); nil != err {
-		logger.Trace(requestId).Errorw("Server http responseWriter error", "error", err)
+	if err := s.serverErrorsWriter(webc, requestId, http.Header{}, stateError); nil != err {
+		logger.Trace(requestId).Errorw("Server http response error", "error", err)
 	}
 }
 
@@ -387,7 +392,7 @@ func _activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, erro
 	config := flux.NewConfigurationOf(flux.KeyConfigRootEndpointRegistry)
 	config.SetDefault(flux.KeyConfigEndpointRegistryId, ext.EndpointRegistryIdDefault)
 	registryId := config.GetString(flux.KeyConfigEndpointRegistryId)
-	logger.Infow("Active router registry", "registry-id", registryId)
+	logger.Infow("Active endpoint registry", "registry-id", registryId)
 	if factory, ok := ext.GetEndpointRegistryFactory(registryId); !ok {
 		return nil, config, fmt.Errorf("EndpointRegistryFactory not found, id: %s", registryId)
 	} else {

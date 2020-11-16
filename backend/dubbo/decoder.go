@@ -15,24 +15,23 @@ const (
 )
 
 func NewDubboBackendReponseDecoderWith(codeKey, headerKey, bodyKey string) flux.BackendResponseDecoder {
-	return func(ctx flux.Context, input interface{}) (statusCode int, header http.Header, body interface{}, err error) {
-		header = make(http.Header)
+	return func(ctx flux.Context, input interface{}) (int, http.Header, interface{}, error) {
 		if mapValues, ok := input.(map[interface{}]interface{}); ok {
 			// Header
-			header, err = ReadHeaderObject(headerKey, mapValues)
+			header, err := ReadHeaderObject(headerKey, mapValues)
 			if nil != err {
-				return flux.StatusServerError, header, nil, err
+				return flux.StatusServerError, make(http.Header, 0), nil, err
 			}
 			// StatusCode
-			statusCode, err = ReadStatusCode(codeKey, mapValues)
+			status, err := ReadStatusCode(codeKey, mapValues)
 			if nil != err {
-				return flux.StatusServerError, header, nil, err
+				return flux.StatusServerError, make(http.Header, 0), nil, err
 			}
 			// Body
-			body = ReadBodyObject(bodyKey, mapValues)
-			return statusCode, header, body, nil
+			body := ReadBodyObject(bodyKey, mapValues)
+			return status, header, body, nil
 		} else {
-			return flux.StatusOK, header, input, nil
+			return flux.StatusOK, make(http.Header, 0), input, nil
 		}
 	}
 }

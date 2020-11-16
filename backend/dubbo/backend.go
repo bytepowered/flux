@@ -151,17 +151,17 @@ func (ex *DubboBackend) Invoke(service flux.BackendService, ctx flux.Context) (i
 }
 
 func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
-	serviceTag := service.Interface + "." + service.Method
+	serviceName := service.Interface + "." + service.Method
 	if ex.traceEnable {
 		logger.TraceContext(ctx).Infow("Dubbo invoking",
-			"service", serviceTag, "arguments.values", values, "arguments.type", types, "attachments", ctx.Attributes(),
+			"service", serviceName, "values", values, "types", types, "attrs", ctx.Attributes(),
 		)
 	}
 	// Note: must be map[string]string
 	// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 	attachments, err := cast.ToStringMapStringE(ctx.Attributes())
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("Dubbo attachment error", "service", serviceTag, "error", err)
+		logger.TraceContext(ctx).Errorw("Dubbo attachment error", "service", serviceName, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -172,7 +172,7 @@ func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service 
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
 	generic := ex.LoadGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
-		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "service", serviceTag, "error", err)
+		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "service", serviceName, "error", err)
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
@@ -181,7 +181,7 @@ func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service 
 		}
 	} else {
 		if ex.traceEnable {
-			logger.TraceContext(ctx).Infow("Dubbo invoked: OK", "service", serviceTag, "return.type", reflect.TypeOf(resp))
+			logger.TraceContext(ctx).Infow("Dubbo returned", "service", serviceName, "response.type", reflect.TypeOf(resp))
 		}
 		return resp, nil
 	}
