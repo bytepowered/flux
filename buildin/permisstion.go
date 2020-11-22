@@ -19,9 +19,12 @@ const (
 
 type (
 	// PermissionVerifyFunc 权限验证
-	PermissionVerifyFunc func(ctx flux.Context) (report bool, err error)
+	// @return pass 对当前请求的权限验证是否通过；
+	// @return err 如果验证过程发生错误，返回error；
+	PermissionVerifyFunc func(ctx flux.Context) (pass bool, err error)
 )
 
+// PermissionV2Config 权限配置
 type PermissionV2Config struct {
 	SkipFunc   flux.FilterSkipper
 	VerifyFunc PermissionVerifyFunc
@@ -59,6 +62,10 @@ func (p *PermissionV2Filter) Init(config *flux.Configuration) error {
 	return nil
 }
 
+func (*PermissionV2Filter) TypeId() string {
+	return TypeIdPermissionV2Filter
+}
+
 func (p *PermissionV2Filter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	if p.Disabled {
 		return next
@@ -93,10 +100,7 @@ func (p *PermissionV2Filter) DoFilter(next flux.FilterHandler) flux.FilterHandle
 	}
 }
 
-func (*PermissionV2Filter) TypeId() string {
-	return TypeIdPermissionV2Filter
-}
-
+// InvokeService 执行权限验证的后端服务，获取响应结果；
 func (p *PermissionV2Filter) InvokeService(permission flux.PermissionService, ctx flux.Context) (interface{}, *flux.StateError) {
 	backend, ok := ext.GetBackend(permission.RpcProto)
 	if !ok {
