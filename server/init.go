@@ -5,7 +5,6 @@ import (
 	"github.com/bytepowered/flux/backend/dubbo"
 	"github.com/bytepowered/flux/backend/http"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/filter"
 	"github.com/bytepowered/flux/registry"
 	"github.com/bytepowered/flux/support"
 )
@@ -30,9 +29,6 @@ func init() {
 	ext.SetBackendResponseDecoder(flux.ProtoHttp, http.NewHttpBackendResponseDecoder())
 	ext.SetBackend(flux.ProtoDubbo, dubbo.NewDubboBackend())
 	ext.SetBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendResponseDecoder())
-	// Dynamic factories
-	ext.SetTypedFactory(filter.TypeIdJWTVerificationFilter, filter.JwtVerificationFilterFactory)
-	ext.SetTypedFactory(filter.TypeIdPermissionFilter, filter.PermissionFilterFactory)
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)

@@ -48,36 +48,3 @@ password = "abc123"
 timeout = "10s"
 # 日志开关；如果开启则打印Dubbo调用细节
 trace-enable = false
-
-# JWT验证配置
-
-## Dubbo协议
-[FILTER.JWT_VERIFICATION_DUBBO]
-disable = false
-type-id = "JwtVerificationFilter"
-# Http请求中Token的Header键名。默认: Authorization。支持域：[query, form, path, header, attr]，默认header
-jwt-lookup-token = "header:Authorization"
-jwt-issuer-key = "iss"
-jwt-subject-key = "sub"
-upstream-protocol = "DUBBO"
-upstream-uri = "foo.bar.JWTService"
-upstream-method = "getPrivateJwtSecret"
-
-# Http后端JWT验证配置
-[FILTER.JWT_VERIFICATION_HTTP]
-disable = false
-type-id = "JwtVerificationFilter"
-jwt-lookup-token = "Authorization"
-jwt-issuer-key = "iss"
-jwt-subject-key = "sub"
-upstream-protocol = "HTTP"
-upstream-uri = "http://foo.bar.com:8080/jwt"
-upstream-method = "POST"
-
-
-# 基于Permission定义元数据的访问权限验证Filter
-[FILTER.ENDPOINT_PERMISSION]
-disable = false
-type-id = "PermissionFilter"
-cache-size = 5000
-cache-expiration = "5m"
