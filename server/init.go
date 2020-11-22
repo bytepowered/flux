@@ -33,7 +33,6 @@ func init() {
 	// Dynamic factories
 	ext.SetTypedFactory(filter.TypeIdJWTVerificationFilter, filter.JwtVerificationFilterFactory)
 	ext.SetTypedFactory(filter.TypeIdPermissionFilter, filter.PermissionFilterFactory)
-	ext.SetTypedFactory(filter.TypeIdHystrixFilter, filter.HystrixFilterFactory)
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)

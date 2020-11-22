@@ -1,11 +1,12 @@
-package filter
+package buildin
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/pkg"
 	"net/http"
 	"sync"
 )
@@ -22,12 +23,11 @@ const (
 	TypeIdHystrixFilter = "HystrixFilter"
 )
 
-func HystrixFilterFactory() interface{} {
-	return NewHystrixFilter()
-}
-
-func NewHystrixFilter() flux.Filter {
-	return new(HystrixFilter)
+func NewHystrixFilter(c HystrixConfig) flux.Filter {
+	return &HystrixFilter{
+		Config: c,
+		marks:  sync.Map{},
+	}
 }
 
 type (
@@ -39,19 +39,19 @@ type (
 
 // HystrixConfig
 type HystrixConfig struct {
-	Timeout                int
-	MaxConcurrentRequests  int
-	RequestVolumeThreshold int
-	SleepWindow            int
-	ErrorPercentThreshold  int
 	ServiceSkipFunc        flux.FilterSkipper
 	ServiceNameFunc        HystrixServiceNameFunc
 	ServiceTestFunc        HystrixServiceTestFunc
+	timeout                int
+	maxConcurrentRequests  int
+	requestVolumeThreshold int
+	sleepWindow            int
+	errorPercentThreshold  int
 }
 
 // HystrixFilter
 type HystrixFilter struct {
-	Config *HystrixConfig
+	Config HystrixConfig
 	marks  sync.Map
 }
 
@@ -64,31 +64,24 @@ func (r *HystrixFilter) Init(config *flux.Configuration) error {
 		HystrixConfigKeyMaxRequest:             10,
 		HystrixConfigKeyTimeout:                1000,
 	})
-	r.SetHystrixConfig(&HystrixConfig{
-		Timeout:                int(config.GetInt64(HystrixConfigKeyTimeout)),
-		MaxConcurrentRequests:  int(config.GetInt64(HystrixConfigKeyMaxRequest)),
-		RequestVolumeThreshold: int(config.GetInt64(HystrixConfigKeyRequestVolumeThreshold)),
-		SleepWindow:            int(config.GetInt64(HystrixConfigKeySleepWindow)),
-		ErrorPercentThreshold:  int(config.GetInt64(HystrixConfigKeyErrorPercentThreshold)),
-	})
+	r.Config.timeout = int(config.GetInt64(HystrixConfigKeyTimeout))
+	r.Config.maxConcurrentRequests = int(config.GetInt64(HystrixConfigKeyMaxRequest))
+	r.Config.requestVolumeThreshold = int(config.GetInt64(HystrixConfigKeyRequestVolumeThreshold))
+	r.Config.sleepWindow = int(config.GetInt64(HystrixConfigKeySleepWindow))
+	r.Config.errorPercentThreshold = int(config.GetInt64(HystrixConfigKeyErrorPercentThreshold))
+	// 检查必要配置
+	if pkg.IsNil(r.Config.ServiceSkipFunc) {
+		r.Config.ServiceSkipFunc = func(c flux.Context) bool {
+			return false
+		}
+	}
+	if pkg.IsNil(r.Config.ServiceNameFunc) {
+		return errors.New("Hystrix.ServiceNameFunc is nil")
+	}
+	if pkg.IsNil(r.Config.ServiceTestFunc) {
+		return errors.New("Hystrix.ServiceTestFunc is nil")
+	}
 	return nil
-}
-
-func (r *HystrixFilter) SetHystrixConfig(config *HystrixConfig) {
-	r.Config = config
-	if r.Config.ServiceSkipFunc == nil {
-		r.Config.ServiceSkipFunc = hystrixServiceSkipper
-	}
-	if r.Config.ServiceNameFunc == nil {
-		r.Config.ServiceNameFunc = hystrixServiceNamer
-	}
-	if r.Config.ServiceTestFunc == nil {
-		r.Config.ServiceTestFunc = hystrixServiceCircuited
-	}
-}
-
-func (r *HystrixFilter) GetHystrixConfig() HystrixConfig {
-	return *(r.Config)
 }
 
 func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
@@ -131,34 +124,15 @@ func (r *HystrixFilter) initCommand(serviceName string) {
 	if _, exist := r.marks.LoadOrStore(serviceName, true); !exist {
 		logger.Infof("Hystrix create command", "service-name", serviceName)
 		hystrix.ConfigureCommand(serviceName, hystrix.CommandConfig{
-			Timeout:                r.Config.Timeout,
-			MaxConcurrentRequests:  r.Config.MaxConcurrentRequests,
-			SleepWindow:            r.Config.SleepWindow,
-			ErrorPercentThreshold:  r.Config.ErrorPercentThreshold,
-			RequestVolumeThreshold: r.Config.RequestVolumeThreshold,
+			Timeout:                r.Config.timeout,
+			MaxConcurrentRequests:  r.Config.maxConcurrentRequests,
+			SleepWindow:            r.Config.sleepWindow,
+			ErrorPercentThreshold:  r.Config.errorPercentThreshold,
+			RequestVolumeThreshold: r.Config.requestVolumeThreshold,
 		})
 	}
 }
 
 func (*HystrixFilter) TypeId() string {
 	return TypeIdHystrixFilter
-}
-
-// hystrixServiceSkipper 只处理Http协议，Dubbo协议内部自带熔断逻辑
-func hystrixServiceSkipper(ctx flux.Context) bool {
-	if flux.ProtoHttp != ctx.ServiceProto() {
-		return true
-	}
-	return false
-}
-
-// hystrixServiceNamer 构建服务名称，Protocol/Host/Uri 可以标识一个服务。Host可能为空
-func hystrixServiceNamer(ctx flux.Context) string {
-	service := ctx.Endpoint().Service
-	return fmt.Sprintf("%s:%s/%s", service.RpcProto, service.RemoteHost, service.Interface)
-}
-
-// hystrixServiceCircuited 判断是否熔断
-func hystrixServiceCircuited(err *flux.StateError) bool {
-	return nil != err
 }
