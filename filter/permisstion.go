@@ -96,13 +96,13 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		return next
 	}
 	return func(ctx flux.Context) *flux.StateError {
+		if p.PermissionSkipFunc(ctx) {
+			return next(ctx)
+		}
 		// 必须开启Authorize才进行权限校验
 		endpoint := ctx.Endpoint()
 		provider := endpoint.Permission
 		if false == endpoint.Authorize || !provider.IsValid() {
-			return next(ctx)
-		}
-		if p.PermissionSkipFunc(ctx) {
 			return next(ctx)
 		}
 		loader := func(k interface{}) (interface{}, *time.Duration, error) {
@@ -151,7 +151,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		if true != passed {
 			return &flux.StateError{
 				StatusCode: http.StatusForbidden,
-				ErrorCode:  "PERMISSION:ACCESS_DENIED",
+				ErrorCode:  ErrorCodePermissionDenied,
 				Message:    "PERMISSION:VERIFY:ACCESS_DENIED",
 			}
 		}
@@ -168,7 +168,7 @@ func (p *PermissionFilter) doVerify(provider flux.PermissionService, ctx flux.Co
 	if !ok {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
-			ErrorCode:  "PERMISSION:INTERNAL:PROTOCOL",
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "PERMISSION:UNKNOWN_PROTOCOL",
 			Internal:   fmt.Errorf("unknown protocol:%s", provider.RpcProto),
 		}

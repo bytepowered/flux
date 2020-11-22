@@ -19,6 +19,10 @@ const (
 )
 
 const (
+	ErrorCodePermissionDenied = "PERMISSION:ACCESS_DENIED"
+)
+
+const (
 	DefaultValueCacheExpiration = 30
 	DefaultValueCacheSize       = 1_0000
 )
