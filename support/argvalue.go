@@ -6,7 +6,6 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"net/url"
 	"strings"
 )
 
@@ -18,47 +17,37 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 	if nil == ctx {
 		return flux.WrapObjectMIMEValue(nil), errors.New("lookup nil context")
 	}
-	request := ctx.Request()
+	req := ctx.Request()
 	switch strings.ToUpper(scope) {
-	case flux.ScopeQuery:
-		return flux.WrapTextMIMEValue(request.QueryValue(key)), nil
 	case flux.ScopePath:
-		return flux.WrapTextMIMEValue(request.PathValue(key)), nil
-	case flux.ScopeHeader:
-		return flux.WrapTextMIMEValue(request.HeaderValue(key)), nil
+		return flux.WrapTextMIMEValue(req.PathValue(key)), nil
+	case flux.ScopeQuery:
+		return flux.WrapTextMIMEValue(req.QueryValue(key)), nil
 	case flux.ScopeForm:
-		return flux.WrapTextMIMEValue(request.FormValue(key)), nil
-	case flux.ScopeBody:
-		reader, err := request.RequestBodyReader()
-		return flux.MIMEValue{Value: reader, MIMEType: request.HeaderValue("Content-Type")}, err
-	case flux.ScopeAttrs:
-		return flux.WrapStrMapMIMEValue(ctx.Attributes()), nil
+		return flux.WrapTextMIMEValue(req.FormValue(key)), nil
+	case flux.ScopeHeader:
+		return flux.WrapTextMIMEValue(req.HeaderValue(key)), nil
 	case flux.ScopeAttr:
 		v, _ := ctx.GetAttribute(key)
 		return flux.WrapObjectMIMEValue(v), nil
+	case flux.ScopeAttrs:
+		return flux.WrapStrMapMIMEValue(ctx.Attributes()), nil
+	case flux.ScopeBody:
+		reader, err := req.RequestBodyReader()
+		return flux.MIMEValue{Value: reader, MIMEType: req.HeaderValue("Content-Type")}, err
 	case flux.ScopeParam:
-		if v := request.QueryValue(key); "" != v {
-			return flux.WrapTextMIMEValue(v), nil
-		} else {
-			return flux.WrapTextMIMEValue(request.FormValue(key)), nil
-		}
+		v, _ := SearchValueProviders(key, req.QueryValues, req.FormValues)
+		return flux.WrapTextMIMEValue(v), nil
+	case flux.ScopeAuto:
+		fallthrough
 	default:
-		find := func(key string, sources ...url.Values) (string, bool) {
-			for _, source := range sources {
-				if vs, ok := source[key]; ok {
-					return vs[0], true
-				}
-			}
-			return "", false
-		}
-		if v, ok := find(key, request.PathValues(), request.QueryValues(), request.FormValues()); ok {
-			return flux.WrapTextMIMEValue(v), nil
-		} else if v := request.HeaderValue(key); "" != v {
+		if v, ok := SearchValueProviders(key,
+			req.PathValues, req.QueryValues, req.FormValues, makeHeaderProvider(req)); ok {
 			return flux.WrapTextMIMEValue(v), nil
 		} else if v, _ := ctx.GetAttribute(key); "" != v {
 			return flux.WrapObjectMIMEValue(v), nil
 		} else {
-			return flux.WrapObjectMIMEValue(value), nil
+			return flux.WrapObjectMIMEValue(nil), nil
 		}
 	}
 }

@@ -97,7 +97,7 @@ func (j *JwtVerificationFilter) DoFilter(next flux.FilterHandler) flux.FilterHan
 		if false == ctx.Endpoint().Authorize {
 			return next(ctx)
 		}
-		tokenString := cast.ToString(support.ScopeLookupContextValue(j.config.lookupToken, ctx))
+		tokenString := cast.ToString(support.LookupByExprContext(j.config.lookupToken, ctx))
 		if "" == tokenString {
 			return ErrorAuthorizationHeaderRequired
 		}
