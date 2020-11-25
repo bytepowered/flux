@@ -18,16 +18,32 @@ const (
 )
 
 type (
+	// PermissionVerifyReport 权限验证结果报告
+	PermissionVerifyReport struct {
+		StatusCode int    `json:"statusCode"`
+		Success    bool   `json:"success"`
+		ErrorCode  string `json:"errorCode"`
+		Message    string `json:"message"`
+	}
 	// PermissionVerifyFunc 权限验证
 	// @return pass 对当前请求的权限验证是否通过；
 	// @return err 如果验证过程发生错误，返回error；
-	PermissionVerifyFunc func(ctx flux.Context) (pass bool, err error)
+	PermissionVerifyFunc func(ctx flux.Context) (report PermissionVerifyReport, err error)
 )
 
 // PermissionV2Config 权限配置
 type PermissionV2Config struct {
 	SkipFunc   flux.FilterSkipper
 	VerifyFunc PermissionVerifyFunc
+}
+
+func NewPermissionVerifyReport(success bool, errorCode, message string) PermissionVerifyReport {
+	return PermissionVerifyReport{
+		StatusCode: flux.StatusUnauthorized,
+		Success:    success,
+		ErrorCode:  errorCode,
+		Message:    message,
+	}
 }
 
 func NewPermissionV2Filter(c PermissionV2Config) *PermissionV2Filter {
@@ -80,8 +96,11 @@ func (p *PermissionV2Filter) DoFilter(next flux.FilterHandler) flux.FilterHandle
 		if false == endpoint.Authorize || !permission.IsValid() {
 			return next(ctx)
 		}
-		passed, err := p.Configs.VerifyFunc(ctx)
+		report, err := p.Configs.VerifyFunc(ctx)
 		if nil != err {
+			if serr, ok := err.(*flux.StateError); ok {
+				return serr
+			}
 			return &flux.StateError{
 				StatusCode: http.StatusForbidden,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -89,11 +108,11 @@ func (p *PermissionV2Filter) DoFilter(next flux.FilterHandler) flux.FilterHandle
 				Internal:   err,
 			}
 		}
-		if !passed {
+		if !report.Success {
 			return &flux.StateError{
-				StatusCode: http.StatusForbidden,
-				ErrorCode:  ErrorCodePermissionDenied,
-				Message:    "PERMISSION:VERIFY:ACCESS_DENIED",
+				StatusCode: report.StatusCode,
+				ErrorCode:  report.ErrorCode,
+				Message:    report.Message,
 			}
 		}
 		return next(ctx)
