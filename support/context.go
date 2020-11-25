@@ -190,6 +190,14 @@ func (v *ValuesContext) GetAttribute(key string) (interface{}, bool) {
 	return a, ok
 }
 
+func (v *ValuesContext) GetAttributeString(name string, defaultValue string) string {
+	a, ok := v.request.values[name]
+	if !ok {
+		return defaultValue
+	}
+	return cast.ToString(a)
+}
+
 func (v *ValuesContext) SetAttribute(name string, value interface{}) {
 	v.request.values[name] = value
 }
@@ -201,6 +209,14 @@ func (v *ValuesContext) GetValue(name string) (interface{}, bool) {
 
 func (v *ValuesContext) SetValue(name string, value interface{}) {
 	v.request.values[name] = value
+}
+
+func (v *ValuesContext) GetValueString(name string, defaultValue string) string {
+	a, ok := v.request.values[name]
+	if !ok {
+		return defaultValue
+	}
+	return cast.ToString(a)
 }
 
 func (v *ValuesContext) Context() context.Context {

@@ -142,12 +142,18 @@ type Context interface {
 	// SetAttribute 向Context添加Attribute键值对
 	SetAttribute(name string, value interface{})
 
+	// GetAttributeString 获取指定key的Attribute，返回值转换为String
+	GetAttributeString(key string, defaultValue string) string
+
 	// GetValue 获取当前请求范围的值；
 	// 首先查找Context通过SetValue的键值；如果不存在，则尝试查找WebContext的键值
 	GetValue(name string) (interface{}, bool)
 
 	// SetValue 设置当前请求范围的KV
 	SetValue(name string, value interface{})
+
+	// GetValueString 获取当前请求范围的值；数据类型转换为String
+	GetValueString(name string, defaultValue string) string
 
 	// Context 返回Http请求的Context对象。用于判定Http请求是否被Cancel。
 	Context() context.Context

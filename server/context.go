@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/bytepowered/flux"
+	"github.com/spf13/cast"
 	"sync"
 	"time"
 )
@@ -87,6 +88,14 @@ func (c *WrappedContext) GetAttribute(name string) (interface{}, bool) {
 	return v, ok
 }
 
+func (c *WrappedContext) GetAttributeString(name string, defaultValue string) string {
+	v, ok := c.GetAttribute(name)
+	if !ok {
+		return defaultValue
+	}
+	return cast.ToString(v)
+}
+
 func (c *WrappedContext) SetValue(name string, value interface{}) {
 	c.values.Store(name, value)
 }
@@ -101,6 +110,14 @@ func (c *WrappedContext) GetValue(name string) (interface{}, bool) {
 	} else {
 		return nil, false
 	}
+}
+
+func (c *WrappedContext) GetValueString(name string, defaultValue string) string {
+	v, ok := c.GetValue(name)
+	if !ok {
+		return defaultValue
+	}
+	return cast.ToString(v)
 }
 
 func (c *WrappedContext) Context() context.Context {
