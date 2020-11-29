@@ -11,24 +11,24 @@ import (
 
 func init() {
 	// Default logger factory
-	ext.SetLoggerFactory(DefaultLoggerFactory)
+	ext.StoreLoggerFactory(DefaultLoggerFactory)
 	// 参数查找与解析函数
-	ext.SetArgumentValueLookupFunc(support.DefaultArgumentValueLookupFunc)
-	ext.SetArgumentValueResolveFunc(support.DefaultArgumentValueResolveFunc)
+	ext.StoreArgumentValueLookupFunc(support.DefaultArgumentValueLookupFunc)
+	ext.StoreArgumentValueResolveFunc(support.DefaultArgumentValueResolveFunc)
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()
-	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
-	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
+	ext.StoreSerializer(ext.TypeNameSerializerDefault, serializer)
+	ext.StoreSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint registry
 	// Default: ZK
-	ext.SetEndpointRegistryFactory(ext.EndpointRegistryIdDefault, registry.ZkEndpointRegistryFactory)
-	ext.SetEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
+	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdDefault, registry.ZkEndpointRegistryFactory)
+	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
 	// Backends
-	ext.SetBackend(flux.ProtoHttp, http.NewHttpBackend())
-	ext.SetBackendResponseDecoder(flux.ProtoHttp, http.NewHttpBackendResponseDecoder())
-	ext.SetBackend(flux.ProtoDubbo, dubbo.NewDubboBackend())
-	ext.SetBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendResponseDecoder())
+	ext.StoreBackend(flux.ProtoHttp, http.NewHttpBackend())
+	ext.StoreBackendResponseDecoder(flux.ProtoHttp, http.NewHttpBackendResponseDecoder())
+	ext.StoreBackend(flux.ProtoDubbo, dubbo.NewDubboBackend())
+	ext.StoreBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendResponseDecoder())
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)

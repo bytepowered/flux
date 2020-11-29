@@ -16,7 +16,8 @@ debug-auth-password = "yongjiapro"
 [ENDPOINTREGISTRY]
 # 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
 registry-id = "zookeeper"
-root-path = "/flux-metadata"
+endpoint-path = "/flux-endpoint"
+service-path = "/flux-service"
 
 [ZOOKEEPER]
 # ZK服务配置中心地址，支持,分多个地址列表

@@ -2,6 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
 )
 
 const (
@@ -12,17 +13,19 @@ var (
 	_typedValueResolvers = make(map[string]flux.TypedValueResolver, 16)
 )
 
-// SetTypedValueResolver 添加值类型解析函数
-func SetTypedValueResolver(typeName string, resolver flux.TypedValueResolver) {
+// StoreTypedValueResolver 添加值类型解析函数
+func StoreTypedValueResolver(typeName string, resolver flux.TypedValueResolver) {
+	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
 	_typedValueResolvers[typeName] = resolver
 }
 
-// GetTypedValueResolver 获取值类型解析函数
-func GetTypedValueResolver(valueTypeName string) flux.TypedValueResolver {
-	return _typedValueResolvers[valueTypeName]
+// LoadTypedValueResolver 获取值类型解析函数
+func LoadTypedValueResolver(typeName string) flux.TypedValueResolver {
+	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
+	return _typedValueResolvers[typeName]
 }
 
-// GetDefaultTypedValueResolver 获取默认的值类型解析函数
-func GetDefaultTypedValueResolver() flux.TypedValueResolver {
+// LoadDefaultTypedValueResolver 获取默认的值类型解析函数
+func LoadDefaultTypedValueResolver() flux.TypedValueResolver {
 	return _typedValueResolvers[DefaultTypedValueResolverName]
 }

@@ -5,66 +5,66 @@ import (
 	"sync"
 )
 
-func NewMultiVersionEndpoint(endpoint *flux.Endpoint) *MultiVersionEndpoint {
-	return &MultiVersionEndpoint{
-		versioned: map[string]*flux.Endpoint{
+func NewBindEndpoint(endpoint *flux.Endpoint) *BindEndpoint {
+	return &BindEndpoint{
+		versions: map[string]*flux.Endpoint{
 			endpoint.Version: endpoint,
 		},
-		mutex: new(sync.RWMutex),
+		RWMutex: new(sync.RWMutex),
 	}
 }
 
 // Multi version Endpoint
-type MultiVersionEndpoint struct {
-	versioned map[string]*flux.Endpoint // 各版本数据
-	mutex     *sync.RWMutex             // 读写锁
+type BindEndpoint struct {
+	versions      map[string]*flux.Endpoint // 各版本数据
+	*sync.RWMutex                           // 读写锁
 }
 
 // Find find endpoint by version
-func (m *MultiVersionEndpoint) FindByVersion(version string) (*flux.Endpoint, bool) {
-	m.mutex.RLock()
-	if "" == version || 1 == len(m.versioned) {
+func (m *BindEndpoint) FindByVersion(version string) (*flux.Endpoint, bool) {
+	m.RLock()
+	if "" == version || 1 == len(m.versions) {
 		rv := m.random()
-		m.mutex.RUnlock()
+		m.RUnlock()
 		return rv, nil != rv
 	}
-	v, ok := m.versioned[version]
-	m.mutex.RUnlock()
+	v, ok := m.versions[version]
+	m.RUnlock()
 	return v, ok
 }
 
-func (m *MultiVersionEndpoint) Update(version string, endpoint *flux.Endpoint) {
-	m.mutex.Lock()
-	m.versioned[version] = endpoint
-	m.mutex.Unlock()
+func (m *BindEndpoint) Update(version string, endpoint *flux.Endpoint) {
+	m.Lock()
+	m.versions[version] = endpoint
+	m.Unlock()
 }
 
-func (m *MultiVersionEndpoint) Delete(version string) {
-	m.mutex.Lock()
-	delete(m.versioned, version)
-	m.mutex.Unlock()
+func (m *BindEndpoint) Delete(version string) {
+	m.Lock()
+	delete(m.versions, version)
+	m.Unlock()
 }
 
-func (m *MultiVersionEndpoint) RandomVersion() *flux.Endpoint {
-	m.mutex.RLock()
+func (m *BindEndpoint) RandomVersion() *flux.Endpoint {
+	m.RLock()
 	rv := m.random()
-	m.mutex.RUnlock()
+	m.RUnlock()
 	return rv
 }
 
-func (m *MultiVersionEndpoint) random() *flux.Endpoint {
-	for _, v := range m.versioned {
+func (m *BindEndpoint) random() *flux.Endpoint {
+	for _, v := range m.versions {
 		return v
 	}
 	return nil
 }
 
-func (m *MultiVersionEndpoint) ToSerializable() map[string]*flux.Endpoint {
+func (m *BindEndpoint) ToSerializable() map[string]*flux.Endpoint {
 	copies := make(map[string]*flux.Endpoint)
-	m.mutex.RLock()
-	for k, v := range m.versioned {
+	m.RLock()
+	for k, v := range m.versions {
 		copies[k] = v
 	}
-	m.mutex.RUnlock()
+	m.RUnlock()
 	return copies
 }

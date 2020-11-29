@@ -1,16 +1,14 @@
 package flux
 
-import "fmt"
-
 type (
 	EventType int
 )
 
 // 路由元数据事件类型
 const (
-	EndpointEventAdded = iota
-	EndpointEventUpdated
-	EndpointEventRemoved
+	EventTypeAdded = iota
+	EventTypeUpdated
+	EventTypeRemoved
 )
 
 const (
@@ -69,15 +67,27 @@ type Argument struct {
 
 // BackendService 定义连接上游目标服务的信息
 type BackendService struct {
-	RemoteHost string     `json:"remoteHost"` // Service侧的Host
-	Interface  string     `json:"interface"`  // Service侧的URL
-	Method     string     `json:"method"`     // Service侧的方法
-	Arguments  []Argument `json:"arguments"`  // Service侧的参数结构
-	RpcProto   string     `json:"rpcProto"`   // Service侧的协议
-	RpcGroup   string     `json:"rpcGroup"`   // Service侧的接口分组
-	RpcVersion string     `json:"rpcVersion"` // Service侧的接口版本
-	RpcTimeout string     `json:"rpcTimeout"` // Service侧的调用超时
-	RpcRetries string     `json:"rpcRetries"` // Service侧的调用重试
+	ServiceId  string                 `json:"serviceId"`  // Service的标识ID
+	RemoteHost string                 `json:"remoteHost"` // Service侧的Host
+	Interface  string                 `json:"interface"`  // Service侧的URL
+	Method     string                 `json:"method"`     // Service侧的方法
+	Arguments  []Argument             `json:"arguments"`  // Service侧的参数结构
+	RpcProto   string                 `json:"rpcProto"`   // Service侧的协议
+	RpcGroup   string                 `json:"rpcGroup"`   // Service侧的接口分组
+	RpcVersion string                 `json:"rpcVersion"` // Service侧的接口版本
+	RpcTimeout string                 `json:"rpcTimeout"` // Service侧的调用超时
+	RpcRetries string                 `json:"rpcRetries"` // Service侧的调用重试
+	Extensions map[string]interface{} `json:"extensions"` // 扩展信息
+}
+
+// IsValid 判断服务配置是否有效；Proto+Interface+Method不能为空；
+func (b BackendService) IsValid() bool {
+	return "" != b.RpcProto && "" != b.Interface && "" != b.Method
+}
+
+// HasArgs 判定是否有参数
+func (b BackendService) HasArgs() bool {
+	return len(b.Arguments) > 0
 }
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
@@ -88,26 +98,23 @@ type Endpoint struct {
 	HttpMethod  string                 `json:"httpMethod"`  // 映射Http侧的Method
 	Authorize   bool                   `json:"authorize"`   // 此端点是否需要授权
 	Service     BackendService         `json:"service"`     // 上游服务
-	Permission  PermissionService      `json:"permission"`  // 权限验证定义
+	Permission  BackendService         `json:"permission"`  // Deprecated 权限验证定义
+	Permissions []string               `json:"permissions"` // 多组权限验证服务ID列表
 	Extensions  map[string]interface{} `json:"extensions"`  // 扩展信息
 }
 
-// PermissionService 后端RPC服务的权限验证的元数据
-type PermissionService BackendService
-
-func (p PermissionService) IsValid() bool {
-	return "" != p.RpcProto && "" != p.Interface && "" != p.Method && len(p.Arguments) > 0
+func (e Endpoint) IsValid() bool {
+	return "" != e.HttpMethod && "" != e.HttpPattern
 }
 
-// NewServiceKey 构建标识一个Service的Key字符串
-func NewServiceKey(proto, host, method, uri string) string {
-	return fmt.Sprintf("%s@%s:%s/%s", proto, host, method, uri)
+// HttpEndpointEvent  定义从注册中心接收到的Endpoint数据变更
+type HttpEndpointEvent struct {
+	EventType EventType
+	Endpoint  Endpoint
 }
 
-// EndpointEvent  定义从注册中心接收到的Endpoint数据变更
-type EndpointEvent struct {
-	EventType   EventType
-	HttpMethod  string `json:"method"`
-	HttpPattern string `json:"pattern"`
-	Endpoint    Endpoint
+// BackendServiceEvent  定义从注册中心接收到的Service定义数据变更
+type BackendServiceEvent struct {
+	EventType EventType
+	Service   BackendService
 }

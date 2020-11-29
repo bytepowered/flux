@@ -60,15 +60,15 @@ var (
 // Server
 type HttpWebServer struct {
 	webServer                  flux.WebServer
-	internalServer             *http.Server
 	serverResponseWriter       flux.ServerResponseWriter
 	serverErrorsWriter         flux.ServerErrorsWriter
 	serverContextExchangeHooks []flux.ServerContextExchangeHook
+	debugServer                *http.Server
 	httpConfig                 *flux.Configuration
 	httpVersionHeader          string
 	routerEngine               *RouterEngine
 	endpointRegistry           flux.EndpointRegistry
-	mvEndpointMap              map[string]*MultiVersionEndpoint
+	bindEndpoint               map[string]*BindEndpoint
 	contextWrappers            sync.Pool
 	stateStarted               chan struct{}
 	stateStopped               chan struct{}
@@ -79,7 +79,7 @@ func NewHttpServer() *HttpWebServer {
 		serverResponseWriter:       DefaultServerResponseWriter,
 		serverErrorsWriter:         DefaultServerErrorsWriter,
 		routerEngine:               NewRouteEngine(),
-		mvEndpointMap:              make(map[string]*MultiVersionEndpoint),
+		bindEndpoint:               make(map[string]*BindEndpoint),
 		contextWrappers:            sync.Pool{New: NewContextWrapper},
 		serverContextExchangeHooks: make([]flux.ServerContextExchangeHook, 0, 4),
 		stateStarted:               make(chan struct{}),
@@ -89,7 +89,7 @@ func NewHttpServer() *HttpWebServer {
 
 // Prepare Call before init and startup
 func (s *HttpWebServer) Prepare(hooks ...flux.PrepareHookFunc) error {
-	for _, prepare := range append(ext.GetPrepareHooks(), hooks...) {
+	for _, prepare := range append(ext.LoadPrepareHooks(), hooks...) {
 		if err := prepare(); nil != err {
 			return err
 		}
@@ -104,7 +104,7 @@ func (s *HttpWebServer) Initial() error {
 	s.httpConfig.SetDefaults(HttpWebServerConfigDefaults)
 	s.httpVersionHeader = s.httpConfig.GetString(HttpWebServerConfigKeyVersionHeader)
 	// 创建WebServer
-	s.webServer = ext.GetWebServerFactory()()
+	s.webServer = ext.LoadWebServerFactory()()
 	// 默认必备的WebServer功能
 	s.webServer.SetWebErrorHandler(s.handleServerError)
 	s.webServer.SetWebNotFoundHandler(s.handleNotFoundError)
@@ -118,16 +118,15 @@ func (s *HttpWebServer) Initial() error {
 	headers := s.httpConfig.GetStringSlice(HttpWebServerConfigKeyRequestIdHeaders)
 	s.AddWebInterceptor(webmidware.NewRequestIdMiddlewareWithinHeader(headers...))
 
-	// Internal Web Server
-	internalPort := s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)
-	s.internalServer = &http.Server{
-		Handler: http.DefaultServeMux,
-		Addr:    fmt.Sprintf("0.0.0.0:%d", internalPort),
-	}
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
-		http.DefaultServeMux.Handle("/debug/endpoints", DebugQueryEndpoint(s.mvEndpointMap))
-		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
+		servemux := http.DefaultServeMux
+		s.debugServer = &http.Server{
+			Handler: servemux,
+			Addr:    fmt.Sprintf("0.0.0.0:%d", s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)),
+		}
+		servemux.Handle("/debug/endpoints", DebugQueryEndpoint(s.bindEndpoint))
+		servemux.Handle("/debug/metrics", promhttp.Handler())
 	}
 
 	// Endpoint registry
@@ -151,16 +150,28 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 	if err := s.ensure().routerEngine.Startup(); nil != err {
 		return err
 	}
-	// Watch endpoint register
-	if events, err := s.endpointRegistry.WatchEvents(); nil != err {
+	// Http endpoints
+	if events, err := s.endpointRegistry.WatchHttpEndpoints(); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
 		go func() {
-			logger.Info("Endpoint event loop: starting")
+			logger.Info("HttpEndpoint event loop: starting")
 			for event := range events {
-				s.HandleEndpointEvent(event)
+				s.HandleHttpEndpointEvent(event)
 			}
-			logger.Info("Endpoint event loop: Stopped")
+			logger.Info("HttpEndpoint event loop: Stopped")
+		}()
+	}
+	// Backend services
+	if events, err := s.endpointRegistry.WatchBackendServices(); nil != err {
+		return fmt.Errorf("start registry watching: %w", err)
+	} else {
+		go func() {
+			logger.Info("BackendService event loop: starting")
+			for event := range events {
+				s.HandleBackendServiceEvent(event)
+			}
+			logger.Info("BackendService event loop: Stopped")
 		}()
 	}
 	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
@@ -170,22 +181,117 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
 	// Start Servers
-	if s.internalServer != nil {
+	if s.debugServer != nil {
 		go func() {
-			logger.Infow("DebugServer starting", "address", s.internalServer.Addr)
-			_ = s.internalServer.ListenAndServe()
+			logger.Infow("DebugServer starting", "address", s.debugServer.Addr)
+			_ = s.debugServer.ListenAndServe()
 		}()
 	}
 	logger.Infow("HttpWebServer starting", "address", address, "cert", certFile, "key", keyFile)
 	return s.webServer.StartTLS(address, certFile, keyFile)
 }
 
+func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *BindEndpoint, tracing bool) error {
+	version := webc.HeaderValue(s.httpVersionHeader)
+	endpoint, found := mvendpoint.FindByVersion(version)
+	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
+	defer func() {
+		if r := recover(); r != nil {
+			trace := logger.Trace(requestId)
+			if err, ok := r.(error); ok {
+				trace.Errorw("HttpWebServer panics", "error", err)
+			} else {
+				trace.Errorw("HttpWebServer panics", "recover", r)
+			}
+			trace.Error(string(debug.Stack()))
+		}
+	}()
+	if !found {
+		if tracing {
+			url, _ := webc.RequestURL()
+			logger.Trace(requestId).Infow("HttpWebServer route not found",
+				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
+				"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
+			)
+		}
+		return s.serverErrorsWriter(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
+	}
+	ctxw := s.acquireContext(requestId, webc, endpoint)
+	defer s.releaseContext(ctxw)
+	// Context hook
+	for _, ctxhook := range s.serverContextExchangeHooks {
+		ctxhook(webc, ctxw)
+	}
+	if tracing {
+		url, _ := webc.RequestURL()
+		logger.TraceContext(ctxw).Infow("HttpWebServer routing",
+			"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
+			"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
+		)
+	}
+	// Route and response
+	if err := s.routerEngine.Route(ctxw); nil != err {
+		return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
+	} else {
+		rw := ctxw.Response()
+		return s.serverResponseWriter(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
+	}
+}
+
+func (s *HttpWebServer) HandleBackendServiceEvent(event flux.BackendServiceEvent) {
+	service := event.Service
+	serviceTag := service.Interface + ":" + service.Method
+	switch event.EventType {
+	case flux.EventTypeAdded:
+		logger.Infow("New service",
+			"service-id", service.ServiceId, "service", serviceTag)
+		ext.StoreBackendService(service)
+	case flux.EventTypeUpdated:
+		logger.Infow("Update service",
+			"service-id", service.ServiceId, "service", serviceTag)
+		ext.StoreBackendService(service)
+	case flux.EventTypeRemoved:
+		logger.Infow("Delete service",
+			"service-id", service.ServiceId, "service", serviceTag)
+		ext.RemoveBackendService(service.ServiceId)
+	}
+}
+
+func (s *HttpWebServer) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) {
+	method := strings.ToUpper(event.Endpoint.HttpMethod)
+	// Check http method
+	if !_isExpectedMethod(method) {
+		logger.Warnw("Unsupported http method", "method", method, "pattern", event.Endpoint.HttpPattern)
+		return
+	}
+	pattern := event.Endpoint.HttpPattern
+	routeKey := fmt.Sprintf("%s#%s", method, pattern)
+	// Refresh endpoint
+	endpoint := event.Endpoint
+	bind, isreg := s.selectBindEndpoint(routeKey, &endpoint)
+	switch event.EventType {
+	case flux.EventTypeAdded:
+		logger.Infow("New endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
+		bind.Update(endpoint.Version, &endpoint)
+		if isreg {
+			logger.Infow("Register http handler", "method", method, "pattern", pattern)
+			s.webServer.AddWebHandler(method, pattern, s.newWrappedEndpointHandler(bind))
+		}
+	case flux.EventTypeUpdated:
+		logger.Infow("Update endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
+		bind.Update(endpoint.Version, &endpoint)
+	case flux.EventTypeRemoved:
+		logger.Infow("Delete endpoint", "method", method, "pattern", pattern)
+		bind.Delete(endpoint.Version)
+	}
+}
+
 // Shutdown to cleanup resources
 func (s *HttpWebServer) Shutdown(ctx context.Context) error {
 	logger.Info("HttpWebServer shutdown...")
 	defer close(s.stateStopped)
-	if s.internalServer != nil {
-		_ = s.internalServer.Close()
+	if s.debugServer != nil {
+		_ = s.debugServer.Close()
 	}
 	if err := s.webServer.Shutdown(ctx); nil != err {
 		return err
@@ -234,12 +340,8 @@ func (s *HttpWebServer) WebServer() flux.WebServer {
 }
 
 // DebugServer 返回DebugServer实例，以及实体是否有效
-func (s *HttpWebServer) InternalServer() *http.Server {
-	return s.internalServer
-}
-
-func (s *HttpWebServer) AddInnerHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
-	s.ensure().webServer.AddWebHandler(method, pattern, h, m...)
+func (s *HttpWebServer) DebugServer() (*http.Server, bool) {
+	return s.debugServer, nil != s.debugServer
 }
 
 // SetServerResponseWriter 设置Http响应数据写入的处理接口
@@ -257,96 +359,20 @@ func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextExchang
 	s.serverContextExchangeHooks = append(s.serverContextExchangeHooks, f)
 }
 
-func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *MultiVersionEndpoint, tracing bool) error {
-	version := webc.HeaderValue(s.httpVersionHeader)
-	endpoint, found := mvendpoint.FindByVersion(version)
-	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
-	defer func() {
-		if r := recover(); r != nil {
-			trace := logger.Trace(requestId)
-			if err, ok := r.(error); ok {
-				trace.Errorw("HttpWebServer panics", "error", err)
-			} else {
-				trace.Errorw("HttpWebServer panics", "recover", r)
-			}
-			trace.Error(string(debug.Stack()))
-		}
-	}()
-	if !found {
-		if tracing {
-			url, _ := webc.RequestURL()
-			logger.Trace(requestId).Infow("HttpWebServer route not found",
-				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
-				"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
-			)
-		}
-		return s.serverErrorsWriter(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
-	}
-	ctxw := s.acquireContext(requestId, webc, endpoint)
-	defer s.releaseContext(ctxw)
-	// Context hook
-	for _, ctxhook := range s.serverContextExchangeHooks {
-		ctxhook(webc, ctxw)
-	}
-	if tracing {
-		url, _ := webc.RequestURL()
-		logger.TraceContext(ctxw).Infow("HttpWebServer routing",
-			"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
-			"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
-		)
-	}
-	// Route and response
-	if err := s.routerEngine.Route(ctxw); nil != err {
-		return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
-	} else {
-		rw := ctxw.Response()
-		return s.serverResponseWriter(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
-	}
-}
-
-func (s *HttpWebServer) HandleEndpointEvent(event flux.EndpointEvent) {
-	routeMethod := strings.ToUpper(event.Endpoint.HttpMethod)
-	// Check http method
-	if !_isExpectedMethod(routeMethod) {
-		logger.Warnw("Unsupported http method", "method", routeMethod, "pattern", event.HttpPattern)
-		return
-	}
-	pattern := event.HttpPattern
-	routeKey := fmt.Sprintf("%s#%s", routeMethod, pattern)
-	// Refresh endpoint
-	endpoint := event.Endpoint
-	multi, isRegister := s.selectMultiEndpoint(routeKey, &endpoint)
-	switch event.EventType {
-	case flux.EndpointEventAdded:
-		logger.Infow("New endpoint", "version", endpoint.Version, "method", routeMethod, "pattern", pattern)
-		multi.Update(endpoint.Version, &endpoint)
-		if isRegister {
-			logger.Infow("Register http router", "method", routeMethod, "pattern", pattern)
-			s.webServer.AddWebHandler(routeMethod, pattern, s.newWrappedEndpointHandler(multi))
-		}
-	case flux.EndpointEventUpdated:
-		logger.Infow("Update endpoint", "version", endpoint.Version, "method", routeMethod, "pattern", pattern)
-		multi.Update(endpoint.Version, &endpoint)
-	case flux.EndpointEventRemoved:
-		logger.Infow("Delete endpoint", "method", routeMethod, "pattern", pattern)
-		multi.Delete(endpoint.Version)
-	}
-}
-
-func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MultiVersionEndpoint) flux.WebHandler {
+func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *BindEndpoint) flux.WebHandler {
 	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
 }
 
-func (s *HttpWebServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*MultiVersionEndpoint, bool) {
-	if mve, ok := s.mvEndpointMap[routeKey]; ok {
-		return mve, false
+func (s *HttpWebServer) selectBindEndpoint(routeKey string, endpoint *flux.Endpoint) (*BindEndpoint, bool) {
+	if be, ok := s.bindEndpoint[routeKey]; ok {
+		return be, false
 	} else {
-		mve = NewMultiVersionEndpoint(endpoint)
-		s.mvEndpointMap[routeKey] = mve
-		return mve, true
+		be = NewBindEndpoint(endpoint)
+		s.bindEndpoint[routeKey] = be
+		return be, true
 	}
 }
 
@@ -398,7 +424,7 @@ func _activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, erro
 	config.SetDefault(flux.KeyConfigEndpointRegistryId, ext.EndpointRegistryIdDefault)
 	registryId := config.GetString(flux.KeyConfigEndpointRegistryId)
 	logger.Infow("Active endpoint registry", "registry-id", registryId)
-	if factory, ok := ext.GetEndpointRegistryFactory(registryId); !ok {
+	if factory, ok := ext.LoadEndpointRegistryFactory(registryId); !ok {
 		return nil, config, fmt.Errorf("EndpointRegistryFactory not found, id: %s", registryId)
 	} else {
 		return factory(), config, nil

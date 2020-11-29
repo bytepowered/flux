@@ -25,15 +25,15 @@ func NewRouteEngine() *RouterEngine {
 func (r *RouterEngine) Initial() error {
 	logger.Infof("RouterEngine initialing")
 	// Backends
-	for proto, bk := range ext.Backends() {
+	for proto, backend := range ext.LoadBackends() {
 		ns := "BACKEND." + proto
-		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(bk), "config-ns", ns)
-		if err := r.InitialHook(bk, flux.NewConfigurationOf(ns)); nil != err {
+		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
+		if err := r.InitialHook(backend, flux.NewConfigurationOf(ns)); nil != err {
 			return err
 		}
 	}
 	// 手动注册的单实例Filters
-	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
+	for _, filter := range append(ext.LoadGlobalFilters(), ext.LoadSelectiveFilters()...) {
 		ns := filter.TypeId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
 		config := flux.NewConfigurationOf(ns)
@@ -61,7 +61,7 @@ func (r *RouterEngine) Initial() error {
 			return err
 		}
 		if filter, ok := filter.(flux.Filter); ok {
-			ext.AddSelectiveFilter(filter)
+			ext.StoreSelectiveFilter(filter)
 		}
 	}
 	return nil
@@ -73,12 +73,12 @@ func (r *RouterEngine) InitialHook(ref interface{}, config *flux.Configuration) 
 			return err
 		}
 	}
-	ext.AddHook(ref)
+	ext.StoreHookFunc(ref)
 	return nil
 }
 
 func (r *RouterEngine) Startup() error {
-	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
+	for _, startup := range sortedStartup(ext.LoadStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
 		}
@@ -87,7 +87,7 @@ func (r *RouterEngine) Startup() error {
 }
 
 func (r *RouterEngine) Shutdown(ctx context.Context) error {
-	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
+	for _, shutdown := range sortedShutdown(ext.LoadShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
 		}
@@ -108,11 +108,11 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 		return err
 	}
 	// Select filters
-	globals := ext.GlobalFilters()
+	globals := ext.LoadGlobalFilters()
 	selective := make([]flux.Filter, 0, 16)
 	for _, selector := range ext.FindSelectors(ctx.Request().Host()) {
 		for _, typeId := range selector.Select(ctx).FilterId {
-			if f, ok := ext.GetSelectiveFilter(typeId); ok {
+			if f, ok := ext.LoadSelectiveFilter(typeId); ok {
 				selective = append(selective, f)
 			} else {
 				logger.TraceContext(ctx).Warnw("Filter not found on selector", "type-id", typeId)
@@ -122,7 +122,7 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	// Walk filters
 	err := r.walk(func(ctx flux.Context) *flux.StateError {
 		protoName := ctx.ServiceProto()
-		if backend, ok := ext.GetBackend(protoName); !ok {
+		if backend, ok := ext.LoadBackend(protoName); !ok {
 			logger.TraceContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.StateError{
 				StatusCode: flux.StatusNotFound,

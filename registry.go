@@ -6,7 +6,8 @@ const (
 )
 
 // EndpointRegistry Endpoint注册元数据事件监听
+// 监听接收元数据中心的配置变化
 type EndpointRegistry interface {
-	// 监听接收元数据中心的配置变化
-	WatchEvents() (<-chan EndpointEvent, error)
+	WatchHttpEndpoints() (<-chan HttpEndpointEvent, error)
+	WatchBackendServices() (<-chan BackendServiceEvent, error)
 }

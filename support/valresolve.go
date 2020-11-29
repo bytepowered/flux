@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"reflect"
 	"strings"
 )
 
@@ -20,89 +19,83 @@ var (
 
 var (
 	stringResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMEValue) (interface{}, error) {
-		return CastDecodeMIMEToString(value)
+		return CastDecodeToString(value)
 	})
 	integerResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToInt(value), nil
-	}).ResolveMIME
+	}).ResolveFunc
 	longResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToInt64(value), nil
-	}).ResolveMIME
+	}).ResolveFunc
 	float32Resolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat32(value), nil
-	}).ResolveMIME
+	}).ResolveFunc
 	float64Resolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat64(value), nil
-	}).ResolveMIME
+	}).ResolveFunc
 	booleanResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToBool(value), nil
-	}).ResolveMIME
+	}).ResolveFunc
 	mapResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMEValue) (interface{}, error) {
-		return CastDecodeMIMEToStringMap(value)
+		return CastDecodeToStringMap(value)
 	})
 	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMEValue) (interface{}, error) {
-		return CastDecodeMIMEToSliceList(genericTypes, value)
+		return CastToArrayList(genericTypes, value)
 	})
-	complexObjectResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, mimeValue flux.MIMEValue) (interface{}, error) {
+	defaultResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, value flux.MIMEValue) (interface{}, error) {
 		return map[string]interface{}{
 			"class":   typeClass,
 			"generic": typeGeneric,
-			"value":   mimeValue.Value,
+			"value":   value,
 		}, nil
 	})
 )
 
 func init() {
-	ext.SetTypedValueResolver("string", stringResolver)
-	ext.SetTypedValueResolver("String", stringResolver)
-	ext.SetTypedValueResolver(flux.JavaLangStringClassName, stringResolver)
+	ext.StoreTypedValueResolver("string", stringResolver)
+	ext.StoreTypedValueResolver("String", stringResolver)
+	ext.StoreTypedValueResolver(flux.JavaLangStringClassName, stringResolver)
 
-	ext.SetTypedValueResolver("int", integerResolver)
-	ext.SetTypedValueResolver("Integer", integerResolver)
-	ext.SetTypedValueResolver(flux.JavaLangIntegerClassName, integerResolver)
+	ext.StoreTypedValueResolver("int", integerResolver)
+	ext.StoreTypedValueResolver("Integer", integerResolver)
+	ext.StoreTypedValueResolver(flux.JavaLangIntegerClassName, integerResolver)
 
-	ext.SetTypedValueResolver("int64", longResolver)
-	ext.SetTypedValueResolver("long", longResolver)
-	ext.SetTypedValueResolver("Long", longResolver)
-	ext.SetTypedValueResolver(flux.JavaLangLongClassName, longResolver)
+	ext.StoreTypedValueResolver("int64", longResolver)
+	ext.StoreTypedValueResolver("long", longResolver)
+	ext.StoreTypedValueResolver("Long", longResolver)
+	ext.StoreTypedValueResolver(flux.JavaLangLongClassName, longResolver)
 
-	ext.SetTypedValueResolver("float", float32Resolver)
-	ext.SetTypedValueResolver("Float", float32Resolver)
-	ext.SetTypedValueResolver(flux.JavaLangFloatClassName, float32Resolver)
+	ext.StoreTypedValueResolver("float", float32Resolver)
+	ext.StoreTypedValueResolver("Float", float32Resolver)
+	ext.StoreTypedValueResolver(flux.JavaLangFloatClassName, float32Resolver)
 
-	ext.SetTypedValueResolver("double", float64Resolver)
-	ext.SetTypedValueResolver("Double", float64Resolver)
-	ext.SetTypedValueResolver(flux.JavaLangDoubleClassName, float64Resolver)
+	ext.StoreTypedValueResolver("double", float64Resolver)
+	ext.StoreTypedValueResolver("Double", float64Resolver)
+	ext.StoreTypedValueResolver(flux.JavaLangDoubleClassName, float64Resolver)
 
-	ext.SetTypedValueResolver("bool", booleanResolver)
-	ext.SetTypedValueResolver("Boolean", booleanResolver)
-	ext.SetTypedValueResolver(flux.JavaLangBooleanClassName, booleanResolver)
+	ext.StoreTypedValueResolver("bool", booleanResolver)
+	ext.StoreTypedValueResolver("Boolean", booleanResolver)
+	ext.StoreTypedValueResolver(flux.JavaLangBooleanClassName, booleanResolver)
 
-	ext.SetTypedValueResolver("map", mapResolver)
-	ext.SetTypedValueResolver("Map", mapResolver)
-	ext.SetTypedValueResolver(flux.JavaUtilMapClassName, mapResolver)
+	ext.StoreTypedValueResolver("map", mapResolver)
+	ext.StoreTypedValueResolver("Map", mapResolver)
+	ext.StoreTypedValueResolver(flux.JavaUtilMapClassName, mapResolver)
 
-	ext.SetTypedValueResolver("slice", listResolver)
-	ext.SetTypedValueResolver("List", listResolver)
-	ext.SetTypedValueResolver(flux.JavaUtilListClassName, listResolver)
+	ext.StoreTypedValueResolver("slice", listResolver)
+	ext.StoreTypedValueResolver("List", listResolver)
+	ext.StoreTypedValueResolver(flux.JavaUtilListClassName, listResolver)
 
-	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, complexObjectResolver)
+	ext.StoreTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
 }
 
-// CastDecodeMIMEToString 最大努力地将值转换成String类型。
+// CastDecodeToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
-func CastDecodeMIMEToString(mimeV flux.MIMEValue) (string, error) {
-	if str, ok := mimeV.Value.(string); ok {
-		return str, nil
-	}
-	if data, ok := mimeV.Value.([]byte); ok {
-		return string(data), nil
-	}
+func CastDecodeToString(mimeV flux.MIMEValue) (string, error) {
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeGoText:
 		return mimeV.Value.(string), nil
 	case flux.ValueMIMETypeGoStringMap:
-		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+		decoder := ext.LoadSerializer(ext.TypeNameSerializerJson)
 		if data, err := decoder.Marshal(mimeV.Value); nil != err {
 			return "", err
 		} else {
@@ -121,14 +114,14 @@ func CastDecodeMIMEToString(mimeV flux.MIMEValue) (string, error) {
 	}
 }
 
-// CastDecodeMIMEToStringMap 最大努力地将值转换成map[string]any类型。
+// CastDecodeToStringMap 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
-func CastDecodeMIMEToStringMap(mimeV flux.MIMEValue) (map[string]interface{}, error) {
+func CastDecodeToStringMap(mimeV flux.MIMEValue) (map[string]interface{}, error) {
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeGoStringMap:
 		return cast.ToStringMap(mimeV.Value), nil
 	case flux.ValueMIMETypeGoText:
-		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+		decoder := ext.LoadSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
 		if err := decoder.Unmarshal([]byte(mimeV.Value.(string)), &hashmap); nil != err {
 			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mimeV.Value, err)
@@ -165,24 +158,20 @@ func CastDecodeMIMEToStringMap(mimeV flux.MIMEValue) (map[string]interface{}, er
 					mimeV.Value, mimeV.Value, mimeV.MIMEType)
 			}
 		}
-		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
+		decoder := ext.LoadSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
 		err := decoder.Unmarshal(data, &hashmap)
 		return hashmap, err
 	}
 }
 
-// CastDecodeMIMEToSliceList 最大努力地将值转换成[]any类型。
+// CastToArrayList 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
-func CastDecodeMIMEToSliceList(genericTypes []string, mimeV flux.MIMEValue) (interface{}, error) {
-	vType := reflect.TypeOf(mimeV.Value)
-	if vType.Kind() == reflect.Slice {
-		return mimeV.Value, nil
-	}
+func CastToArrayList(genericTypes []string, mimeV flux.MIMEValue) ([]interface{}, error) {
 	// SingleValue to arraylist
 	if len(genericTypes) > 0 {
 		typeClass := genericTypes[0]
-		resolver := ext.GetTypedValueResolver(typeClass)
+		resolver := ext.LoadTypedValueResolver(typeClass)
 		if v, err := resolver(typeClass, []string{}, mimeV); nil != err {
 			return nil, err
 		} else {

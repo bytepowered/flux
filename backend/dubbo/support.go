@@ -18,8 +18,8 @@ func AssembleHessianArguments(arguments []flux.Argument, ctx flux.Context) ([]st
 	size := len(arguments)
 	types := make([]string, size)
 	values := make([]hessian.Object, size)
-	lookup := ext.GetArgumentValueLookupFunc()
-	resolver := ext.GetArgumentValueResolveFunc()
+	lookup := ext.LoadArgumentValueLookupFunc()
+	resolver := ext.LoadArgumentValueResolveFunc()
 	for i, argument := range arguments {
 		types[i] = argument.Class
 		if flux.ArgumentTypePrimitive == argument.Type {

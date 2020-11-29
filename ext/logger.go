@@ -10,7 +10,7 @@ var (
 	_loggerFactory flux.LoggerFactory
 )
 
-func SetLoggerFactory(f flux.LoggerFactory) {
+func StoreLoggerFactory(f flux.LoggerFactory) {
 	_loggerFactory = pkg.RequireNotNil(f, "LoggerFactory is nil").(flux.LoggerFactory)
 }
 

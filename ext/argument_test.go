@@ -10,7 +10,7 @@ import (
 func Test_SetNilArgumentValueLookupFunc(t *testing.T) {
 	assert := assert2.New(t)
 	assert.Panicsf(func() {
-		SetArgumentValueLookupFunc(nil)
+		StoreArgumentValueLookupFunc(nil)
 	}, "Must panic")
 }
 
@@ -19,8 +19,8 @@ func Test_SetGetArgumentValueLookupFunc(t *testing.T) {
 	f1 := func(scope, key string, context flux.Context) (value flux.MIMEValue, err error) {
 		return flux.WrapTextMIMEValue("value"), nil
 	}
-	SetArgumentValueLookupFunc(f1)
-	f2 := GetArgumentValueLookupFunc()
+	StoreArgumentValueLookupFunc(f1)
+	f2 := LoadArgumentValueLookupFunc()
 	assert.Equal(reflect.ValueOf(f1).Pointer(), reflect.ValueOf(f2).Pointer(), "Must equals func")
 }
 

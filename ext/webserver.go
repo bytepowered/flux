@@ -8,10 +8,10 @@ type WebServerFactory func() flux.WebServer
 
 var _webServerFactory WebServerFactory
 
-func SetWebServerFactory(f WebServerFactory) {
+func StoreWebServerFactory(f WebServerFactory) {
 	_webServerFactory = f
 }
 
-func GetWebServerFactory() WebServerFactory {
+func LoadWebServerFactory() WebServerFactory {
 	return _webServerFactory
 }

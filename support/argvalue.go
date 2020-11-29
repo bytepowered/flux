@@ -54,11 +54,11 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 
 // 默认实现：查找Argument的值解析函数
 func DefaultArgumentValueResolveFunc(mtValue flux.MIMEValue, arg flux.Argument, ctx flux.Context) (interface{}, error) {
-	valueResolver := ext.GetTypedValueResolver(arg.Class)
+	valueResolver := ext.LoadTypedValueResolver(arg.Class)
 	if nil == valueResolver {
 		logger.TraceContext(ctx).Warnw("Not supported argument type",
 			"http.key", arg.HttpName, "arg.name", arg.Name, "class", arg.Class, "generic", arg.Generic)
-		valueResolver = ext.GetDefaultTypedValueResolver()
+		valueResolver = ext.LoadDefaultTypedValueResolver()
 	}
 	if value, err := valueResolver(arg.Class, arg.Generic, mtValue); nil != err {
 		logger.TraceContext(ctx).Warnw("Failed to resolve argument",

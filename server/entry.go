@@ -27,7 +27,7 @@ func InitDefaultLogger() {
 	sugar := NewZapLogger(config)
 	logger.SetSimpleLogger(sugar)
 	zap.ReplaceGlobals(sugar.Desugar())
-	ext.SetLoggerFactory(func(values context.Context) flux.Logger {
+	ext.StoreLoggerFactory(func(values context.Context) flux.Logger {
 		if nil == values {
 			return sugar
 		}

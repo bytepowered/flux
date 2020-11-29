@@ -12,7 +12,7 @@ import (
 var _ flux.WebServer = new(AdaptWebServer)
 
 func init() {
-	ext.SetWebServerFactory(NewAdaptWebServer)
+	ext.StoreWebServerFactory(NewAdaptWebServer)
 }
 
 func NewAdaptWebServer() flux.WebServer {

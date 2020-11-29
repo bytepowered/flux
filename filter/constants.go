@@ -1,4 +1,4 @@
-package buildin
+package filter
 
 const (
 	ConfigKeyCacheExpiration = "cache-expiration"

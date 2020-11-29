@@ -12,40 +12,42 @@ var (
 	_argumentValueResolveFunc flux.ArgumentValueResolveFunc
 )
 
-func SetArgumentValueLookupFunc(r flux.ArgumentValueLookupFunc) {
+func StoreArgumentValueLookupFunc(r flux.ArgumentValueLookupFunc) {
 	_argumentValueLookupFunc = pkg.RequireNotNil(r, "ArgumentValueLookupFunc is nil").(flux.ArgumentValueLookupFunc)
 }
 
-func GetArgumentValueLookupFunc() flux.ArgumentValueLookupFunc {
+func LoadArgumentValueLookupFunc() flux.ArgumentValueLookupFunc {
 	return _argumentValueLookupFunc
 }
 
-func SetArgumentValueResolveFunc(r flux.ArgumentValueResolveFunc) {
+func StoreArgumentValueResolveFunc(r flux.ArgumentValueResolveFunc) {
 	_argumentValueResolveFunc = pkg.RequireNotNil(r, "ArgumentValueResolveFunc is nil").(flux.ArgumentValueResolveFunc)
 }
 
-func GetArgumentValueResolveFunc() flux.ArgumentValueResolveFunc {
+func LoadArgumentValueResolveFunc() flux.ArgumentValueResolveFunc {
 	return _argumentValueResolveFunc
 }
 
 //// 构建参数值对象工具函数
 
 func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
+	name := pkg.RequireNotEmpty(argName, "argName is empty")
 	return flux.Argument{
-		Class:     typeClass,
+		Class:     pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
 		Type:      flux.ArgumentTypePrimitive,
-		Name:      argName,
-		HttpName:  argName,
+		Name:      name,
+		HttpName:  name,
 		HttpScope: flux.ScopeAuto,
 	}
 }
 
 func NewComplexArgument(typeClass, argName string) flux.Argument {
+	name := pkg.RequireNotEmpty(argName, "argName is empty")
 	return flux.Argument{
-		Class:     typeClass,
+		Class:     pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
 		Type:      flux.ArgumentTypeComplex,
-		Name:      argName,
-		HttpName:  argName,
+		Name:      name,
+		HttpName:  name,
 		HttpScope: flux.ScopeAuto,
 	}
 }

@@ -1,8 +1,10 @@
-package buildin
+package filter
 
 import (
+	"errors"
 	"fmt"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
@@ -10,7 +12,7 @@ import (
 )
 
 const (
-	TypeIdPermissionV2Filter = "PermissionV2Filter"
+	TypeIdPermissionV2Filter = "PermissionFilter"
 )
 
 const (
@@ -28,11 +30,11 @@ type (
 	// PermissionVerifyFunc 权限验证
 	// @return pass 对当前请求的权限验证是否通过；
 	// @return err 如果验证过程发生错误，返回error；
-	PermissionVerifyFunc func(ctx flux.Context) (report PermissionVerifyReport, err error)
+	PermissionVerifyFunc func(services []flux.BackendService, ctx flux.Context) (report PermissionVerifyReport, err error)
 )
 
-// PermissionV2Config 权限配置
-type PermissionV2Config struct {
+// PermissionConfig 权限配置
+type PermissionConfig struct {
 	SkipFunc   flux.FilterSkipper
 	VerifyFunc PermissionVerifyFunc
 }
@@ -46,25 +48,25 @@ func NewPermissionVerifyReport(success bool, errorCode, message string) Permissi
 	}
 }
 
-func NewPermissionV2Filter(c PermissionV2Config) *PermissionV2Filter {
-	return &PermissionV2Filter{
+func NewPermissionFilter(c PermissionConfig) *PermissionFilter {
+	return &PermissionFilter{
 		Configs: c,
 	}
 }
 
-// PermissionV2Filter 提供基于Endpoint.Permission元数据的权限验证
-type PermissionV2Filter struct {
+// PermissionFilter 提供基于Endpoint.Permission元数据的权限验证
+type PermissionFilter struct {
 	Disabled bool
-	Configs  PermissionV2Config
+	Configs  PermissionConfig
 }
 
-func (p *PermissionV2Filter) Init(config *flux.Configuration) error {
+func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		ConfigKeyDisabled: false,
 	})
 	p.Disabled = config.GetBool(ConfigKeyDisabled)
 	if p.Disabled {
-		logger.Info("Endpoint PermissionV2Filter was DISABLED!!")
+		logger.Info("Endpoint PermissionFilter was DISABLED!!")
 		return nil
 	}
 	if pkg.IsNil(p.Configs.SkipFunc) {
@@ -73,16 +75,16 @@ func (p *PermissionV2Filter) Init(config *flux.Configuration) error {
 		}
 	}
 	if pkg.IsNil(p.Configs.VerifyFunc) {
-		return fmt.Errorf("PermissionV2Filter.VerifyFunc is nil")
+		return fmt.Errorf("PermissionFilter.VerifyFunc is nil")
 	}
 	return nil
 }
 
-func (*PermissionV2Filter) TypeId() string {
+func (*PermissionFilter) TypeId() string {
 	return TypeIdPermissionV2Filter
 }
 
-func (p *PermissionV2Filter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
+func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	if p.Disabled {
 		return next
 	}
@@ -92,11 +94,24 @@ func (p *PermissionV2Filter) DoFilter(next flux.FilterHandler) flux.FilterHandle
 		}
 		// 必须开启Authorize才进行权限校验
 		endpoint := ctx.Endpoint()
-		permission := endpoint.Permission
-		if false == endpoint.Authorize || !permission.IsValid() {
+		plen := len(endpoint.Permissions)
+		if false == endpoint.Authorize || plen == 0 {
 			return next(ctx)
 		}
-		report, err := p.Configs.VerifyFunc(ctx)
+		services := make([]flux.BackendService, 0, plen)
+		for i, id := range endpoint.Permissions {
+			if srv, ok := ext.LoadBackendService(id); ok {
+				services[i] = srv
+			} else {
+				return &flux.StateError{
+					StatusCode: flux.StatusServerError,
+					ErrorCode:  flux.ErrorCodeGatewayInternal,
+					Message:    "PERMISSION:SERVICE:NOT_FOUND",
+					Internal:   errors.New("service not found, id: " + id),
+				}
+			}
+		}
+		report, err := p.Configs.VerifyFunc(services, ctx)
 		if nil != err {
 			if serr, ok := err.(*flux.StateError); ok {
 				return serr
@@ -119,27 +134,7 @@ func (p *PermissionV2Filter) DoFilter(next flux.FilterHandler) flux.FilterHandle
 	}
 }
 
-// InvokeService 执行权限验证的后端服务，获取响应结果；
-func (p *PermissionV2Filter) InvokeService(permission flux.PermissionService, ctx flux.Context) (interface{}, *flux.StateError) {
-	backend, ok := ext.GetBackend(permission.RpcProto)
-	if !ok {
-		return nil, &flux.StateError{
-			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    "PERMISSION:UNKNOWN_PROTOCOL",
-			Internal:   fmt.Errorf("unknown protocol:%s", permission.RpcProto),
-		}
-	}
-	// Invoke to check permission
-	resp, err := backend.Invoke(flux.BackendService{
-		RemoteHost: permission.RemoteHost,
-		Method:     permission.Method,
-		Interface:  permission.Interface,
-		Arguments:  permission.Arguments,
-	}, ctx)
-	if nil != err {
-		return nil, err
-	} else {
-		return resp, nil
-	}
+// Invoke 执行权限验证的后端服务，获取响应结果；
+func (p *PermissionFilter) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+	return backend.DoInvoke(service, ctx)
 }

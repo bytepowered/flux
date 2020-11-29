@@ -10,25 +10,29 @@ var (
 	_protoNamedBackendResponseDecoders = make(map[string]flux.BackendResponseDecoder, 4)
 )
 
-func SetBackend(protoName string, backend flux.Backend) {
+func StoreBackend(protoName string, backend flux.Backend) {
+	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
 	_protoNamedBackends[protoName] = pkg.RequireNotNil(backend, "Backend is nil").(flux.Backend)
 }
 
-func SetBackendResponseDecoder(protoName string, decoder flux.BackendResponseDecoder) {
+func StoreBackendResponseDecoder(protoName string, decoder flux.BackendResponseDecoder) {
+	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
 	_protoNamedBackendResponseDecoders[protoName] = pkg.RequireNotNil(decoder, "BackendResponseDecoder is nil").(flux.BackendResponseDecoder)
 }
 
-func GetBackend(protoName string) (flux.Backend, bool) {
+func LoadBackend(protoName string) (flux.Backend, bool) {
+	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
 	backend, ok := _protoNamedBackends[protoName]
 	return backend, ok
 }
 
-func GetBackendResponseDecoder(protoName string) (flux.BackendResponseDecoder, bool) {
+func LoadBackendResponseDecoder(protoName string) (flux.BackendResponseDecoder, bool) {
+	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
 	decoder, ok := _protoNamedBackendResponseDecoders[protoName]
 	return decoder, ok
 }
 
-func Backends() map[string]flux.Backend {
+func LoadBackends() map[string]flux.Backend {
 	m := make(map[string]flux.Backend, len(_protoNamedBackends))
 	for p, e := range _protoNamedBackends {
 		m[p] = e

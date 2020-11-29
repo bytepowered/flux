@@ -8,26 +8,31 @@ import (
 )
 
 const (
-	_typeApplication = "application"
-	_typeProtocol    = "protocol"
-	_typeHttpPattern = "http-pattern"
-	_typeInterface   = "interface"
+	_typeApplication  = "application"
+	_typeProtocol     = "protocol"
+	_typeHttpPattern  = "http-pattern"
+	_typeHttpPattern0 = "httpPattern"
+	_typeHttpPattern1 = "httppattern"
+	_typeInterface    = "interface"
 )
 
-type _filter func(ep *MultiVersionEndpoint) bool
+type _filter func(ep *BindEndpoint) bool
 
 // 支持以下过滤条件
-var _typeKeys = []string{"application", "protocol", "http-pattern", "interface"}
+var _typeKeys = []string{_typeApplication, _typeProtocol,
+	_typeHttpPattern, _typeHttpPattern0, _typeHttpPattern1,
+	_typeInterface,
+}
 
 var (
 	_filterFactories = make(map[string]func(string) _filter)
 )
 
-func DebugQueryEndpoint(datamap map[string]*MultiVersionEndpoint) http.HandlerFunc {
+func DebugQueryEndpoint(datamap map[string]*BindEndpoint) http.HandlerFunc {
 	// Endpoint查询
-	serializer := ext.GetSerializer(ext.TypeNameSerializerJson)
+	serializer := ext.LoadSerializer(ext.TypeNameSerializerJson)
 	return func(writer http.ResponseWriter, request *http.Request) {
-		data := queryEndpoints(datamap, request)
+		data := _queryEndpoints(datamap, request)
 		if data, err := serializer.Marshal(data); nil != err {
 			writer.WriteHeader(http.StatusInternalServerError)
 			_, _ = writer.Write([]byte(err.Error()))
@@ -40,29 +45,38 @@ func DebugQueryEndpoint(datamap map[string]*MultiVersionEndpoint) http.HandlerFu
 
 func init() {
 	_filterFactories[_typeApplication] = func(query string) _filter {
-		return func(ep *MultiVersionEndpoint) bool {
-			return query == ep.RandomVersion().Application
+		return func(ep *BindEndpoint) bool {
+			return _queryMatch(query, ep.RandomVersion().Application)
 		}
 	}
 	_filterFactories[_typeProtocol] = func(query string) _filter {
-		return func(ep *MultiVersionEndpoint) bool {
+		return func(ep *BindEndpoint) bool {
 			proto := ep.RandomVersion().Service.RpcProto
-			return strings.ToLower(query) == strings.ToLower(proto)
+			return _queryMatch(query, proto)
 		}
 	}
-	_filterFactories[_typeHttpPattern] = func(query string) _filter {
-		return func(ep *MultiVersionEndpoint) bool {
-			return query == ep.RandomVersion().HttpPattern
+	httpPatternFilter := func(query string) _filter {
+		return func(ep *BindEndpoint) bool {
+			return _queryMatch(query, ep.RandomVersion().HttpPattern)
 		}
 	}
+	_filterFactories[_typeHttpPattern] = httpPatternFilter
+	_filterFactories[_typeHttpPattern0] = httpPatternFilter
+	_filterFactories[_typeHttpPattern1] = httpPatternFilter
+
 	_filterFactories[_typeInterface] = func(query string) _filter {
-		return func(ep *MultiVersionEndpoint) bool {
-			return query == ep.RandomVersion().Service.Interface
+		return func(ep *BindEndpoint) bool {
+			return _queryMatch(query, ep.RandomVersion().Service.Interface)
 		}
 	}
 }
 
-func queryEndpoints(data map[string]*MultiVersionEndpoint, request *http.Request) interface{} {
+func _queryMatch(input, expected string) bool {
+	input, expected = strings.ToLower(input), strings.ToLower(expected)
+	return input == expected || strings.Contains(expected, input)
+}
+
+func _queryEndpoints(data map[string]*BindEndpoint, request *http.Request) interface{} {
 	filters := make([]_filter, 0)
 	query := request.URL.Query()
 	for _, key := range _typeKeys {
@@ -82,7 +96,7 @@ func queryEndpoints(data map[string]*MultiVersionEndpoint, request *http.Request
 	return _queryWithFilters(data, filters...)
 }
 
-func _queryWithFilters(data map[string]*MultiVersionEndpoint, filters ..._filter) []map[string]*flux.Endpoint {
+func _queryWithFilters(data map[string]*BindEndpoint, filters ..._filter) []map[string]*flux.Endpoint {
 	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {

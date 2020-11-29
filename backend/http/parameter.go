@@ -10,8 +10,8 @@ import (
 
 func _toHttpUrlValues(arguments []flux.Argument, ctx flux.Context) (url.Values, error) {
 	values := make(url.Values, len(arguments))
-	lookup := ext.GetArgumentValueLookupFunc()
-	resolver := ext.GetArgumentValueResolveFunc()
+	lookup := ext.LoadArgumentValueLookupFunc()
+	resolver := ext.LoadArgumentValueResolveFunc()
 	for _, arg := range arguments {
 		if value, err := backend.LookupResolveWith(arg, lookup, resolver, ctx); nil != err {
 			return nil, err

@@ -44,6 +44,6 @@ type TypedValueResolver func(class string, generics []string, mimeValue MIMEValu
 // TypedValueResolveWrapper 包装转换函数
 type TypedValueResolveWrapper func(in interface{}) (value interface{}, err error)
 
-func (f TypedValueResolveWrapper) ResolveMIME(_ string, _ []string, mimeValue MIMEValue) (value interface{}, err error) {
+func (f TypedValueResolveWrapper) ResolveFunc(_ string, _ []string, mimeValue MIMEValue) (value interface{}, err error) {
 	return f(mimeValue.Value)
 }
