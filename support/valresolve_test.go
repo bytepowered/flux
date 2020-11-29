@@ -37,7 +37,7 @@ func Benchmark_QueryToJsonBytes(b *testing.B) {
 //// ArrayList
 
 func TestValueToArrayList_Int(t *testing.T) {
-	a1, err := CastToArrayList([]string{"int"}, flux.MIMEValue{Value: "123", MIMEType: "text"})
+	a1, err := CastDecodeMIMEToSliceList([]string{"int"}, flux.MIMEValue{Value: "123", MIMEType: "text"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -45,24 +45,40 @@ func TestValueToArrayList_Int(t *testing.T) {
 }
 
 func TestValueToArrayList_String(t *testing.T) {
-	a1, err := CastToArrayList([]string{"string"}, flux.MIMEValue{Value: "123", MIMEType: "text"})
+	a1, err := CastDecodeMIMEToSliceList([]string{"string"}, flux.MIMEValue{Value: "123", MIMEType: "text"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
 	assert.Equal([]interface{}{"123"}, a1)
 }
 
+func TestValueToArrayList_SliceInt(t *testing.T) {
+	a1, err := CastDecodeMIMEToSliceList([]string{"int"}, flux.MIMEValue{Value: []int{123, 456}, MIMEType: flux.ValueMIMETypeGoObject})
+	assert := assert2.New(t)
+	assert.NoError(err)
+	fmt.Println(a1)
+	assert.Equal([]int{123, 456}, a1)
+}
+
+func TestValueToArrayList_SliceString(t *testing.T) {
+	a1, err := CastDecodeMIMEToSliceList([]string{"int"}, flux.MIMEValue{Value: []string{"123", "456"}, MIMEType: flux.ValueMIMETypeGoObject})
+	assert := assert2.New(t)
+	assert.NoError(err)
+	fmt.Println(a1)
+	assert.Equal([]string{"123", "456"}, a1)
+}
+
 //// StringMap
 
 func TestCastToStringMapUnsupportedError(t *testing.T) {
 	assert := assert2.New(t)
-	_, err1 := CastDecodeToStringMap(flux.MIMEValue{Value: "123", MIMEType: "unknown"})
+	_, err1 := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: "123", MIMEType: "unknown"})
 	assert.Error(err1)
 }
 
 func TestCastToStringMap_Text(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: `{"k":1,"e":"a"}`, MIMEType: flux.ValueMIMETypeGoText})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: `{"k":1,"e":"a"}`, MIMEType: flux.ValueMIMETypeGoText})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -71,7 +87,7 @@ func TestCastToStringMap_Text(t *testing.T) {
 
 func TestCastToStringMap_JSONText(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: `{"k":1,"e":"a"}`, MIMEType: "application/json"})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: `{"k":1,"e":"a"}`, MIMEType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -80,7 +96,7 @@ func TestCastToStringMap_JSONText(t *testing.T) {
 
 func TestCastToStringMap_JSONBytes(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: []byte(`{"k":1,"e":"a"}`), MIMEType: "application/json"})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: []byte(`{"k":1,"e":"a"}`), MIMEType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -89,7 +105,7 @@ func TestCastToStringMap_JSONBytes(t *testing.T) {
 
 func TestCastToStringMap_JSONReader(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: ioutil.NopCloser(strings.NewReader(`{"k":1,"e":"a"}`)), MIMEType: "application/json"})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: ioutil.NopCloser(strings.NewReader(`{"k":1,"e":"a"}`)), MIMEType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -98,7 +114,7 @@ func TestCastToStringMap_JSONReader(t *testing.T) {
 
 func TestCastToStringMap_QueryText(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: `k=1&e=a`, MIMEType: "application/x-www-form-urlencoded"})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: `k=1&e=a`, MIMEType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -107,7 +123,7 @@ func TestCastToStringMap_QueryText(t *testing.T) {
 
 func TestCastToStringMap_QueryBytes(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: []byte(`k=1&e=a`), MIMEType: "application/x-www-form-urlencoded"})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: []byte(`k=1&e=a`), MIMEType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -116,7 +132,7 @@ func TestCastToStringMap_QueryBytes(t *testing.T) {
 
 func TestCastToStringMap_QueryReader(t *testing.T) {
 	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: ioutil.NopCloser(strings.NewReader(`k=1&e=a`)), MIMEType: "application/x-www-form-urlencoded"})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: ioutil.NopCloser(strings.NewReader(`k=1&e=a`)), MIMEType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -125,7 +141,7 @@ func TestCastToStringMap_QueryReader(t *testing.T) {
 
 func TestCastToStringMap_Object1(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeGoObject})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])
@@ -133,7 +149,7 @@ func TestCastToStringMap_Object1(t *testing.T) {
 
 func TestCastToStringMap_Object2(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := CastDecodeToStringMap(flux.MIMEValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeGoObject})
+	sm, err := CastDecodeMIMEToStringMap(flux.MIMEValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MIMEType: flux.ValueMIMETypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])

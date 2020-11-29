@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"reflect"
 	"strings"
 )
 
@@ -19,34 +20,34 @@ var (
 
 var (
 	stringResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMEValue) (interface{}, error) {
-		return CastDecodeToString(value)
+		return CastDecodeMIMEToString(value)
 	})
 	integerResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToInt(value), nil
-	}).ResolveFunc
+	}).ResolveMIME
 	longResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToInt64(value), nil
-	}).ResolveFunc
+	}).ResolveMIME
 	float32Resolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat32(value), nil
-	}).ResolveFunc
+	}).ResolveMIME
 	float64Resolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToFloat64(value), nil
-	}).ResolveFunc
+	}).ResolveMIME
 	booleanResolver = flux.TypedValueResolveWrapper(func(value interface{}) (interface{}, error) {
 		return cast.ToBool(value), nil
-	}).ResolveFunc
+	}).ResolveMIME
 	mapResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMEValue) (interface{}, error) {
-		return CastDecodeToStringMap(value)
+		return CastDecodeMIMEToStringMap(value)
 	})
 	listResolver = flux.TypedValueResolver(func(_ string, genericTypes []string, value flux.MIMEValue) (interface{}, error) {
-		return CastToArrayList(genericTypes, value)
+		return CastDecodeMIMEToSliceList(genericTypes, value)
 	})
-	defaultResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, value flux.MIMEValue) (interface{}, error) {
+	complexObjectResolver = flux.TypedValueResolver(func(typeClass string, typeGeneric []string, mimeValue flux.MIMEValue) (interface{}, error) {
 		return map[string]interface{}{
 			"class":   typeClass,
 			"generic": typeGeneric,
-			"value":   value,
+			"value":   mimeValue.Value,
 		}, nil
 	})
 )
@@ -85,12 +86,18 @@ func init() {
 	ext.SetTypedValueResolver("List", listResolver)
 	ext.SetTypedValueResolver(flux.JavaUtilListClassName, listResolver)
 
-	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, defaultResolver)
+	ext.SetTypedValueResolver(ext.DefaultTypedValueResolverName, complexObjectResolver)
 }
 
-// CastDecodeToString 最大努力地将值转换成String类型。
+// CastDecodeMIMEToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
-func CastDecodeToString(mimeV flux.MIMEValue) (string, error) {
+func CastDecodeMIMEToString(mimeV flux.MIMEValue) (string, error) {
+	if str, ok := mimeV.Value.(string); ok {
+		return str, nil
+	}
+	if data, ok := mimeV.Value.([]byte); ok {
+		return string(data), nil
+	}
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeGoText:
 		return mimeV.Value.(string), nil
@@ -114,9 +121,9 @@ func CastDecodeToString(mimeV flux.MIMEValue) (string, error) {
 	}
 }
 
-// CastDecodeToStringMap 最大努力地将值转换成map[string]any类型。
+// CastDecodeMIMEToStringMap 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
-func CastDecodeToStringMap(mimeV flux.MIMEValue) (map[string]interface{}, error) {
+func CastDecodeMIMEToStringMap(mimeV flux.MIMEValue) (map[string]interface{}, error) {
 	switch mimeV.MIMEType {
 	case flux.ValueMIMETypeGoStringMap:
 		return cast.ToStringMap(mimeV.Value), nil
@@ -165,9 +172,13 @@ func CastDecodeToStringMap(mimeV flux.MIMEValue) (map[string]interface{}, error)
 	}
 }
 
-// CastToArrayList 最大努力地将值转换成[]any类型。
+// CastDecodeMIMEToSliceList 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
-func CastToArrayList(genericTypes []string, mimeV flux.MIMEValue) ([]interface{}, error) {
+func CastDecodeMIMEToSliceList(genericTypes []string, mimeV flux.MIMEValue) (interface{}, error) {
+	vType := reflect.TypeOf(mimeV.Value)
+	if vType.Kind() == reflect.Slice {
+		return mimeV.Value, nil
+	}
 	// SingleValue to arraylist
 	if len(genericTypes) > 0 {
 		typeClass := genericTypes[0]
