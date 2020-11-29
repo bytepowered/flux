@@ -60,10 +60,10 @@ var (
 // Server
 type HttpWebServer struct {
 	webServer                  flux.WebServer
+	internalServer             *http.Server
 	serverResponseWriter       flux.ServerResponseWriter
 	serverErrorsWriter         flux.ServerErrorsWriter
 	serverContextExchangeHooks []flux.ServerContextExchangeHook
-	debugServer                *http.Server
 	httpConfig                 *flux.Configuration
 	httpVersionHeader          string
 	routerEngine               *RouterEngine
@@ -118,15 +118,16 @@ func (s *HttpWebServer) Initial() error {
 	headers := s.httpConfig.GetStringSlice(HttpWebServerConfigKeyRequestIdHeaders)
 	s.AddWebInterceptor(webmidware.NewRequestIdMiddlewareWithinHeader(headers...))
 
+	// Internal Web Server
+	internalPort := s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)
+	s.internalServer = &http.Server{
+		Handler: http.DefaultServeMux,
+		Addr:    fmt.Sprintf("0.0.0.0:%d", internalPort),
+	}
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
-		servemux := http.DefaultServeMux
-		s.debugServer = &http.Server{
-			Handler: servemux,
-			Addr:    fmt.Sprintf("0.0.0.0:%d", s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)),
-		}
-		servemux.Handle("/debug/endpoints", DebugQueryEndpoint(s.mvEndpointMap))
-		servemux.Handle("/debug/metrics", promhttp.Handler())
+		http.DefaultServeMux.Handle("/debug/endpoints", DebugQueryEndpoint(s.mvEndpointMap))
+		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
 	}
 
 	// Endpoint registry
@@ -169,10 +170,10 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
 	// Start Servers
-	if s.debugServer != nil {
+	if s.internalServer != nil {
 		go func() {
-			logger.Infow("DebugServer starting", "address", s.debugServer.Addr)
-			_ = s.debugServer.ListenAndServe()
+			logger.Infow("DebugServer starting", "address", s.internalServer.Addr)
+			_ = s.internalServer.ListenAndServe()
 		}()
 	}
 	logger.Infow("HttpWebServer starting", "address", address, "cert", certFile, "key", keyFile)
@@ -183,8 +184,8 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 func (s *HttpWebServer) Shutdown(ctx context.Context) error {
 	logger.Info("HttpWebServer shutdown...")
 	defer close(s.stateStopped)
-	if s.debugServer != nil {
-		_ = s.debugServer.Close()
+	if s.internalServer != nil {
+		_ = s.internalServer.Close()
 	}
 	if err := s.webServer.Shutdown(ctx); nil != err {
 		return err
@@ -233,8 +234,12 @@ func (s *HttpWebServer) WebServer() flux.WebServer {
 }
 
 // DebugServer 返回DebugServer实例，以及实体是否有效
-func (s *HttpWebServer) DebugServer() (*http.Server, bool) {
-	return s.debugServer, nil != s.debugServer
+func (s *HttpWebServer) InternalServer() *http.Server {
+	return s.internalServer
+}
+
+func (s *HttpWebServer) AddInnerHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
+	s.ensure().webServer.AddWebHandler(method, pattern, h, m...)
 }
 
 // SetServerResponseWriter 设置Http响应数据写入的处理接口
