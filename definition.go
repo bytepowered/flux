@@ -1,5 +1,7 @@
 package flux
 
+import "github.com/spf13/cast"
+
 type (
 	EventType int
 )
@@ -78,6 +80,38 @@ type BackendService struct {
 	RpcTimeout string                 `json:"rpcTimeout"` // Service侧的调用超时
 	RpcRetries string                 `json:"rpcRetries"` // Service侧的调用重试
 	Extensions map[string]interface{} `json:"extensions"` // 扩展信息
+}
+
+func (b BackendService) Extension(name string) (interface{}, bool) {
+	v, ok := b.Extensions[name]
+	return v, ok
+}
+
+func (b BackendService) ExtensionString(name string) string {
+	v, ok := b.Extensions[name]
+	if ok {
+		return cast.ToString(v)
+	} else {
+		return ""
+	}
+}
+
+func (b BackendService) ExtensionBool(name string) bool {
+	v, ok := b.Extensions[name]
+	if ok {
+		return cast.ToBool(v)
+	} else {
+		return false
+	}
+}
+
+func (b BackendService) ExtensionInt(name string) int {
+	v, ok := b.Extensions[name]
+	if ok {
+		return cast.ToInt(v)
+	} else {
+		return 0
+	}
 }
 
 // IsValid 判断服务配置是否有效；Proto+Interface+Method不能为空；
