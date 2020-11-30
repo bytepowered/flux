@@ -277,7 +277,6 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 			url, _ := webc.RequestURL()
 			logger.Trace(requestId).Infow("HttpWebServer route not found",
 				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
-				"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
 			)
 		}
 		return s.serverErrorsWriter(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
