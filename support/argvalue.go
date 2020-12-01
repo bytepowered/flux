@@ -57,13 +57,13 @@ func DefaultArgumentValueResolveFunc(mtValue flux.MIMEValue, arg flux.Argument, 
 	valueResolver := ext.GetTypedValueResolver(arg.Class)
 	if nil == valueResolver {
 		logger.TraceContext(ctx).Warnw("Not supported argument type",
-			"http.key", arg.HttpName, "arg.name", arg.Name, "class", arg.Class, "generic", arg.Generic)
+			"http.key", arg.HttpName, "arg.name", arg.Name, "resolver-class", arg.Class, "generic", arg.Generic)
 		valueResolver = ext.GetDefaultTypedValueResolver()
 	}
 	if value, err := valueResolver(arg.Class, arg.Generic, mtValue); nil != err {
 		logger.TraceContext(ctx).Warnw("Failed to resolve argument",
-			"http.key", arg.HttpName, "arg.name", arg.Name, "class", arg.Class, "generic", arg.Generic,
-			"http.value", mtValue.Value, "error", err)
+			"http.key", arg.HttpName, "arg.name", arg.Name, "value-class", arg.Class, "generic", arg.Generic,
+			"mime.value", mtValue.Value, "mime.type", mtValue.MIMEType, "error", err)
 		return nil, fmt.Errorf("PARAMETERS:RESOLVE_VALUE:%w", err)
 	} else {
 		return value, nil

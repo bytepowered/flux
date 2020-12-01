@@ -92,32 +92,22 @@ func init() {
 // CastDecodeMIMEToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
 func CastDecodeMIMEToString(mimeV flux.MIMEValue) (string, error) {
-	if str, ok := mimeV.Value.(string); ok {
+	// 可直接转String类型：
+	if str, err := cast.ToStringE(mimeV.Value); nil == err {
 		return str, nil
 	}
-	if data, ok := mimeV.Value.([]byte); ok {
-		return string(data), nil
-	}
-	switch mimeV.MIMEType {
-	case flux.ValueMIMETypeGoText:
-		return mimeV.Value.(string), nil
-	case flux.ValueMIMETypeGoStringMap:
+	if data, err := _toBytes0(mimeV.Value); nil != err {
+		if err != errCastToByteTypeNotSupported {
+			return "", err
+		}
 		decoder := ext.GetSerializer(ext.TypeNameSerializerJson)
 		if data, err := decoder.Marshal(mimeV.Value); nil != err {
 			return "", err
 		} else {
 			return string(data), nil
 		}
-	default:
-		if data, err := _toBytes0(mimeV.Value); nil != err {
-			if errCastToByteTypeNotSupported == err {
-				return cast.ToStringE(mimeV.Value)
-			} else {
-				return "", err
-			}
-		} else {
-			return string(data), nil
-		}
+	} else {
+		return string(data), nil
 	}
 }
 
