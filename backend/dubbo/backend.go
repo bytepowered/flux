@@ -3,6 +3,7 @@ package dubbo
 import (
 	"context"
 	"errors"
+	"fmt"
 	_ "github.com/apache/dubbo-go/cluster/cluster_impl"
 	_ "github.com/apache/dubbo-go/cluster/loadbalance"
 	"github.com/apache/dubbo-go/common/constant"
@@ -181,7 +182,8 @@ func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service 
 		}
 	} else {
 		if ex.traceEnable {
-			logger.TraceContext(ctx).Infow("Dubbo returned", "service", serviceName, "response.type", reflect.TypeOf(resp))
+			logger.TraceContext(ctx).Infow("Dubbo received response", "service", serviceName,
+				"data.type", reflect.TypeOf(resp), "data.value", fmt.Sprintf("%+v", resp))
 		}
 		return resp, nil
 	}
