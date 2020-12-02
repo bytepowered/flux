@@ -94,14 +94,22 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		}
 		// 必须开启Authorize才进行权限校验
 		endpoint := ctx.Endpoint()
-		plen := len(endpoint.Permissions)
-		if false == endpoint.Authorize || plen == 0 {
+		if false == endpoint.Authorize {
 			return next(ctx)
 		}
-		services := make([]flux.BackendService, 0, plen)
-		for i, id := range endpoint.Permissions {
+		// 没有任何权限校验定义
+		size := len(endpoint.Permissions)
+		if size == 0 && !endpoint.Permission.IsValid() {
+			return next(ctx)
+		}
+		services := make([]flux.BackendService, 0, 1+size)
+		// Define permission first
+		if endpoint.Permission.IsValid() {
+			services = append(services, endpoint.Permission)
+		}
+		for _, id := range endpoint.Permissions {
 			if srv, ok := ext.LoadBackendService(id); ok {
-				services[i] = srv
+				services = append(services, srv)
 			} else {
 				return &flux.StateError{
 					StatusCode: flux.StatusServerError,
@@ -125,9 +133,9 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		}
 		if !report.Success {
 			return &flux.StateError{
-				StatusCode: report.StatusCode,
-				ErrorCode:  report.ErrorCode,
-				Message:    report.Message,
+				StatusCode: EnsurePermissionStatusCode(report.StatusCode),
+				ErrorCode:  EnsurePermissionErrorCode(report.ErrorCode),
+				Message:    EnsurePermissionMessage(report.Message),
 			}
 		}
 		return next(ctx)
@@ -137,4 +145,25 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 // Invoke 执行权限验证的后端服务，获取响应结果；
 func (p *PermissionFilter) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
 	return backend.DoInvoke(service, ctx)
+}
+
+func EnsurePermissionStatusCode(status int) int {
+	if status < 100 {
+		return http.StatusForbidden
+	}
+	return status
+}
+
+func EnsurePermissionErrorCode(code string) string {
+	if "" == code {
+		return ErrorCodePermissionDenied
+	}
+	return code
+}
+
+func EnsurePermissionMessage(message string) string {
+	if "" == message {
+		return ErrorCodePermissionDenied
+	}
+	return message
 }
