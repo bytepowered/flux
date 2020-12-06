@@ -138,7 +138,7 @@ type Endpoint struct {
 }
 
 func (e Endpoint) IsValid() bool {
-	return "" != e.HttpMethod && "" != e.HttpPattern
+	return "" != e.HttpMethod && "" != e.HttpPattern && e.Service.IsValid()
 }
 
 // HttpEndpointEvent  定义从注册中心接收到的Endpoint数据变更
