@@ -20,6 +20,21 @@ var toMarshalJsonData = []_serializeKvPair{
 	{Name: "user.age", Value: "18"},
 }
 
+func TestJsonCase(t *testing.T) {
+	m := map[interface{}]interface{}{
+		"isDefault":  true,
+		"is_success": false,
+		"long":       12345678901234,
+		"double":     1234567890.123456,
+	}
+	serializer := NewJsonSerializer()
+	b, err := serializer.Marshal(m)
+	if nil != err {
+		t.Fatal(err)
+	}
+	t.Logf("==> %s", string(b))
+}
+
 func Benchmark_SerializeUnmarshal(b *testing.B) {
 	serializer := NewJsonSerializer()
 	_BenchmarkUnmarshalWith(b, serializer.Unmarshal)

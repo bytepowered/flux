@@ -118,15 +118,16 @@ func (s *HttpWebServer) Initial() error {
 	headers := s.httpConfig.GetStringSlice(HttpWebServerConfigKeyRequestIdHeaders)
 	s.AddWebInterceptor(webmidware.NewRequestIdMiddlewareWithinHeader(headers...))
 
+	// Internal Web Server
+	internalPort := s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)
+	s.debugServer = &http.Server{
+		Handler: http.DefaultServeMux,
+		Addr:    fmt.Sprintf("0.0.0.0:%d", internalPort),
+	}
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
-		servemux := http.DefaultServeMux
-		s.debugServer = &http.Server{
-			Handler: servemux,
-			Addr:    fmt.Sprintf("0.0.0.0:%d", s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)),
-		}
-		servemux.Handle("/debug/endpoints", DebugQueryEndpoint(s.bindEndpoint))
-		servemux.Handle("/debug/metrics", promhttp.Handler())
+		http.DefaultServeMux.Handle("/debug/endpoints", DebugQueryEndpoint(s.bindEndpoint))
+		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
 	}
 
 	// Endpoint registry
