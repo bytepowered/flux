@@ -124,6 +124,11 @@ func (b BackendService) HasArgs() bool {
 	return len(b.Arguments) > 0
 }
 
+// ServiceID 构建标识当前服务的ID
+func (b BackendService) ServiceID() string {
+	return b.Interface + ":" + b.Method
+}
+
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
 	Application string                 `json:"application"` // 所属应用名

@@ -2,7 +2,8 @@ package dubbo
 
 import (
 	"context"
-	"github.com/apache/dubbo-go-hessian2"
+
+	hessian "github.com/apache/dubbo-go-hessian2"
 	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/backend"
@@ -66,8 +67,9 @@ func ComplexToMap(argument flux.Argument, lookup flux.ArgumentValueLookupFunc, r
 
 func NewReference(refid string, service *flux.BackendService, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("Create dubbo reference-config",
-		"service", service.Interface, "group", service.RpcGroup, "version", service.RpcVersion)
+		"service", service.Interface, "remote-host", service.RemoteHost, "rpc-group", service.RpcGroup, "rpc-version", service.RpcVersion)
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
+	ref.Url = service.RemoteHost
 	ref.InterfaceName = service.Interface
 	ref.Version = service.RpcVersion
 	ref.Group = service.RpcGroup

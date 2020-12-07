@@ -2,38 +2,43 @@ package ext
 
 import (
 	"fmt"
-	"github.com/bytepowered/flux"
 	"sync"
+
+	"github.com/bytepowered/flux"
 )
 
 var (
 	_serviceNotFound flux.BackendService
-	_servicesMap     *sync.Map
+	_servicesMap     *sync.Map = new(sync.Map)
 )
 
+// StoreBackendService store backend service
 func StoreBackendService(service flux.BackendService) {
-	id := _ensureServiceId(&service)
+	id := _ensureServiceID(&service)
 	_servicesMap.Store(id, service)
 }
 
-func LoadBackendService(serviceId string) (flux.BackendService, bool) {
-	v, ok := _servicesMap.Load(serviceId)
+// LoadBackendService load backend service by serviceId
+func LoadBackendService(serviceID string) (flux.BackendService, bool) {
+	v, ok := _servicesMap.Load(serviceID)
 	if ok {
 		return v.(flux.BackendService), true
 	}
 	return _serviceNotFound, false
 }
 
-func RemoveBackendService(serviceId string) {
-	_servicesMap.Delete(serviceId)
+// RemoveBackendService remove backend service by serviceId
+func RemoveBackendService(serviceID string) {
+	_servicesMap.Delete(serviceID)
 }
 
-func HasBackendService(serviceId string) bool {
-	_, ok := _servicesMap.Load(serviceId)
+// HasBackendService check service exists by service id
+func HasBackendService(serviceID string) bool {
+	_, ok := _servicesMap.Load(serviceID)
 	return ok
 }
 
-func _ensureServiceId(service *flux.BackendService) string {
+func _ensureServiceID(service *flux.BackendService) string {
 	id := service.ServiceId
 	if "" == id {
 		id = service.Interface + ":" + service.Method

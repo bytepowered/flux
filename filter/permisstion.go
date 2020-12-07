@@ -3,12 +3,13 @@ package filter
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	"net/http"
 )
 
 const (
@@ -92,12 +93,8 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		if p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
-		// 必须开启Authorize才进行权限校验
-		endpoint := ctx.Endpoint()
-		if false == endpoint.Authorize {
-			return next(ctx)
-		}
 		// 没有任何权限校验定义
+		endpoint := ctx.Endpoint()
 		size := len(endpoint.Permissions)
 		if size == 0 && !endpoint.Permission.IsValid() {
 			return next(ctx)

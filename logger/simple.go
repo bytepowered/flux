@@ -8,8 +8,14 @@ var (
 	_simLogger flux.Logger
 )
 
+// SetSimpleLogger set simple logger instance
 func SetSimpleLogger(logger flux.Logger) {
 	_simLogger = logger
+}
+
+// SimpleLogger get a simple logger instance
+func SimpleLogger() flux.Logger {
+	return _simLogger
 }
 
 // Info ...

@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/remoting"
 	"github.com/bytepowered/flux/remoting/zk"
-	"time"
 )
 
 const (
@@ -23,20 +24,23 @@ var (
 
 // ZookeeperMetadataRegistry 基于ZK节点树实现的Endpoint元数据注册中心
 type ZookeeperMetadataRegistry struct {
-	endpointRootPath string
-	endpointEvents   chan flux.HttpEndpointEvent
-	serviceRootPath  string
-	serviceEvents    chan flux.BackendServiceEvent
-	retriever        *zk.ZookeeperRetriever
+	endpointPath   string
+	endpointEvents chan flux.HttpEndpointEvent
+	servicePath    string
+	serviceEvents  chan flux.BackendServiceEvent
+	retriever      *zk.ZookeeperRetriever
 }
 
+// ZkEndpointRegistryFactory Factory func to new a zookeeper registry
 func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 	return &ZookeeperMetadataRegistry{
 		retriever:      zk.NewZookeeperRetriever(),
 		endpointEvents: make(chan flux.HttpEndpointEvent, 4),
+		serviceEvents:  make(chan flux.BackendServiceEvent, 4),
 	}
 }
 
+// Init init registry
 func (r *ZookeeperMetadataRegistry) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		"endpoint-path": zkRegistryHttpEndpointPath,
@@ -50,15 +54,16 @@ func (r *ZookeeperMetadataRegistry) Init(config *flux.Configuration) error {
 		"password": "zookeeper.password",
 		"database": "zookeeper.database",
 	})
-	r.endpointRootPath = config.GetString("endpoint-path")
-	r.serviceRootPath = config.GetString("service-path")
-	if r.endpointRootPath == "" || r.serviceRootPath == "" {
+	r.endpointPath = config.GetString("endpoint-path")
+	r.servicePath = config.GetString("service-path")
+	if r.endpointPath == "" || r.servicePath == "" {
 		return errors.New("config(endpoint-path, service-path) is empty")
 	} else {
 		return r.retriever.Init(config)
 	}
 }
 
+// WatchHttpEndpoints Listen http endpoints events
 func (r *ZookeeperMetadataRegistry) WatchHttpEndpoints() (<-chan flux.HttpEndpointEvent, error) {
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
@@ -70,13 +75,15 @@ func (r *ZookeeperMetadataRegistry) WatchHttpEndpoints() (<-chan flux.HttpEndpoi
 			r.endpointEvents <- evt
 		}
 	}
-	if err := r.watch(r.endpointRootPath, listener); err != nil {
+	logger.Infow("Zookeeper start listen endpoints node", "node-path", r.endpointPath)
+	if err := r.watch(r.endpointPath, listener); err != nil {
 		return nil, err
 	} else {
 		return r.endpointEvents, err
 	}
 }
 
+// WatchBackendServices Listen gateway services events
 func (r *ZookeeperMetadataRegistry) WatchBackendServices() (<-chan flux.BackendServiceEvent, error) {
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
@@ -88,7 +95,8 @@ func (r *ZookeeperMetadataRegistry) WatchBackendServices() (<-chan flux.BackendS
 			r.serviceEvents <- evt
 		}
 	}
-	if err := r.watch(r.serviceRootPath, listener); err != nil {
+	logger.Infow("Zookeeper start listen services node", "node-path", r.servicePath)
+	if err := r.watch(r.servicePath, listener); err != nil {
 		return nil, err
 	} else {
 		return r.serviceEvents, err
@@ -112,11 +120,13 @@ func (r *ZookeeperMetadataRegistry) watch(rootpath string, nodeListener func(rem
 	})
 }
 
+// Startup Startup registry
 func (r *ZookeeperMetadataRegistry) Startup() error {
 	logger.Info("Startup registry")
 	return r.retriever.Startup()
 }
 
+// Shutdown Startup registry
 func (r *ZookeeperMetadataRegistry) Shutdown(ctx context.Context) error {
 	logger.Info("Shutdown registry")
 	close(r.endpointEvents)

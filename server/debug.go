@@ -8,80 +8,99 @@ import (
 )
 
 const (
-	_typeApplication  = "application"
-	_typeProtocol     = "protocol"
-	_typeHttpPattern  = "http-pattern"
-	_typeHttpPattern0 = "httpPattern"
-	_typeHttpPattern1 = "httppattern"
-	_typeInterface    = "interface"
+	queryKeyApplication  = "application"
+	queryKeyProtocol     = "protocol"
+	queryKeyHttpPattern  = "http-pattern"
+	queryKeyHttpPattern0 = "httpPattern"
+	queryKeyHttpPattern1 = "httppattern"
+	queryKeyInterface    = "interface"
+	queryKeyServiceId    = "serviceid"
+	queryKeyServiceId0   = "service-id"
+	queryKeyServiceId1   = "serviceId"
 )
 
-type _filter func(ep *BindEndpoint) bool
-
-// 支持以下过滤条件
-var _typeKeys = []string{_typeApplication, _typeProtocol,
-	_typeHttpPattern, _typeHttpPattern0, _typeHttpPattern1,
-	_typeInterface,
-}
+type EndpointFilter func(ep *BindEndpoint) bool
 
 var (
-	_filterFactories = make(map[string]func(string) _filter)
+	endpointQueryKeys = []string{queryKeyApplication, queryKeyProtocol,
+		queryKeyHttpPattern, queryKeyHttpPattern0, queryKeyHttpPattern1,
+		queryKeyInterface,
+	}
+	serviceQueryKeys = []string{queryKeyServiceId, queryKeyServiceId0, queryKeyServiceId1}
 )
 
-func DebugQueryEndpoint(datamap map[string]*BindEndpoint) http.HandlerFunc {
-	// Endpoint查询
-	serializer := ext.LoadSerializer(ext.TypeNameSerializerJson)
-	return func(writer http.ResponseWriter, request *http.Request) {
-		data := _queryEndpoints(datamap, request)
-		if data, err := serializer.Marshal(data); nil != err {
-			writer.WriteHeader(http.StatusInternalServerError)
-			_, _ = writer.Write([]byte(err.Error()))
-		} else {
-			writer.WriteHeader(http.StatusOK)
-			_, _ = writer.Write(data)
-		}
-	}
-}
+var (
+	endpointFilterFactories = make(map[string]func(string) EndpointFilter)
+)
 
 func init() {
-	_filterFactories[_typeApplication] = func(query string) _filter {
+	endpointFilterFactories[queryKeyApplication] = func(query string) EndpointFilter {
 		return func(ep *BindEndpoint) bool {
-			return _queryMatch(query, ep.RandomVersion().Application)
+			return queryMatch(query, ep.RandomVersion().Application)
 		}
 	}
-	_filterFactories[_typeProtocol] = func(query string) _filter {
+	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
 		return func(ep *BindEndpoint) bool {
 			proto := ep.RandomVersion().Service.RpcProto
-			return _queryMatch(query, proto)
+			return queryMatch(query, proto)
 		}
 	}
-	httpPatternFilter := func(query string) _filter {
+	httpPatternFilter := func(query string) EndpointFilter {
 		return func(ep *BindEndpoint) bool {
-			return _queryMatch(query, ep.RandomVersion().HttpPattern)
+			return queryMatch(query, ep.RandomVersion().HttpPattern)
 		}
 	}
-	_filterFactories[_typeHttpPattern] = httpPatternFilter
-	_filterFactories[_typeHttpPattern0] = httpPatternFilter
-	_filterFactories[_typeHttpPattern1] = httpPatternFilter
+	endpointFilterFactories[queryKeyHttpPattern] = httpPatternFilter
+	endpointFilterFactories[queryKeyHttpPattern0] = httpPatternFilter
+	endpointFilterFactories[queryKeyHttpPattern1] = httpPatternFilter
 
-	_filterFactories[_typeInterface] = func(query string) _filter {
+	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
 		return func(ep *BindEndpoint) bool {
-			return _queryMatch(query, ep.RandomVersion().Service.Interface)
+			return queryMatch(query, ep.RandomVersion().Service.Interface)
 		}
 	}
 }
 
-func _queryMatch(input, expected string) bool {
-	input, expected = strings.ToLower(input), strings.ToLower(expected)
-	return input == expected || strings.Contains(expected, input)
+// NewDebugQueryEndpointHandler Endpoint查询
+func NewDebugQueryEndpointHandler(datamap map[string]*BindEndpoint) http.HandlerFunc {
+	serializer := ext.LoadSerializer(ext.TypeNameSerializerJson)
+	return newSerializableHttpHandler(serializer, func(request *http.Request) interface{} {
+		return queryEndpoints(datamap, request)
+	})
 }
 
-func _queryEndpoints(data map[string]*BindEndpoint, request *http.Request) interface{} {
-	filters := make([]_filter, 0)
+// NewDebugQueryServiceHandler Service查询
+func NewDebugQueryServiceHandler() http.HandlerFunc {
+	serializer := ext.LoadSerializer(ext.TypeNameSerializerJson)
+	return newSerializableHttpHandler(serializer, func(request *http.Request) interface{} {
+		query := request.URL.Query()
+		for _, key := range serviceQueryKeys {
+			if id := query.Get(key); "" != id {
+				service, ok := ext.LoadBackendService(id)
+				if ok {
+					return service
+				} else {
+					return map[string]string{
+						"status":     "failed",
+						"message":    "service not found",
+						"service-id": id,
+					}
+				}
+			}
+		}
+		return map[string]string{
+			"status":  "failed",
+			"message": "param is required: serviceId",
+		}
+	})
+}
+
+func queryEndpoints(data map[string]*BindEndpoint, request *http.Request) interface{} {
+	filters := make([]EndpointFilter, 0)
 	query := request.URL.Query()
-	for _, key := range _typeKeys {
+	for _, key := range endpointQueryKeys {
 		if query := query.Get(key); "" != query {
-			if f, ok := _filterFactories[key]; ok {
+			if f, ok := endpointFilterFactories[key]; ok {
 				filters = append(filters, f(query))
 			}
 		}
@@ -93,10 +112,10 @@ func _queryEndpoints(data map[string]*BindEndpoint, request *http.Request) inter
 		}
 		return m
 	}
-	return _queryWithFilters(data, filters...)
+	return queryWithEndpointFilters(data, filters...)
 }
 
-func _queryWithFilters(data map[string]*BindEndpoint, filters ..._filter) []map[string]*flux.Endpoint {
+func queryWithEndpointFilters(data map[string]*BindEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
 	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {
@@ -109,4 +128,23 @@ DataLoop:
 		}
 	}
 	return items
+}
+
+func newSerializableHttpHandler(serializer flux.Serializer, queryHandler func(request *http.Request) interface{}) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		data := queryHandler(request)
+		if data, err := serializer.Marshal(data); nil != err {
+			writer.WriteHeader(http.StatusInternalServerError)
+			_, _ = writer.Write([]byte(err.Error()))
+		} else {
+			writer.WriteHeader(http.StatusOK)
+			writer.Header().Set("Content-Type", "application/json;charset=UTF-8")
+			_, _ = writer.Write(data)
+		}
+	}
+}
+
+func queryMatch(input, expected string) bool {
+	input, expected = strings.ToLower(input), strings.ToLower(expected)
+	return input == expected || strings.Contains(expected, input)
 }

@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"sync"
+	"time"
+
 	_ "github.com/apache/dubbo-go/cluster/cluster_impl"
 	_ "github.com/apache/dubbo-go/cluster/loadbalance"
 	"github.com/apache/dubbo-go/common/constant"
@@ -19,9 +23,6 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/spf13/cast"
-	"reflect"
-	"sync"
-	"time"
 )
 
 const (
@@ -40,6 +41,10 @@ var (
 	registryGlobalAlias map[string]string
 )
 
+var (
+	_ flux.Backend = new(BackendService)
+)
+
 func init() {
 	SetRegistryGlobalAlias(map[string]string{
 		"id":       "dubbo.registry.id",
@@ -52,11 +57,12 @@ func init() {
 	})
 }
 
-// ReferenceOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
-type ReferenceOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
-
-// ParameterAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
-type ParameterAssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
+type (
+	// ReferenceOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
+	ReferenceOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+	// ParameterAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
+	ParameterAssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
+)
 
 // GetRegistryGlobalAlias 获取默认DubboRegistry全局别名配置
 func GetRegistryGlobalAlias() map[string]string {
@@ -68,8 +74,8 @@ func SetRegistryGlobalAlias(alias map[string]string) {
 	registryGlobalAlias = pkg.RequireNotNil(alias, "alias is nil").(map[string]string)
 }
 
-// 集成DubboRPC框架的Backend
-type DubboBackend struct {
+// BackendService 集成DubboRPC框架的BackendService
+type BackendService struct {
 	// 可外部配置
 	ReferenceOptionsFuncs []ReferenceOptionsFunc
 	ParameterAssembleFunc ParameterAssembleFunc
@@ -79,18 +85,21 @@ type DubboBackend struct {
 	referenceMu   sync.RWMutex
 }
 
+// NewDubboBackend New dubbo backend instance
 func NewDubboBackend() flux.Backend {
-	return &DubboBackend{
+	return &BackendService{
 		ReferenceOptionsFuncs: make([]ReferenceOptionsFunc, 0),
 		ParameterAssembleFunc: AssembleHessianArguments,
 	}
 }
 
-func (ex *DubboBackend) Configuration() *flux.Configuration {
-	return ex.configuration
+// Configuration get config instance
+func (b *BackendService) Configuration() *flux.Configuration {
+	return b.configuration
 }
 
-func (ex *DubboBackend) Init(config *flux.Configuration) error {
+// Init init backend
+func (b *BackendService) Init(config *flux.Configuration) error {
 	logger.Info("Dubbo backend initializing")
 	config.SetDefaults(map[string]interface{}{
 		configKeyReferenceDelay: time.Millisecond * 30,
@@ -101,20 +110,20 @@ func (ex *DubboBackend) Init(config *flux.Configuration) error {
 		"load-balance":          "random",
 		"protocol":              dubbo.DUBBO,
 	})
-	ex.configuration = config
-	ex.traceEnable = config.GetBool(configKeyTraceEnable)
-	logger.Infow("Dubbo backend request trace", "enable", ex.traceEnable)
+	b.configuration = config
+	b.traceEnable = config.GetBool(configKeyTraceEnable)
+	logger.Infow("Dubbo backend request trace", "enable", b.traceEnable)
 	// Set default impl if not present
-	if nil == ex.ReferenceOptionsFuncs {
-		ex.ReferenceOptionsFuncs = make([]ReferenceOptionsFunc, 0)
+	if nil == b.ReferenceOptionsFuncs {
+		b.ReferenceOptionsFuncs = make([]ReferenceOptionsFunc, 0)
 	}
-	if pkg.IsNil(ex.ParameterAssembleFunc) {
-		ex.ParameterAssembleFunc = AssembleHessianArguments
+	if pkg.IsNil(b.ParameterAssembleFunc) {
+		b.ParameterAssembleFunc = AssembleHessianArguments
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
 	// 支持定义Registry
-	registry := ex.configuration.Sub("registry")
+	registry := b.configuration.Sub("registry")
 	registry.SetGlobalAlias(GetRegistryGlobalAlias())
 	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
 		consumerc.Registries[id] = rconfig
@@ -124,21 +133,25 @@ func (ex *DubboBackend) Init(config *flux.Configuration) error {
 	return nil
 }
 
-func (ex *DubboBackend) Startup() error {
+// Startup startup service
+func (b *BackendService) Startup() error {
 	return nil
 }
 
-func (ex *DubboBackend) Shutdown(_ context.Context) error {
+// Shutdown shutdown service
+func (b *BackendService) Shutdown(_ context.Context) error {
 	dubgo.BeforeShutdown()
 	return nil
 }
 
-func (ex *DubboBackend) Exchange(ctx flux.Context) *flux.StateError {
-	return backend.DoExchange(ctx, ex)
+// Exchange do exchange with context
+func (b *BackendService) Exchange(ctx flux.Context) *flux.StateError {
+	return backend.DoExchange(ctx, b)
 }
 
-func (ex *DubboBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
-	types, values, err := ex.ParameterAssembleFunc(service.Arguments, ctx)
+// Invoke invoke backend service with context
+func (b *BackendService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+	types, values, err := b.ParameterAssembleFunc(service.Arguments, ctx)
 	if nil != err {
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
@@ -147,13 +160,14 @@ func (ex *DubboBackend) Invoke(service flux.BackendService, ctx flux.Context) (i
 			Internal:   err,
 		}
 	} else {
-		return ex.ExecuteWith(types, values, service, ctx)
+		return b.ExecuteWith(types, values, service, ctx)
 	}
 }
 
-func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+// ExecuteWith execute backend service with arguments
+func (b *BackendService) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
 	serviceName := service.Interface + "." + service.Method
-	if ex.traceEnable {
+	if b.traceEnable {
 		logger.TraceContext(ctx).Infow("Dubbo invoking",
 			"service", serviceName, "values", values, "types", types, "attrs", ctx.Attributes(),
 		)
@@ -171,7 +185,7 @@ func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service 
 		}
 	}
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
-	generic := ex.LoadGenericService(&service)
+	generic := b.LoadGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
 		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "service", serviceName, "error", err)
 		return nil, &flux.StateError{
@@ -181,7 +195,7 @@ func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service 
 			Internal:   err,
 		}
 	} else {
-		if ex.traceEnable {
+		if b.traceEnable {
 			logger.TraceContext(ctx).Infow("Dubbo received response", "service", serviceName,
 				"data.type", reflect.TypeOf(resp), "data.value", fmt.Sprintf("%+v", resp))
 		}
@@ -189,18 +203,19 @@ func (ex *DubboBackend) ExecuteWith(types []string, values interface{}, service 
 	}
 }
 
-func (ex *DubboBackend) LoadGenericService(service *flux.BackendService) *dubgo.GenericService {
-	ex.referenceMu.Lock()
-	defer ex.referenceMu.Unlock()
+// LoadGenericService create and cache dubbo generic service
+func (b *BackendService) LoadGenericService(service *flux.BackendService) *dubgo.GenericService {
+	b.referenceMu.Lock()
+	defer b.referenceMu.Unlock()
 	if cached := dubgo.GetConsumerService(service.Interface); nil != cached {
 		return cached.(*dubgo.GenericService)
 	}
-	newRef := NewReference(service.Interface, service, ex.configuration)
+	newRef := NewReference(service.Interface, service, b.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
-	for _, optsFunc := range ex.ReferenceOptionsFuncs {
+	for _, optsFunc := range b.ReferenceOptionsFuncs {
 		if nil != optsFunc {
-			newRef = pkg.RequireNotNil(optsFunc(service, ex.configuration, newRef), msg).(*dubgo.ReferenceConfig)
+			newRef = pkg.RequireNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("Create dubbo reference-config, referring", "interface", service.Interface)
@@ -208,7 +223,7 @@ func (ex *DubboBackend) LoadGenericService(service *flux.BackendService) *dubgo.
 	dubgo.SetConsumerService(generic)
 	newRef.Refer(generic)
 	newRef.Implement(generic)
-	t := ex.configuration.GetDuration(configKeyReferenceDelay)
+	t := b.configuration.GetDuration(configKeyReferenceDelay)
 	if t == 0 {
 		t = time.Millisecond * 30
 	}
