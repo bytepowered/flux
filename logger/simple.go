@@ -2,10 +2,11 @@ package logger
 
 import (
 	"github.com/bytepowered/flux"
+	"go.uber.org/zap"
 )
 
 var (
-	_simLogger flux.Logger
+	_simLogger flux.Logger = zap.S()
 )
 
 // SetSimpleLogger set simple logger instance
