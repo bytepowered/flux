@@ -25,7 +25,7 @@ func NewRouteEngine() *RouterEngine {
 func (r *RouterEngine) Initial() error {
 	logger.Infof("RouterEngine initialing")
 	// Backends
-	for proto, backend := range ext.LoadBackends() {
+	for proto, backend := range ext.LoadBackendTransports() {
 		ns := "BACKEND." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
 		if err := r.InitialHook(backend, flux.NewConfigurationOf(ns)); nil != err {
@@ -130,7 +130,7 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName)}
 		} else {
 			// Backend exchange
-			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Backend", protoName))
+			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("BackendTransport", protoName))
 			ret := backend.Exchange(ctx)
 			timer.ObserveDuration()
 			return ret

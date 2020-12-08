@@ -25,10 +25,10 @@ func init() {
 	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdDefault, registry.ZkEndpointRegistryFactory)
 	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
 	// Backends
-	ext.StoreBackend(flux.ProtoHttp, http.NewHttpBackend())
-	ext.StoreBackendResponseDecoder(flux.ProtoHttp, http.NewHttpBackendResponseDecoder())
-	ext.StoreBackend(flux.ProtoDubbo, dubbo.NewDubboBackend())
-	ext.StoreBackendResponseDecoder(flux.ProtoDubbo, dubbo.NewDubboBackendResponseDecoder())
+	ext.StoreBackendTransport(flux.ProtoHttp, http.NewHttpBackend())
+	ext.StoreBackendTransportDecodeFunc(flux.ProtoHttp, http.NewHttpBackendTransportDecodeFunc())
+	ext.StoreBackendTransport(flux.ProtoDubbo, dubbo.NewDubboBackend())
+	ext.StoreBackendTransportDecodeFunc(flux.ProtoDubbo, dubbo.NewDubboBackendTransportDecodeFunc())
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)

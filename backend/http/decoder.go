@@ -10,7 +10,7 @@ var (
 	ErrUnknownHttpBackendResponse = errors.New("BACKEND:UNKNOWN_HTTP_RESPONSE")
 )
 
-func NewHttpBackendResponseDecoder() flux.BackendResponseDecoder {
+func NewHttpBackendTransportDecodeFunc() flux.BackendTransportDecodeFunc {
 	return func(ctx flux.Context, value interface{}) (statusCode int, headers http.Header, body interface{}, err error) {
 		resp, ok := value.(*http.Response)
 		if !ok {

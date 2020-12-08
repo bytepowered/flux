@@ -6,35 +6,35 @@ import (
 )
 
 var (
-	_protoNamedBackends                = make(map[string]flux.Backend, 4)
-	_protoNamedBackendResponseDecoders = make(map[string]flux.BackendResponseDecoder, 4)
+	_protoNamedBackendTransports   = make(map[string]flux.BackendTransport, 4)
+	_protoNamedBackendDecoderFuncs = make(map[string]flux.BackendTransportDecodeFunc, 4)
 )
 
-func StoreBackend(protoName string, backend flux.Backend) {
+func StoreBackendTransport(protoName string, backend flux.BackendTransport) {
 	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
-	_protoNamedBackends[protoName] = pkg.RequireNotNil(backend, "Backend is nil").(flux.Backend)
+	_protoNamedBackendTransports[protoName] = pkg.RequireNotNil(backend, "BackendTransport is nil").(flux.BackendTransport)
 }
 
-func StoreBackendResponseDecoder(protoName string, decoder flux.BackendResponseDecoder) {
+func StoreBackendTransportDecodeFunc(protoName string, decoder flux.BackendTransportDecodeFunc) {
 	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
-	_protoNamedBackendResponseDecoders[protoName] = pkg.RequireNotNil(decoder, "BackendResponseDecoder is nil").(flux.BackendResponseDecoder)
+	_protoNamedBackendDecoderFuncs[protoName] = pkg.RequireNotNil(decoder, "BackendTransportDecodeFunc is nil").(flux.BackendTransportDecodeFunc)
 }
 
-func LoadBackend(protoName string) (flux.Backend, bool) {
+func LoadBackend(protoName string) (flux.BackendTransport, bool) {
 	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
-	backend, ok := _protoNamedBackends[protoName]
+	backend, ok := _protoNamedBackendTransports[protoName]
 	return backend, ok
 }
 
-func LoadBackendResponseDecoder(protoName string) (flux.BackendResponseDecoder, bool) {
+func LoadBackendTransportDecodeFunc(protoName string) (flux.BackendTransportDecodeFunc, bool) {
 	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
-	decoder, ok := _protoNamedBackendResponseDecoders[protoName]
+	decoder, ok := _protoNamedBackendDecoderFuncs[protoName]
 	return decoder, ok
 }
 
-func LoadBackends() map[string]flux.Backend {
-	m := make(map[string]flux.Backend, len(_protoNamedBackends))
-	for p, e := range _protoNamedBackends {
+func LoadBackendTransports() map[string]flux.BackendTransport {
+	m := make(map[string]flux.BackendTransport, len(_protoNamedBackendTransports))
+	for p, e := range _protoNamedBackendTransports {
 		m[p] = e
 	}
 	return m

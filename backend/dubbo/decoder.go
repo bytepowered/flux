@@ -14,7 +14,7 @@ const (
 	ResponseKeyBody       = "@net.bytepowered.flux.http-body"
 )
 
-func NewDubboBackendReponseDecoderWith(codeKey, headerKey, bodyKey string) flux.BackendResponseDecoder {
+func NewDubboBackendTransportDecodeFuncWith(codeKey, headerKey, bodyKey string) flux.BackendTransportDecodeFunc {
 	return func(ctx flux.Context, input interface{}) (int, http.Header, interface{}, error) {
 		if mapValues, ok := input.(map[interface{}]interface{}); ok {
 			// Header
@@ -36,8 +36,8 @@ func NewDubboBackendReponseDecoderWith(codeKey, headerKey, bodyKey string) flux.
 	}
 }
 
-func NewDubboBackendResponseDecoder() flux.BackendResponseDecoder {
-	return NewDubboBackendReponseDecoderWith(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
+func NewDubboBackendTransportDecodeFunc() flux.BackendTransportDecodeFunc {
+	return NewDubboBackendTransportDecodeFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
 }
 
 func ReadBodyObject(key string, values map[interface{}]interface{}) interface{} {

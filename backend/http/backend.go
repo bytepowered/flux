@@ -14,23 +14,23 @@ import (
 	"time"
 )
 
-func NewHttpBackend() *HttpBackend {
-	return &HttpBackend{
+func NewHttpBackend() *BackendTransportHttpService {
+	return &BackendTransportHttpService{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
 	}
 }
 
-type HttpBackend struct {
+type BackendTransportHttpService struct {
 	httpClient *http.Client
 }
 
-func (ex *HttpBackend) Exchange(ctx flux.Context) *flux.StateError {
+func (ex *BackendTransportHttpService) Exchange(ctx flux.Context) *flux.StateError {
 	return backend.DoExchange(ctx, ex)
 }
 
-func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *BackendTransportHttpService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
 	inurl, _ := ctx.Request().RequestURL()
 	body, _ := ctx.Request().RequestBodyReader()
 	newRequest, err := ex.Assemble(&service, inurl, body, ctx)
@@ -45,7 +45,7 @@ func (ex *HttpBackend) Invoke(service flux.BackendService, ctx flux.Context) (in
 	return ex.ExecuteRequest(newRequest, service, ctx)
 }
 
-func (ex *HttpBackend) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *BackendTransportHttpService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
 	// Header透传以及传递AttrValues
 	if header, writable := ctx.Request().HeaderValues(); writable {
 		newRequest.Header = header.Clone()
@@ -71,7 +71,7 @@ func (ex *HttpBackend) ExecuteRequest(newRequest *http.Request, _ flux.BackendSe
 	return resp, nil
 }
 
-func (ex *HttpBackend) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
+func (ex *BackendTransportHttpService) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数

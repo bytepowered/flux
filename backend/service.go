@@ -7,23 +7,23 @@ import (
 )
 
 var (
-	ErrBackendResponseDecoderNotFound = &flux.StateError{
+	ErrBackendTransportDecodeFuncNotFound = &flux.StateError{
 		StatusCode: flux.StatusServerError,
 		ErrorCode:  flux.ErrorCodeGatewayInternal,
 		Message:    "BACKEND:RESPONSE_DECODER:NOT_FOUND",
 	}
 )
 
-func DoExchange(ctx flux.Context, exchange flux.Backend) *flux.StateError {
+func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.StateError {
 	endpoint := ctx.Endpoint()
 	resp, err := exchange.Invoke(endpoint.Service, ctx)
 	if err != nil {
 		return err
 	}
 	// decode responseWriter
-	decoder, ok := ext.LoadBackendResponseDecoder(endpoint.Service.RpcProto)
+	decoder, ok := ext.LoadBackendTransportDecodeFunc(endpoint.Service.RpcProto)
 	if !ok {
-		return ErrBackendResponseDecoderNotFound
+		return ErrBackendTransportDecodeFuncNotFound
 	}
 	if code, headers, body, err := decoder(ctx, resp); nil == err {
 		ctx.Response().SetStatusCode(code)
