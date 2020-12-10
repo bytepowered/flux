@@ -31,14 +31,14 @@ const (
 )
 
 var (
-	ErrDecodeInvalidHeaders = errors.New("DUBBRPC:DECODE:INVALID_HEADERS")
-	ErrDecodeInvalidStatus  = errors.New("DUBBRPC:DECODE:INVALID_STATUS")
-	ErrMessageInvoke        = "DUBBRPC:INVOKE"
-	ErrMessageAssemble      = "DUBBRPC:ASSEMBLE"
+	ErrDubboDecodeInvalidHeaders  = errors.New("BACKEND:DU:DECODE:INVALID_HEADERS")
+	ErrDubboDecodeInvalidStatus   = errors.New("BACKEND:DU:DECODE:INVALID_STATUS")
+	ErrDubboMessageInvokeFailed   = "BACKEND:DU:INVOKE"
+	ErrDubboMessageAssembleFailed = "BACKEND:DU:ASSEMBLE"
 )
 
 var (
-	registryGlobalAlias map[string]string
+	dubboRegistryGlobalAlias = make(map[string]string, 16)
 )
 
 var (
@@ -66,12 +66,12 @@ type (
 
 // GetRegistryGlobalAlias 获取默认DubboRegistry全局别名配置
 func GetRegistryGlobalAlias() map[string]string {
-	return registryGlobalAlias
+	return dubboRegistryGlobalAlias
 }
 
 // SetRegistryGlobalAlias 设置DubboRegistry全局别名配置
 func SetRegistryGlobalAlias(alias map[string]string) {
-	registryGlobalAlias = pkg.RequireNotNil(alias, "alias is nil").(map[string]string)
+	dubboRegistryGlobalAlias = pkg.RequireNotNil(alias, "alias is nil").(map[string]string)
 }
 
 // BackendTransportService 集成DubboRPC框架的BackendService
@@ -89,7 +89,7 @@ type BackendTransportService struct {
 func NewDubboBackend() flux.BackendTransport {
 	return &BackendTransportService{
 		ReferenceOptionsFuncs: make([]ReferenceOptionsFunc, 0),
-		ParameterAssembleFunc: AssembleHessianArguments,
+		ParameterAssembleFunc: ArgumentsAssemble,
 	}
 }
 
@@ -118,7 +118,7 @@ func (b *BackendTransportService) Init(config *flux.Configuration) error {
 		b.ReferenceOptionsFuncs = make([]ReferenceOptionsFunc, 0)
 	}
 	if pkg.IsNil(b.ParameterAssembleFunc) {
-		b.ParameterAssembleFunc = AssembleHessianArguments
+		b.ParameterAssembleFunc = ArgumentsAssemble
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
@@ -156,7 +156,7 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    ErrMessageAssemble,
+			Message:    ErrDubboMessageAssembleFailed,
 			Internal:   err,
 		}
 	} else {
@@ -180,7 +180,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    ErrMessageAssemble,
+			Message:    ErrDubboMessageAssembleFailed,
 			Internal:   err,
 		}
 	}
@@ -191,7 +191,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
-			Message:    ErrMessageInvoke,
+			Message:    ErrDubboMessageInvokeFailed,
 			Internal:   err,
 		}
 	} else {
@@ -250,4 +250,21 @@ func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryCon
 		Weight:     config.GetInt64("weight"),
 		Params:     config.GetStringMapString("params"),
 	}
+}
+
+func NewReference(refid string, service *flux.BackendService, config *flux.Configuration) *dubgo.ReferenceConfig {
+	logger.Infow("Create dubbo reference-config",
+		"service", service.Interface, "remote-host", service.RemoteHost, "rpc-group", service.RpcGroup, "rpc-version", service.RpcVersion)
+	ref := dubgo.NewReferenceConfig(refid, context.Background())
+	ref.Url = service.RemoteHost
+	ref.InterfaceName = service.Interface
+	ref.Version = service.RpcVersion
+	ref.Group = service.RpcGroup
+	ref.RequestTimeout = service.RpcTimeout
+	ref.Retries = service.RpcRetries
+	ref.Cluster = config.GetString("cluster")
+	ref.Protocol = config.GetString("protocol")
+	ref.Loadbalance = config.GetString("load-balance")
+	ref.Generic = true
+	return ref
 }
