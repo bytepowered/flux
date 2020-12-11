@@ -107,7 +107,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		if nil == err {
 			return nil
 		}
-		msg := "HYSTRIX:CIRCUITED"
+		msg := flux.ErrorMessageHystrixCircuited
 		if ce, ok := err.(hystrix.CircuitError); ok {
 			msg = ce.Message
 		}

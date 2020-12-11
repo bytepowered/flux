@@ -38,7 +38,7 @@ func (ex *BackendTransportHttpService) Invoke(service flux.BackendService, ctx f
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    "HTTPEX:ASSEMBLE",
+			Message:    flux.ErrorMessageHttpAssembleFailed,
 			Internal:   err,
 		}
 	}
@@ -57,7 +57,7 @@ func (ex *BackendTransportHttpService) ExecuteRequest(newRequest *http.Request, 
 	}
 	resp, err := ex.httpClient.Do(newRequest)
 	if nil != err {
-		msg := "HTTPEX:REMOTE_ERROR"
+		msg := flux.ErrorMessageHttpInvokeFailed
 		if uErr, ok := err.(*url.Error); ok {
 			msg = fmt.Sprintf("HTTPEX:REMOTE_ERROR:%s", uErr.Error())
 		}

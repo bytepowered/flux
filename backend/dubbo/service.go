@@ -31,10 +31,8 @@ const (
 )
 
 var (
-	ErrDubboDecodeInvalidHeaders  = errors.New("BACKEND:DU:DECODE:INVALID_HEADERS")
-	ErrDubboDecodeInvalidStatus   = errors.New("BACKEND:DU:DECODE:INVALID_STATUS")
-	ErrDubboMessageInvokeFailed   = "BACKEND:DU:INVOKE"
-	ErrDubboMessageAssembleFailed = "BACKEND:DU:ASSEMBLE"
+	ErrDubboDecodeInvalidHeaders = errors.New(flux.ErrorMessageDubboDecodeInvalidHeader)
+	ErrDubboDecodeInvalidStatus  = errors.New(flux.ErrorMessageDubboDecodeInvalidStatus)
 )
 
 var (
@@ -156,7 +154,7 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    ErrDubboMessageAssembleFailed,
+			Message:    flux.ErrorMessageDubboAssembleFailed,
 			Internal:   err,
 		}
 	} else {
@@ -180,7 +178,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    ErrDubboMessageAssembleFailed,
+			Message:    flux.ErrorMessageDubboAssembleFailed,
 			Internal:   err,
 		}
 	}
@@ -191,7 +189,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		return nil, &flux.StateError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
-			Message:    ErrDubboMessageInvokeFailed,
+			Message:    flux.ErrorMessageDubboInvokeFailed,
 			Internal:   err,
 		}
 	} else {

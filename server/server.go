@@ -43,7 +43,7 @@ var (
 	ErrEndpointVersionNotFound = &flux.StateError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeGatewayEndpoint,
-		Message:    "ENDPOINT_VERSION_NOT_FOUND",
+		Message:    flux.ErrorMessageEndpointVersionNotFound,
 	}
 )
 

@@ -10,7 +10,7 @@ var (
 	ErrBackendTransportDecodeFuncNotFound = &flux.StateError{
 		StatusCode: flux.StatusServerError,
 		ErrorCode:  flux.ErrorCodeGatewayInternal,
-		Message:    "BACKEND:RESPONSE_DECODER:NOT_FOUND",
+		Message:    flux.ErrorMessageBackendDecoderNotFound,
 	}
 )
 
@@ -34,7 +34,7 @@ func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.StateErr
 		return &flux.StateError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    "BACKEND:DECODE_RESPONSE",
+			Message:    flux.ErrorMessageBackendDecodeResponse,
 			Internal:   err,
 		}
 	}

@@ -19,7 +19,7 @@ func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 			return &flux.StateError{
 				StatusCode: flux.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
-				Message:    "REQUEST:BODY_PREPARE",
+				Message:    flux.ErrorMessageRequestPrepare,
 				Internal:   fmt.Errorf("read req-body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 			}
 		}
@@ -32,7 +32,7 @@ func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 			return &flux.StateError{
 				StatusCode: flux.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
-				Message:    "REQUEST:FORM_PARSING",
+				Message:    flux.ErrorMessageRequestParsing,
 				Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 			}
 		} else {

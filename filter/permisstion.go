@@ -16,10 +16,6 @@ const (
 	TypeIdPermissionV2Filter = "PermissionFilter"
 )
 
-const (
-	ErrorCodePermissionDenied = "PERMISSION:ACCESS_DENIED"
-)
-
 type (
 	// PermissionVerifyReport 权限验证结果报告
 	PermissionVerifyReport struct {
@@ -111,7 +107,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 				return &flux.StateError{
 					StatusCode: flux.StatusServerError,
 					ErrorCode:  flux.ErrorCodeGatewayInternal,
-					Message:    "PERMISSION:SERVICE:NOT_FOUND",
+					Message:    flux.ErrorMessagePermissionServiceNotFound,
 					Internal:   errors.New("service not found, id: " + id),
 				}
 			}
@@ -124,7 +120,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			return &flux.StateError{
 				StatusCode: http.StatusForbidden,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
-				Message:    "PERMISSION:VERIFY:ERROR",
+				Message:    flux.ErrorMessagePermissionVerifyError,
 				Internal:   err,
 			}
 		}
@@ -153,14 +149,14 @@ func EnsurePermissionStatusCode(status int) int {
 
 func EnsurePermissionErrorCode(code string) string {
 	if "" == code {
-		return ErrorCodePermissionDenied
+		return flux.ErrorCodePermissionDenied
 	}
 	return code
 }
 
 func EnsurePermissionMessage(message string) string {
 	if "" == message {
-		return ErrorCodePermissionDenied
+		return flux.ErrorMessagePermissionAccessDenied
 	}
 	return message
 }
