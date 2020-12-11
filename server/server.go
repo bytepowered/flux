@@ -216,7 +216,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 				"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
 			)
 		}
-		return s.serverErrorsWriter(webc, requestId, http.Header{}, ErrEndpointVersionNotFound)
+		return s.webServer.HandleWebNotFound(webc)
 	}
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
@@ -233,7 +233,11 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	}
 	// Route and response
 	if err := s.routerEngine.Route(ctxw); nil != err {
-		return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
+		if flux.ErrRouteNotFound == err {
+			return s.webServer.HandleWebNotFound(webc)
+		} else {
+			return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
+		}
 	} else {
 		rw := ctxw.Response()
 		return s.serverResponseWriter(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
@@ -409,7 +413,7 @@ func (s *HttpWebServer) handleNotFoundError(webc flux.WebContext) error {
 	return &flux.StateError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeRequestNotFound,
-		Message:    "ROUTE:NOT_FOUND",
+		Message:    flux.ErrorMessageWebServerRequestNotFound,
 	}
 }
 

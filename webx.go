@@ -225,6 +225,9 @@ type WebServer interface {
 	// SetWebNotFoundHandler 设置Web路由不存在处理函数
 	SetWebNotFoundHandler(h WebHandler)
 
+	// HandleWebNotFound 处理Web无法处理路由的请求
+	HandleWebNotFound(webc WebContext) error
+
 	// AddWebInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddWebInterceptor(m WebInterceptor)
 

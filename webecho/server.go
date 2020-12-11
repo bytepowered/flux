@@ -21,17 +21,23 @@ func NewAdaptWebServer() flux.WebServer {
 	server.HidePort = true
 	// 可重读Body
 	server.Pre(RepeatableBodyReader)
-	return &AdaptWebServer{server}
+	return &AdaptWebServer{server: server}
 }
 
 // AdaptWebServer 默认实现的基于echo框架的WebServer
 // 注意：保持AdaptWebServer的公共访问性
 type AdaptWebServer struct {
-	server *echo.Echo
+	server          *echo.Echo
+	notFoundHandler flux.WebHandler
 }
 
 func (w *AdaptWebServer) SetWebNotFoundHandler(fun flux.WebHandler) {
-	echo.NotFoundHandler = AdaptWebRouteHandler(fun).AdaptFunc
+	w.notFoundHandler = fun
+	echo.NotFoundHandler = AdaptWebRouteHandler(w.notFoundHandler).AdaptFunc
+}
+
+func (w *AdaptWebServer) HandleWebNotFound(webc flux.WebContext) error {
+	return w.notFoundHandler(webc)
 }
 
 func (w *AdaptWebServer) SetWebErrorHandler(fun flux.WebErrorHandler) {
