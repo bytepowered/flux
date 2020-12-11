@@ -69,6 +69,7 @@ type Argument struct {
 
 // BackendService 定义连接上游目标服务的信息
 type BackendService struct {
+	AliasId    string                 `json:"aliasId"`    // Service别名
 	ServiceId  string                 `json:"serviceId"`  // Service的标识ID
 	RemoteHost string                 `json:"remoteHost"` // Service侧的Host
 	Interface  string                 `json:"interface"`  // Service侧的URL

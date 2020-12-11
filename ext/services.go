@@ -12,10 +12,14 @@ var (
 	_servicesMap     *sync.Map = new(sync.Map)
 )
 
+func StoreBackendServiceById(id string, service flux.BackendService) {
+	_servicesMap.Store(id, service)
+}
+
 // StoreBackendService store backend service
 func StoreBackendService(service flux.BackendService) {
 	id := _ensureServiceID(&service)
-	_servicesMap.Store(id, service)
+	StoreBackendServiceById(id, service)
 }
 
 // LoadBackendService load backend service by serviceId

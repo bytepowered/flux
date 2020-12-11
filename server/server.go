@@ -246,16 +246,25 @@ func (s *HttpWebServer) HandleBackendServiceEvent(event flux.BackendServiceEvent
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("New service",
-			"service-id", service.ServiceId, "service", serviceTag)
+			"service-id", service.ServiceId, "alias-id", service.AliasId, "service", serviceTag)
 		ext.StoreBackendService(service)
+		if "" != service.AliasId {
+			ext.StoreBackendServiceById(service.AliasId, service)
+		}
 	case flux.EventTypeUpdated:
 		logger.Infow("Update service",
-			"service-id", service.ServiceId, "service", serviceTag)
+			"service-id", service.ServiceId, "alias-id", service.AliasId, "service", serviceTag)
 		ext.StoreBackendService(service)
+		if "" != service.AliasId {
+			ext.StoreBackendServiceById(service.AliasId, service)
+		}
 	case flux.EventTypeRemoved:
 		logger.Infow("Delete service",
-			"service-id", service.ServiceId, "service", serviceTag)
+			"service-id", service.ServiceId, "alias-id", service.AliasId, "service", serviceTag)
 		ext.RemoveBackendService(service.ServiceId)
+		if "" != service.AliasId {
+			ext.RemoveBackendService(service.AliasId)
+		}
 	}
 }
 
