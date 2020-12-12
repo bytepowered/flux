@@ -19,7 +19,7 @@ const (
 	queryKeyServiceId1   = "serviceId"
 )
 
-type EndpointFilter func(ep *BindEndpoint) bool
+type EndpointFilter func(ep *MVEndpoint) bool
 
 var (
 	endpointQueryKeys = []string{queryKeyApplication, queryKeyProtocol,
@@ -35,18 +35,18 @@ var (
 
 func init() {
 	endpointFilterFactories[queryKeyApplication] = func(query string) EndpointFilter {
-		return func(ep *BindEndpoint) bool {
+		return func(ep *MVEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().Application)
 		}
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
-		return func(ep *BindEndpoint) bool {
+		return func(ep *MVEndpoint) bool {
 			proto := ep.RandomVersion().Service.RpcProto
 			return queryMatch(query, proto)
 		}
 	}
 	httpPatternFilter := func(query string) EndpointFilter {
-		return func(ep *BindEndpoint) bool {
+		return func(ep *MVEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().HttpPattern)
 		}
 	}
@@ -55,15 +55,16 @@ func init() {
 	endpointFilterFactories[queryKeyHttpPattern1] = httpPatternFilter
 
 	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
-		return func(ep *BindEndpoint) bool {
+		return func(ep *MVEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().Service.Interface)
 		}
 	}
 }
 
 // NewDebugQueryEndpointHandler Endpoint查询
-func NewDebugQueryEndpointHandler(datamap map[string]*BindEndpoint) http.HandlerFunc {
+func NewDebugQueryEndpointHandler() http.HandlerFunc {
 	serializer := ext.LoadSerializer(ext.TypeNameSerializerJson)
+	datamap := LoadEndpoints()
 	return newSerializableHttpHandler(serializer, func(request *http.Request) interface{} {
 		return queryEndpoints(datamap, request)
 	})
@@ -95,7 +96,7 @@ func NewDebugQueryServiceHandler() http.HandlerFunc {
 	})
 }
 
-func queryEndpoints(data map[string]*BindEndpoint, request *http.Request) interface{} {
+func queryEndpoints(data map[string]*MVEndpoint, request *http.Request) interface{} {
 	filters := make([]EndpointFilter, 0)
 	query := request.URL.Query()
 	for _, key := range endpointQueryKeys {
@@ -115,7 +116,7 @@ func queryEndpoints(data map[string]*BindEndpoint, request *http.Request) interf
 	return queryWithEndpointFilters(data, filters...)
 }
 
-func queryWithEndpointFilters(data map[string]*BindEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
+func queryWithEndpointFilters(data map[string]*MVEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
 	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {

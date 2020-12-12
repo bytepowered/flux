@@ -68,7 +68,6 @@ type HttpWebServer struct {
 	httpVersionHeader          string
 	routerEngine               *RouterEngine
 	endpointRegistry           flux.EndpointRegistry
-	bindEndpoint               map[string]*BindEndpoint
 	contextWrappers            sync.Pool
 	stateStarted               chan struct{}
 	stateStopped               chan struct{}
@@ -79,7 +78,6 @@ func NewHttpServer() *HttpWebServer {
 		serverResponseWriter:       DefaultServerResponseWriter,
 		serverErrorsWriter:         DefaultServerErrorsWriter,
 		routerEngine:               NewRouteEngine(),
-		bindEndpoint:               make(map[string]*BindEndpoint),
 		contextWrappers:            sync.Pool{New: NewContextWrapper},
 		serverContextExchangeHooks: make([]flux.ServerContextExchangeHook, 0, 4),
 		stateStarted:               make(chan struct{}),
@@ -126,7 +124,7 @@ func (s *HttpWebServer) Initial() error {
 	}
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
-		http.DefaultServeMux.Handle("/debug/endpoints", NewDebugQueryEndpointHandler(s.bindEndpoint))
+		http.DefaultServeMux.Handle("/debug/endpoints", NewDebugQueryEndpointHandler())
 		http.DefaultServeMux.Handle("/debug/services", NewDebugQueryServiceHandler())
 		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
 	}
@@ -193,7 +191,7 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 	return s.webServer.StartTLS(address, certFile, keyFile)
 }
 
-func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *BindEndpoint, tracing bool) error {
+func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *MVEndpoint, tracing bool) error {
 	version := webc.HeaderValue(s.httpVersionHeader)
 	endpoint, found := mvendpoint.FindByVersion(version)
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
@@ -283,7 +281,7 @@ func (s *HttpWebServer) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) {
 	routeKey := fmt.Sprintf("%s#%s", method, pattern)
 	// Refresh endpoint
 	endpoint := event.Endpoint
-	bind, isreg := s.selectBindEndpoint(routeKey, &endpoint)
+	bind, isreg := s.selectMVEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("New endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
@@ -374,20 +372,18 @@ func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextExchang
 	s.serverContextExchangeHooks = append(s.serverContextExchangeHooks, f)
 }
 
-func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *BindEndpoint) flux.WebHandler {
+func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MVEndpoint) flux.WebHandler {
 	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
 }
 
-func (s *HttpWebServer) selectBindEndpoint(routeKey string, endpoint *flux.Endpoint) (*BindEndpoint, bool) {
-	if be, ok := s.bindEndpoint[routeKey]; ok {
-		return be, false
+func (s *HttpWebServer) selectMVEndpoint(routeKey string, endpoint *flux.Endpoint) (*MVEndpoint, bool) {
+	if mve, ok := SelectMVEndpoint(routeKey); ok {
+		return mve, false
 	} else {
-		be = NewBindEndpoint(endpoint)
-		s.bindEndpoint[routeKey] = be
-		return be, true
+		return RegisterMVEndpoint(routeKey, endpoint), true
 	}
 }
 
