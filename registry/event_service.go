@@ -19,8 +19,7 @@ func toBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.B
 		return _invalidBackendServiceEvent, false
 	}
 	service := flux.BackendService{}
-	json := ext.LoadSerializer(ext.TypeNameSerializerJson)
-	if err := json.Unmarshal(bytes, &service); nil != err {
+	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
 		logger.Warnw("Invalid service data",
 			"event-type", etype, "data", string(bytes), "error", err)
 		return _invalidBackendServiceEvent, false

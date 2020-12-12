@@ -19,8 +19,7 @@ func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEnd
 		return _invalidHttpEndpointEvent, false
 	}
 	endpoint := flux.Endpoint{}
-	json := ext.LoadSerializer(ext.TypeNameSerializerJson)
-	if err := json.Unmarshal(bytes, &endpoint); nil != err {
+	if err := ext.JSONUnmarshal(bytes, &endpoint); nil != err {
 		logger.Warnw("invalid endpoint data",
 			"event-type", etype, "data", string(bytes), "error", err)
 		return _invalidHttpEndpointEvent, false

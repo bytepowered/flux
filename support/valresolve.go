@@ -96,8 +96,7 @@ func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
 		if err != errCastToByteTypeNotSupported {
 			return "", err
 		}
-		decoder := ext.LoadSerializer(ext.TypeNameSerializerJson)
-		if data, err := decoder.Marshal(mtValue.Value); nil != err {
+		if data, err := ext.JSONMarshal(mtValue.Value); nil != err {
 			return "", err
 		} else {
 			return string(data), nil
@@ -114,9 +113,8 @@ func CastDecodeMTValueToStringMap(mtValue flux.MTValue) (map[string]interface{},
 	case flux.ValueMediaTypeGoStringMap:
 		return cast.ToStringMap(mtValue.Value), nil
 	case flux.ValueMediaTypeGoText:
-		decoder := ext.LoadSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
-		if err := decoder.Unmarshal([]byte(mtValue.Value.(string)), &hashmap); nil != err {
+		if err := ext.JSONUnmarshal([]byte(mtValue.Value.(string)), &hashmap); nil != err {
 			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mtValue.Value, err)
 		} else {
 			return hashmap, nil
@@ -151,9 +149,8 @@ func CastDecodeMTValueToStringMap(mtValue flux.MTValue) (map[string]interface{},
 					mtValue.Value, mtValue.Value, mtValue.MediaType)
 			}
 		}
-		decoder := ext.LoadSerializer(ext.TypeNameSerializerJson)
 		var hashmap = map[string]interface{}{}
-		err := decoder.Unmarshal(data, &hashmap)
+		err := ext.JSONUnmarshal(data, &hashmap)
 		return hashmap, err
 	}
 }
