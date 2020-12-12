@@ -51,10 +51,10 @@ const (
 )
 
 // ArgumentValueLookupFunc 参数值查找函数
-type ArgumentValueLookupFunc func(scope, key string, context Context) (value MIMEValue, err error)
+type ArgumentValueLookupFunc func(scope, key string, context Context) (value MTValue, err error)
 
 // ArgumentValueResolveFunc 参数值解析函数
-type ArgumentValueResolveFunc func(mimeValue MIMEValue, argument Argument, context Context) (value interface{}, err error)
+type ArgumentValueResolveFunc func(mtValue MTValue, argument Argument, context Context) (value interface{}, err error)
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
