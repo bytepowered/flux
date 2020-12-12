@@ -12,18 +12,18 @@ import (
 	"sort"
 )
 
-type RouterEngine struct {
+type Router struct {
 	metrics *Metrics
 }
 
-func NewRouteEngine() *RouterEngine {
-	return &RouterEngine{
+func NewRouteEngine() *Router {
+	return &Router{
 		metrics: NewMetrics(),
 	}
 }
 
-func (r *RouterEngine) Initial() error {
-	logger.Infof("RouterEngine initialing")
+func (r *Router) Initial() error {
+	logger.Infof("Router initialing")
 	// Backends
 	for proto, backend := range ext.LoadBackendTransports() {
 		ns := "BACKEND." + proto
@@ -67,7 +67,7 @@ func (r *RouterEngine) Initial() error {
 	return nil
 }
 
-func (r *RouterEngine) InitialHook(ref interface{}, config *flux.Configuration) error {
+func (r *Router) InitialHook(ref interface{}, config *flux.Configuration) error {
 	if init, ok := ref.(flux.Initializer); ok {
 		if err := init.Init(config); nil != err {
 			return err
@@ -77,7 +77,7 @@ func (r *RouterEngine) InitialHook(ref interface{}, config *flux.Configuration) 
 	return nil
 }
 
-func (r *RouterEngine) Startup() error {
+func (r *Router) Startup() error {
 	for _, startup := range sortedStartup(ext.LoadStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -86,7 +86,7 @@ func (r *RouterEngine) Startup() error {
 	return nil
 }
 
-func (r *RouterEngine) Shutdown(ctx context.Context) error {
+func (r *Router) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(ext.LoadShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -95,7 +95,7 @@ func (r *RouterEngine) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
+func (r *Router) Route(ctx *WrappedContext) *flux.StateError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.StateError) *flux.StateError {
 		// Access Counter: ProtoName, Interface, Method
@@ -139,7 +139,7 @@ func (r *RouterEngine) Route(ctx *WrappedContext) *flux.StateError {
 	return doMetricEndpointFunc(err)
 }
 
-func (r *RouterEngine) walk(next flux.FilterHandler, filters ...flux.Filter) flux.FilterHandler {
+func (r *Router) walk(next flux.FilterHandler, filters ...flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
 		timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Filter", filters[i].TypeId()))
 		next = filters[i].DoFilter(next)

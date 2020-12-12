@@ -40,14 +40,6 @@ const (
 )
 
 var (
-	ErrEndpointVersionNotFound = &flux.StateError{
-		StatusCode: flux.StatusNotFound,
-		ErrorCode:  flux.ErrorCodeGatewayEndpoint,
-		Message:    flux.ErrorMessageEndpointVersionNotFound,
-	}
-)
-
-var (
 	HttpWebServerConfigDefaults = map[string]interface{}{
 		HttpWebServerConfigKeyVersionHeader:      DefaultHttpHeaderVersion,
 		HttpWebServerConfigKeyFeatureDebugEnable: false,
@@ -66,7 +58,7 @@ type HttpWebServer struct {
 	debugServer                *http.Server
 	httpConfig                 *flux.Configuration
 	httpVersionHeader          string
-	routerEngine               *RouterEngine
+	router                     *Router
 	endpointRegistry           flux.EndpointRegistry
 	contextWrappers            sync.Pool
 	stateStarted               chan struct{}
@@ -77,7 +69,7 @@ func NewHttpServer() *HttpWebServer {
 	return &HttpWebServer{
 		serverResponseWriter:       DefaultServerResponseWriter,
 		serverErrorsWriter:         DefaultServerErrorsWriter,
-		routerEngine:               NewRouteEngine(),
+		router:                     NewRouteEngine(),
 		contextWrappers:            sync.Pool{New: NewContextWrapper},
 		serverContextExchangeHooks: make([]flux.ServerContextExchangeHook, 0, 4),
 		stateStarted:               make(chan struct{}),
@@ -133,12 +125,12 @@ func (s *HttpWebServer) Initial() error {
 	if registry, config, err := _activeEndpointRegistry(); nil != err {
 		return err
 	} else {
-		if err := s.routerEngine.InitialHook(registry, config); nil != err {
+		if err := s.router.InitialHook(registry, config); nil != err {
 			return err
 		}
 		s.endpointRegistry = registry
 	}
-	return s.routerEngine.Initial()
+	return s.router.Initial()
 }
 
 func (s *HttpWebServer) Startup(version flux.BuildInfo) error {
@@ -147,7 +139,7 @@ func (s *HttpWebServer) Startup(version flux.BuildInfo) error {
 
 // StartServe server
 func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configuration) error {
-	if err := s.ensure().routerEngine.Startup(); nil != err {
+	if err := s.ensure().router.Startup(); nil != err {
 		return err
 	}
 	// Http endpoints
@@ -230,7 +222,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 		)
 	}
 	// Route and response
-	if err := s.routerEngine.Route(ctxw); nil != err {
+	if err := s.router.Route(ctxw); nil != err {
 		if flux.ErrRouteNotFound == err {
 			return s.webServer.HandleWebNotFound(webc)
 		} else {
@@ -309,7 +301,7 @@ func (s *HttpWebServer) Shutdown(ctx context.Context) error {
 	if err := s.webServer.Shutdown(ctx); nil != err {
 		return err
 	}
-	return s.routerEngine.Shutdown(ctx)
+	return s.router.Shutdown(ctx)
 }
 
 // StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。
