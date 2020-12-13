@@ -16,7 +16,7 @@ type Router struct {
 	metrics *Metrics
 }
 
-func NewRouteEngine() *Router {
+func NewRouter() *Router {
 	return &Router{
 		metrics: NewMetrics(),
 	}

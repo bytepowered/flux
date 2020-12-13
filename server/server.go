@@ -51,29 +51,29 @@ var (
 
 // Server
 type HttpWebServer struct {
-	webServer                  flux.WebServer
-	serverResponseWriter       flux.ServerResponseWriter
-	serverErrorsWriter         flux.ServerErrorsWriter
-	serverContextExchangeHooks []flux.ServerContextExchangeHook
-	debugServer                *http.Server
-	httpConfig                 *flux.Configuration
-	httpVersionHeader          string
-	router                     *Router
-	endpointRegistry           flux.EndpointRegistry
-	contextWrappers            sync.Pool
-	stateStarted               chan struct{}
-	stateStopped               chan struct{}
+	webServer            flux.WebServer
+	serverResponseWriter flux.ServerResponseWriter
+	serverErrorsWriter   flux.ServerErrorsWriter
+	serverContextHooks   []flux.ServerContextHookFunc
+	debugServer          *http.Server
+	httpConfig           *flux.Configuration
+	httpVersionHeader    string
+	router               *Router
+	endpointRegistry     flux.EndpointRegistry
+	contextWrappers      sync.Pool
+	stateStarted         chan struct{}
+	stateStopped         chan struct{}
 }
 
 func NewHttpServer() *HttpWebServer {
 	return &HttpWebServer{
-		serverResponseWriter:       DefaultServerResponseWriter,
-		serverErrorsWriter:         DefaultServerErrorsWriter,
-		router:                     NewRouteEngine(),
-		contextWrappers:            sync.Pool{New: NewContextWrapper},
-		serverContextExchangeHooks: make([]flux.ServerContextExchangeHook, 0, 4),
-		stateStarted:               make(chan struct{}),
-		stateStopped:               make(chan struct{}),
+		serverResponseWriter: DefaultServerResponseWriter,
+		serverErrorsWriter:   DefaultServerErrorsWriter,
+		router:               NewRouter(),
+		contextWrappers:      sync.Pool{New: NewContextWrapper},
+		serverContextHooks:   make([]flux.ServerContextHookFunc, 0, 4),
+		stateStarted:         make(chan struct{}),
+		stateStopped:         make(chan struct{}),
 	}
 }
 
@@ -211,7 +211,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
 	// Context hook
-	for _, ctxhook := range s.serverContextExchangeHooks {
+	for _, ctxhook := range s.serverContextHooks {
 		ctxhook(webc, ctxw)
 	}
 	if tracing {
@@ -360,8 +360,8 @@ func (s *HttpWebServer) SetServerErrorsWriter(writer flux.ServerErrorsWriter) {
 }
 
 // AddServerContextExchangeHook 添加Http与Flux的Context桥接函数
-func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextExchangeHook) {
-	s.serverContextExchangeHooks = append(s.serverContextExchangeHooks, f)
+func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextHookFunc) {
+	s.serverContextHooks = append(s.serverContextHooks, f)
 }
 
 func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MVEndpoint) flux.WebHandler {
