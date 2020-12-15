@@ -120,9 +120,10 @@ func (r *Router) Route(ctx *WrappedContext) *flux.ServeError {
 		}
 	}
 	// Walk filters
+	filters := append(globals, selective...)
 	err := r.walk(func(ctx flux.Context) *flux.ServeError {
 		protoName := ctx.ServiceProto()
-		if backend, ok := ext.LoadBackend(protoName); !ok {
+		if backend, ok := ext.LoadBackendTransport(protoName); !ok {
 			logger.TraceContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
@@ -135,11 +136,11 @@ func (r *Router) Route(ctx *WrappedContext) *flux.ServeError {
 			timer.ObserveDuration()
 			return ret
 		}
-	}, append(globals, selective...)...)(ctx)
+	}, filters)(ctx)
 	return doMetricEndpointFunc(err)
 }
 
-func (r *Router) walk(next flux.FilterHandler, filters ...flux.Filter) flux.FilterHandler {
+func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
 		timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Filter", filters[i].TypeId()))
 		next = filters[i].DoFilter(next)

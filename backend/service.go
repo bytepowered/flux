@@ -42,7 +42,7 @@ func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.ServeErr
 
 // DoInvoke 执行后端服务，获取响应结果；
 func DoInvoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
-	backend, ok := ext.LoadBackend(service.RpcProto)
+	backend, ok := ext.LoadBackendTransport(service.RpcProto)
 	if !ok {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,

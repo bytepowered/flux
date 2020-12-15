@@ -15,15 +15,15 @@ func StoreBackendTransport(protoName string, backend flux.BackendTransport) {
 	_protoNamedBackendTransports[protoName] = pkg.RequireNotNil(backend, "BackendTransport is nil").(flux.BackendTransport)
 }
 
-func StoreBackendTransportDecodeFunc(protoName string, decoder flux.BackendTransportDecodeFunc) {
-	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
-	_protoNamedBackendDecoderFuncs[protoName] = pkg.RequireNotNil(decoder, "BackendTransportDecodeFunc is nil").(flux.BackendTransportDecodeFunc)
-}
-
-func LoadBackend(protoName string) (flux.BackendTransport, bool) {
+func LoadBackendTransport(protoName string) (flux.BackendTransport, bool) {
 	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
 	backend, ok := _protoNamedBackendTransports[protoName]
 	return backend, ok
+}
+
+func StoreBackendTransportDecodeFunc(protoName string, decoder flux.BackendTransportDecodeFunc) {
+	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
+	_protoNamedBackendDecoderFuncs[protoName] = pkg.RequireNotNil(decoder, "BackendTransportDecodeFunc is nil").(flux.BackendTransportDecodeFunc)
 }
 
 func LoadBackendTransportDecodeFunc(protoName string) (flux.BackendTransportDecodeFunc, bool) {
