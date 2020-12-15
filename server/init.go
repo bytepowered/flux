@@ -2,8 +2,6 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/backend/dubbo"
-	"github.com/bytepowered/flux/backend/http"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/registry"
 	"github.com/bytepowered/flux/support"
@@ -24,11 +22,6 @@ func init() {
 	// Default: ZK
 	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdDefault, registry.ZkEndpointRegistryFactory)
 	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
-	// Backends
-	ext.StoreBackendTransport(flux.ProtoHttp, http.NewHttpBackend())
-	ext.StoreBackendTransportDecodeFunc(flux.ProtoHttp, http.NewHttpBackendTransportDecodeFunc())
-	ext.StoreBackendTransport(flux.ProtoDubbo, dubbo.NewDubboBackend())
-	ext.StoreBackendTransportDecodeFunc(flux.ProtoDubbo, dubbo.NewDubboBackendTransportDecodeFunc())
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)

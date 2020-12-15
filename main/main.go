@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/bytepowered/flux"
+	_ "github.com/bytepowered/flux/backend/dubbo"
+	_ "github.com/bytepowered/flux/backend/http"
 	"github.com/bytepowered/flux/server"
 	_ "github.com/bytepowered/flux/webecho"
 )

@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func NewHttpBackend() *BackendTransportHttpService {
+func NewHttpBackendTransport() *BackendTransportHttpService {
 	return &BackendTransportHttpService{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,

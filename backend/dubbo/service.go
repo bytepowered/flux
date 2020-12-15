@@ -8,16 +8,9 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/apache/dubbo-go/cluster/cluster_impl"
-	_ "github.com/apache/dubbo-go/cluster/loadbalance"
 	"github.com/apache/dubbo-go/common/constant"
-	_ "github.com/apache/dubbo-go/common/proxy/proxy_factory"
 	dubgo "github.com/apache/dubbo-go/config"
-	_ "github.com/apache/dubbo-go/filter/filter_impl"
 	"github.com/apache/dubbo-go/protocol/dubbo"
-	_ "github.com/apache/dubbo-go/registry/nacos"
-	_ "github.com/apache/dubbo-go/registry/protocol"
-	_ "github.com/apache/dubbo-go/registry/zookeeper"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/logger"
@@ -83,8 +76,8 @@ type BackendTransportService struct {
 	referenceMu   sync.RWMutex
 }
 
-// NewDubboBackend New dubbo backend instance
-func NewDubboBackend() flux.BackendTransport {
+// NewDubboBackendTransport New dubbo backend instance
+func NewDubboBackendTransport() flux.BackendTransport {
 	return &BackendTransportService{
 		ReferenceOptionsFuncs: make([]ReferenceOptionsFunc, 0),
 		ParameterAssembleFunc: ArgumentsAssemble,
