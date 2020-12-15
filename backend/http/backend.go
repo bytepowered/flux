@@ -26,16 +26,16 @@ type BackendTransportHttpService struct {
 	httpClient *http.Client
 }
 
-func (ex *BackendTransportHttpService) Exchange(ctx flux.Context) *flux.StateError {
+func (ex *BackendTransportHttpService) Exchange(ctx flux.Context) *flux.ServeError {
 	return backend.DoExchange(ctx, ex)
 }
 
-func (ex *BackendTransportHttpService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *BackendTransportHttpService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	inurl, _ := ctx.Request().RequestURL()
 	body, _ := ctx.Request().RequestBodyReader()
 	newRequest, err := ex.Assemble(&service, inurl, body, ctx)
 	if nil != err {
-		return nil, &flux.StateError{
+		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageHttpAssembleFailed,
@@ -45,7 +45,7 @@ func (ex *BackendTransportHttpService) Invoke(service flux.BackendService, ctx f
 	return ex.ExecuteRequest(newRequest, service, ctx)
 }
 
-func (ex *BackendTransportHttpService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func (ex *BackendTransportHttpService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	// Header透传以及传递AttrValues
 	if header, writable := ctx.Request().HeaderValues(); writable {
 		newRequest.Header = header.Clone()
@@ -61,7 +61,7 @@ func (ex *BackendTransportHttpService) ExecuteRequest(newRequest *http.Request, 
 		if uErr, ok := err.(*url.Error); ok {
 			msg = fmt.Sprintf("HTTPEX:REMOTE_ERROR:%s", uErr.Error())
 		}
-		return nil, &flux.StateError{
+		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
 			Message:    msg,

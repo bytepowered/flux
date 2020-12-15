@@ -7,18 +7,18 @@ import (
 )
 
 func TestStateError_ErrorNil(t *testing.T) {
-	err := &StateError{
+	err := &ServeError{
 		StatusCode: 500,
 		ErrorCode:  "SERVER_ERROR",
 		Message:    "Server internal error",
 	}
 	emsg := err.Error()
 	assert := assert2.New(t)
-	assert.Equal("StateError: StatusCode=500, ErrorCode=SERVER_ERROR, Message=Server internal error", emsg)
+	assert.Equal("ServeError: StatusCode=500, ErrorCode=SERVER_ERROR, Message=Server internal error", emsg)
 }
 
 func TestStateError_ErrorPresent(t *testing.T) {
-	err := &StateError{
+	err := &ServeError{
 		StatusCode: 500,
 		ErrorCode:  "SERVER_ERROR",
 		Message:    "Server internal error",
@@ -26,5 +26,5 @@ func TestStateError_ErrorPresent(t *testing.T) {
 	}
 	emsg := err.Error()
 	assert := assert2.New(t)
-	assert.Equal("StateError: StatusCode=500, ErrorCode=SERVER_ERROR, Message=Server internal error, Error=error", emsg)
+	assert.Equal("ServeError: StatusCode=500, ErrorCode=SERVER_ERROR, Message=Server internal error, Error=error", emsg)
 }

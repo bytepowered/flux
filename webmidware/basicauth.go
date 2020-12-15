@@ -100,7 +100,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 			}
 			// Need to return `401` for browsers to pop-up login box.
 			webc.SetResponseHeader(HeaderWWWAuthenticate, basic+" realm="+realm)
-			return &flux.StateError{
+			return &flux.ServeError{
 				StatusCode: http.StatusUnauthorized,
 				ErrorCode:  "UNAUTHORIZED",
 				Message:    "BASIC_AUTH:UNAUTHORIZED",

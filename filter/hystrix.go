@@ -34,7 +34,7 @@ type (
 	// HystrixServiceNameFunc 用于构建服务标识的函数
 	HystrixServiceNameFunc func(ctx flux.Context) (serviceName string)
 	// HystrixServiceTestFunc 用于测试StateError是否需要熔断
-	HystrixServiceTestFunc func(err *flux.StateError) (circuited bool)
+	HystrixServiceTestFunc func(err *flux.ServeError) (circuited bool)
 )
 
 // HystrixConfig
@@ -85,7 +85,7 @@ func (r *HystrixFilter) Init(config *flux.Configuration) error {
 }
 
 func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
-	return func(ctx flux.Context) *flux.StateError {
+	return func(ctx flux.Context) *flux.ServeError {
 		if r.Config.ServiceSkipFunc(ctx) {
 			return next(ctx)
 		}
@@ -111,7 +111,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		if ce, ok := err.(hystrix.CircuitError); ok {
 			msg = ce.Message
 		}
-		return &flux.StateError{
+		return &flux.ServeError{
 			StatusCode: http.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayCircuited,
 			Message:    msg,

@@ -398,7 +398,7 @@ func (s *HttpWebServer) ensure() *HttpWebServer {
 }
 
 func (s *HttpWebServer) handleNotFoundError(webc flux.WebContext) error {
-	return &flux.StateError{
+	return &flux.ServeError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeRequestNotFound,
 		Message:    flux.ErrorMessageWebServerRequestNotFound,
@@ -407,9 +407,9 @@ func (s *HttpWebServer) handleNotFoundError(webc flux.WebContext) error {
 
 func (s *HttpWebServer) handleServerError(err error, webc flux.WebContext) {
 	// Http中间件等返回InvokeError错误
-	stateError, ok := err.(*flux.StateError)
+	stateError, ok := err.(*flux.ServeError)
 	if !ok {
-		stateError = &flux.StateError{
+		stateError = &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    err.Error(),

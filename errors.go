@@ -39,7 +39,7 @@ const (
 )
 
 var (
-	ErrRouteNotFound = &StateError{
+	ErrRouteNotFound = &ServeError{
 		StatusCode: http.StatusNotFound,
 		ErrorCode:  ErrorCodeRequestNotFound,
 		Message:    ErrorMessageWebServerRequestNotFound,
@@ -48,6 +48,6 @@ var (
 
 // NewRouteNotFound 返回路由失败错误。
 // 路由失败，会转由WebServer的NotFoundHandler处理请求
-func NewRouteNotFound() *StateError {
+func NewRouteNotFound() *ServeError {
 	return ErrRouteNotFound
 }

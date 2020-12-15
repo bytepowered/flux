@@ -85,7 +85,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 	if p.Disabled {
 		return next
 	}
-	return func(ctx flux.Context) *flux.StateError {
+	return func(ctx flux.Context) *flux.ServeError {
 		if p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
@@ -104,7 +104,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			if srv, ok := ext.LoadBackendService(id); ok {
 				services = append(services, srv)
 			} else {
-				return &flux.StateError{
+				return &flux.ServeError{
 					StatusCode: flux.StatusServerError,
 					ErrorCode:  flux.ErrorCodeGatewayInternal,
 					Message:    flux.ErrorMessagePermissionServiceNotFound,
@@ -114,10 +114,10 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		}
 		report, err := p.Configs.VerifyFunc(services, ctx)
 		if nil != err {
-			if serr, ok := err.(*flux.StateError); ok {
+			if serr, ok := err.(*flux.ServeError); ok {
 				return serr
 			}
-			return &flux.StateError{
+			return &flux.ServeError{
 				StatusCode: http.StatusForbidden,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    flux.ErrorMessagePermissionVerifyError,
@@ -125,7 +125,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			}
 		}
 		if !report.Success {
-			return &flux.StateError{
+			return &flux.ServeError{
 				StatusCode: EnsurePermissionStatusCode(report.StatusCode),
 				ErrorCode:  EnsurePermissionErrorCode(report.ErrorCode),
 				Message:    EnsurePermissionMessage(report.Message),
@@ -136,7 +136,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 }
 
 // Invoke 执行权限验证的后端服务，获取响应结果；
-func (p *PermissionFilter) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func (p *PermissionFilter) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	return backend.DoInvoke(service, ctx)
 }
 

@@ -143,15 +143,15 @@ func (b *BackendTransportService) Shutdown(_ context.Context) error {
 }
 
 // Exchange do exchange with context
-func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.StateError {
+func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
 	return backend.DoExchange(ctx, b)
 }
 
 // Invoke invoke backend service with context
-func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	types, values, err := b.ParameterAssembleFunc(service.Arguments, ctx)
 	if nil != err {
-		return nil, &flux.StateError{
+		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageDubboAssembleFailed,
@@ -163,7 +163,7 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 }
 
 // ExecuteWith execute backend service with arguments
-func (b *BackendTransportService) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func (b *BackendTransportService) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	serviceName := service.Interface + "." + service.Method
 	if b.traceEnable {
 		logger.TraceContext(ctx).Infow("Dubbo invoking",
@@ -175,7 +175,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 	attachments, err := cast.ToStringMapStringE(ctx.Attributes())
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("Dubbo attachment error", "service", serviceName, "error", err)
-		return nil, &flux.StateError{
+		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageDubboAssembleFailed,
@@ -186,7 +186,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 	generic := b.LoadGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
 		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "service", serviceName, "error", err)
-		return nil, &flux.StateError{
+		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
 			Message:    flux.ErrorMessageDubboInvokeFailed,

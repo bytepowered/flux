@@ -22,7 +22,7 @@ func (f *TestOrderedFilter) TypeId() string {
 }
 
 func (f *TestOrderedFilter) DoFilter(_ flux.FilterHandler) flux.FilterHandler {
-	return func(context flux.Context) *flux.StateError {
+	return func(context flux.Context) *flux.ServeError {
 		return nil
 	}
 }
@@ -40,7 +40,7 @@ func (f *TestFilter) TypeId() string {
 }
 
 func (f *TestFilter) DoFilter(_ flux.FilterHandler) flux.FilterHandler {
-	return func(context flux.Context) *flux.StateError {
+	return func(context flux.Context) *flux.ServeError {
 		return nil
 	}
 }

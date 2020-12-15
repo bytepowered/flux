@@ -110,7 +110,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 			if config.MaxAge > 0 {
 				webc.SetResponseHeader(flux.HeaderAccessControlMaxAge, maxAge)
 			}
-			return &flux.StateError{
+			return &flux.ServeError{
 				StatusCode: http.StatusNoContent,
 				Message:    "NO_CONTENT",
 			}

@@ -34,7 +34,7 @@ func GetServerResponseContentType() string {
 	return _serverResponseContentType
 }
 
-func DefaultServerErrorsWriter(webc flux.WebContext, requestId string, header http.Header, serr *flux.StateError) error {
+func DefaultServerErrorsWriter(webc flux.WebContext, requestId string, header http.Header, serr *flux.ServeError) error {
 	SetupResponseDefaults(webc, requestId, header)
 	resp := map[string]string{
 		"status":  "error",
@@ -84,9 +84,9 @@ func DefaultServerResponseWriter(webc flux.WebContext, requestId string, header 
 	return nil
 }
 
-func SerializeWith(serializer flux.Serializer, data interface{}) ([]byte, *flux.StateError) {
+func SerializeWith(serializer flux.Serializer, data interface{}) ([]byte, *flux.ServeError) {
 	if bytes, err := serializer.Marshal(data); nil != err {
-		return nil, &flux.StateError{
+		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageWebServerResponseMarshal,

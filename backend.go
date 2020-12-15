@@ -8,9 +8,9 @@ import (
 // 默认实现了Dubbo(gRpc)和Http两种协议。
 type BackendTransport interface {
 	// Exchange 完成前端Http请求与后端服务的数据交互
-	Exchange(Context) *StateError
+	Exchange(Context) *ServeError
 	// Invoke 真正执行指定目标EndpointService的通讯，返回响应结果
-	Invoke(BackendService, Context) (interface{}, *StateError)
+	Invoke(BackendService, Context) (interface{}, *ServeError)
 }
 
 // BackendTransportDecodeFunc 解析Backend返回的数据

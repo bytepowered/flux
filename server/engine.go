@@ -95,15 +95,15 @@ func (r *Router) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Router) Route(ctx *WrappedContext) *flux.StateError {
+func (r *Router) Route(ctx *WrappedContext) *flux.ServeError {
 	// 统计异常
-	doMetricEndpointFunc := func(err *flux.StateError) *flux.StateError {
+	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
 		proto, _, uri, method := ctx.ServiceInterface()
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
-			r.metrics.EndpointError.WithLabelValues(proto, uri, method, err.ErrorCode).Inc()
+			r.metrics.EndpointError.WithLabelValues(proto, uri, method, err.GetErrorCode()).Inc()
 		}
 		return err
 	}
@@ -120,11 +120,11 @@ func (r *Router) Route(ctx *WrappedContext) *flux.StateError {
 		}
 	}
 	// Walk filters
-	err := r.walk(func(ctx flux.Context) *flux.StateError {
+	err := r.walk(func(ctx flux.Context) *flux.ServeError {
 		protoName := ctx.ServiceProto()
 		if backend, ok := ext.LoadBackend(protoName); !ok {
 			logger.TraceContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
-			return &flux.StateError{
+			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName)}

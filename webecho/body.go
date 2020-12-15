@@ -16,7 +16,7 @@ func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 		request := echo.Request()
 		data, err := ioutil.ReadAll(request.Body)
 		if nil != err {
-			return &flux.StateError{
+			return &flux.ServeError{
 				StatusCode: flux.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    flux.ErrorMessageRequestPrepare,
@@ -29,7 +29,7 @@ func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 		// 恢复Body，但ParseForm解析后，request.Body无法重读，需要通过GetBody
 		request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 		if err := request.ParseForm(); nil != err {
-			return &flux.StateError{
+			return &flux.ServeError{
 				StatusCode: flux.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    flux.ErrorMessageRequestParsing,

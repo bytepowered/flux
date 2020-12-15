@@ -7,14 +7,14 @@ import (
 )
 
 var (
-	ErrBackendTransportDecodeFuncNotFound = &flux.StateError{
+	ErrBackendTransportDecodeFuncNotFound = &flux.ServeError{
 		StatusCode: flux.StatusServerError,
 		ErrorCode:  flux.ErrorCodeGatewayInternal,
 		Message:    flux.ErrorMessageBackendDecoderNotFound,
 	}
 )
 
-func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.StateError {
+func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.ServeError {
 	endpoint := ctx.Endpoint()
 	resp, err := exchange.Invoke(endpoint.Service, ctx)
 	if err != nil {
@@ -31,7 +31,7 @@ func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.StateErr
 		ctx.Response().SetBody(body)
 		return nil
 	} else {
-		return &flux.StateError{
+		return &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageBackendDecodeResponse,
@@ -41,10 +41,10 @@ func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.StateErr
 }
 
 // DoInvoke 执行后端服务，获取响应结果；
-func DoInvoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.StateError) {
+func DoInvoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	backend, ok := ext.LoadBackend(service.RpcProto)
 	if !ok {
-		return nil, &flux.StateError{
+		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "GATEWAY:UNKNOWN_PROTOCOL",
