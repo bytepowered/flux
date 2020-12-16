@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
+	"github.com/spf13/cast"
+	"strings"
 )
 
 const (
@@ -31,6 +33,14 @@ func TraceContext(ctx flux.Context) flux.Logger {
 	if ctxLogger, ok := ctx.GetContextLogger(); ok {
 		return ctxLogger
 	} else {
-		return Trace(ctx.RequestId())
+		endpoint := ctx.Endpoint()
+		return TraceWith(ctx.RequestId(), map[string]string{
+			"backend-appid":      endpoint.Application,
+			"backend-service":    endpoint.Service.ServiceID(),
+			"backend-permission": strings.Join(endpoint.PermissionServiceIds(), ","),
+			"backend-authorize":  cast.ToString(endpoint.Authorize),
+			"endpoint-version":   endpoint.Version,
+			"endpoint-pattern":   endpoint.HttpPattern,
+		})
 	}
 }

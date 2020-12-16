@@ -143,6 +143,15 @@ type Endpoint struct {
 	Extensions  map[string]interface{} `json:"extensions"`  // 扩展信息
 }
 
+func (e Endpoint) PermissionServiceIds() []string {
+	ids := make([]string, 0, 1+len(e.Permissions))
+	if e.Permission.IsValid() {
+		ids = append(ids, e.Permission.ServiceId)
+	}
+	ids = append(ids, e.Permissions...)
+	return ids
+}
+
 func (e Endpoint) IsValid() bool {
 	return "" != e.HttpMethod && "" != e.HttpPattern && e.Service.IsValid()
 }
