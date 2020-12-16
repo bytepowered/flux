@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"reflect"
 	"sync"
 	"time"
@@ -30,6 +31,7 @@ var (
 
 var (
 	dubboRegistryGlobalAlias = make(map[string]string, 16)
+	dubboInternalJSON        = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 var (
@@ -157,17 +159,14 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 
 // ExecuteWith execute backend service with arguments
 func (b *BackendTransportService) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
-	serviceName := service.Interface + "." + service.Method
 	if b.traceEnable {
-		logger.TraceContext(ctx).Infow("Dubbo invoking",
-			"service", serviceName, "values", values, "types", types, "attrs", ctx.Attributes(),
-		)
+		logger.TraceContext(ctx).Infow("Dubbo invoking", "values", values, "types", types, "attrs", ctx.Attributes())
 	}
 	// Note: must be map[string]string
 	// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 	attachments, err := cast.ToStringMapStringE(ctx.Attributes())
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("Dubbo attachment error", "service", serviceName, "error", err)
+		logger.TraceContext(ctx).Errorw("Dubbo attachment error", "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -184,7 +183,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 	goctx, _ := context.WithTimeout(atctx, timeout)
 	generic := b.LoadGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
-		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "service", serviceName, "error", err)
+		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
@@ -193,8 +192,14 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		}
 	} else {
 		if b.traceEnable {
-			logger.TraceContext(ctx).Infow("Dubbo received response", "service", serviceName,
-				"data.type", reflect.TypeOf(resp), "data.value", fmt.Sprintf("%+v", resp))
+			text, err := dubboInternalJSON.MarshalToString(resp)
+			ctxLogger := logger.TraceContext(ctx)
+			if nil == err {
+				ctxLogger.Infow("Dubbo received response", "response.json", text)
+			} else {
+				ctxLogger.Infow("Dubbo received response",
+					"response.type", reflect.TypeOf(resp), "response.data", fmt.Sprintf("%+v", resp))
+			}
 		}
 		return resp, nil
 	}
