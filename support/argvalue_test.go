@@ -39,11 +39,11 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 		key    string
 		expect flux.MTValue
 	}{
-		{scope: flux.ScopePath, key: "path", expect: flux.WrapTextMTValue("hahaha")},
-		{scope: flux.ScopeQuery, key: "query", expect: flux.WrapTextMTValue("query-val")},
-		{scope: flux.ScopeForm, key: "form", expect: flux.WrapTextMTValue("123")},
-		{scope: flux.ScopeForm, key: "param", expect: flux.WrapTextMTValue("true")},
-		{scope: flux.ScopeHeader, key: "header", expect: flux.WrapTextMTValue("UA")},
+		{scope: flux.ScopePath, key: "path", expect: flux.WrapStringMTValue("hahaha")},
+		{scope: flux.ScopeQuery, key: "query", expect: flux.WrapStringMTValue("query-val")},
+		{scope: flux.ScopeForm, key: "form", expect: flux.WrapStringMTValue("123")},
+		{scope: flux.ScopeForm, key: "param", expect: flux.WrapStringMTValue("true")},
+		{scope: flux.ScopeHeader, key: "header", expect: flux.WrapStringMTValue("UA")},
 		{scope: flux.ScopeAuto, key: "auto", expect: flux.WrapObjectMTValue("auto")},
 		{scope: flux.ScopeAttr, key: "attr", expect: flux.WrapObjectMTValue("attr")},
 		{scope: flux.ScopeValue, key: "value", expect: flux.WrapObjectMTValue("value")},

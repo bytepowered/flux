@@ -20,19 +20,23 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 	req := ctx.Request()
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
-		return flux.WrapTextMTValue(req.PathValue(key)), nil
+		return flux.WrapStringMTValue(req.PathValue(key)), nil
 	case flux.ScopePathMap:
 		return flux.WrapStrValuesMapMTValue(req.PathValues()), nil
 	case flux.ScopeQuery:
-		return flux.WrapTextMTValue(req.QueryValue(key)), nil
+		return flux.WrapStringMTValue(req.QueryValue(key)), nil
+	case flux.ScopeQueryMulti:
+		return flux.WrapStrListMTValue(req.QueryValues()[key]), nil
 	case flux.ScopeQueryMap:
 		return flux.WrapStrValuesMapMTValue(req.QueryValues()), nil
 	case flux.ScopeForm:
-		return flux.WrapTextMTValue(req.FormValue(key)), nil
+		return flux.WrapStringMTValue(req.FormValue(key)), nil
 	case flux.ScopeFormMap:
 		return flux.WrapStrValuesMapMTValue(req.FormValues()), nil
+	case flux.ScopeFormMulti:
+		return flux.WrapStrListMTValue(req.FormValues()[key]), nil
 	case flux.ScopeHeader:
-		return flux.WrapTextMTValue(req.HeaderValue(key)), nil
+		return flux.WrapStringMTValue(req.HeaderValue(key)), nil
 	case flux.ScopeHeaderMap:
 		header, _ := req.HeaderValues()
 		return flux.WrapStrValuesMapMTValue(header), nil
@@ -46,15 +50,24 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 		return flux.MTValue{Value: reader, MediaType: req.HeaderValue(flux.HeaderContentType)}, err
 	case flux.ScopeParam:
 		v, _ := SearchValueProviders(key, req.QueryValues, req.FormValues)
-		return flux.WrapTextMTValue(v), nil
+		return flux.WrapStringMTValue(v), nil
 	case flux.ScopeValue:
 		v, _ := ctx.GetValue(key)
 		return flux.WrapObjectMTValue(v), nil
+	case flux.ScopeRequest:
+		switch strings.ToLower(key) {
+		case "method":
+			return flux.WrapStringMTValue(ctx.Method()), nil
+		case "uri":
+			return flux.WrapStringMTValue(ctx.RequestURI()), nil
+		default:
+			return flux.WrapStringMTValue(""), nil
+		}
 	case flux.ScopeAuto:
 		fallthrough
 	default:
-		if v, ok := SearchValueProviders(key, req.PathValues, req.QueryValues, req.FormValues, HeaderProviderFunc(req)); ok {
-			return flux.WrapTextMTValue(v), nil
+		if v, ok := SearchValueProviders(key, req.PathValues, req.QueryValues, req.FormValues, WrapHeaderProviderFunc(req)); ok {
+			return flux.WrapStringMTValue(v), nil
 		}
 		if v, ok := ctx.GetAttribute(key); ok {
 			return flux.WrapObjectMTValue(v), nil

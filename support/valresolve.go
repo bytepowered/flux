@@ -112,7 +112,7 @@ func CastDecodeMTValueToStringMap(mtValue flux.MTValue) (map[string]interface{},
 	switch mtValue.MediaType {
 	case flux.ValueMediaTypeGoStringMap:
 		return cast.ToStringMap(mtValue.Value), nil
-	case flux.ValueMediaTypeGoText:
+	case flux.ValueMediaTypeGoString:
 		var hashmap = map[string]interface{}{}
 		if err := ext.JSONUnmarshal([]byte(mtValue.Value.(string)), &hashmap); nil != err {
 			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mtValue.Value, err)

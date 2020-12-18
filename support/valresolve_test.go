@@ -63,7 +63,8 @@ func TestCastToStringMapUnsupportedError(t *testing.T) {
 
 func TestCastToStringMap_Text(t *testing.T) {
 	ext.StoreSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := CastDecodeMTValueToStringMap(flux.MTValue{Value: `{"k":1,"e":"a"}`, MediaType: flux.ValueMediaTypeGoText})
+	sm, err := CastDecodeMTValueToStringMap(
+		flux.MTValue{Value: `{"k":1,"e":"a"}`, MediaType: flux.ValueMediaTypeGoString})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])

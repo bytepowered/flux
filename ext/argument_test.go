@@ -17,7 +17,7 @@ func Test_SetNilArgumentValueLookupFunc(t *testing.T) {
 func Test_SetGetArgumentValueLookupFunc(t *testing.T) {
 	assert := assert2.New(t)
 	f1 := func(scope, key string, context flux.Context) (value flux.MTValue, err error) {
-		return flux.WrapTextMTValue("value"), nil
+		return flux.WrapStringMTValue("value"), nil
 	}
 	StoreArgumentValueLookupFunc(f1)
 	f2 := LoadArgumentValueLookupFunc()

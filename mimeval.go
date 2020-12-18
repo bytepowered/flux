@@ -12,10 +12,11 @@ const (
 )
 
 const (
-	ValueMediaTypeGoText            = "go:text"
 	ValueMediaTypeGoObject          = "go:object"
+	ValueMediaTypeGoString          = "go:string"
+	ValueMediaTypeGoStringList      = "go:string-list"
 	ValueMediaTypeGoStringMap       = "go:string-map"
-	ValueMediaTypeGoStringValuesMap = "go:string-mvmap"
+	ValueMediaTypeGoStringValuesMap = "go:string-list-map"
 )
 
 // MTValue 包含指示值的媒体类型和Value结构
@@ -26,8 +27,8 @@ type MTValue struct {
 	MediaType string
 }
 
-func WrapTextMTValue(value string) MTValue {
-	return MTValue{Value: value, MediaType: ValueMediaTypeGoText}
+func WrapStringMTValue(value string) MTValue {
+	return MTValue{Value: value, MediaType: ValueMediaTypeGoString}
 }
 
 func WrapObjectMTValue(value interface{}) MTValue {
@@ -36,6 +37,10 @@ func WrapObjectMTValue(value interface{}) MTValue {
 
 func WrapStrMapMTValue(value map[string]interface{}) MTValue {
 	return MTValue{Value: value, MediaType: ValueMediaTypeGoStringMap}
+}
+
+func WrapStrListMTValue(value []string) MTValue {
+	return MTValue{Value: value, MediaType: ValueMediaTypeGoStringList}
 }
 
 func WrapStrValuesMapMTValue(value map[string][]string) MTValue {

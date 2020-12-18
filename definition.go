@@ -19,11 +19,13 @@ const (
 	// 查询所有Path参数
 	ScopePathMap = "PATH_MAP"
 	// 从Query参数中获取
-	ScopeQuery = "QUERY"
+	ScopeQuery      = "QUERY"
+	ScopeQueryMulti = "QUERY_MUL"
 	// 获取全部Query参数
 	ScopeQueryMap = "QUERY_MAP"
 	// 只从Form表单参数参数列表中读取
-	ScopeForm = "FORM"
+	ScopeForm      = "FORM"
+	ScopeFormMulti = "FORM_MUL"
 	// 获取Form全部参数
 	ScopeFormMap = "FORM_MAP"
 	// 只从Query和Form表单参数参数列表中读取

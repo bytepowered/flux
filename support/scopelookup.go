@@ -1,6 +1,7 @@
 package support
 
 import (
+	"errors"
 	"github.com/bytepowered/flux"
 	"github.com/spf13/cast"
 	"net/url"
@@ -12,7 +13,7 @@ func LookupWebContextByExpr(lookupExpr string, webc flux.WebContext) string {
 	if "" == lookupExpr || nil == webc {
 		return ""
 	}
-	scope, key, ok := LookupParseExpr(lookupExpr)
+	scope, key, ok := ParseLookupExpr(lookupExpr)
 	if !ok {
 		return ""
 	}
@@ -43,7 +44,7 @@ func LookupWebContext(scope, key string, webc flux.WebContext) string {
 		v, _ := SearchValueProviders(key, webc.QueryValues, webc.FormValues)
 		return v
 	case flux.ScopeAuto:
-		if v, ok := SearchValueProviders(key, webc.PathValues, webc.QueryValues, webc.FormValues, HeaderProviderFunc(webc)); ok {
+		if v, ok := SearchValueProviders(key, webc.PathValues, webc.QueryValues, webc.FormValues, WrapHeaderProviderFunc(webc)); ok {
 			return v
 		}
 		return cast.ToString(webc.GetValue(key))
@@ -52,55 +53,20 @@ func LookupWebContext(scope, key string, webc flux.WebContext) string {
 	}
 }
 
-// LookupByExprContext 搜索LookupExpr表达式指定域的值。
-func LookupByExprContext(lookupExpr string, ctx flux.Context) interface{} {
+// LookupContextByExpr 搜索LookupExpr表达式指定域的值。
+func LookupContextByExpr(lookupExpr string, ctx flux.Context) (interface{}, error) {
 	if "" == lookupExpr || nil == ctx {
-		return nil
+		return nil, errors.New("empty lookup expr or context")
 	}
-	scope, key, ok := LookupParseExpr(lookupExpr)
+	scope, key, ok := ParseLookupExpr(lookupExpr)
 	if !ok {
-		return ""
+		return "", errors.New("illegal lookup expr: " + lookupExpr)
 	}
-	return LookupValueContext(scope, key, ctx)
-}
-
-// LookupValueContext 搜索Lookup指定域的值。支持：
-func LookupValueContext(scope, key string, ctx flux.Context) interface{} {
-	req := ctx.Request()
-	switch strings.ToUpper(scope) {
-	case flux.ScopePath:
-		return req.PathValue(key)
-	case flux.ScopeQuery:
-		return req.QueryValue(key)
-	case flux.ScopeForm:
-		return req.FormValue(key)
-	case flux.ScopeHeader:
-		return req.HeaderValue(key)
-	case flux.ScopeAttr:
-		v, _ := ctx.GetAttribute(key)
-		return v
-	case flux.ScopeAttrs:
-		return ctx.Attributes()
-	case flux.ScopeRequest:
-		switch strings.ToLower(key) {
-		case "method":
-			return ctx.Method()
-		case "uri":
-			return ctx.RequestURI()
-		}
-		return ctx.Method()
-	case flux.ScopeParam:
-		v, _ := SearchValueProviders(key, req.QueryValues, req.FormValues)
-		return v
-	case flux.ScopeAuto:
-		if v, ok := SearchValueProviders(key, req.PathValues, req.QueryValues, req.FormValues, HeaderProviderFunc(ctx.Request())); ok {
-			return v
-		}
-		av, _ := ctx.GetAttribute(key)
-		return av
-	default:
-		return nil
+	mtv, err := DefaultArgumentValueLookupFunc(scope, key, ctx)
+	if nil != err {
+		return "", err
 	}
+	return mtv.Value, nil
 }
 
 func SearchValueProviders(key string, providers ...func() url.Values) (string, bool) {
@@ -113,8 +79,8 @@ func SearchValueProviders(key string, providers ...func() url.Values) (string, b
 	return "", false
 }
 
-// LookupParseExpr 解析Lookup键值对
-func LookupParseExpr(lookupExpr string) (scope, key string, ok bool) {
+// ParseLookupExpr 解析Lookup键值对
+func ParseLookupExpr(lookupExpr string) (scope, key string, ok bool) {
 	if "" == lookupExpr {
 		return
 	}
@@ -125,7 +91,7 @@ func LookupParseExpr(lookupExpr string) (scope, key string, ok bool) {
 	return strings.ToUpper(kv[0]), kv[1], true
 }
 
-func HeaderProviderFunc(req flux.RequestReader) func() url.Values {
+func WrapHeaderProviderFunc(req flux.RequestReader) func() url.Values {
 	return func() url.Values {
 		h, _ := req.HeaderValues()
 		return url.Values(h)
