@@ -174,13 +174,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 			Internal:   err,
 		}
 	}
-	// Timeout support
-	timeout, terr := cast.ToDurationE(service.RpcTimeout)
-	if terr != nil || timeout.Seconds() <= 0 {
-		timeout = time.Millisecond * time.Duration(b.configuration.GetInt64("timeout"))
-	}
-	atctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
-	goctx, _ := context.WithTimeout(atctx, timeout)
+	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
 	generic := b.LoadGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
 		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "error", err)
@@ -262,6 +256,7 @@ func NewReference(refid string, service *flux.BackendService, config *flux.Confi
 	ref.InterfaceName = service.Interface
 	ref.Version = service.RpcVersion
 	ref.Group = service.RpcGroup
+	ref.RequestTimeout = service.RpcTimeout
 	ref.Retries = service.RpcRetries
 	ref.Cluster = config.GetString("cluster")
 	ref.Protocol = config.GetString("protocol")
