@@ -32,8 +32,9 @@ func TraceContext(ctx flux.Context) flux.Logger {
 	}
 	if ctxLogger, ok := ctx.GetContextLogger(); ok {
 		return ctxLogger
-	} else {
-		endpoint := ctx.Endpoint()
+	}
+	endpoint := ctx.Endpoint()
+	if endpoint.IsValid() {
 		return TraceWith(ctx.RequestId(), map[string]string{
 			"backend-appid":      endpoint.Application,
 			"backend-service":    endpoint.Service.ServiceID(),
@@ -42,5 +43,7 @@ func TraceContext(ctx flux.Context) flux.Logger {
 			"endpoint-version":   endpoint.Version,
 			"endpoint-pattern":   endpoint.HttpPattern,
 		})
+	} else {
+		return Trace(ctx.RequestId())
 	}
 }

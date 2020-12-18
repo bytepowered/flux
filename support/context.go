@@ -131,7 +131,8 @@ func NewEmptyContext() flux.Context {
 }
 
 type ValuesContext struct {
-	request *ValuesRequestReader
+	request   *ValuesRequestReader
+	ctxLogger flux.Logger
 }
 
 func (v *ValuesContext) Method() string {
@@ -151,11 +152,11 @@ func (v *ValuesContext) Request() flux.RequestReader {
 }
 
 func (v *ValuesContext) Response() flux.ResponseWriter {
-	panic("values-context.response() not supported")
+	return nil
 }
 
 func (v *ValuesContext) Endpoint() flux.Endpoint {
-	panic("values-context.endpoint() not supported")
+	return flux.Endpoint{}
 }
 
 func (v *ValuesContext) Authorize() bool {
@@ -224,9 +225,9 @@ func (v *ValuesContext) Context() context.Context {
 }
 
 func (v *ValuesContext) SetContextLogger(logger flux.Logger) {
-	panic("values-context.setcontextlogger() not supported")
+	v.ctxLogger = logger
 }
 
 func (v *ValuesContext) GetContextLogger() (flux.Logger, bool) {
-	return nil, false
+	return v.ctxLogger, v.ctxLogger != nil
 }
