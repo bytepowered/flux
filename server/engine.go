@@ -6,7 +6,6 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/support"
 	"github.com/prometheus/client_golang/prometheus"
 	"reflect"
 	"sort"
@@ -154,7 +153,7 @@ func _isDisabled(config *flux.Configuration) bool {
 }
 
 func sortedStartup(items []flux.Startuper) []flux.Startuper {
-	out := make(support.StartupArray, len(items))
+	out := make(StartupArray, len(items))
 	for i, v := range items {
 		out[i] = v
 	}
@@ -163,7 +162,7 @@ func sortedStartup(items []flux.Startuper) []flux.Startuper {
 }
 
 func sortedShutdown(items []flux.Shutdowner) []flux.Shutdowner {
-	out := make(support.ShutdownArray, len(items))
+	out := make(ShutdownArray, len(items))
 	for i, v := range items {
 		out[i] = v
 	}
