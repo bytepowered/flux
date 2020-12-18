@@ -43,7 +43,7 @@ func LookupWebContext(scope, key string, webc flux.WebContext) string {
 		v, _ := SearchValueProviders(key, webc.QueryValues, webc.FormValues)
 		return v
 	case flux.ScopeAuto:
-		if v, ok := SearchValueProviders(key, webc.PathValues, webc.QueryValues, webc.FormValues, makeHeaderProvider(webc)); ok {
+		if v, ok := SearchValueProviders(key, webc.PathValues, webc.QueryValues, webc.FormValues, HeaderProviderFunc(webc)); ok {
 			return v
 		}
 		return cast.ToString(webc.GetValue(key))
@@ -93,7 +93,7 @@ func LookupValueContext(scope, key string, ctx flux.Context) interface{} {
 		v, _ := SearchValueProviders(key, req.QueryValues, req.FormValues)
 		return v
 	case flux.ScopeAuto:
-		if v, ok := SearchValueProviders(key, req.PathValues, req.QueryValues, req.FormValues, makeHeaderProvider(ctx.Request())); ok {
+		if v, ok := SearchValueProviders(key, req.PathValues, req.QueryValues, req.FormValues, HeaderProviderFunc(ctx.Request())); ok {
 			return v
 		}
 		av, _ := ctx.GetAttribute(key)
@@ -125,7 +125,7 @@ func LookupParseExpr(lookupExpr string) (scope, key string, ok bool) {
 	return strings.ToUpper(kv[0]), kv[1], true
 }
 
-func makeHeaderProvider(req flux.RequestReader) func() url.Values {
+func HeaderProviderFunc(req flux.RequestReader) func() url.Values {
 	return func() url.Values {
 		h, _ := req.HeaderValues()
 		return url.Values(h)

@@ -21,12 +21,21 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
 		return flux.WrapTextMTValue(req.PathValue(key)), nil
+	case flux.ScopePathMap:
+		return flux.WrapStrValuesMapMTValue(req.PathValues()), nil
 	case flux.ScopeQuery:
 		return flux.WrapTextMTValue(req.QueryValue(key)), nil
+	case flux.ScopeQueryMap:
+		return flux.WrapStrValuesMapMTValue(req.QueryValues()), nil
 	case flux.ScopeForm:
 		return flux.WrapTextMTValue(req.FormValue(key)), nil
+	case flux.ScopeFormMap:
+		return flux.WrapStrValuesMapMTValue(req.FormValues()), nil
 	case flux.ScopeHeader:
 		return flux.WrapTextMTValue(req.HeaderValue(key)), nil
+	case flux.ScopeHeaderMap:
+		header, _ := req.HeaderValues()
+		return flux.WrapStrValuesMapMTValue(header), nil
 	case flux.ScopeAttr:
 		v, _ := ctx.GetAttribute(key)
 		return flux.WrapObjectMTValue(v), nil
@@ -34,21 +43,26 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 		return flux.WrapStrMapMTValue(ctx.Attributes()), nil
 	case flux.ScopeBody:
 		reader, err := req.RequestBodyReader()
-		return flux.MTValue{Value: reader, MediaType: req.HeaderValue("Content-Type")}, err
+		return flux.MTValue{Value: reader, MediaType: req.HeaderValue(flux.HeaderContentType)}, err
 	case flux.ScopeParam:
 		v, _ := SearchValueProviders(key, req.QueryValues, req.FormValues)
 		return flux.WrapTextMTValue(v), nil
+	case flux.ScopeValue:
+		v, _ := ctx.GetValue(key)
+		return flux.WrapObjectMTValue(v), nil
 	case flux.ScopeAuto:
 		fallthrough
 	default:
-		if v, ok := SearchValueProviders(key,
-			req.PathValues, req.QueryValues, req.FormValues, makeHeaderProvider(req)); ok {
+		if v, ok := SearchValueProviders(key, req.PathValues, req.QueryValues, req.FormValues, HeaderProviderFunc(req)); ok {
 			return flux.WrapTextMTValue(v), nil
-		} else if v, _ := ctx.GetAttribute(key); "" != v {
-			return flux.WrapObjectMTValue(v), nil
-		} else {
-			return flux.WrapObjectMTValue(nil), nil
 		}
+		if v, ok := ctx.GetAttribute(key); ok {
+			return flux.WrapObjectMTValue(v), nil
+		}
+		if v, ok := ctx.GetValue(key); ok {
+			return flux.WrapObjectMTValue(v), nil
+		}
+		return flux.WrapObjectMTValue(nil), nil
 	}
 }
 

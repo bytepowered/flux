@@ -12,9 +12,10 @@ const (
 )
 
 const (
-	ValueMediaTypeGoText      = "go:text"
-	ValueMediaTypeGoObject    = "go:object"
-	ValueMediaTypeGoStringMap = "go:string-map"
+	ValueMediaTypeGoText            = "go:text"
+	ValueMediaTypeGoObject          = "go:object"
+	ValueMediaTypeGoStringMap       = "go:string-map"
+	ValueMediaTypeGoStringValuesMap = "go:string-mvmap"
 )
 
 // MTValue 包含指示值的媒体类型和Value结构
@@ -35,6 +36,10 @@ func WrapObjectMTValue(value interface{}) MTValue {
 
 func WrapStrMapMTValue(value map[string]interface{}) MTValue {
 	return MTValue{Value: value, MediaType: ValueMediaTypeGoStringMap}
+}
+
+func WrapStrValuesMapMTValue(value map[string][]string) MTValue {
+	return MTValue{Value: value, MediaType: ValueMediaTypeGoStringValuesMap}
 }
 
 // MTValueResolver 将未定类型的值，按指定类型以及泛型类型转换为实际类型

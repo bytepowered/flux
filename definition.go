@@ -16,14 +16,22 @@ const (
 const (
 	// 从动态Path参数中获取
 	ScopePath = "PATH"
+	// 查询所有Path参数
+	ScopePathMap = "PATH_MAP"
 	// 从Query参数中获取
 	ScopeQuery = "QUERY"
+	// 获取全部Query参数
+	ScopeQueryMap = "QUERY_MAP"
 	// 只从Form表单参数参数列表中读取
 	ScopeForm = "FORM"
+	// 获取Form全部参数
+	ScopeFormMap = "FORM_MAP"
 	// 只从Query和Form表单参数参数列表中读取
 	ScopeParam = "PARAM"
 	// 只从Header参数中读取
 	ScopeHeader = "HEADER"
+	// 获取Header全部参数
+	ScopeHeaderMap = "HEADER_MAP"
 	// 获取Http Attributes的单个参数
 	ScopeAttr = "ATTR"
 	// 获取Http Attributes的Map结果
@@ -32,6 +40,8 @@ const (
 	ScopeBody = "BODY"
 	// 获取Request元数据
 	ScopeRequest = "REQUEST"
+	// 自动查找数据源
+	ScopeValue = "VALUE"
 	// 自动查找数据源
 	ScopeAuto = "AUTO"
 )
