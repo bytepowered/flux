@@ -30,8 +30,8 @@ var (
 )
 
 var (
-	dubboRegistryGlobalAlias = make(map[string]string, 16)
-	dubboInternalJSON        = jsoniter.ConfigCompatibleWithStandardLibrary
+	registryGlobalAlias = make(map[string]string, 16)
+	internalJSON        = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 var (
@@ -59,12 +59,12 @@ type (
 
 // GetRegistryGlobalAlias 获取默认DubboRegistry全局别名配置
 func GetRegistryGlobalAlias() map[string]string {
-	return dubboRegistryGlobalAlias
+	return registryGlobalAlias
 }
 
 // SetRegistryGlobalAlias 设置DubboRegistry全局别名配置
 func SetRegistryGlobalAlias(alias map[string]string) {
-	dubboRegistryGlobalAlias = pkg.RequireNotNil(alias, "alias is nil").(map[string]string)
+	registryGlobalAlias = pkg.RequireNotNil(alias, "alias is nil").(map[string]string)
 }
 
 // BackendTransportService 集成DubboRPC框架的BackendService
@@ -186,7 +186,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		}
 	} else {
 		if b.traceEnable {
-			text, err := dubboInternalJSON.MarshalToString(resp)
+			text, err := internalJSON.MarshalToString(resp)
 			ctxLogger := logger.TraceContext(ctx)
 			if nil == err {
 				ctxLogger.Infow("Dubbo received response", "response.json", text)

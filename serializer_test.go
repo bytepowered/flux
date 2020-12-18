@@ -35,6 +35,21 @@ func TestJsonCase(t *testing.T) {
 	t.Logf("==> %s", string(b))
 }
 
+func TestJsonMapStandard(t *testing.T) {
+	serializer := NewJsonSerializer()
+	b, err := serializer.Marshal(map[int]bool{1: false})
+	if nil != err {
+		t.Fatal(err)
+	}
+	t.Logf("Marshal: %s", string(b))
+
+	var out interface{}
+	if err = serializer.Unmarshal([]byte(`{1:false}`), &out); nil != err {
+		t.Fatal(err)
+	}
+	t.Log(out)
+}
+
 func Benchmark_SerializeUnmarshal(b *testing.B) {
 	serializer := NewJsonSerializer()
 	_BenchmarkUnmarshalWith(b, serializer.Unmarshal)
