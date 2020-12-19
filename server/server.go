@@ -183,7 +183,7 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 	return s.webServer.StartTLS(address, certFile, keyFile)
 }
 
-func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *MVEndpoint, tracing bool) error {
+func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *MultiEndpoint, tracing bool) error {
 	version := webc.HeaderValue(s.httpVersionHeader)
 	endpoint, found := mvendpoint.FindByVersion(version)
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
@@ -273,7 +273,7 @@ func (s *HttpWebServer) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) {
 	routeKey := fmt.Sprintf("%s#%s", method, pattern)
 	// Refresh endpoint
 	endpoint := event.Endpoint
-	bind, isreg := s.selectMVEndpoint(routeKey, &endpoint)
+	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("New endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
@@ -364,18 +364,18 @@ func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextHookFun
 	s.serverContextHooks = append(s.serverContextHooks, f)
 }
 
-func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MVEndpoint) flux.WebHandler {
+func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MultiEndpoint) flux.WebHandler {
 	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
 }
 
-func (s *HttpWebServer) selectMVEndpoint(routeKey string, endpoint *flux.Endpoint) (*MVEndpoint, bool) {
-	if mve, ok := SelectMVEndpoint(routeKey); ok {
+func (s *HttpWebServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*MultiEndpoint, bool) {
+	if mve, ok := SelectMultiEndpoint(routeKey); ok {
 		return mve, false
 	} else {
-		return RegisterMVEndpoint(routeKey, endpoint), true
+		return RegisterMultiEndpoint(routeKey, endpoint), true
 	}
 }
 

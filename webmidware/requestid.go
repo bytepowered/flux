@@ -6,8 +6,8 @@ import (
 	"github.com/bytepowered/flux/logger"
 )
 
-// LookupRequestIdFunc 查找或者生成RequestId的函数
-type LookupRequestIdFunc func(ctx flux.WebContext) string
+// RequestIdLookupFunc 查找或者生成RequestId的函数
+type RequestIdLookupFunc func(ctx flux.WebContext) string
 
 var (
 	_defaultLookupHeaders = map[string]struct{}{
@@ -16,7 +16,7 @@ var (
 		"requestId":           {},
 		"request-id":          {},
 	}
-	_lookupRequestIdFunc LookupRequestIdFunc
+	_requestIdLookupFunc RequestIdLookupFunc
 )
 
 // AddRequestIdLookupHeader 添加默认查找RequestId的Header名称。
@@ -27,8 +27,8 @@ func AddRequestIdLookupHeader(header string) {
 
 // SetRequestIdLookupFunc 设置查找RequestId的函数
 // 注意：在注册RequestIdMiddleware前添加生效
-func SetRequestIdLookupFunc(f LookupRequestIdFunc) {
-	_lookupRequestIdFunc = f
+func SetRequestIdLookupFunc(f RequestIdLookupFunc) {
+	_requestIdLookupFunc = f
 }
 
 // NewRequestIdMiddlewareWithinHeader 生成从Header中查找的RequestId中间件的函数
@@ -45,11 +45,11 @@ func NewRequestIdMiddlewareWithinHeader(headers ...string) flux.WebInterceptor {
 	for name := range _defaultLookupHeaders {
 		names = append(names, name)
 	}
-	return NewRequestIdMiddleware(DefaultLookupRequestIdFactory(names, id))
+	return NewRequestIdMiddleware(DefaultRequestIdLookupFuncFactory(names, id))
 }
 
 // NewRequestIdMiddleware 生成RequestId中间件的函数
-func NewRequestIdMiddleware(lookupFunc LookupRequestIdFunc) flux.WebInterceptor {
+func NewRequestIdMiddleware(lookupFunc RequestIdLookupFunc) flux.WebInterceptor {
 	return func(next flux.WebHandler) flux.WebHandler {
 		return func(webc flux.WebContext) error {
 			requestId := lookupFunc(webc)
@@ -60,11 +60,11 @@ func NewRequestIdMiddleware(lookupFunc LookupRequestIdFunc) flux.WebInterceptor 
 	}
 }
 
-func DefaultLookupRequestIdFactory(names []string, generator *snowflake.Node) LookupRequestIdFunc {
+func DefaultRequestIdLookupFuncFactory(names []string, generator *snowflake.Node) RequestIdLookupFunc {
 	return func(webc flux.WebContext) string {
 		// 查指定查找函数
-		if nil != _lookupRequestIdFunc {
-			id := _lookupRequestIdFunc(webc)
+		if nil != _requestIdLookupFunc {
+			id := _requestIdLookupFunc(webc)
 			if id != "" {
 				return id
 			}

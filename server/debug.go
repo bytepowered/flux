@@ -19,7 +19,7 @@ const (
 	queryKeyServiceId1   = "serviceId"
 )
 
-type EndpointFilter func(ep *MVEndpoint) bool
+type EndpointFilter func(ep *MultiEndpoint) bool
 
 var (
 	endpointQueryKeys = []string{queryKeyApplication, queryKeyProtocol,
@@ -35,18 +35,18 @@ var (
 
 func init() {
 	endpointFilterFactories[queryKeyApplication] = func(query string) EndpointFilter {
-		return func(ep *MVEndpoint) bool {
+		return func(ep *MultiEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().Application)
 		}
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
-		return func(ep *MVEndpoint) bool {
+		return func(ep *MultiEndpoint) bool {
 			proto := ep.RandomVersion().Service.RpcProto
 			return queryMatch(query, proto)
 		}
 	}
 	httpPatternFilter := func(query string) EndpointFilter {
-		return func(ep *MVEndpoint) bool {
+		return func(ep *MultiEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().HttpPattern)
 		}
 	}
@@ -55,7 +55,7 @@ func init() {
 	endpointFilterFactories[queryKeyHttpPattern1] = httpPatternFilter
 
 	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
-		return func(ep *MVEndpoint) bool {
+		return func(ep *MultiEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().Service.Interface)
 		}
 	}
@@ -96,7 +96,7 @@ func NewDebugQueryServiceHandler() http.HandlerFunc {
 	})
 }
 
-func queryEndpoints(data map[string]*MVEndpoint, request *http.Request) interface{} {
+func queryEndpoints(data map[string]*MultiEndpoint, request *http.Request) interface{} {
 	filters := make([]EndpointFilter, 0)
 	query := request.URL.Query()
 	for _, key := range endpointQueryKeys {
@@ -116,7 +116,7 @@ func queryEndpoints(data map[string]*MVEndpoint, request *http.Request) interfac
 	return queryWithEndpointFilters(data, filters...)
 }
 
-func queryWithEndpointFilters(data map[string]*MVEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
+func queryWithEndpointFilters(data map[string]*MultiEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
 	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {
