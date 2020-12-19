@@ -92,7 +92,7 @@ func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
 	if str, err := cast.ToStringE(mtValue.Value); nil == err {
 		return str, nil
 	}
-	if data, err := _toBytes0(mtValue.Value); nil != err {
+	if data, err := toByteArray0(mtValue.Value); nil != err {
 		if err != errCastToByteTypeNotSupported {
 			return "", err
 		}
@@ -128,13 +128,13 @@ func CastDecodeMTValueToStringMap(mtValue flux.MTValue) (map[string]interface{},
 	default:
 		var data []byte
 		if strings.Contains(mtValue.MediaType, "application/json") {
-			if bs, err := _toBytes(mtValue.Value); nil != err {
+			if bs, err := toByteArray(mtValue.Value); nil != err {
 				return nil, err
 			} else {
 				data = bs
 			}
 		} else if strings.Contains(mtValue.MediaType, "application/x-www-form-urlencoded") {
-			if bs, err := _toBytes(mtValue.Value); nil != err {
+			if bs, err := toByteArray(mtValue.Value); nil != err {
 				return nil, err
 			} else if jbs, err := JSONBytesFromQueryString(bs); nil != err {
 				return nil, err
@@ -176,15 +176,15 @@ func CastDecodeMTValueToSliceList(genericTypes []string, mtValue flux.MTValue) (
 	}
 }
 
-func _toBytes(v interface{}) ([]byte, error) {
-	if bs, err := _toBytes0(v); nil != err {
+func toByteArray(v interface{}) ([]byte, error) {
+	if bs, err := toByteArray0(v); nil != err {
 		return nil, fmt.Errorf("value: %+v, value.type:%T, error: %w", v, v, err)
 	} else {
 		return bs, nil
 	}
 }
 
-func _toBytes0(v interface{}) ([]byte, error) {
+func toByteArray0(v interface{}) ([]byte, error) {
 	switch v.(type) {
 	case []byte:
 		return v.([]byte), nil
