@@ -14,6 +14,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -201,60 +202,62 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	if !found {
 		if tracing {
 			url, _ := webc.RequestURL()
-			logger.Trace(requestId).Infow("HttpWebServer route not found",
-				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
-				"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
+			logger.Trace(requestId).Infow("HttpWebServer route not-found",
+				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path},
 			)
 		}
 		return s.webServer.HandleWebNotFound(webc)
 	}
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
+	// Route call
+	logger.TraceContext(ctxw).Infow("HttpWebServer route start")
+	endfunc := func(code int, start time.Time) {
+		elapsed := time.Now().Sub(start)
+		logger.TraceContext(ctxw).Infow("HttpWebServer route end",
+			"duration", elapsed.String(), "response.code", code)
+	}
+	start := time.Now()
 	// Context hook
 	for _, ctxhook := range s.serverContextHooks {
 		ctxhook(webc, ctxw)
 	}
-	if tracing {
-		url, _ := webc.RequestURL()
-		logger.TraceContext(ctxw).Infow("HttpWebServer routing",
-			"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path}, "endpoint-version", version,
-			"endpoint-service", endpoint.Service.Method+":"+endpoint.Service.Interface,
-		)
-	}
 	// Route and response
 	if err := s.router.Route(ctxw); nil != err {
+		defer endfunc(err.StatusCode, start)
 		if flux.ErrRouteNotFound == err {
 			return s.webServer.HandleWebNotFound(webc)
 		} else {
+			logger.TraceContext(ctxw).Errorw("HttpWebServer route error", "error", err)
 			return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
 		}
 	} else {
 		rw := ctxw.Response()
+		defer endfunc(rw.StatusCode(), start)
 		return s.serverResponseWriter(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
 	}
 }
 
 func (s *HttpWebServer) HandleBackendServiceEvent(event flux.BackendServiceEvent) {
 	service := event.Service
-	serviceTag := service.Interface + ":" + service.Method
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("New service",
-			"service-id", service.ServiceId, "alias-id", service.AliasId, "service", serviceTag)
+			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.StoreBackendService(service)
 		if "" != service.AliasId {
 			ext.StoreBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("Update service",
-			"service-id", service.ServiceId, "alias-id", service.AliasId, "service", serviceTag)
+			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.StoreBackendService(service)
 		if "" != service.AliasId {
 			ext.StoreBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
 		logger.Infow("Delete service",
-			"service-id", service.ServiceId, "alias-id", service.AliasId, "service", serviceTag)
+			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RemoveBackendService(service.ServiceId)
 		if "" != service.AliasId {
 			ext.RemoveBackendService(service.AliasId)

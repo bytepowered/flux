@@ -27,22 +27,33 @@ func With(values context.Context) flux.Logger {
 }
 
 func TraceContext(ctx flux.Context) flux.Logger {
+	return TraceContextWith(ctx, nil)
+}
+
+func TraceContextWith(ctx flux.Context, extraFields map[string]string) flux.Logger {
 	if nil == ctx {
 		return Trace("no-trace-id")
 	}
 	if ctxLogger, ok := ctx.GetContextLogger(); ok {
 		return ctxLogger
 	}
+	fields := map[string]string{
+		"request-id":     ctx.RequestId(),
+		"request-method": ctx.Method(),
+		"request-uri":    ctx.RequestURI(),
+	}
+	for k, v := range extraFields {
+		fields[k] = v
+	}
 	endpoint := ctx.Endpoint()
 	if endpoint.IsValid() {
-		return TraceWith(ctx.RequestId(), map[string]string{
-			"backend-appid":      endpoint.Application,
-			"backend-service":    endpoint.Service.ServiceID(),
-			"backend-permission": strings.Join(endpoint.PermissionServiceIds(), ","),
-			"backend-authorize":  cast.ToString(endpoint.Authorize),
-			"endpoint-version":   endpoint.Version,
-			"endpoint-pattern":   endpoint.HttpPattern,
-		})
+		fields["backend-appid"] = endpoint.Application
+		fields["backend-service"] = endpoint.Service.ServiceID()
+		fields["backend-permission"] = strings.Join(endpoint.PermissionServiceIds(), ",")
+		fields["backend-authorize"] = cast.ToString(endpoint.Authorize)
+		fields["endpoint-version"] = endpoint.Version
+		fields["endpoint-pattern"] = endpoint.HttpPattern
+		return TraceWith(ctx.RequestId(), fields)
 	} else {
 		return Trace(ctx.RequestId())
 	}
