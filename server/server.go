@@ -206,7 +206,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path},
 			)
 		}
-		return s.webServer.HandleWebNotFound(webc)
+		return flux.ErrRouteNotFound
 	}
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
@@ -214,8 +214,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	logger.TraceContext(ctxw).Infow("HttpWebServer route start")
 	endfunc := func(code int, start time.Time) {
 		elapsed := time.Now().Sub(start)
-		logger.TraceContext(ctxw).Infow("HttpWebServer route end",
-			"duration", elapsed.String(), "response.code", code)
+		logger.TraceContext(ctxw).Infow("HttpWebServer route end", "duration", elapsed.String(), "response.code", code)
 	}
 	start := time.Now()
 	// Context hook
@@ -226,11 +225,10 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	if err := s.router.Route(ctxw); nil != err {
 		defer endfunc(err.StatusCode, start)
 		if flux.ErrRouteNotFound == err {
-			return s.webServer.HandleWebNotFound(webc)
-		} else {
-			logger.TraceContext(ctxw).Errorw("HttpWebServer route error", "error", err)
-			return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
+			return err
 		}
+		logger.TraceContext(ctxw).Errorw("HttpWebServer route error", "error", err)
+		return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
 	} else {
 		rw := ctxw.Response()
 		defer endfunc(rw.StatusCode(), start)
@@ -370,7 +368,12 @@ func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextHookFun
 func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MultiEndpoint) flux.WebHandler {
 	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
-		return s.HandleEndpointRequest(webc, endpoint, enabled)
+		err := s.HandleEndpointRequest(webc, endpoint, enabled)
+		if flux.ErrRouteNotFound == err {
+			return s.webServer.HandleWebNotFound(webc)
+		} else {
+			return err
+		}
 	}
 }
 
