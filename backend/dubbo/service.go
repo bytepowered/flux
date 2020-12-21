@@ -53,8 +53,8 @@ func init() {
 type (
 	// ReferenceOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
 	ReferenceOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
-	// ParameterAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
-	ParameterAssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
+	// ArgumentsAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
+	ArgumentsAssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
 )
 
 // GetRegistryGlobalAlias 获取默认DubboRegistry全局别名配置
@@ -71,7 +71,7 @@ func SetRegistryGlobalAlias(alias map[string]string) {
 type BackendTransportService struct {
 	// 可外部配置
 	ReferenceOptionsFuncs []ReferenceOptionsFunc
-	ParameterAssembleFunc ParameterAssembleFunc
+	ArgumentsAssembleFunc ArgumentsAssembleFunc
 	// 内部私有
 	traceEnable   bool
 	configuration *flux.Configuration
@@ -82,7 +82,7 @@ type BackendTransportService struct {
 func NewDubboBackendTransport() flux.BackendTransport {
 	return &BackendTransportService{
 		ReferenceOptionsFuncs: make([]ReferenceOptionsFunc, 0),
-		ParameterAssembleFunc: ArgumentsAssemble,
+		ArgumentsAssembleFunc: DefaultArgumentsAssembleFunc,
 	}
 }
 
@@ -110,8 +110,8 @@ func (b *BackendTransportService) Init(config *flux.Configuration) error {
 	if nil == b.ReferenceOptionsFuncs {
 		b.ReferenceOptionsFuncs = make([]ReferenceOptionsFunc, 0)
 	}
-	if pkg.IsNil(b.ParameterAssembleFunc) {
-		b.ParameterAssembleFunc = ArgumentsAssemble
+	if pkg.IsNil(b.ArgumentsAssembleFunc) {
+		b.ArgumentsAssembleFunc = DefaultArgumentsAssembleFunc
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
@@ -144,7 +144,7 @@ func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
 
 // Invoke invoke backend service with context
 func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
-	types, values, err := b.ParameterAssembleFunc(service.Arguments, ctx)
+	types, values, err := b.ArgumentsAssembleFunc(service.Arguments, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
