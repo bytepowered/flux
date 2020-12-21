@@ -6,12 +6,16 @@ import (
 )
 
 var (
-	_simLogger flux.Logger = zap.S()
+	_simLogger *zap.SugaredLogger
 )
 
+func init() {
+	SetSimpleLogger(zap.S())
+}
+
 // SetSimpleLogger set simple logger instance
-func SetSimpleLogger(logger flux.Logger) {
-	_simLogger = logger
+func SetSimpleLogger(logger *zap.SugaredLogger) {
+	_simLogger = logger.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar()
 }
 
 // SimpleLogger get a simple logger instance
