@@ -21,3 +21,7 @@ func RequireNotEmpty(str string, msg string) string {
 func IsNil(v interface{}) bool {
 	return v == nil || reflect.ValueOf(v).IsNil()
 }
+
+func IsNotNil(v interface{}) bool {
+	return !IsNil(v)
+}

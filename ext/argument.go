@@ -31,13 +31,18 @@ func LoadArgumentValueResolveFunc() flux.ArgumentValueResolveFunc {
 //// 构建参数值对象工具函数
 
 func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
+	return NewPrimitiveArgumentWithLoader(typeClass, argName, nil)
+}
+
+func NewPrimitiveArgumentWithLoader(typeClass, argName string, loader func() flux.MTValue) flux.Argument {
 	name := pkg.RequireNotEmpty(argName, "argName is empty")
 	return flux.Argument{
-		Class:     pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
-		Type:      flux.ArgumentTypePrimitive,
-		Name:      name,
-		HttpName:  name,
-		HttpScope: flux.ScopeAuto,
+		Class:       pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
+		Type:        flux.ArgumentTypePrimitive,
+		Name:        name,
+		HttpName:    name,
+		HttpScope:   flux.ScopeAuto,
+		ValueLoader: loader,
 	}
 }
 
@@ -56,20 +61,50 @@ func NewStringArgument(argName string) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangStringClassName, argName)
 }
 
+func NewStringArgumentWith(argName string, value string) flux.Argument {
+	return NewPrimitiveArgumentWithLoader(flux.JavaLangStringClassName, argName, func() flux.MTValue {
+		return flux.WrapStringMTValue(value)
+	})
+}
+
 func NewIntegerArgument(argName string) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangIntegerClassName, argName)
+}
+
+func NewIntegerArgumentWith(argName string, value int32) flux.Argument {
+	return NewPrimitiveArgumentWithLoader(flux.JavaLangIntegerClassName, argName, func() flux.MTValue {
+		return flux.WrapObjectMTValue(value)
+	})
 }
 
 func NewLongArgument(argName string) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangLongClassName, argName)
 }
 
+func NewLongArgumentWith(argName string, value int64) flux.Argument {
+	return NewPrimitiveArgumentWithLoader(flux.JavaLangLongClassName, argName, func() flux.MTValue {
+		return flux.WrapObjectMTValue(value)
+	})
+}
+
 func NewBooleanArgument(argName string) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangBooleanClassName, argName)
 }
 
+func NewBooleanArgumentWith(argName string, value bool) flux.Argument {
+	return NewPrimitiveArgumentWithLoader(flux.JavaLangBooleanClassName, argName, func() flux.MTValue {
+		return flux.WrapObjectMTValue(value)
+	})
+}
+
 func NewFloatArgument(argName string) flux.Argument {
 	return NewPrimitiveArgument(flux.JavaLangFloatClassName, argName)
+}
+
+func NewFloatArgumentWith(argName string, value float64) flux.Argument {
+	return NewPrimitiveArgumentWithLoader(flux.JavaLangFloatClassName, argName, func() flux.MTValue {
+		return flux.WrapObjectMTValue(value)
+	})
 }
 
 func NewDoubleArgument(argName string) flux.Argument {
