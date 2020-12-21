@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+// NewGlobalConfiguration 创建全局Viper实例的配置对象
+func NewGlobalConfiguration() *Configuration {
+	return NewConfiguration(viper.GetViper())
+}
+
 // NewConfigurationOf 根据指定Namespace，在Viper全局配置中查找配置实例。如果NS不存在，新建一个空配置实例。
 func NewConfigurationOf(namespace string) *Configuration {
 	v := viper.Sub(namespace)
