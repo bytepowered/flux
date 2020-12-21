@@ -160,13 +160,16 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 // ExecuteWith execute backend service with arguments
 func (b *BackendTransportService) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	if b.traceEnable {
-		logger.TraceContext(ctx).Infow("Dubbo invoking", "values", values, "types", types, "attrs", ctx.Attributes())
+		logger.TraceContext(ctx).Infow("Dubbo invoking",
+			"backend-service", service.ServiceID(), "values", values, "types", types, "attrs", ctx.Attributes())
 	}
 	// Note: must be map[string]string
 	// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
 	attachments, err := cast.ToStringMapStringE(ctx.Attributes())
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("Dubbo attachment error", "error", err)
+		logger.TraceContext(ctx).Errorw("Dubbo attachment error",
+			"backend-service", service.ServiceID(),
+			"error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -177,7 +180,8 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
 	generic := b.LoadGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
-		logger.TraceContext(ctx).Errorw("Dubbo rpc error", "error", err)
+		logger.TraceContext(ctx).Errorw("Dubbo rpc error",
+			"backend-service", service.ServiceID(), "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
@@ -189,10 +193,10 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 			text, err := internalJSON.MarshalToString(resp)
 			ctxLogger := logger.TraceContext(ctx)
 			if nil == err {
-				ctxLogger.Infow("Dubbo received response", "response.json", text)
+				ctxLogger.Infow("Dubbo received response", "backend-service", service.ServiceID(), "response.json", text)
 			} else {
 				ctxLogger.Infow("Dubbo received response",
-					"response.type", reflect.TypeOf(resp), "response.data", fmt.Sprintf("%+v", resp))
+					"backend-service", service.ServiceID(), "response.type", reflect.TypeOf(resp), "response.data", fmt.Sprintf("%+v", resp))
 			}
 		}
 		return resp, nil
