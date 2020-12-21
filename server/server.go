@@ -97,8 +97,8 @@ func (s *HttpWebServer) Initial() error {
 	// 创建WebServer
 	s.webServer = ext.LoadWebServerFactory()()
 	// 默认必备的WebServer功能
-	s.webServer.SetWebErrorHandler(s.handleServerError)
-	s.webServer.SetWebNotFoundHandler(s.handleNotFoundError)
+	s.webServer.SetWebErrorHandler(s.defaultServerErrorHandler)
+	s.webServer.SetWebNotFoundHandler(s.defaultNotFoundErrorHandler)
 
 	// - 请求CORS跨域支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureCorsEnable) {
@@ -403,7 +403,7 @@ func (s *HttpWebServer) ensure() *HttpWebServer {
 	return s
 }
 
-func (s *HttpWebServer) handleNotFoundError(webc flux.WebContext) error {
+func (s *HttpWebServer) defaultNotFoundErrorHandler(webc flux.WebContext) error {
 	return &flux.ServeError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeRequestNotFound,
@@ -411,7 +411,14 @@ func (s *HttpWebServer) handleNotFoundError(webc flux.WebContext) error {
 	}
 }
 
-func (s *HttpWebServer) handleServerError(err error, webc flux.WebContext) {
+func (s *HttpWebServer) defaultServerErrorHandler(err error, webc flux.WebContext) {
+	// RouteNotFound
+	if err == flux.ErrRouteNotFound {
+		err = s.webServer.HandleWebNotFound(webc)
+	}
+	if err == nil {
+		return
+	}
 	// Http中间件等返回InvokeError错误
 	stateError, ok := err.(*flux.ServeError)
 	if !ok {
