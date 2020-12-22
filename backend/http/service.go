@@ -14,23 +14,23 @@ import (
 	"time"
 )
 
-func NewHttpBackendTransport() *BackendTransportHttpService {
-	return &BackendTransportHttpService{
+func NewHttpBackendTransport() *BackendTransportService {
+	return &BackendTransportService{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
 	}
 }
 
-type BackendTransportHttpService struct {
+type BackendTransportService struct {
 	httpClient *http.Client
 }
 
-func (ex *BackendTransportHttpService) Exchange(ctx flux.Context) *flux.ServeError {
+func (ex *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
 	return backend.DoExchange(ctx, ex)
 }
 
-func (ex *BackendTransportHttpService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
+func (ex *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	inurl, _ := ctx.Request().RequestURL()
 	body, _ := ctx.Request().RequestBodyReader()
 	newRequest, err := ex.Assemble(&service, inurl, body, ctx)
@@ -45,7 +45,7 @@ func (ex *BackendTransportHttpService) Invoke(service flux.BackendService, ctx f
 	return ex.ExecuteRequest(newRequest, service, ctx)
 }
 
-func (ex *BackendTransportHttpService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
+func (ex *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	// Header透传以及传递AttrValues
 	if header, writable := ctx.Request().HeaderValues(); writable {
 		newRequest.Header = header.Clone()
@@ -71,7 +71,7 @@ func (ex *BackendTransportHttpService) ExecuteRequest(newRequest *http.Request, 
 	return resp, nil
 }
 
-func (ex *BackendTransportHttpService) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
+func (ex *BackendTransportService) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
