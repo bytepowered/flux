@@ -212,9 +212,9 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	defer s.releaseContext(ctxw)
 	// Route call
 	logger.TraceContext(ctxw).Infow("HttpWebServer route start")
-	endfunc := func(code int, start time.Time) {
+	endcall := func(code int, start time.Time) {
 		elapsed := time.Now().Sub(start)
-		logger.TraceContext(ctxw).Infow("HttpWebServer route end", "duration", elapsed.String(), "response.code", code)
+		logger.TraceContext(ctxw).Infow("HttpWebServer route end", "elapsed", elapsed.String(), "response.code", code)
 	}
 	start := time.Now()
 	// Context hook
@@ -222,17 +222,15 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 		ctxhook(webc, ctxw)
 	}
 	// Route and response
+	response := ctxw.Response()
 	if err := s.router.Route(ctxw); nil != err {
-		defer endfunc(err.StatusCode, start)
-		if flux.ErrRouteNotFound == err {
-			return err
-		}
+		defer endcall(err.StatusCode, start)
 		logger.TraceContext(ctxw).Errorw("HttpWebServer route error", "error", err)
-		return s.serverErrorsWriter(webc, requestId, ctxw.Response().HeaderValues(), err)
+		err.MergeHeader(response.HeaderValues())
+		return err
 	} else {
-		rw := ctxw.Response()
-		defer endfunc(rw.StatusCode(), start)
-		return s.serverResponseWriter(webc, requestId, rw.HeaderValues(), rw.StatusCode(), rw.Body())
+		defer endcall(response.StatusCode(), start)
+		return s.serverResponseWriter(webc, requestId, response.HeaderValues(), response.StatusCode(), response.Body())
 	}
 }
 
@@ -368,12 +366,7 @@ func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextHookFun
 func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MultiEndpoint) flux.WebHandler {
 	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
-		err := s.HandleEndpointRequest(webc, endpoint, enabled)
-		if flux.ErrRouteNotFound == err {
-			return s.webServer.HandleWebNotFound(webc)
-		} else {
-			return err
-		}
+		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
 }
 
@@ -412,26 +405,23 @@ func (s *HttpWebServer) defaultNotFoundErrorHandler(webc flux.WebContext) error 
 }
 
 func (s *HttpWebServer) defaultServerErrorHandler(err error, webc flux.WebContext) {
-	// RouteNotFound
-	if err == flux.ErrRouteNotFound {
-		err = s.webServer.HandleWebNotFound(webc)
-	}
 	if err == nil {
 		return
 	}
 	// Http中间件等返回InvokeError错误
-	stateError, ok := err.(*flux.ServeError)
+	serve, ok := err.(*flux.ServeError)
 	if !ok {
-		stateError = &flux.ServeError{
+		serve = &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    err.Error(),
+			Header:     http.Header{},
 			Internal:   err,
 		}
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
-	if err := s.serverErrorsWriter(webc, requestId, http.Header{}, stateError); nil != err {
-		logger.Trace(requestId).Errorw("Server http response error", "error", err)
+	if err := s.serverErrorsWriter(webc, requestId, serve.Header, serve); nil != err {
+		logger.Trace(requestId).Errorw("HttpWebServer http response error", "error", err)
 	}
 }
 

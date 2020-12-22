@@ -45,9 +45,3 @@ var (
 		Message:    ErrorMessageWebServerRequestNotFound,
 	}
 )
-
-// NewRouteNotFound 返回路由失败错误。
-// 路由失败，会转由WebServer的NotFoundHandler处理请求
-func NewRouteNotFound() *ServeError {
-	return ErrRouteNotFound
-}

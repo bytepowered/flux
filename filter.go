@@ -3,6 +3,7 @@ package flux
 import (
 	"fmt"
 	"github.com/spf13/cast"
+	"net/http"
 )
 
 // ServeError 定义网关处理请求的服务错误；
@@ -11,6 +12,7 @@ type ServeError struct {
 	StatusCode int                    // 响应状态码
 	Message    string                 // 错误消息
 	ErrorCode  interface{}            // 业务错误码
+	Header     http.Header            // 响应Header
 	Internal   error                  // 内部错误对象；错误对象不会被输出到请求端；
 	ExtraTrace map[string]interface{} // 用于定义和跟踪的额外信息；额外信息不会被输出到请求端；
 }
@@ -36,6 +38,18 @@ func (e *ServeError) PutExtraTrace(key string, value interface{}) {
 		e.ExtraTrace = make(map[string]interface{}, 4)
 	}
 	e.ExtraTrace[key] = value
+}
+
+func (e *ServeError) MergeHeader(header http.Header) {
+	if e.Header == nil {
+		e.Header = header.Clone()
+	} else {
+		for key, values := range header {
+			for _, value := range values {
+				e.Header.Add(key, value)
+			}
+		}
+	}
 }
 
 type (
