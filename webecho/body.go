@@ -28,15 +28,6 @@ func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		// 恢复Body，但ParseForm解析后，request.Body无法重读，需要通过GetBody
 		request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-		if err := request.ParseForm(); nil != err {
-			return &flux.ServeError{
-				StatusCode: flux.StatusBadRequest,
-				ErrorCode:  flux.ErrorCodeGatewayInternal,
-				Message:    flux.ErrorMessageRequestParsing,
-				Internal:   fmt.Errorf("parsing req-form, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
-			}
-		} else {
-			return next(echo)
-		}
+		return next(echo)
 	}
 }

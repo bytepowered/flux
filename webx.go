@@ -102,6 +102,9 @@ type (
 
 	// WebSkipper 用于部分WebInterceptor逻辑，实现忽略部分请求的功能；
 	WebSkipper func(WebContext) bool
+
+	// WebRequestBodyDecoder 解析请求体数据
+	WebRequestBodyDecoder func(WebContext) url.Values
 )
 
 // WebContext 定义封装Web框架的RequestContext的接口；
@@ -225,8 +228,8 @@ type WebServer interface {
 	// SetWebNotFoundHandler 设置Web路由不存在处理函数
 	SetWebNotFoundHandler(h WebHandler)
 
-	// HandleWebNotFound 处理Web无法处理路由的请求
-	HandleWebNotFound(webc WebContext) error
+	// SetWebRequestBodyDecoder 设置Body体解析接口
+	SetWebRequestBodyDecoder(decoder WebRequestBodyDecoder)
 
 	// AddWebInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddWebInterceptor(m WebInterceptor)
@@ -236,6 +239,9 @@ type WebServer interface {
 
 	// AddWebHttpHandler 添加http标准请求路由处理函数及其中间件
 	AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
+
+	// HandleWebNotFound 处理Web无法处理路由的请求
+	HandleWebNotFound(webc WebContext) error
 
 	// RawWebServer 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
 	RawWebServer() interface{}

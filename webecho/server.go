@@ -2,10 +2,12 @@ package webecho
 
 import (
 	"context"
+	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -19,15 +21,31 @@ func NewAdaptWebServer() flux.WebServer {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
-	// 可重读Body
+	aws := &AdaptWebServer{
+		server:      server,
+		bodyDecoder: DefaultRequestBodyDecoder,
+	}
+	// 注入EchoContext
+	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set(keyWebBodyDecoder, aws.bodyDecoder)
+			return next(c)
+		}
+	})
+	// 注入对Body的可重读逻辑
 	server.Pre(RepeatableBodyReader)
-	return &AdaptWebServer{server: server}
+	return aws
 }
 
 // AdaptWebServer 默认实现的基于echo框架的WebServer
 // 注意：保持AdaptWebServer的公共访问性
 type AdaptWebServer struct {
-	server *echo.Echo
+	server      *echo.Echo
+	bodyDecoder flux.WebRequestBodyDecoder
+}
+
+func (w *AdaptWebServer) SetWebRequestBodyDecoder(decoder flux.WebRequestBodyDecoder) {
+	w.bodyDecoder = decoder
 }
 
 func (w *AdaptWebServer) SetWebNotFoundHandler(fun flux.WebHandler) {
@@ -96,4 +114,13 @@ func toRoutePattern(uri string) string {
 	} else {
 		return uri
 	}
+}
+
+// 默认对RequestBody的表单数据进行解析
+func DefaultRequestBodyDecoder(webc flux.WebContext) url.Values {
+	form, err := webc.(*AdaptWebContext).echoc.FormParams()
+	if nil != err {
+		panic(fmt.Errorf("parse form params failed, err: %w", err))
+	}
+	return form
 }
