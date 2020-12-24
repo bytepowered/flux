@@ -133,10 +133,13 @@ type WebContext interface {
 	RequestRewrite(method string, path string)
 
 	// SetRequestHeader 设置请求的Header
-	SetRequestHeader(key, value string)
+	SetRequestHeader(name, value string)
 
 	// AddRequestHeader 添加请求的Header
-	AddRequestHeader(key, value string)
+	AddRequestHeader(name, value string)
+
+	// RemoveRequestHeader 移除请求中的Header
+	RemoveRequestHeader(name string)
 
 	// HeaderValues 返回请求对象的Header
 	// 注意：部分Web框架返回只读http.Header

@@ -70,6 +70,10 @@ func (c *AdaptWebContext) AddRequestHeader(name, value string) {
 	c.echoc.Request().Header.Add(name, value)
 }
 
+func (c *AdaptWebContext) RemoveRequestHeader(name string) {
+	c.echoc.Request().Header.Del(name)
+}
+
 func (c *AdaptWebContext) HeaderValues() (http.Header, bool) {
 	return c.echoc.Request().Header, true
 }
@@ -114,7 +118,7 @@ func (c *AdaptWebContext) PathValue(name string) string {
 }
 
 func (c *AdaptWebContext) FormValue(name string) string {
-	return c.echoc.FormValue(name)
+	return c.FormValues().Get(name)
 }
 
 func (c *AdaptWebContext) CookieValue(name string) (*http.Cookie, bool) {
