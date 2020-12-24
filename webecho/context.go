@@ -99,7 +99,7 @@ func (c *AdaptWebContext) PathValues() url.Values {
 }
 
 func (c *AdaptWebContext) FormValues() url.Values {
-	if c.bodyValues != nil {
+	if c.bodyValues == nil {
 		c.bodyValues = c.decoder(c)
 	}
 	return c.bodyValues
