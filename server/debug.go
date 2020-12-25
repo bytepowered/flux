@@ -64,9 +64,8 @@ func init() {
 // NewDebugQueryEndpointHandler Endpoint查询
 func NewDebugQueryEndpointHandler() http.HandlerFunc {
 	serializer := ext.LoadSerializer(ext.TypeNameSerializerJson)
-	datamap := LoadEndpoints()
 	return newSerializableHttpHandler(serializer, func(request *http.Request) interface{} {
-		return queryEndpoints(datamap, request)
+		return queryEndpoints(request)
 	})
 }
 
@@ -96,7 +95,8 @@ func NewDebugQueryServiceHandler() http.HandlerFunc {
 	})
 }
 
-func queryEndpoints(data map[string]*MultiEndpoint, request *http.Request) interface{} {
+func queryEndpoints(request *http.Request) interface{} {
+	data := LoadEndpoints()
 	filters := make([]EndpointFilter, 0)
 	query := request.URL.Query()
 	for _, key := range endpointQueryKeys {
