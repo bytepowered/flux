@@ -28,6 +28,7 @@ const (
 
 const (
 	HttpWebServerConfigRootName              = "HttpWebServer"
+	HttpWebServerConfigKeyFeatureEchoEnable  = "feature-echo-enable"
 	HttpWebServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
 	HttpWebServerConfigKeyFeatureDebugPort   = "feature-debug-port"
 	HttpWebServerConfigKeyFeatureCorsEnable  = "feature-cors-enable"
@@ -115,13 +116,6 @@ func (s *HttpWebServer) Initial() error {
 		Handler: http.DefaultServeMux,
 		Addr:    fmt.Sprintf("0.0.0.0:%d", internalPort),
 	}
-	// - Debug特性支持：默认关闭，需要配置开启
-	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
-		http.DefaultServeMux.Handle("/debug/endpoints", NewDebugQueryEndpointHandler())
-		http.DefaultServeMux.Handle("/debug/services", NewDebugQueryServiceHandler())
-		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
-	}
-
 	// Endpoint registry
 	if registry, config, err := _activeEndpointRegistry(); nil != err {
 		return err
@@ -130,6 +124,19 @@ func (s *HttpWebServer) Initial() error {
 			return err
 		}
 		s.endpointRegistry = registry
+	}
+	// - Debug特性支持：默认关闭，需要配置开启
+	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
+		http.DefaultServeMux.Handle("/debug/endpoints", NewDebugQueryEndpointHandler())
+		http.DefaultServeMux.Handle("/debug/services", NewDebugQueryServiceHandler())
+		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
+	}
+	// Echo feature
+	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureEchoEnable) {
+		logger.Info("EchoEndpoint register")
+		for _, evt := range NewEchoEndpoints() {
+			s.HandleHttpEndpointEvent(evt)
+		}
 	}
 	return s.router.Initial()
 }

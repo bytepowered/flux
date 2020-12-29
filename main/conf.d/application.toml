@@ -9,6 +9,7 @@ version-header = "X-Version"
 request-log-enable = true
 #feature-cors-enable = false
 feature-debug-enable = true
+feature-echo-enable = true
 debug-auth-username = "yongjia.chen"
 debug-auth-password = "yongjiapro"
 
@@ -40,9 +41,9 @@ reference-delay = "30ms"
 id = "default"
 protocol = "zookeeper"
 timeout = "3s"
-address = "localhost:2181"
-username = "yongjia"
-password = "abc123"
+address = "tx.devserver.net:2181"
+username = ""
+password = ""
 
 # Http BACKEND 配置参数
 [BACKEND.HTTP]

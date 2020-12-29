@@ -60,6 +60,7 @@ const (
 	ProtoDubbo = "DUBBO"
 	ProtoGRPC  = "GRPC"
 	ProtoHttp  = "HTTP"
+	ProtoEcho  = "ECHO"
 )
 
 // ArgumentValueLookupFunc 参数值查找函数
