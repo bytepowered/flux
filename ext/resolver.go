@@ -11,24 +11,24 @@ const (
 )
 
 var (
-	_mediaTypeValueResolvers = make(map[string]flux.MTValueResolver, 16)
+	mediaTypeValueResolvers = make(map[string]flux.MTValueResolver, 16)
 )
 
 // RegisterMTValueResolver 添加实际值类型解析函数
 func RegisterMTValueResolver(actualTypeName string, resolver flux.MTValueResolver) {
 	actualTypeName = pkg.RequireNotEmpty(actualTypeName, "actualTypeName is empty")
 	actualTypeName = strings.ToLower(actualTypeName)
-	_mediaTypeValueResolvers[actualTypeName] = resolver
+	mediaTypeValueResolvers[actualTypeName] = resolver
 }
 
 // LoadMTValueResolver 获取值类型解析函数
 func LoadMTValueResolver(actualTypeName string) flux.MTValueResolver {
 	actualTypeName = pkg.RequireNotEmpty(actualTypeName, "actualTypeName is empty")
 	actualTypeName = strings.ToLower(actualTypeName)
-	return _mediaTypeValueResolvers[actualTypeName]
+	return mediaTypeValueResolvers[actualTypeName]
 }
 
 // LoadMTValueDefaultResolver 获取默认的值类型解析函数
 func LoadMTValueDefaultResolver() flux.MTValueResolver {
-	return _mediaTypeValueResolvers[DefaultMTValueResolverName]
+	return mediaTypeValueResolvers[DefaultMTValueResolverName]
 }

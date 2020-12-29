@@ -11,8 +11,8 @@ const (
 )
 
 var (
-	_hostedSelectors    = make(map[string][]flux.Selector, 16)
-	_hostedSelectorLock sync.RWMutex
+	hostedSelectors    = make(map[string][]flux.Selector, 16)
+	hostedSelectorLock sync.RWMutex
 )
 
 func StoreSelector(s flux.Selector) {
@@ -23,23 +23,23 @@ func StoreSelector(s flux.Selector) {
 func StoreHostedSelector(host string, s flux.Selector) {
 	host = pkg.RequireNotEmpty(host, "host is empty")
 	pkg.RequireNotNil(s, "Selector is nil")
-	_hostedSelectorLock.Lock()
-	defer _hostedSelectorLock.Unlock()
-	if l, ok := _hostedSelectors[host]; ok {
-		_hostedSelectors[host] = append(l, s)
+	hostedSelectorLock.Lock()
+	defer hostedSelectorLock.Unlock()
+	if l, ok := hostedSelectors[host]; ok {
+		hostedSelectors[host] = append(l, s)
 	} else {
-		_hostedSelectors[host] = []flux.Selector{s}
+		hostedSelectors[host] = []flux.Selector{s}
 	}
 }
 
 func FindSelectors(host string) []flux.Selector {
 	host = pkg.RequireNotEmpty(host, "host is empty")
-	_hostedSelectorLock.RLock()
-	defer _hostedSelectorLock.RUnlock()
-	if hosted, ok := _hostedSelectors[host]; ok {
+	hostedSelectorLock.RLock()
+	defer hostedSelectorLock.RUnlock()
+	if hosted, ok := hostedSelectors[host]; ok {
 		return _newSelectors(hosted)
 	} else if anyHost != host {
-		if any, ok := _hostedSelectors[anyHost]; ok {
+		if any, ok := hostedSelectors[anyHost]; ok {
 			return _newSelectors(any)
 		}
 	}

@@ -8,24 +8,24 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义参数值查找逻辑。
 var (
-	_argumentValueLookupFunc  flux.ArgumentValueLookupFunc
-	_argumentValueResolveFunc flux.ArgumentValueResolveFunc
+	argumentValueLookupFunc  flux.ArgumentValueLookupFunc
+	argumentValueResolveFunc flux.ArgumentValueResolveFunc
 )
 
-func StoreArgumentValueLookupFunc(r flux.ArgumentValueLookupFunc) {
-	_argumentValueLookupFunc = pkg.RequireNotNil(r, "ArgumentValueLookupFunc is nil").(flux.ArgumentValueLookupFunc)
+func StoreArgumentValueLookupFunc(f flux.ArgumentValueLookupFunc) {
+	argumentValueLookupFunc = pkg.RequireNotNil(f, "ArgumentValueLookupFunc is nil").(flux.ArgumentValueLookupFunc)
 }
 
 func LoadArgumentValueLookupFunc() flux.ArgumentValueLookupFunc {
-	return _argumentValueLookupFunc
+	return argumentValueLookupFunc
 }
 
-func StoreArgumentValueResolveFunc(r flux.ArgumentValueResolveFunc) {
-	_argumentValueResolveFunc = pkg.RequireNotNil(r, "ArgumentValueResolveFunc is nil").(flux.ArgumentValueResolveFunc)
+func StoreArgumentValueResolveFunc(f flux.ArgumentValueResolveFunc) {
+	argumentValueResolveFunc = pkg.RequireNotNil(f, "ArgumentValueResolveFunc is nil").(flux.ArgumentValueResolveFunc)
 }
 
 func LoadArgumentValueResolveFunc() flux.ArgumentValueResolveFunc {
-	return _argumentValueResolveFunc
+	return argumentValueResolveFunc
 }
 
 //// 构建参数值对象工具函数

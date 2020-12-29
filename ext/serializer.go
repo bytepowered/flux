@@ -13,23 +13,23 @@ const (
 )
 
 var (
-	_typeNamedSerializers = make(map[string]flux.Serializer, 2)
+	typedSerializers = make(map[string]flux.Serializer, 2)
 )
 
 ////
 
 func StoreSerializer(typeName string, serializer flux.Serializer) {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
-	_typeNamedSerializers[typeName] = pkg.RequireNotNil(serializer, "Serializer is nil").(flux.Serializer)
+	typedSerializers[typeName] = pkg.RequireNotNil(serializer, "Serializer is nil").(flux.Serializer)
 }
 
 func LoadSerializer(typeName string) flux.Serializer {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
-	return _typeNamedSerializers[typeName]
+	return typedSerializers[typeName]
 }
 
 func JSONMarshal(data interface{}) ([]byte, error) {
-	json := _typeNamedSerializers[TypeNameSerializerJson]
+	json := typedSerializers[TypeNameSerializerJson]
 	if nil == json {
 		return nil, errors.New("JSON serializer not found")
 	}
@@ -37,7 +37,7 @@ func JSONMarshal(data interface{}) ([]byte, error) {
 }
 
 func JSONUnmarshal(data []byte, out interface{}) error {
-	json := _typeNamedSerializers[TypeNameSerializerJson]
+	json := typedSerializers[TypeNameSerializerJson]
 	if nil == json {
 		return errors.New("JSON serializer not found")
 	}

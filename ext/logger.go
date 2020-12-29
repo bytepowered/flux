@@ -7,16 +7,16 @@ import (
 )
 
 var (
-	_loggerFactory flux.LoggerFactory
+	loggerFactory flux.LoggerFactory
 )
 
 func StoreLoggerFactory(f flux.LoggerFactory) {
-	_loggerFactory = pkg.RequireNotNil(f, "LoggerFactory is nil").(flux.LoggerFactory)
+	loggerFactory = pkg.RequireNotNil(f, "LoggerFactory is nil").(flux.LoggerFactory)
 }
 
 // NewLoggerWith
 func NewLoggerWith(values context.Context) flux.Logger {
-	return _loggerFactory(values)
+	return loggerFactory(values)
 }
 
 // NewLogger ...

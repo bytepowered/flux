@@ -10,25 +10,25 @@ import (
 type RequestIdLookupFunc func(ctx flux.WebContext) string
 
 var (
-	_defaultLookupHeaders = map[string]struct{}{
+	defaultLookupHeaders = map[string]struct{}{
 		flux.HeaderXRequestId: {},
 		flux.HeaderXRequestID: {},
 		"requestId":           {},
 		"request-id":          {},
 	}
-	_requestIdLookupFunc RequestIdLookupFunc
+	requestIdLookupFunc RequestIdLookupFunc
 )
 
 // AddRequestIdLookupHeader 添加默认查找RequestId的Header名称。
 // 注意：在注册RequestIdMiddleware前添加生效
 func AddRequestIdLookupHeader(header string) {
-	_defaultLookupHeaders[header] = struct{}{}
+	defaultLookupHeaders[header] = struct{}{}
 }
 
 // SetRequestIdLookupFunc 设置查找RequestId的函数
 // 注意：在注册RequestIdMiddleware前添加生效
 func SetRequestIdLookupFunc(f RequestIdLookupFunc) {
-	_requestIdLookupFunc = f
+	requestIdLookupFunc = f
 }
 
 // NewRequestIdMiddlewareWithinHeader 生成从Header中查找的RequestId中间件的函数
@@ -42,7 +42,7 @@ func NewRequestIdMiddlewareWithinHeader(headers ...string) flux.WebInterceptor {
 		AddRequestIdLookupHeader(name)
 	}
 	names := make([]string, 0)
-	for name := range _defaultLookupHeaders {
+	for name := range defaultLookupHeaders {
 		names = append(names, name)
 	}
 	return NewRequestIdMiddleware(DefaultRequestIdLookupFuncFactory(names, id))
@@ -63,8 +63,8 @@ func NewRequestIdMiddleware(lookupFunc RequestIdLookupFunc) flux.WebInterceptor 
 func DefaultRequestIdLookupFuncFactory(names []string, generator *snowflake.Node) RequestIdLookupFunc {
 	return func(webc flux.WebContext) string {
 		// 查指定查找函数
-		if nil != _requestIdLookupFunc {
-			id := _requestIdLookupFunc(webc)
+		if nil != requestIdLookupFunc {
+			id := requestIdLookupFunc(webc)
 			if id != "" {
 				return id
 			}

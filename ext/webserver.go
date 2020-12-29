@@ -4,14 +4,16 @@ import (
 	"github.com/bytepowered/flux"
 )
 
+var (
+	webServerFactory WebServerFactory
+)
+
 type WebServerFactory func() flux.WebServer
 
-var _webServerFactory WebServerFactory
-
 func StoreWebServerFactory(f WebServerFactory) {
-	_webServerFactory = f
+	webServerFactory = f
 }
 
 func LoadWebServerFactory() WebServerFactory {
-	return _webServerFactory
+	return webServerFactory
 }

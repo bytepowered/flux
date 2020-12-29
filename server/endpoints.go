@@ -6,11 +6,11 @@ import (
 )
 
 var (
-	_endpoints = new(sync.Map)
+	endpoints = new(sync.Map)
 )
 
 func SelectMultiEndpoint(key string) (*MultiEndpoint, bool) {
-	ep, ok := _endpoints.Load(key)
+	ep, ok := endpoints.Load(key)
 	if ok {
 		return ep.(*MultiEndpoint), true
 	}
@@ -19,13 +19,13 @@ func SelectMultiEndpoint(key string) (*MultiEndpoint, bool) {
 
 func RegisterMultiEndpoint(key string, endpoint *flux.Endpoint) *MultiEndpoint {
 	mve := newMultiEndpoint(endpoint)
-	_endpoints.Store(key, mve)
+	endpoints.Store(key, mve)
 	return mve
 }
 
 func LoadEndpoints() map[string]*MultiEndpoint {
 	out := make(map[string]*MultiEndpoint, 32)
-	_endpoints.Range(func(key, value interface{}) bool {
+	endpoints.Range(func(key, value interface{}) bool {
 		out[key.(string)] = value.(*MultiEndpoint)
 		return true
 	})

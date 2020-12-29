@@ -161,7 +161,7 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 func (b *BackendTransportService) ExecuteWith(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	if b.traceEnable {
 		logger.TraceContext(ctx).Infow("Dubbo invoking",
-			"backend-service", service.ServiceID(), "values", values, "types", types, "attrs", ctx.Attributes())
+			"backend-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
 	}
 	// Note: must be map[string]string
 	// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150

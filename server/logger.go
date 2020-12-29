@@ -19,12 +19,12 @@ const (
 )
 
 var (
-	_defZapConfig = zap.NewProductionConfig()
-	_defZapLogger = NewZapLogger(_defZapConfig)
+	defaultZapConfig = zap.NewProductionConfig()
+	defaultZapLogger = NewZapLogger(defaultZapConfig)
 )
 
 func DefaultLoggerFactory(values context.Context) flux.Logger {
-	return SugaredLoggerFactoryFactory(_defZapLogger)(values)
+	return SugaredLoggerFactoryFactory(defaultZapLogger)(values)
 }
 
 func SugaredLoggerFactoryFactory(sugar *zap.SugaredLogger) flux.LoggerFactory {
@@ -51,7 +51,7 @@ func LoadLoggerConfig(file string) (zap.Config, error) {
 	if file == "" {
 		file = os.Getenv(EnvKeyApplicationLogConfFile)
 	}
-	config := _defZapConfig
+	config := defaultZapConfig
 	if file == "" {
 		return config, errors.New("log configure file name is nil")
 	}

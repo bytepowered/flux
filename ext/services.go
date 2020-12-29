@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	_serviceNotFound flux.BackendService
-	_servicesMap     *sync.Map = new(sync.Map)
+	serviceNotFound flux.BackendService
+	servicesMap     *sync.Map = new(sync.Map)
 )
 
 func StoreBackendServiceById(id string, service flux.BackendService) {
-	_servicesMap.Store(id, service)
+	servicesMap.Store(id, service)
 }
 
 // StoreBackendService store backend service
@@ -24,21 +24,21 @@ func StoreBackendService(service flux.BackendService) {
 
 // LoadBackendService load backend service by serviceId
 func LoadBackendService(serviceID string) (flux.BackendService, bool) {
-	v, ok := _servicesMap.Load(serviceID)
+	v, ok := servicesMap.Load(serviceID)
 	if ok {
 		return v.(flux.BackendService), true
 	}
-	return _serviceNotFound, false
+	return serviceNotFound, false
 }
 
 // RemoveBackendService remove backend service by serviceId
 func RemoveBackendService(serviceID string) {
-	_servicesMap.Delete(serviceID)
+	servicesMap.Delete(serviceID)
 }
 
 // HasBackendService check service exists by service id
 func HasBackendService(serviceID string) bool {
-	_, ok := _servicesMap.Load(serviceID)
+	_, ok := servicesMap.Load(serviceID)
 	return ok
 }
 
