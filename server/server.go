@@ -51,9 +51,9 @@ var (
 	}
 )
 
-// Server
-type HttpWebServer struct {
-	webServer            flux.WebServer
+// ServeEngine
+type HttpServeEngine struct {
+	httpWebServer        flux.WebServer
 	serverResponseWriter flux.ServerResponseWriter
 	serverErrorsWriter   flux.ServerErrorsWriter
 	serverContextHooks   []flux.ServerContextHookFunc
@@ -67,11 +67,15 @@ type HttpWebServer struct {
 	stateStopped         chan struct{}
 }
 
-func NewHttpServer() *HttpWebServer {
-	return &HttpWebServer{
-		serverResponseWriter: DefaultServerResponseWriter,
-		serverErrorsWriter:   DefaultServerErrorsWriter,
+func NewHttpServeEngine() *HttpServeEngine {
+	return NewHttpServeEngineWith(DefaultServerResponseWriter, DefaultServerErrorsWriter)
+}
+
+func NewHttpServeEngineWith(responseWriter flux.ServerResponseWriter, errorWriter flux.ServerErrorsWriter) *HttpServeEngine {
+	return &HttpServeEngine{
 		router:               NewRouter(),
+		serverResponseWriter: responseWriter,
+		serverErrorsWriter:   errorWriter,
 		contextWrappers:      sync.Pool{New: NewContextWrapper},
 		serverContextHooks:   make([]flux.ServerContextHookFunc, 0, 4),
 		stateStarted:         make(chan struct{}),
@@ -80,7 +84,7 @@ func NewHttpServer() *HttpWebServer {
 }
 
 // Prepare Call before init and startup
-func (s *HttpWebServer) Prepare(hooks ...flux.PrepareHookFunc) error {
+func (s *HttpServeEngine) Prepare(hooks ...flux.PrepareHookFunc) error {
 	for _, prepare := range append(ext.LoadPrepareHooks(), hooks...) {
 		if err := prepare(); nil != err {
 			return err
@@ -90,16 +94,16 @@ func (s *HttpWebServer) Prepare(hooks ...flux.PrepareHookFunc) error {
 }
 
 // Initial
-func (s *HttpWebServer) Initial() error {
+func (s *HttpServeEngine) Initial() error {
 	// Http server
 	s.httpConfig = flux.NewConfigurationOf(HttpWebServerConfigRootName)
 	s.httpConfig.SetDefaults(HttpWebServerConfigDefaults)
 	s.httpVersionHeader = s.httpConfig.GetString(HttpWebServerConfigKeyVersionHeader)
 	// 创建WebServer
-	s.webServer = ext.LoadWebServerFactory()()
+	s.httpWebServer = ext.LoadWebServerFactory()(s.httpConfig)
 	// 默认必备的WebServer功能
-	s.webServer.SetWebErrorHandler(s.defaultServerErrorHandler)
-	s.webServer.SetWebNotFoundHandler(s.defaultNotFoundErrorHandler)
+	s.httpWebServer.SetWebErrorHandler(s.defaultServerErrorHandler)
+	s.httpWebServer.SetWebNotFoundHandler(s.defaultNotFoundErrorHandler)
 
 	// - 请求CORS跨域支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureCorsEnable) {
@@ -111,13 +115,13 @@ func (s *HttpWebServer) Initial() error {
 	s.AddWebInterceptor(webmidware.NewRequestIdMiddlewareWithinHeader(headers...))
 
 	// Internal Web Server
-	internalPort := s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)
+	port := s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)
 	s.debugServer = &http.Server{
 		Handler: http.DefaultServeMux,
-		Addr:    fmt.Sprintf("0.0.0.0:%d", internalPort),
+		Addr:    fmt.Sprintf("0.0.0.0:%d", port),
 	}
 	// Endpoint registry
-	if registry, config, err := _activeEndpointRegistry(); nil != err {
+	if registry, config, err := activeEndpointRegistry(); nil != err {
 		return err
 	} else {
 		if err := s.router.InitialHook(registry, config); nil != err {
@@ -141,12 +145,12 @@ func (s *HttpWebServer) Initial() error {
 	return s.router.Initial()
 }
 
-func (s *HttpWebServer) Startup(version flux.BuildInfo) error {
+func (s *HttpServeEngine) Startup(version flux.BuildInfo) error {
 	return s.StartServe(version, s.httpConfig)
 }
 
 // StartServe server
-func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configuration) error {
+func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configuration) error {
 	if err := s.ensure().router.Startup(); nil != err {
 		return err
 	}
@@ -174,9 +178,6 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 			logger.Info("BackendService event loop: Stopped")
 		}()
 	}
-	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
-	certFile := config.GetString(HttpWebServerConfigKeyTlsCertFile)
-	keyFile := config.GetString(HttpWebServerConfigKeyTlsKeyFile)
 	close(s.stateStarted)
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
@@ -187,21 +188,24 @@ func (s *HttpWebServer) StartServe(info flux.BuildInfo, config *flux.Configurati
 			_ = s.debugServer.ListenAndServe()
 		}()
 	}
-	logger.Infow("HttpWebServer starting", "address", address, "cert", certFile, "key", keyFile)
-	return s.webServer.StartTLS(address, certFile, keyFile)
+	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
+	keyFile := config.GetString(HttpWebServerConfigKeyTlsKeyFile)
+	certFile := config.GetString(HttpWebServerConfigKeyTlsCertFile)
+	logger.Infow("HttpServeEngine starting", "address", address, "cert", certFile, "key", keyFile)
+	return s.httpWebServer.StartTLS(address, certFile, keyFile)
 }
 
-func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *MultiEndpoint, tracing bool) error {
+func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints *MultiEndpoint, tracing bool) error {
 	version := webc.HeaderValue(s.httpVersionHeader)
-	endpoint, found := mvendpoint.FindByVersion(version)
+	endpoint, found := endpoints.FindByVersion(version)
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	defer func() {
 		if r := recover(); r != nil {
 			trace := logger.Trace(requestId)
 			if err, ok := r.(error); ok {
-				trace.Errorw("HttpWebServer panics", "error", err)
+				trace.Errorw("HttpServeEngine panics", "error", err)
 			} else {
-				trace.Errorw("HttpWebServer panics", "recover", r)
+				trace.Errorw("HttpServeEngine panics", "recover", r)
 			}
 			trace.Error(string(debug.Stack()))
 		}
@@ -209,7 +213,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	if !found {
 		if tracing {
 			url, _ := webc.RequestURL()
-			logger.Trace(requestId).Infow("HttpWebServer route not-found",
+			logger.Trace(requestId).Infow("HttpServeEngine route not-found",
 				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path},
 			)
 		}
@@ -218,10 +222,10 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
 	// Route call
-	logger.TraceContext(ctxw).Infow("HttpWebServer route start")
+	logger.TraceContext(ctxw).Infow("HttpServeEngine route start")
 	endcall := func(code int, start time.Time) {
 		elapsed := time.Now().Sub(start)
-		logger.TraceContext(ctxw).Infow("HttpWebServer route end", "elapsed", elapsed.String(), "response.code", code)
+		logger.TraceContext(ctxw).Infow("HttpServeEngine route end", "elapsed", elapsed.String(), "response.code", code)
 	}
 	start := time.Now()
 	// Context hook
@@ -232,7 +236,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	response := ctxw.Response()
 	if err := s.router.Route(ctxw); nil != err {
 		defer endcall(err.StatusCode, start)
-		logger.TraceContext(ctxw).Errorw("HttpWebServer route error", "error", err)
+		logger.TraceContext(ctxw).Errorw("HttpServeEngine route error", "error", err)
 		err.MergeHeader(response.HeaderValues())
 		return err
 	} else {
@@ -241,7 +245,7 @@ func (s *HttpWebServer) HandleEndpointRequest(webc flux.WebContext, mvendpoint *
 	}
 }
 
-func (s *HttpWebServer) HandleBackendServiceEvent(event flux.BackendServiceEvent) {
+func (s *HttpServeEngine) HandleBackendServiceEvent(event flux.BackendServiceEvent) {
 	service := event.Service
 	switch event.EventType {
 	case flux.EventTypeAdded:
@@ -268,10 +272,10 @@ func (s *HttpWebServer) HandleBackendServiceEvent(event flux.BackendServiceEvent
 	}
 }
 
-func (s *HttpWebServer) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) {
+func (s *HttpServeEngine) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) {
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	// Check http method
-	if !_isExpectedMethod(method) {
+	if !isAllowedHttpMethod(method) {
 		logger.Warnw("Unsupported http method", "method", method, "pattern", event.Endpoint.HttpPattern)
 		return
 	}
@@ -286,7 +290,7 @@ func (s *HttpWebServer) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) {
 		bind.Update(endpoint.Version, &endpoint)
 		if isreg {
 			logger.Infow("Register http handler", "method", method, "pattern", pattern)
-			s.webServer.AddWebHandler(method, pattern, s.newWrappedEndpointHandler(bind))
+			s.httpWebServer.AddWebHandler(method, pattern, s.newWrappedEndpointHandler(bind))
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("Update endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
@@ -298,86 +302,76 @@ func (s *HttpWebServer) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) {
 }
 
 // Shutdown to cleanup resources
-func (s *HttpWebServer) Shutdown(ctx context.Context) error {
-	logger.Info("HttpWebServer shutdown...")
+func (s *HttpServeEngine) Shutdown(ctx context.Context) error {
+	logger.Info("HttpServeEngine shutdown...")
 	defer close(s.stateStopped)
 	if s.debugServer != nil {
 		_ = s.debugServer.Close()
 	}
-	if err := s.webServer.Shutdown(ctx); nil != err {
+	if err := s.httpWebServer.Shutdown(ctx); nil != err {
 		return err
 	}
 	return s.router.Shutdown(ctx)
 }
 
 // StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。
-func (s *HttpWebServer) StateStarted() <-chan struct{} {
+func (s *HttpServeEngine) StateStarted() <-chan struct{} {
 	return s.stateStarted
 }
 
 // StateStopped 返回一个Channel。当服务停止后完成时，此Channel将被关闭。
-func (s *HttpWebServer) StateStopped() <-chan struct{} {
+func (s *HttpServeEngine) StateStopped() <-chan struct{} {
 	return s.stateStopped
 }
 
 // HttpConfig return Http server configuration
-func (s *HttpWebServer) HttpConfig() *flux.Configuration {
+func (s *HttpServeEngine) HttpConfig() *flux.Configuration {
 	return s.httpConfig
 }
 
 // AddWebInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
-func (s *HttpWebServer) AddWebInterceptor(m flux.WebInterceptor) {
-	s.ensure().webServer.AddWebInterceptor(m)
+func (s *HttpServeEngine) AddWebInterceptor(m flux.WebInterceptor) {
+	s.ensure().httpWebServer.AddWebInterceptor(m)
 }
 
 // AddWebHandler 添加Http处理接口。
-func (s *HttpWebServer) AddWebHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
-	s.ensure().webServer.AddWebHandler(method, pattern, h, m...)
+func (s *HttpServeEngine) AddWebHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
+	s.ensure().httpWebServer.AddWebHandler(method, pattern, h, m...)
 }
 
 // AddWebHttpHandler 添加Http处理接口。
-func (s *HttpWebServer) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
-	s.ensure().webServer.AddWebHttpHandler(method, pattern, h, m...)
+func (s *HttpServeEngine) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+	s.ensure().httpWebServer.AddWebHttpHandler(method, pattern, h, m...)
 }
 
 // SetWebNotFoundHandler 设置Http路由失败的处理接口
-func (s *HttpWebServer) SetWebNotFoundHandler(nfh flux.WebHandler) {
-	s.ensure().webServer.SetWebNotFoundHandler(nfh)
+func (s *HttpServeEngine) SetWebNotFoundHandler(nfh flux.WebHandler) {
+	s.ensure().httpWebServer.SetWebNotFoundHandler(nfh)
 }
 
 // WebServer 返回WebServer实例
-func (s *HttpWebServer) WebServer() flux.WebServer {
-	return s.ensure().webServer
+func (s *HttpServeEngine) WebServer() flux.WebServer {
+	return s.ensure().httpWebServer
 }
 
 // DebugServer 返回DebugServer实例，以及实体是否有效
-func (s *HttpWebServer) DebugServer() (*http.Server, bool) {
+func (s *HttpServeEngine) DebugServer() (*http.Server, bool) {
 	return s.debugServer, nil != s.debugServer
 }
 
-// SetServerResponseWriter 设置Http响应数据写入的处理接口
-func (s *HttpWebServer) SetServerResponseWriter(writer flux.ServerResponseWriter) {
-	s.serverResponseWriter = writer
-}
-
-// SetServerErrorsWriter 设置Http响应异常消息写入的处理接口
-func (s *HttpWebServer) SetServerErrorsWriter(writer flux.ServerErrorsWriter) {
-	s.serverErrorsWriter = writer
-}
-
 // AddServerContextExchangeHook 添加Http与Flux的Context桥接函数
-func (s *HttpWebServer) AddServerContextExchangeHook(f flux.ServerContextHookFunc) {
+func (s *HttpServeEngine) AddServerContextExchangeHook(f flux.ServerContextHookFunc) {
 	s.serverContextHooks = append(s.serverContextHooks, f)
 }
 
-func (s *HttpWebServer) newWrappedEndpointHandler(endpoint *MultiEndpoint) flux.WebHandler {
+func (s *HttpServeEngine) newWrappedEndpointHandler(endpoint *MultiEndpoint) flux.WebHandler {
 	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
 }
 
-func (s *HttpWebServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*MultiEndpoint, bool) {
+func (s *HttpServeEngine) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*MultiEndpoint, bool) {
 	if mve, ok := SelectMultiEndpoint(routeKey); ok {
 		return mve, false
 	} else {
@@ -385,25 +379,25 @@ func (s *HttpWebServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endp
 	}
 }
 
-func (s *HttpWebServer) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *WrappedContext {
+func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *WrappedContext {
 	ctx := s.contextWrappers.Get().(*WrappedContext)
 	ctx.Reattach(id, webc, endpoint)
 	return ctx
 }
 
-func (s *HttpWebServer) releaseContext(context *WrappedContext) {
+func (s *HttpServeEngine) releaseContext(context *WrappedContext) {
 	context.Release()
 	s.contextWrappers.Put(context)
 }
 
-func (s *HttpWebServer) ensure() *HttpWebServer {
-	if s.webServer == nil {
+func (s *HttpServeEngine) ensure() *HttpServeEngine {
+	if s.httpWebServer == nil {
 		logger.Panicf("Call must after InitialServer()")
 	}
 	return s
 }
 
-func (s *HttpWebServer) defaultNotFoundErrorHandler(webc flux.WebContext) error {
+func (s *HttpServeEngine) defaultNotFoundErrorHandler(webc flux.WebContext) error {
 	return &flux.ServeError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeRequestNotFound,
@@ -411,7 +405,7 @@ func (s *HttpWebServer) defaultNotFoundErrorHandler(webc flux.WebContext) error 
 	}
 }
 
-func (s *HttpWebServer) defaultServerErrorHandler(err error, webc flux.WebContext) {
+func (s *HttpServeEngine) defaultServerErrorHandler(err error, webc flux.WebContext) {
 	if err == nil {
 		return
 	}
@@ -428,11 +422,11 @@ func (s *HttpWebServer) defaultServerErrorHandler(err error, webc flux.WebContex
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	if err := s.serverErrorsWriter(webc, requestId, serve.Header, serve); nil != err {
-		logger.Trace(requestId).Errorw("HttpWebServer http response error", "error", err)
+		logger.Trace(requestId).Errorw("HttpServeEngine http response error", "error", err)
 	}
 }
 
-func _activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, error) {
+func activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, error) {
 	config := flux.NewConfigurationOf(flux.KeyConfigRootEndpointRegistry)
 	config.SetDefault(flux.KeyConfigEndpointRegistryId, ext.EndpointRegistryIdDefault)
 	registryId := config.GetString(flux.KeyConfigEndpointRegistryId)
@@ -444,7 +438,7 @@ func _activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, erro
 	}
 }
 
-func _isExpectedMethod(method string) bool {
+func isAllowedHttpMethod(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut,
 		http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace:

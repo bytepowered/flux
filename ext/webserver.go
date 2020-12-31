@@ -8,7 +8,7 @@ var (
 	webServerFactory WebServerFactory
 )
 
-type WebServerFactory func() flux.WebServer
+type WebServerFactory func(*flux.Configuration) flux.WebServer
 
 func StoreWebServerFactory(f WebServerFactory) {
 	webServerFactory = f

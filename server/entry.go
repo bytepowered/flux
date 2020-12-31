@@ -55,15 +55,15 @@ func InitConfiguration(envKey string) {
 
 func Run(ver flux.BuildInfo) {
 	InitConfiguration(EnvKeyDeployEnv)
-	fx := NewHttpServer()
-	if err := fx.Prepare(); nil != err {
-		logger.Panic("Server prepare:", err)
+	engine := NewHttpServeEngine()
+	if err := engine.Prepare(); nil != err {
+		logger.Panic("HttpServeEngine prepare:", err)
 	}
-	if err := fx.Initial(); nil != err {
-		logger.Panic("Server init:", err)
+	if err := engine.Initial(); nil != err {
+		logger.Panic("HttpServeEngine init:", err)
 	}
 	go func() {
-		if err := fx.Startup(ver); nil != err && err != http.ErrServerClosed {
+		if err := engine.Startup(ver); nil != err && err != http.ErrServerClosed {
 			logger.Error(err)
 		}
 	}()
@@ -72,7 +72,7 @@ func Run(ver flux.BuildInfo) {
 	<-quit
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := fx.Shutdown(ctx); nil != err && err != http.ErrServerClosed {
+	if err := engine.Shutdown(ctx); nil != err && err != http.ErrServerClosed {
 		logger.Error(err)
 	}
 }

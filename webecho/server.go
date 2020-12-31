@@ -17,7 +17,7 @@ func init() {
 	ext.StoreWebServerFactory(NewAdaptWebServer)
 }
 
-func NewAdaptWebServer() flux.WebServer {
+func NewAdaptWebServer(config *flux.Configuration) flux.WebServer {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
