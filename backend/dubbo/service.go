@@ -75,7 +75,7 @@ type BackendTransportService struct {
 	// 内部私有
 	traceEnable   bool
 	configuration *flux.Configuration
-	referenceMu   sync.RWMutex
+	serviceMutex  sync.RWMutex
 }
 
 // NewDubboBackendTransport New dubbo backend instance
@@ -204,32 +204,32 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 }
 
 // LoadGenericService create and cache dubbo generic service
-func (b *BackendTransportService) LoadGenericService(service *flux.BackendService) *dubgo.GenericService {
-	b.referenceMu.Lock()
-	defer b.referenceMu.Unlock()
-	if cached := dubgo.GetConsumerService(service.Interface); nil != cached {
-		return cached.(*dubgo.GenericService)
+func (b *BackendTransportService) LoadGenericService(definition *flux.BackendService) *dubgo.GenericService {
+	b.serviceMutex.Lock()
+	defer b.serviceMutex.Unlock()
+	if service := dubgo.GetConsumerService(definition.Interface); nil != service {
+		return service.(*dubgo.GenericService)
 	}
-	newRef := NewReference(service.Interface, service, b.configuration)
+	newRef := NewReference(definition.Interface, definition, b.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
 	for _, optsFunc := range b.ReferenceOptionsFuncs {
 		if nil != optsFunc {
-			newRef = pkg.RequireNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
+			newRef = pkg.RequireNotNil(optsFunc(definition, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
-	logger.Infow("Create dubbo reference-config, referring", "interface", service.Interface)
-	generic := dubgo.NewGenericService(service.Interface)
-	dubgo.SetConsumerService(generic)
-	newRef.Refer(generic)
-	newRef.Implement(generic)
+	logger.Infow("Create dubbo generic service: ING", "interface", definition.Interface)
+	service := dubgo.NewGenericService(definition.Interface)
+	dubgo.SetConsumerService(service)
+	newRef.Refer(service)
+	newRef.Implement(service)
 	t := b.configuration.GetDuration(configKeyReferenceDelay)
 	if t == 0 {
-		t = time.Millisecond * 30
+		t = time.Millisecond * 10
 	}
 	<-time.After(t)
-	logger.Infow("Create dubbo reference-config: OK", "interface", service.Interface)
-	return generic
+	logger.Infow("Create dubbo generic service: OK", "interface", definition.Interface)
+	return service
 }
 
 func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryConfig) {
