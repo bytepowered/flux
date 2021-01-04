@@ -3,13 +3,12 @@ package filter
 import (
 	"errors"
 	"fmt"
-	"net/http"
-
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"net/http"
 )
 
 const (
@@ -113,6 +112,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			}
 		}
 		report, err := p.Configs.VerifyFunc(services, ctx)
+		ctx.AddMetric("M-"+p.TypeId(), ctx.ElapsedTime())
 		if nil != err {
 			if serr, ok := err.(*flux.ServeError); ok {
 				return serr

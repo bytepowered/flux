@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 const (
@@ -158,10 +159,29 @@ type Context interface {
 	// Context 返回Http请求的Context对象。用于判定Http请求是否被Cancel。
 	Context() context.Context
 
+	// StartTime 返回Http请求起始的服务器时间
+	StartTime() time.Time
+
+	// ElapsedTime 返回Http请求起始至今的过去时间差
+	ElapsedTime() time.Duration
+
+	// AddMetric 添加路由耗时统计节点
+	AddMetric(name string, elapsed time.Duration)
+
+	// LoadMetrics 返回请求路由的的统计数据
+	LoadMetrics() []Metric
+
 	// SetContextLogger 添加Context范围的Logger。
 	// 通常是将关联一些追踪字段的Logger设置为ContextLogger
 	SetContextLogger(logger Logger)
 
 	// GetContextLogger 返回Context范围的Logger。
 	GetContextLogger() (Logger, bool)
+}
+
+// Metrics 请求路由的的统计数据
+type Metric struct {
+	Name    string        `json:"name"`
+	Elapsed time.Duration `json:"elapsed"`
+	Elapses string        `json:"elapses"`
 }

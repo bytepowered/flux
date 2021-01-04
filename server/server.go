@@ -224,8 +224,9 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 	// Route call
 	logger.TraceContext(ctxw).Infow("HttpServeEngine route start")
 	endcall := func(code int, start time.Time) {
-		elapsed := time.Now().Sub(start)
-		logger.TraceContext(ctxw).Infow("HttpServeEngine route end", "elapsed", elapsed.String(), "response.code", code)
+		logger.TraceContext(ctxw).Infow("HttpServeEngine route end",
+			"metric", ctxw.LoadMetrics(),
+			"elapses", time.Since(start).String(), "response.code", code)
 	}
 	start := time.Now()
 	// Context hook

@@ -106,6 +106,10 @@ func (r *Router) Route(ctx *WrappedContext) *flux.ServeError {
 		}
 		return err
 	}
+	// Metric: Route
+	defer func() {
+		ctx.AddMetric("M-Route", ctx.ElapsedTime())
+	}()
 	// Select filters
 	globals := ext.LoadGlobalFilters()
 	selective := make([]flux.Filter, 0, 16)
@@ -118,10 +122,14 @@ func (r *Router) Route(ctx *WrappedContext) *flux.ServeError {
 			}
 		}
 	}
+	ctx.AddMetric("M-Selector", ctx.ElapsedTime())
 	// Walk filters
 	filters := append(globals, selective...)
 	err := r.walk(func(ctx flux.Context) *flux.ServeError {
 		protoName := ctx.ServiceProto()
+		defer func() {
+			ctx.AddMetric("M-Backend", ctx.ElapsedTime())
+		}()
 		if backend, ok := ext.LoadBackendTransport(protoName); !ok {
 			logger.TraceContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
@@ -141,9 +149,7 @@ func (r *Router) Route(ctx *WrappedContext) *flux.ServeError {
 
 func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
-		timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Filter", filters[i].TypeId()))
 		next = filters[i].DoFilter(next)
-		timer.ObserveDuration()
 	}
 	return next
 }

@@ -93,6 +93,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		r.initCommand(serviceName)
 		// check circuit
 		err := hystrix.DoC(ctx.Context(), serviceName, func(_ context.Context) error {
+			ctx.AddMetric("M-"+r.TypeId(), ctx.ElapsedTime())
 			if ierr := next(ctx); nil != ierr && r.Config.ServiceTestFunc(ierr) {
 				return hystrix.CircuitError{Message: ierr.Message}
 			} else {

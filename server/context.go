@@ -16,6 +16,8 @@ type WrappedContext struct {
 	endpoint       *flux.Endpoint
 	attributes     map[string]interface{}
 	values         map[string]interface{}
+	metrics        []flux.Metric
+	beginTime      time.Time
 	requestReader  *WrappedRequestReader
 	responseWriter *WrappedResponseWriter
 	ctxLogger      flux.Logger
@@ -122,6 +124,12 @@ func (c *WrappedContext) Context() context.Context {
 	return c.webc.Context()
 }
 
+func (c *WrappedContext) LoadMetrics() []flux.Metric {
+	dist := make([]flux.Metric, len(c.metrics))
+	copy(dist, c.metrics)
+	return dist
+}
+
 func (c *WrappedContext) SetContextLogger(logger flux.Logger) {
 	c.ctxLogger = logger
 }
@@ -130,15 +138,31 @@ func (c *WrappedContext) GetContextLogger() (flux.Logger, bool) {
 	return c.ctxLogger, nil != c.ctxLogger
 }
 
+func (c *WrappedContext) StartTime() time.Time {
+	return c.beginTime
+}
+
+func (c *WrappedContext) ElapsedTime() time.Duration {
+	return time.Since(c.beginTime)
+}
+
+func (c *WrappedContext) AddMetric(name string, elapsed time.Duration) {
+	c.metrics = append(c.metrics, flux.Metric{
+		Name: name, Elapsed: elapsed, Elapses: elapsed.String(),
+	})
+}
+
 func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {
 	c.requestId = requestId
 	c.webc = webc
 	c.endpoint = endpoint
 	c.attributes = make(map[string]interface{}, 8)
 	c.values = make(map[string]interface{}, 8)
+	c.metrics = make([]flux.Metric, 0, 8)
+	c.beginTime = time.Now()
 	c.requestReader.reattach(webc)
 	// duplicated: c.responseWriter.reset()
-	c.SetAttribute(flux.XRequestTime, time.Now().Unix())
+	c.SetAttribute(flux.XRequestTime, c.beginTime.Unix())
 	c.SetAttribute(flux.XRequestId, c.requestId)
 	c.SetAttribute(flux.XRequestHost, webc.Host())
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
@@ -150,6 +174,7 @@ func (c *WrappedContext) Release() {
 	c.endpoint = nil
 	c.attributes = nil
 	c.values = nil
+	c.metrics = nil
 	c.requestReader.reset()
 	c.responseWriter.reset()
 	c.ctxLogger = nil

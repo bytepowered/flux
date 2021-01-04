@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 var _ flux.RequestReader = new(ValuesRequestReader)
@@ -122,6 +123,7 @@ var _ flux.Context = new(ValuesContext)
 
 func NewValuesContext(values map[string]interface{}) flux.Context {
 	return &ValuesContext{
+		time:    time.Now(),
 		request: NewValuesRequestReader(values),
 	}
 }
@@ -131,8 +133,25 @@ func NewEmptyContext() flux.Context {
 }
 
 type ValuesContext struct {
+	time      time.Time
 	request   *ValuesRequestReader
 	ctxLogger flux.Logger
+}
+
+func (v *ValuesContext) ElapsedTime() time.Duration {
+	return time.Since(v.time)
+}
+
+func (v *ValuesContext) StartTime() time.Time {
+	return v.time
+}
+
+func (v *ValuesContext) AddMetric(name string, elapsed time.Duration) {
+	// nop
+}
+
+func (v *ValuesContext) LoadMetrics() []flux.Metric {
+	return nil
 }
 
 func (v *ValuesContext) Method() string {
