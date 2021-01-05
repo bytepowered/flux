@@ -254,14 +254,15 @@ func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryCon
 
 func NewReference(refid string, service *flux.BackendService, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("Create dubbo reference-config",
-		"service", service.Interface, "remote-host", service.RemoteHost, "rpc-group", service.RpcGroup, "rpc-version", service.RpcVersion)
+		"service", service.Interface, "remote-host", service.RemoteHost,
+		"rpc-group", service.AttrRpcGroup(), "rpc-version", service.AttrRpcVersion())
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
 	ref.Url = service.RemoteHost
 	ref.InterfaceName = service.Interface
-	ref.Version = service.RpcVersion
-	ref.Group = service.RpcGroup
-	ref.RequestTimeout = service.RpcTimeout
-	ref.Retries = service.RpcRetries
+	ref.Version = service.AttrRpcVersion()
+	ref.Group = service.AttrRpcGroup()
+	ref.RequestTimeout = service.AttrRpcTimeout()
+	ref.Retries = service.AttrRpcRetries()
 	ref.Cluster = config.GetString("cluster")
 	ref.Protocol = config.GetString("protocol")
 	ref.Loadbalance = config.GetString("load-balance")

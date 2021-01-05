@@ -21,7 +21,7 @@ func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.ServeErr
 		return err
 	}
 	// decode responseWriter
-	decoder, ok := ext.LoadBackendTransportDecodeFunc(endpoint.Service.RpcProto)
+	decoder, ok := ext.LoadBackendTransportDecodeFunc(endpoint.Service.AttrRpcProto())
 	if !ok {
 		return ErrBackendTransportDecodeFuncNotFound
 	}
@@ -42,13 +42,14 @@ func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.ServeErr
 
 // DoInvoke 执行后端服务，获取响应结果；
 func DoInvoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
-	backend, ok := ext.LoadBackendTransport(service.RpcProto)
+	rpcProto := service.AttrRpcProto()
+	backend, ok := ext.LoadBackendTransport(rpcProto)
 	if !ok {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    "GATEWAY:UNKNOWN_PROTOCOL",
-			Internal:   fmt.Errorf("unknown protocol:%s", service.RpcProto),
+			Internal:   fmt.Errorf("unknown protocol:%s", rpcProto),
 		}
 	}
 	return backend.Invoke(service, ctx)

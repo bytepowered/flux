@@ -37,7 +37,13 @@ func newEndpoint(method string) flux.Endpoint {
 			ServiceId: "flux.debug." + method,
 			Interface: "flux.debug.EchoService",
 			Method:    method,
-			RpcProto:  flux.ProtoEcho,
+			Attributes: []flux.Attribute{
+				{
+					Tag:   flux.ServiceAttributeTagRpcProto,
+					Name:  "RpcProto",
+					Value: flux.ProtoEcho,
+				},
+			},
 		},
 	}
 }

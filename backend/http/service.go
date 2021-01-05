@@ -111,9 +111,10 @@ func (ex *BackendTransportService) Assemble(service *flux.BackendService, inURL 
 		RawQuery:   newQuery,
 		Fragment:   inURL.Fragment,
 	}
-	timeout, err := time.ParseDuration(service.RpcTimeout)
+	to := service.AttrRpcTimeout()
+	timeout, err := time.ParseDuration(to)
 	if err != nil {
-		logger.Warnf("Illegal endpoint rpc-timeout: ", service.RpcTimeout)
+		logger.Warnf("Illegal endpoint rpc-timeout: ", to)
 		timeout = time.Second * 10
 	}
 	toctx, _ := context.WithTimeout(ctx.Context(), timeout)

@@ -63,6 +63,14 @@ const (
 	ProtoEcho  = "ECHO"
 )
 
+const (
+	ServiceAttributeTagRpcProto = iota
+	ServiceAttributeTagRpcGroup
+	ServiceAttributeTagRpcVersion
+	ServiceAttributeTagRpcTimeout
+	ServiceAttributeTagRpcRetries
+)
+
 // ArgumentValueLookupFunc 参数值查找函数
 type ArgumentValueLookupFunc func(scope, key string, context Context) (value MTValue, err error)
 
@@ -81,6 +89,13 @@ type Argument struct {
 	ValueLoader func() MTValue `json:"-"`
 }
 
+// Attribute 定义服务的属性信息
+type Attribute struct {
+	Tag   uint8  `json:"tag"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 // BackendService 定义连接上游目标服务的信息
 type BackendService struct {
 	AliasId    string                 `json:"aliasId"`    // Service别名
@@ -89,20 +104,16 @@ type BackendService struct {
 	Interface  string                 `json:"interface"`  // Service侧的URL
 	Method     string                 `json:"method"`     // Service侧的方法
 	Arguments  []Argument             `json:"arguments"`  // Service侧的参数结构
-	RpcProto   string                 `json:"rpcProto"`   // Service侧的协议
-	RpcGroup   string                 `json:"rpcGroup"`   // Service侧的接口分组
-	RpcVersion string                 `json:"rpcVersion"` // Service侧的接口版本
-	RpcTimeout string                 `json:"rpcTimeout"` // Service侧的调用超时
-	RpcRetries string                 `json:"rpcRetries"` // Service侧的调用重试
+	Attributes []Attribute            `json:"attributes"` // Service侧属性列表
 	Extensions map[string]interface{} `json:"extensions"` // 扩展信息
 }
 
-func (b BackendService) Extension(name string) (interface{}, bool) {
+func (b BackendService) Ext(name string) (interface{}, bool) {
 	v, ok := b.Extensions[name]
 	return v, ok
 }
 
-func (b BackendService) ExtensionString(name string) string {
+func (b BackendService) ExtString(name string) string {
 	v, ok := b.Extensions[name]
 	if ok {
 		return cast.ToString(v)
@@ -111,7 +122,7 @@ func (b BackendService) ExtensionString(name string) string {
 	}
 }
 
-func (b BackendService) ExtensionBool(name string) bool {
+func (b BackendService) ExtBool(name string) bool {
 	v, ok := b.Extensions[name]
 	if ok {
 		return cast.ToBool(v)
@@ -120,7 +131,7 @@ func (b BackendService) ExtensionBool(name string) bool {
 	}
 }
 
-func (b BackendService) ExtensionInt(name string) int {
+func (b BackendService) ExtInt(name string) int {
 	v, ok := b.Extensions[name]
 	if ok {
 		return cast.ToInt(v)
@@ -129,9 +140,50 @@ func (b BackendService) ExtensionInt(name string) int {
 	}
 }
 
+func (b BackendService) AttrRpcProto() string {
+	return b.AttrByTag(ServiceAttributeTagRpcProto).Value
+}
+
+func (b BackendService) AttrRpcTimeout() string {
+	return b.AttrByTag(ServiceAttributeTagRpcTimeout).Value
+}
+
+func (b BackendService) AttrRpcGroup() string {
+	return b.AttrByTag(ServiceAttributeTagRpcGroup).Value
+}
+
+func (b BackendService) AttrRpcVersion() string {
+	return b.AttrByTag(ServiceAttributeTagRpcVersion).Value
+}
+
+func (b BackendService) AttrRpcRetries() string {
+	return b.AttrByTag(ServiceAttributeTagRpcRetries).Value
+}
+
+func (b BackendService) AttrByTag(tag uint8) Attribute {
+	return b.Attr(func(attr Attribute) bool {
+		return tag == attr.Tag
+	})
+}
+
+func (b BackendService) AttrByName(name string) Attribute {
+	return b.Attr(func(attr Attribute) bool {
+		return name == attr.Name
+	})
+}
+
+func (b BackendService) Attr(tf func(Attribute) bool) Attribute {
+	for _, attr := range b.Attributes {
+		if tf(attr) {
+			return attr
+		}
+	}
+	return Attribute{}
+}
+
 // IsValid 判断服务配置是否有效；Proto+Interface+Method不能为空；
 func (b BackendService) IsValid() bool {
-	return "" != b.RpcProto && "" != b.Interface && "" != b.Method
+	return len(b.Attributes) > 0 && "" != b.Interface && "" != b.Method
 }
 
 // HasArgs 判定是否有参数

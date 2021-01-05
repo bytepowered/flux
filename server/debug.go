@@ -41,7 +41,7 @@ func init() {
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
 		return func(ep *MultiEndpoint) bool {
-			proto := ep.RandomVersion().Service.RpcProto
+			proto := ep.RandomVersion().Service.AttrRpcProto()
 			return queryMatch(query, proto)
 		}
 	}
