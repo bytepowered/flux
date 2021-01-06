@@ -19,7 +19,7 @@ registries :
   "txcloud":
     protocol: "zookeeper"
     timeout: "3s"
-    address: "tx.devserver.net:2181"
+    address: "zookeeper.ifcode.net:2181"
     username: ""
     password: ""
 

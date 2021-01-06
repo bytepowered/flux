@@ -56,7 +56,7 @@ func (c *WrappedContext) ServiceName() (interfaceName, methodName string) {
 }
 
 func (c *WrappedContext) Authorize() bool {
-	return c.endpoint.Authorize
+	return c.endpoint.AttrAuthorize()
 }
 
 func (c *WrappedContext) Method() string {

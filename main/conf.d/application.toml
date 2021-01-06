@@ -22,8 +22,8 @@ service-path = "/flux-service"
 
 [ZOOKEEPER]
 # ZK服务配置中心地址，支持,分多个地址列表
-# address = "tx.devserver.net:2181"
-host = "tx.devserver.net"
+# address = "zookeeper.ifcode.net:2181"
+host = "zookeeper.ifcode.net"
 port = 2181
 
 # Dubbo BACKEND 配置参数
@@ -41,7 +41,7 @@ reference-delay = "30ms"
 id = "default"
 protocol = "zookeeper"
 timeout = "3s"
-address = "tx.devserver.net:2181"
+address = "zookeeper.ifcode.net:2181"
 username = ""
 password = ""
 

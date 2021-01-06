@@ -32,16 +32,26 @@ func newEndpoint(method string) flux.Endpoint {
 		Version:     "1.0",
 		HttpPattern: "/debug/flux/echo/" + method,
 		HttpMethod:  strings.ToUpper(method),
-		Authorize:   false,
 		Service: flux.BackendService{
 			ServiceId: "flux.debug." + method,
 			Interface: "flux.debug.EchoService",
 			Method:    method,
+			EmbeddedAttributes: flux.EmbeddedAttributes{
+				Attributes: []flux.Attribute{
+					{
+						Tag:   flux.ServiceAttrTagRpcProto,
+						Name:  "RpcProto",
+						Value: flux.ProtoEcho,
+					},
+				},
+			},
+		},
+		EmbeddedAttributes: flux.EmbeddedAttributes{
 			Attributes: []flux.Attribute{
 				{
-					Tag:   flux.ServiceAttributeTagRpcProto,
-					Name:  "RpcProto",
-					Value: flux.ProtoEcho,
+					Tag:   flux.EndpointAttrTagAuthorize,
+					Name:  "Authorize",
+					Value: false,
 				},
 			},
 		},

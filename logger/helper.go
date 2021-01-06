@@ -50,7 +50,7 @@ func TraceContextWith(ctx flux.Context, extraFields map[string]string) flux.Logg
 		fields["backend-appid"] = endpoint.Application
 		fields["backend-service"] = endpoint.Service.ServiceID()
 		fields["backend-permission"] = strings.Join(endpoint.PermissionServiceIds(), ",")
-		fields["backend-authorize"] = cast.ToString(endpoint.Authorize)
+		fields["backend-authorize"] = cast.ToString(endpoint.AttrAuthorize())
 		fields["endpoint-version"] = endpoint.Version
 		fields["endpoint-pattern"] = endpoint.HttpPattern
 		return TraceWith(ctx.RequestId(), fields)

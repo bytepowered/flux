@@ -11,6 +11,11 @@ var (
 	invalidHttpEndpointEvent = flux.HttpEndpointEvent{}
 )
 
+type compatibleEndpoint struct {
+	flux.Endpoint
+	Authorize bool `json:"authorize"` // 此端点是否需要授权
+}
+
 func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEndpointEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
@@ -18,25 +23,35 @@ func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEnd
 		logger.Infow("Invalid endpoint event data.size", "data", string(bytes))
 		return invalidHttpEndpointEvent, false
 	}
-	endpoint := flux.Endpoint{}
-	if err := ext.JSONUnmarshal(bytes, &endpoint); nil != err {
+	comp := compatibleEndpoint{}
+	if err := ext.JSONUnmarshal(bytes, &comp); nil != err {
 		logger.Warnw("invalid endpoint data",
 			"event-type", etype, "data", string(bytes), "error", err)
 		return invalidHttpEndpointEvent, false
 	}
 	logger.Infow("Received endpoint event",
-		"event-type", etype, "method", endpoint.HttpMethod, "pattern", endpoint.HttpPattern, "data", string(bytes))
+		"event-type", etype, "method", comp.HttpMethod, "pattern", comp.HttpPattern, "data", string(bytes))
 	// 检查有效性
-	if !endpoint.IsValid() {
+	if !comp.IsValid() {
 		logger.Warnw("illegal http-pattern", "data", string(bytes))
 		return invalidHttpEndpointEvent, false
 	}
-	if !endpoint.Service.IsValid() {
-		logger.Warnw("illegal service", "service", endpoint.Service, "data", string(bytes))
+	if !comp.Service.IsValid() {
+		logger.Warnw("illegal service", "service", comp.Service, "data", string(bytes))
 		return invalidHttpEndpointEvent, false
 	}
+	// 兼容旧协议数据格式
+	if len(comp.Attributes) == 0 {
+		comp.Attributes = []flux.Attribute{
+			{
+				Tag:   flux.EndpointAttrTagAuthorize,
+				Name:  "Authorize",
+				Value: comp.Authorize,
+			},
+		}
+	}
 	event := flux.HttpEndpointEvent{
-		Endpoint: endpoint,
+		Endpoint: comp.Endpoint,
 	}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
