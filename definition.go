@@ -187,8 +187,14 @@ type BackendService struct {
 	Interface  string     `json:"interface"`  // Service侧的URL
 	Method     string     `json:"method"`     // Service侧的方法
 	Arguments  []Argument `json:"arguments"`  // Service侧的参数结构
+	// Extends
 	EmbeddedAttributes
 	EmbeddedExtensions
+	RpcProto   string `json:"rpcProto"`   // Deprecated Service侧的协议
+	RpcGroup   string `json:"rpcGroup"`   // Deprecated Service侧的接口分组
+	RpcVersion string `json:"rpcVersion"` // Deprecated Service侧的接口版本
+	RpcTimeout string `json:"rpcTimeout"` // Deprecated Service侧的调用超时
+	RpcRetries string `json:"rpcRetries"` // Deprecated Service侧的调用重试
 }
 
 func (b BackendService) AttrRpcProto() string {

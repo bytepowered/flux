@@ -11,14 +11,15 @@ var (
 	invalidBackendServiceEvent = flux.BackendServiceEvent{}
 )
 
-type compatibleBackendService struct {
-	flux.BackendService
-	RpcProto   string `json:"rpcProto"`   // Service侧的协议
-	RpcGroup   string `json:"rpcGroup"`   // Service侧的接口分组
-	RpcVersion string `json:"rpcVersion"` // Service侧的接口版本
-	RpcTimeout string `json:"rpcTimeout"` // Service侧的调用超时
-	RpcRetries string `json:"rpcRetries"` // Service侧的调用重试
-}
+//
+//type BackendService struct {
+//	flux.BackendService
+//	RpcProto   string `json:"rpcProto"`   // Service侧的协议
+//	RpcGroup   string `json:"rpcGroup"`   // Service侧的接口分组
+//	RpcVersion string `json:"rpcVersion"` // Service侧的接口版本
+//	RpcTimeout string `json:"rpcTimeout"` // Service侧的调用超时
+//	RpcRetries string `json:"rpcRetries"` // Service侧的调用重试
+//}
 
 func toBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.BackendServiceEvent, ok bool) {
 	// Check json text
@@ -27,51 +28,22 @@ func toBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.B
 		logger.Infow("Invalid service event data.size", "data", string(bytes))
 		return invalidBackendServiceEvent, false
 	}
-	comp := compatibleBackendService{}
-	if err := ext.JSONUnmarshal(bytes, &comp); nil != err {
+	service := flux.BackendService{}
+	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
 		logger.Warnw("Invalid service data",
 			"event-type", etype, "data", string(bytes), "error", err)
 		return invalidBackendServiceEvent, false
 	}
 	logger.Infow("Received service event",
-		"event-type", etype, "service-id", comp.ServiceId, "data", string(bytes))
+		"event-type", etype, "service-id", service.ServiceId, "data", string(bytes))
 	// 检查有效性
-	if !comp.IsValid() {
-		logger.Warnw("illegal backend service", "data", string(bytes))
+	fixesServiceAttributes(&service)
+	if !service.IsValid() {
+		logger.Warnw("illegal backend service", "service", service)
 		return invalidBackendServiceEvent, false
 	}
-	// 兼容旧协议数据格式
-	if len(comp.BackendService.Attributes) == 0 {
-		comp.Attributes = []flux.Attribute{
-			{
-				Tag:   flux.ServiceAttrTagRpcProto,
-				Name:  "RpcProto",
-				Value: comp.RpcProto,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcGroup,
-				Name:  "RpcGroup",
-				Value: comp.RpcGroup,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcVersion,
-				Name:  "RpcVersion",
-				Value: comp.RpcVersion,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcRetries,
-				Name:  "RpcRetries",
-				Value: comp.RpcRetries,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcTimeout,
-				Name:  "RpcTimeout",
-				Value: comp.RpcTimeout,
-			},
-		}
-	}
 	event := flux.BackendServiceEvent{
-		Service: comp.BackendService,
+		Service: service,
 	}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
@@ -84,4 +56,37 @@ func toBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.B
 		return invalidBackendServiceEvent, false
 	}
 	return event, true
+}
+
+func fixesServiceAttributes(service *flux.BackendService) {
+	// 兼容旧协议数据格式
+	if len(service.Attributes) == 0 {
+		service.Attributes = []flux.Attribute{
+			{
+				Tag:   flux.ServiceAttrTagRpcProto,
+				Name:  "RpcProto",
+				Value: service.RpcProto,
+			},
+			{
+				Tag:   flux.ServiceAttrTagRpcGroup,
+				Name:  "RpcGroup",
+				Value: service.RpcGroup,
+			},
+			{
+				Tag:   flux.ServiceAttrTagRpcVersion,
+				Name:  "RpcVersion",
+				Value: service.RpcVersion,
+			},
+			{
+				Tag:   flux.ServiceAttrTagRpcRetries,
+				Name:  "RpcRetries",
+				Value: service.RpcRetries,
+			},
+			{
+				Tag:   flux.ServiceAttrTagRpcTimeout,
+				Name:  "RpcTimeout",
+				Value: service.RpcTimeout,
+			},
+		}
+	}
 }
