@@ -24,6 +24,7 @@ var (
 
 // ZookeeperMetadataRegistry 基于ZK节点树实现的Endpoint元数据注册中心
 type ZookeeperMetadataRegistry struct {
+	globalAlias    map[string]string
 	endpointPath   string
 	endpointEvents chan flux.HttpEndpointEvent
 	servicePath    string
@@ -34,6 +35,16 @@ type ZookeeperMetadataRegistry struct {
 // ZkEndpointRegistryFactory Factory func to new a zookeeper registry
 func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 	return &ZookeeperMetadataRegistry{
+		retriever:      zk.NewZookeeperRetriever(),
+		endpointEvents: make(chan flux.HttpEndpointEvent, 4),
+		serviceEvents:  make(chan flux.BackendServiceEvent, 4),
+	}
+}
+
+// ZkEndpointRegistryFactory Factory func to new a zookeeper registry
+func ZkEndpointRegistryFactoryWith(globalAlias map[string]string) flux.EndpointRegistry {
+	return &ZookeeperMetadataRegistry{
+		globalAlias:    globalAlias,
 		retriever:      zk.NewZookeeperRetriever(),
 		endpointEvents: make(chan flux.HttpEndpointEvent, 4),
 		serviceEvents:  make(chan flux.BackendServiceEvent, 4),
@@ -54,6 +65,9 @@ func (r *ZookeeperMetadataRegistry) Init(config *flux.Configuration) error {
 		"password": "zookeeper.password",
 		"database": "zookeeper.database",
 	})
+	if len(r.globalAlias) != 0 {
+		config.SetGlobalAlias(r.globalAlias)
+	}
 	r.endpointPath = config.GetString("endpoint-path")
 	r.servicePath = config.GetString("service-path")
 	if r.endpointPath == "" || r.servicePath == "" {
