@@ -16,7 +16,7 @@ type CompatibleEndpoint struct {
 	Authorize bool `json:"authorize"` // 此端点是否需要授权
 }
 
-func toEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEndpointEvent, ok bool) {
+func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEndpointEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {

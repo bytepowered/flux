@@ -71,7 +71,7 @@ func (r *ZookeeperMetadataRegistry) WatchHttpEndpoints() (<-chan flux.HttpEndpoi
 				logger.Errorw("Zookeeper node listening", "event", event, "error", r)
 			}
 		}()
-		if evt, ok := toEndpointEvent(event.Data, event.EventType); ok {
+		if evt, ok := NewEndpointEvent(event.Data, event.EventType); ok {
 			r.endpointEvents <- evt
 		}
 	}
@@ -91,7 +91,7 @@ func (r *ZookeeperMetadataRegistry) WatchBackendServices() (<-chan flux.BackendS
 				logger.Errorw("Zookeeper node listening", "event", event, "error", r)
 			}
 		}()
-		if evt, ok := toBackendServiceEvent(event.Data, event.EventType); ok {
+		if evt, ok := NewBackendServiceEvent(event.Data, event.EventType); ok {
 			r.serviceEvents <- evt
 		}
 	}

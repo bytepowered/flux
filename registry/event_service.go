@@ -21,7 +21,7 @@ var (
 //	RpcRetries string `json:"rpcRetries"` // Service侧的调用重试
 //}
 
-func toBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.BackendServiceEvent, ok bool) {
+func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.BackendServiceEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
