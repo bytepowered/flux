@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytepowered/flux/ext"
 	"time"
 
 	"github.com/bytepowered/flux"
@@ -41,13 +42,15 @@ func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 	}
 }
 
-// ZkEndpointRegistryFactory Factory func to new a zookeeper registry
-func ZkEndpointRegistryFactoryWith(globalAlias map[string]string) flux.EndpointRegistry {
-	return &ZookeeperMetadataRegistry{
-		globalAlias:    globalAlias,
-		retriever:      zk.NewZookeeperRetriever(),
-		endpointEvents: make(chan flux.HttpEndpointEvent, 4),
-		serviceEvents:  make(chan flux.BackendServiceEvent, 4),
+// NewZkEndpointRegistryFactoryWith returns new a zookeeper registry factory
+func NewZkEndpointRegistryFactoryWith(globalAlias map[string]string) ext.EndpointRegistryFactory {
+	return func() flux.EndpointRegistry {
+		return &ZookeeperMetadataRegistry{
+			globalAlias:    globalAlias,
+			retriever:      zk.NewZookeeperRetriever(),
+			endpointEvents: make(chan flux.HttpEndpointEvent, 4),
+			serviceEvents:  make(chan flux.BackendServiceEvent, 4),
+		}
 	}
 }
 
