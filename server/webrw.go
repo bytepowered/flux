@@ -7,144 +7,144 @@ import (
 	"net/url"
 )
 
-var _ flux.RequestReader = new(WrappedRequestReader)
+var _ flux.RequestReader = new(DefaultRequestReader)
 
-// WrappedRequestReader Request请求读取接口的实现
-type WrappedRequestReader struct {
+// DefaultRequestReader Request请求读取接口的实现
+type DefaultRequestReader struct {
 	flux.WebContext
 }
 
-func (r *WrappedRequestReader) Method() string {
+func (r *DefaultRequestReader) Method() string {
 	return r.WebContext.Method()
 }
 
-func (r *WrappedRequestReader) Host() string {
+func (r *DefaultRequestReader) Host() string {
 	return r.WebContext.Host()
 }
 
-func (r *WrappedRequestReader) UserAgent() string {
+func (r *DefaultRequestReader) UserAgent() string {
 	return r.WebContext.UserAgent()
 }
 
-func (r *WrappedRequestReader) RequestURI() string {
+func (r *DefaultRequestReader) RequestURI() string {
 	return r.WebContext.RequestURI()
 }
 
-func (r *WrappedRequestReader) RequestURL() (url *url.URL, writable bool) {
+func (r *DefaultRequestReader) RequestURL() (url *url.URL, writable bool) {
 	return r.WebContext.RequestURL()
 }
 
-func (r *WrappedRequestReader) RequestBodyReader() (io.ReadCloser, error) {
+func (r *DefaultRequestReader) RequestBodyReader() (io.ReadCloser, error) {
 	return r.WebContext.RequestBodyReader()
 }
 
-func (r *WrappedRequestReader) RequestRewrite(method string, path string) {
+func (r *DefaultRequestReader) RequestRewrite(method string, path string) {
 	r.WebContext.RequestRewrite(method, path)
 }
 
-func (r *WrappedRequestReader) HeaderValues() (header http.Header, writable bool) {
+func (r *DefaultRequestReader) HeaderValues() (header http.Header, writable bool) {
 	return r.WebContext.HeaderValues()
 }
 
-func (r *WrappedRequestReader) QueryValues() url.Values {
+func (r *DefaultRequestReader) QueryValues() url.Values {
 	return r.WebContext.QueryValues()
 }
 
-func (r *WrappedRequestReader) PathValues() url.Values {
+func (r *DefaultRequestReader) PathValues() url.Values {
 	return r.WebContext.PathValues()
 }
 
-func (r *WrappedRequestReader) FormValues() url.Values {
+func (r *DefaultRequestReader) FormValues() url.Values {
 	return r.WebContext.FormValues()
 }
 
-func (r *WrappedRequestReader) CookieValues() []*http.Cookie {
+func (r *DefaultRequestReader) CookieValues() []*http.Cookie {
 	return r.WebContext.CookieValues()
 }
 
-func (r *WrappedRequestReader) CookieValue(name string) (cookie *http.Cookie, ok bool) {
+func (r *DefaultRequestReader) CookieValue(name string) (cookie *http.Cookie, ok bool) {
 	return r.WebContext.CookieValue(name)
 }
 
-func (r *WrappedRequestReader) QueryValue(name string) string {
+func (r *DefaultRequestReader) QueryValue(name string) string {
 	return r.WebContext.QueryValue(name)
 }
 
-func (r *WrappedRequestReader) PathValue(name string) string {
+func (r *DefaultRequestReader) PathValue(name string) string {
 	return r.WebContext.PathValue(name)
 }
 
-func (r *WrappedRequestReader) FormValue(name string) string {
+func (r *DefaultRequestReader) FormValue(name string) string {
 	return r.WebContext.FormValue(name)
 }
 
-func (r *WrappedRequestReader) HeaderValue(name string) string {
+func (r *DefaultRequestReader) HeaderValue(name string) string {
 	return r.WebContext.HeaderValue(name)
 }
 
-func (r *WrappedRequestReader) reattach(webex flux.WebContext) {
+func (r *DefaultRequestReader) reattach(webex flux.WebContext) {
 	r.WebContext = webex
 }
 
-func (r *WrappedRequestReader) reset() {
+func (r *DefaultRequestReader) reset() {
 	r.WebContext = nil
 }
 
-func newRequestWrappedReader() *WrappedRequestReader {
-	return &WrappedRequestReader{}
+func NewDefaultRequestReader() *DefaultRequestReader {
+	return &DefaultRequestReader{}
 }
 
 ////
 
-var _ flux.ResponseWriter = new(WrappedResponseWriter)
+var _ flux.ResponseWriter = new(DefaultResponseWriter)
 
-// WrappedResponseWriter 定义响应数据
-type WrappedResponseWriter struct {
+// DefaultResponseWriter 定义响应数据
+type DefaultResponseWriter struct {
 	status  int
 	headers http.Header
 	body    interface{}
 }
 
-func (r *WrappedResponseWriter) StatusCode() int {
+func (r *DefaultResponseWriter) StatusCode() int {
 	return r.status
 }
 
-func (r *WrappedResponseWriter) HeaderValues() http.Header {
+func (r *DefaultResponseWriter) HeaderValues() http.Header {
 	return r.headers
 }
 
-func (r *WrappedResponseWriter) Body() interface{} {
+func (r *DefaultResponseWriter) Body() interface{} {
 	return r.body
 }
 
-func (r *WrappedResponseWriter) SetStatusCode(status int) {
+func (r *DefaultResponseWriter) SetStatusCode(status int) {
 	r.status = status
 }
 
-func (r *WrappedResponseWriter) AddHeader(name, value string) {
+func (r *DefaultResponseWriter) AddHeader(name, value string) {
 	r.headers.Add(name, value)
 }
 
-func (r *WrappedResponseWriter) SetHeader(name, value string) {
+func (r *DefaultResponseWriter) SetHeader(name, value string) {
 	r.headers.Set(name, value)
 }
 
-func (r *WrappedResponseWriter) SetHeaders(headers http.Header) {
+func (r *DefaultResponseWriter) SetHeaders(headers http.Header) {
 	r.headers = headers
 }
 
-func (r *WrappedResponseWriter) SetBody(body interface{}) {
+func (r *DefaultResponseWriter) SetBody(body interface{}) {
 	r.body = body
 }
 
-func (r *WrappedResponseWriter) reset() {
+func (r *DefaultResponseWriter) reset() {
 	r.status = flux.StatusOK
 	r.body = nil
 	r.headers = http.Header{}
 }
 
-func newResponseWrappedWriter() *WrappedResponseWriter {
-	return &WrappedResponseWriter{
+func NewDefaultResponseWriter() *DefaultResponseWriter {
+	return &DefaultResponseWriter{
 		status:  flux.StatusOK,
 		headers: http.Header{},
 		body:    nil,

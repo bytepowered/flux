@@ -94,7 +94,7 @@ func (r *Router) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Router) Route(ctx *WrappedContext) *flux.ServeError {
+func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method

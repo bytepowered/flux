@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-var _ flux.Context = new(WrappedContext)
+var _ flux.Context = new(DefaultContext)
 
 // Context接口实现
-type WrappedContext struct {
+type DefaultContext struct {
 	requestId      string
 	webc           flux.WebContext
 	endpoint       *flux.Endpoint
@@ -19,60 +19,60 @@ type WrappedContext struct {
 	values         *sync.Map
 	metrics        []flux.Metric
 	beginTime      time.Time
-	requestReader  *WrappedRequestReader
-	responseWriter *WrappedResponseWriter
+	requestReader  *DefaultRequestReader
+	responseWriter *DefaultResponseWriter
 	ctxLogger      flux.Logger
 }
 
-func NewContextWrapper() interface{} {
-	return &WrappedContext{
-		responseWriter: newResponseWrappedWriter(),
-		requestReader:  newRequestWrappedReader(),
+func DefaultContextFactory() flux.Context {
+	return &DefaultContext{
+		responseWriter: NewDefaultResponseWriter(),
+		requestReader:  NewDefaultRequestReader(),
 	}
 }
 
-func (c *WrappedContext) Request() flux.RequestReader {
+func (c *DefaultContext) Request() flux.RequestReader {
 	return c.requestReader
 }
 
-func (c *WrappedContext) Response() flux.ResponseWriter {
+func (c *DefaultContext) Response() flux.ResponseWriter {
 	return c.responseWriter
 }
 
-func (c *WrappedContext) Endpoint() flux.Endpoint {
+func (c *DefaultContext) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *WrappedContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
+func (c *DefaultContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
 	s := c.endpoint.Service
 	return s.AttrRpcProto(), s.RemoteHost, s.Interface, s.Method
 }
 
-func (c *WrappedContext) ServiceProto() string {
+func (c *DefaultContext) ServiceProto() string {
 	return c.endpoint.Service.AttrRpcProto()
 }
 
-func (c *WrappedContext) ServiceName() (interfaceName, methodName string) {
+func (c *DefaultContext) ServiceName() (interfaceName, methodName string) {
 	return c.endpoint.Service.Interface, c.endpoint.Service.Method
 }
 
-func (c *WrappedContext) Authorize() bool {
+func (c *DefaultContext) Authorize() bool {
 	return c.endpoint.AttrAuthorize()
 }
 
-func (c *WrappedContext) Method() string {
+func (c *DefaultContext) Method() string {
 	return c.webc.Method()
 }
 
-func (c *WrappedContext) RequestURI() string {
+func (c *DefaultContext) RequestURI() string {
 	return c.webc.RequestURI()
 }
 
-func (c *WrappedContext) RequestId() string {
+func (c *DefaultContext) RequestId() string {
 	return c.requestId
 }
 
-func (c *WrappedContext) Attributes() map[string]interface{} {
+func (c *DefaultContext) Attributes() map[string]interface{} {
 	copied := make(map[string]interface{}, 16)
 	c.attributes.Range(func(k, v interface{}) bool {
 		copied[k.(string)] = v
@@ -81,16 +81,16 @@ func (c *WrappedContext) Attributes() map[string]interface{} {
 	return copied
 }
 
-func (c *WrappedContext) SetAttribute(name string, value interface{}) {
+func (c *DefaultContext) SetAttribute(name string, value interface{}) {
 	c.attributes.Store(name, value)
 }
 
-func (c *WrappedContext) GetAttribute(name string) (interface{}, bool) {
+func (c *DefaultContext) GetAttribute(name string) (interface{}, bool) {
 	v, ok := c.attributes.Load(name)
 	return v, ok
 }
 
-func (c *WrappedContext) GetAttributeString(name string, defaultValue string) string {
+func (c *DefaultContext) GetAttributeString(name string, defaultValue string) string {
 	v, ok := c.GetAttribute(name)
 	if !ok {
 		return defaultValue
@@ -98,11 +98,11 @@ func (c *WrappedContext) GetAttributeString(name string, defaultValue string) st
 	return cast.ToString(v)
 }
 
-func (c *WrappedContext) SetValue(name string, value interface{}) {
+func (c *DefaultContext) SetValue(name string, value interface{}) {
 	c.values.Store(name, value)
 }
 
-func (c *WrappedContext) GetValue(name string) (interface{}, bool) {
+func (c *DefaultContext) GetValue(name string) (interface{}, bool) {
 	// first: Local values
 	// then: WebContext values
 	if lv, ok := c.values.Load(name); ok {
@@ -114,7 +114,7 @@ func (c *WrappedContext) GetValue(name string) (interface{}, bool) {
 	}
 }
 
-func (c *WrappedContext) GetValueString(name string, defaultValue string) string {
+func (c *DefaultContext) GetValueString(name string, defaultValue string) string {
 	v, ok := c.GetValue(name)
 	if !ok {
 		return defaultValue
@@ -122,39 +122,39 @@ func (c *WrappedContext) GetValueString(name string, defaultValue string) string
 	return cast.ToString(v)
 }
 
-func (c *WrappedContext) Context() context.Context {
+func (c *DefaultContext) Context() context.Context {
 	return c.webc.Context()
 }
 
-func (c *WrappedContext) LoadMetrics() []flux.Metric {
+func (c *DefaultContext) LoadMetrics() []flux.Metric {
 	dist := make([]flux.Metric, len(c.metrics))
 	copy(dist, c.metrics)
 	return dist
 }
 
-func (c *WrappedContext) SetContextLogger(logger flux.Logger) {
+func (c *DefaultContext) SetContextLogger(logger flux.Logger) {
 	c.ctxLogger = logger
 }
 
-func (c *WrappedContext) GetContextLogger() (flux.Logger, bool) {
+func (c *DefaultContext) GetContextLogger() (flux.Logger, bool) {
 	return c.ctxLogger, nil != c.ctxLogger
 }
 
-func (c *WrappedContext) StartTime() time.Time {
+func (c *DefaultContext) StartTime() time.Time {
 	return c.beginTime
 }
 
-func (c *WrappedContext) ElapsedTime() time.Duration {
+func (c *DefaultContext) ElapsedTime() time.Duration {
 	return time.Since(c.beginTime)
 }
 
-func (c *WrappedContext) AddMetric(name string, elapsed time.Duration) {
+func (c *DefaultContext) AddMetric(name string, elapsed time.Duration) {
 	c.metrics = append(c.metrics, flux.Metric{
 		Name: name, Elapsed: elapsed, Elapses: elapsed.String(),
 	})
 }
 
-func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {
+func (c *DefaultContext) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {
 	c.requestId = requestId
 	c.webc = webc
 	c.endpoint = endpoint
@@ -170,7 +170,7 @@ func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoi
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 }
 
-func (c *WrappedContext) Release() {
+func (c *DefaultContext) Release() {
 	c.requestId = ""
 	c.webc = nil
 	c.endpoint = nil

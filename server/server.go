@@ -53,33 +53,33 @@ var (
 
 // ServeEngine
 type HttpServeEngine struct {
-	httpWebServer        flux.WebServer
-	serverResponseWriter flux.ServerResponseWriter
-	serverErrorsWriter   flux.ServerErrorsWriter
-	serverContextHooks   []flux.ServerContextHookFunc
-	debugServer          *http.Server
-	httpConfig           *flux.Configuration
-	httpVersionHeader    string
-	router               *Router
-	endpointRegistry     flux.EndpointRegistry
-	contextWrappers      sync.Pool
-	stateStarted         chan struct{}
-	stateStopped         chan struct{}
+	httpWebServer     flux.WebServer
+	responseWriter    flux.ServerResponseWriter
+	errorsWriter      flux.ServerErrorsWriter
+	hooks             []flux.ServerContextHookFunc
+	debugServer       *http.Server
+	httpConfig        *flux.Configuration
+	httpVersionHeader string
+	router            *Router
+	endpointRegistry  flux.EndpointRegistry
+	pool              sync.Pool
+	started           chan struct{}
+	stopped           chan struct{}
 }
 
 func NewHttpServeEngine() *HttpServeEngine {
-	return NewHttpServeEngineWith(DefaultServerResponseWriter, DefaultServerErrorsWriter)
+	return NewHttpServeEngineWith(DefaultServerResponseWriter, DefaultServerErrorsWriter, DefaultContextFactory)
 }
 
-func NewHttpServeEngineWith(responseWriter flux.ServerResponseWriter, errorWriter flux.ServerErrorsWriter) *HttpServeEngine {
+func NewHttpServeEngineWith(responseWriter flux.ServerResponseWriter, errorWriter flux.ServerErrorsWriter, contextFactory func() flux.Context) *HttpServeEngine {
 	return &HttpServeEngine{
-		router:               NewRouter(),
-		serverResponseWriter: responseWriter,
-		serverErrorsWriter:   errorWriter,
-		contextWrappers:      sync.Pool{New: NewContextWrapper},
-		serverContextHooks:   make([]flux.ServerContextHookFunc, 0, 4),
-		stateStarted:         make(chan struct{}),
-		stateStopped:         make(chan struct{}),
+		router:         NewRouter(),
+		responseWriter: responseWriter,
+		errorsWriter:   errorWriter,
+		pool:           sync.Pool{New: func() interface{} { return contextFactory() }},
+		hooks:          make([]flux.ServerContextHookFunc, 0, 4),
+		started:        make(chan struct{}),
+		stopped:        make(chan struct{}),
 	}
 }
 
@@ -178,7 +178,7 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 			logger.Info("BackendService event loop: Stopped")
 		}()
 	}
-	close(s.stateStarted)
+	close(s.started)
 	logger.Info(Banner)
 	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
 	// Start Servers
@@ -230,7 +230,7 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 	}
 	start := time.Now()
 	// Context hook
-	for _, ctxhook := range s.serverContextHooks {
+	for _, ctxhook := range s.hooks {
 		ctxhook(webc, ctxw)
 	}
 	// Route and response
@@ -242,7 +242,7 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 		return err
 	} else {
 		defer endcall(response.StatusCode(), start)
-		return s.serverResponseWriter(webc, requestId, response.HeaderValues(), response.StatusCode(), response.Body())
+		return s.responseWriter(webc, requestId, response.HeaderValues(), response.StatusCode(), response.Body())
 	}
 }
 
@@ -305,7 +305,7 @@ func (s *HttpServeEngine) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) 
 // Shutdown to cleanup resources
 func (s *HttpServeEngine) Shutdown(ctx context.Context) error {
 	logger.Info("HttpServeEngine shutdown...")
-	defer close(s.stateStopped)
+	defer close(s.stopped)
 	if s.debugServer != nil {
 		_ = s.debugServer.Close()
 	}
@@ -317,12 +317,12 @@ func (s *HttpServeEngine) Shutdown(ctx context.Context) error {
 
 // StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。
 func (s *HttpServeEngine) StateStarted() <-chan struct{} {
-	return s.stateStarted
+	return s.started
 }
 
 // StateStopped 返回一个Channel。当服务停止后完成时，此Channel将被关闭。
 func (s *HttpServeEngine) StateStopped() <-chan struct{} {
-	return s.stateStopped
+	return s.stopped
 }
 
 // HttpConfig return Http server configuration
@@ -362,7 +362,7 @@ func (s *HttpServeEngine) DebugServer() (*http.Server, bool) {
 
 // AddServerContextExchangeHook 添加Http与Flux的Context桥接函数
 func (s *HttpServeEngine) AddServerContextExchangeHook(f flux.ServerContextHookFunc) {
-	s.serverContextHooks = append(s.serverContextHooks, f)
+	s.hooks = append(s.hooks, f)
 }
 
 func (s *HttpServeEngine) newWrappedEndpointHandler(endpoint *MultiEndpoint) flux.WebHandler {
@@ -380,15 +380,15 @@ func (s *HttpServeEngine) selectMultiEndpoint(routeKey string, endpoint *flux.En
 	}
 }
 
-func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *WrappedContext {
-	ctx := s.contextWrappers.Get().(*WrappedContext)
+func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *DefaultContext {
+	ctx := s.pool.Get().(*DefaultContext)
 	ctx.Reattach(id, webc, endpoint)
 	return ctx
 }
 
-func (s *HttpServeEngine) releaseContext(context *WrappedContext) {
+func (s *HttpServeEngine) releaseContext(context *DefaultContext) {
 	context.Release()
-	s.contextWrappers.Put(context)
+	s.pool.Put(context)
 }
 
 func (s *HttpServeEngine) ensure() *HttpServeEngine {
@@ -422,7 +422,7 @@ func (s *HttpServeEngine) defaultServerErrorHandler(err error, webc flux.WebCont
 		}
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
-	if err := s.serverErrorsWriter(webc, requestId, serve.Header, serve); nil != err {
+	if err := s.errorsWriter(webc, requestId, serve.Header, serve); nil != err {
 		logger.Trace(requestId).Errorw("HttpServeEngine http response error", "error", err)
 	}
 }
