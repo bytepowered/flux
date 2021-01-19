@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/spf13/cast"
+	"sync"
 	"time"
 )
 
@@ -14,8 +15,8 @@ type WrappedContext struct {
 	requestId      string
 	webc           flux.WebContext
 	endpoint       *flux.Endpoint
-	attributes     map[string]interface{}
-	values         map[string]interface{}
+	attributes     *sync.Map
+	values         *sync.Map
 	metrics        []flux.Metric
 	beginTime      time.Time
 	requestReader  *WrappedRequestReader
@@ -72,19 +73,20 @@ func (c *WrappedContext) RequestId() string {
 }
 
 func (c *WrappedContext) Attributes() map[string]interface{} {
-	copied := make(map[string]interface{}, len(c.attributes))
-	for k, v := range c.attributes {
-		copied[k] = v
-	}
+	copied := make(map[string]interface{}, 16)
+	c.attributes.Range(func(k, v interface{}) bool {
+		copied[k.(string)] = v
+		return true
+	})
 	return copied
 }
 
 func (c *WrappedContext) SetAttribute(name string, value interface{}) {
-	c.attributes[name] = value
+	c.attributes.Store(name, value)
 }
 
 func (c *WrappedContext) GetAttribute(name string) (interface{}, bool) {
-	v, ok := c.attributes[name]
+	v, ok := c.attributes.Load(name)
 	return v, ok
 }
 
@@ -97,13 +99,13 @@ func (c *WrappedContext) GetAttributeString(name string, defaultValue string) st
 }
 
 func (c *WrappedContext) SetValue(name string, value interface{}) {
-	c.values[name] = value
+	c.values.Store(name, value)
 }
 
 func (c *WrappedContext) GetValue(name string) (interface{}, bool) {
 	// first: Local values
 	// then: WebContext values
-	if lv, ok := c.values[name]; ok {
+	if lv, ok := c.values.Load(name); ok {
 		return lv, true
 	} else if cv := c.webc.GetValue(name); nil != cv {
 		return cv, true
@@ -156,8 +158,8 @@ func (c *WrappedContext) Reattach(requestId string, webc flux.WebContext, endpoi
 	c.requestId = requestId
 	c.webc = webc
 	c.endpoint = endpoint
-	c.attributes = make(map[string]interface{}, 8)
-	c.values = make(map[string]interface{}, 8)
+	c.attributes = new(sync.Map)
+	c.values = new(sync.Map)
 	c.metrics = make([]flux.Metric, 0, 8)
 	c.beginTime = time.Now()
 	c.requestReader.reattach(webc)
