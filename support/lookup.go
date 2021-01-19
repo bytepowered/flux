@@ -2,10 +2,7 @@ package support
 
 import (
 	"errors"
-	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/logger"
 	"strings"
 )
 
@@ -76,23 +73,5 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 			return flux.WrapObjectMTValue(v), nil
 		}
 		return flux.WrapObjectMTValue(nil), nil
-	}
-}
-
-// 默认实现：查找Argument的值解析函数
-func DefaultArgumentValueResolveFunc(mtValue flux.MTValue, arg flux.Argument, ctx flux.Context) (interface{}, error) {
-	valueResolver := ext.LoadMTValueResolver(arg.Class)
-	if nil == valueResolver {
-		logger.TraceContext(ctx).Warnw("Not supported argument type",
-			"http.key", arg.HttpName, "arg.name", arg.Name, "resolver-class", arg.Class, "generic", arg.Generic)
-		valueResolver = ext.LoadMTValueDefaultResolver()
-	}
-	if value, err := valueResolver(mtValue, arg.Class, arg.Generic); nil != err {
-		logger.TraceContext(ctx).Warnw("Failed to resolve argument",
-			"http.key", arg.HttpName, "arg.name", arg.Name, "value-class", arg.Class, "generic", arg.Generic,
-			"mime.value", mtValue.Value, "mime.type", mtValue.MediaType, "error", err)
-		return nil, fmt.Errorf("PARAMETERS:RESOLVE_VALUE:%w", err)
-	} else {
-		return value, nil
 	}
 }

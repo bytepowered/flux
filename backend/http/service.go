@@ -82,7 +82,7 @@ func (ex *BackendTransportService) Assemble(service *flux.BackendService, inURL 
 	if len(inParams) > 0 {
 		// 如果Endpoint定义了参数，即表示限定参数传递
 		var data string
-		if values, err := _toHttpUrlValues(inParams, ctx); nil != err {
+		if values, err := AssembleHttpValues(inParams, ctx); nil != err {
 			return nil, err
 		} else {
 			data = values.Encode()

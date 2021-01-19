@@ -8,24 +8,15 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义参数值查找逻辑。
 var (
-	argumentValueLookupFunc  flux.ArgumentValueLookupFunc
-	argumentValueResolveFunc flux.ArgumentValueResolveFunc
+	argumentLookupFunc flux.ArgumentLookupFunc
 )
 
-func StoreArgumentValueLookupFunc(f flux.ArgumentValueLookupFunc) {
-	argumentValueLookupFunc = pkg.RequireNotNil(f, "ArgumentValueLookupFunc is nil").(flux.ArgumentValueLookupFunc)
+func StoreArgumentLookupFunc(f flux.ArgumentLookupFunc) {
+	argumentLookupFunc = pkg.RequireNotNil(f, "ArgumentLookupFunc is nil").(flux.ArgumentLookupFunc)
 }
 
-func LoadArgumentValueLookupFunc() flux.ArgumentValueLookupFunc {
-	return argumentValueLookupFunc
-}
-
-func StoreArgumentValueResolveFunc(f flux.ArgumentValueResolveFunc) {
-	argumentValueResolveFunc = pkg.RequireNotNil(f, "ArgumentValueResolveFunc is nil").(flux.ArgumentValueResolveFunc)
-}
-
-func LoadArgumentValueResolveFunc() flux.ArgumentValueResolveFunc {
-	return argumentValueResolveFunc
+func LoadArgumentLookupFunc() flux.ArgumentLookupFunc {
+	return argumentLookupFunc
 }
 
 //// 构建参数值对象工具函数
@@ -34,27 +25,37 @@ func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(typeClass, argName, nil)
 }
 
-func NewPrimitiveArgumentWithLoader(typeClass, argName string, loader func() flux.MTValue) flux.Argument {
+func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() flux.MTValue) flux.Argument {
 	name := pkg.RequireNotEmpty(argName, "argName is empty")
 	return flux.Argument{
-		Class:       pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
-		Type:        flux.ArgumentTypePrimitive,
-		Name:        name,
-		HttpName:    name,
-		HttpScope:   flux.ScopeAuto,
-		ValueLoader: loader,
+		Class:         pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
+		Type:          flux.ArgumentTypePrimitive,
+		Name:          name,
+		HttpName:      name,
+		HttpScope:     flux.ScopeAuto,
+		ValueLoader:   valLoader,
+		LookupFunc:    LoadArgumentLookupFunc(),
+		ValueResolver: LoadMTValueResolver(typeClass),
 	}
 }
 
 func NewComplexArgument(typeClass, argName string) flux.Argument {
 	name := pkg.RequireNotEmpty(argName, "argName is empty")
 	return flux.Argument{
-		Class:     pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
-		Type:      flux.ArgumentTypeComplex,
-		Name:      name,
-		HttpName:  name,
-		HttpScope: flux.ScopeAuto,
+		Class:         pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
+		Type:          flux.ArgumentTypeComplex,
+		Name:          name,
+		HttpName:      name,
+		HttpScope:     flux.ScopeAuto,
+		LookupFunc:    LoadArgumentLookupFunc(),
+		ValueResolver: LoadMTValueResolver(typeClass),
 	}
+}
+
+func NewSliceArrayArgument(argName string, generic string) flux.Argument {
+	arg := NewPrimitiveArgument(flux.JavaUtilListClassName, argName)
+	arg.Generic = []string{generic}
+	return arg
 }
 
 func NewStringArgument(argName string) flux.Argument {
@@ -117,8 +118,4 @@ func NewStringMapArgument(argName string) flux.Argument {
 
 func NewHashMapArgument(argName string) flux.Argument {
 	return NewComplexArgument(flux.JavaUtilMapClassName, argName)
-}
-
-func NewSliceArrayArgument(argName string) flux.Argument {
-	return NewComplexArgument(flux.JavaUtilListClassName, argName)
 }

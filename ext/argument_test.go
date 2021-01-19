@@ -3,28 +3,10 @@ package ext
 import (
 	"github.com/bytepowered/flux"
 	assert2 "github.com/stretchr/testify/assert"
-	"reflect"
 	"testing"
 )
 
-func Test_SetNilArgumentValueLookupFunc(t *testing.T) {
-	assert := assert2.New(t)
-	assert.Panicsf(func() {
-		StoreArgumentValueLookupFunc(nil)
-	}, "Must panic")
-}
-
-func Test_SetGetArgumentValueLookupFunc(t *testing.T) {
-	assert := assert2.New(t)
-	f1 := func(scope, key string, context flux.Context) (value flux.MTValue, err error) {
-		return flux.WrapStringMTValue("value"), nil
-	}
-	StoreArgumentValueLookupFunc(f1)
-	f2 := LoadArgumentValueLookupFunc()
-	assert.Equal(reflect.ValueOf(f1).Pointer(), reflect.ValueOf(f2).Pointer(), "Must equals func")
-}
-
-func TestNewPrimitiveArgument(t *testing.T) {
+func TestArgumentDefinition(t *testing.T) {
 	cases := []struct {
 		definition flux.Argument
 		class      string
@@ -68,10 +50,10 @@ func TestNewPrimitiveArgument(t *testing.T) {
 			name:       "float64",
 		},
 		{
-			definition: NewDoubleArgument("float64"),
-			class:      flux.JavaLangDoubleClassName,
+			definition: NewSliceArrayArgument("slice-empty", flux.JavaLangStringClassName),
+			class:      flux.JavaUtilListClassName,
 			argType:    flux.ArgumentTypePrimitive,
-			name:       "float64",
+			name:       "slice-empty",
 		},
 		{
 			definition: NewStringMapArgument("stringmap"),
@@ -85,17 +67,11 @@ func TestNewPrimitiveArgument(t *testing.T) {
 			argType:    flux.ArgumentTypeComplex,
 			name:       "hashmap",
 		},
-		{
-			definition: NewSliceArrayArgument("slice-empty"),
-			class:      flux.JavaUtilListClassName,
-			argType:    flux.ArgumentTypeComplex,
-			name:       "slice-empty",
-		},
 	}
+	assert := assert2.New(t)
 	for _, tcase := range cases {
-		assert := assert2.New(t)
-		assert.Equal(tcase.class, tcase.definition.Class, "type class")
-		assert.Equal(tcase.argType, tcase.definition.Type, "arg type")
+		assert.Equal(tcase.class, tcase.definition.Class, "type class", tcase.name)
+		assert.Equal(tcase.argType, tcase.definition.Type, "arg type", tcase.name)
 		assert.Equal(tcase.name, tcase.definition.Name, "name")
 	}
 }
