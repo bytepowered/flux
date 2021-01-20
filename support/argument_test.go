@@ -210,3 +210,30 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 		assert.Equal(tcase.expected, v, "value match")
 	}
 }
+
+func TestComplexArgumentValueLoader(t *testing.T) {
+	cases := []struct {
+		definition flux.Argument
+		name       string
+		expected   interface{}
+	}{
+		{
+			definition: ext.NewStringArgumentWith("xx", "my-value"),
+			name:       "string",
+			expected:   "my-value",
+		},
+		{
+			definition: ext.NewIntegerArgumentWith("xx", 1234),
+			name:       "int",
+			expected:   1234,
+		},
+	}
+	assert := assert2.New(t)
+	ctx := NewEmptyContext()
+	for _, tcase := range cases {
+		// check resolve
+		v, err := tcase.definition.Resolve(ctx)
+		assert.Nil(err)
+		assert.Equal(tcase.expected, v, "value match")
+	}
+}
