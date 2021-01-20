@@ -433,11 +433,11 @@ func (s *HttpServeEngine) defaultServerErrorHandler(err error, webc flux.WebCont
 
 func activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, error) {
 	config := flux.NewConfigurationOf(flux.KeyConfigRootEndpointRegistry)
-	config.SetDefault(flux.KeyConfigEndpointRegistryId, ext.EndpointRegistryIdDefault)
-	registryId := config.GetString(flux.KeyConfigEndpointRegistryId)
-	logger.Infow("Active endpoint registry", "registry-id", registryId)
-	if factory, ok := ext.LoadEndpointRegistryFactory(registryId); !ok {
-		return nil, config, fmt.Errorf("EndpointRegistryFactory not found, id: %s", registryId)
+	config.SetDefault(flux.KeyConfigEndpointRegistryProto, ext.EndpointRegistryProtoDefault)
+	registryProto := config.GetString(flux.KeyConfigEndpointRegistryProto)
+	logger.Infow("Active endpoint registry", "registry-proto", registryProto)
+	if factory, ok := ext.LoadEndpointRegistryFactory(registryProto); !ok {
+		return nil, config, fmt.Errorf("EndpointRegistryFactory not found, proto: %s", registryProto)
 	} else {
 		return factory(), config, nil
 	}

@@ -19,8 +19,8 @@ func init() {
 	ext.StoreSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint registry
 	// Default: ZK
-	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdDefault, registry.ZkEndpointRegistryFactory)
-	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryIdZookeeper, registry.ZkEndpointRegistryFactory)
+	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryProtoDefault, registry.ZkEndpointRegistryFactory)
+	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryProtoZookeeper, registry.ZkEndpointRegistryFactory)
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)

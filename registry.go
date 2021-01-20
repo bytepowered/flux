@@ -1,8 +1,8 @@
 package flux
 
 const (
-	KeyConfigRootEndpointRegistry = "Registry"
-	KeyConfigEndpointRegistryId   = "registry-id"
+	KeyConfigRootEndpointRegistry  = "EndpointRegistry"
+	KeyConfigEndpointRegistryProto = "registry-proto"
 )
 
 // EndpointRegistry Endpoint注册元数据事件监听

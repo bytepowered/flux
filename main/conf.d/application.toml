@@ -15,16 +15,20 @@ debug-auth-password = "yongjiapro"
 
 # ENDPOINTREGISTRY: 网关端点注册中心
 [ENDPOINTREGISTRY]
-# 使用哪种元数据配置中心：默认zookeeper，可选[active,zookeeper]
-registry-id = "zookeeper"
 endpoint-path = "/flux-endpoint"
 service-path = "/flux-service"
-
-[ZOOKEEPER]
-# ZK服务配置中心地址，支持,分多个地址列表
-# address = "zookeeper.ifcode.net:2181"
-host = "zookeeper.ifcode.net"
-port = 2181
+# 元数据注册中心协议：默认zookeeper，可选[default,zookeeper]
+registry-proto = "zookeeper"
+# 启用的注册中心，默认default；其ID为下面多注册中心的key（不区分大小写）
+registry-active = ["default","tencent-cloud"]
+# 支持多注册中心
+[ENDPOINTREGISTRY.default]
+address = "${zookeeper.address}"
+timeout = "${zookeeper.timeout:5s}"
+[ENDPOINTREGISTRY.tencent-cloud]
+address = "${tx.zookeeper.address}"
+[ENDPOINTREGISTRY.huawei-cloud]
+address = "${hw.zookeeper.address}"
 
 # Dubbo BACKEND 配置参数
 [BACKEND.DUBBO]

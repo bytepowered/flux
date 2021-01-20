@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/bytepowered/flux/ext"
-	"time"
-
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/remoting"
 	"github.com/bytepowered/flux/remoting/zk"
@@ -30,13 +28,12 @@ type ZookeeperMetadataRegistry struct {
 	endpointEvents chan flux.HttpEndpointEvent
 	servicePath    string
 	serviceEvents  chan flux.BackendServiceEvent
-	retriever      *zk.ZookeeperRetriever
+	retrievers     []*zk.ZookeeperRetriever
 }
 
 // ZkEndpointRegistryFactory Factory func to new a zookeeper registry
 func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 	return &ZookeeperMetadataRegistry{
-		retriever:      zk.NewZookeeperRetriever(),
 		endpointEvents: make(chan flux.HttpEndpointEvent, 4),
 		serviceEvents:  make(chan flux.BackendServiceEvent, 4),
 	}
@@ -47,7 +44,6 @@ func NewZkEndpointRegistryFactoryWith(globalAlias map[string]string) ext.Endpoin
 	return func() flux.EndpointRegistry {
 		return &ZookeeperMetadataRegistry{
 			globalAlias:    globalAlias,
-			retriever:      zk.NewZookeeperRetriever(),
 			endpointEvents: make(chan flux.HttpEndpointEvent, 4),
 			serviceEvents:  make(chan flux.BackendServiceEvent, 4),
 		}
@@ -59,25 +55,36 @@ func (r *ZookeeperMetadataRegistry) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		"endpoint-path": zkRegistryHttpEndpointPath,
 		"service-path":  zkRegistryBackendServicePath,
-		"timeout":       time.Second * 10,
 	})
-	config.SetGlobalAlias(map[string]string{
-		"host":     "zookeeper.host",
-		"port":     "zookeeper.port",
-		"address":  "zookeeper.address",
-		"password": "zookeeper.password",
-		"database": "zookeeper.database",
-	})
-	if len(r.globalAlias) != 0 {
-		config.SetGlobalAlias(r.globalAlias)
+	active := config.GetStringSlice("registry-active")
+	if len(active) == 0 {
+		active = []string{"default"}
 	}
+	logger.Infow("ZookeeperRegistry active registry", "active-ids", active)
 	r.endpointPath = config.GetString("endpoint-path")
 	r.servicePath = config.GetString("service-path")
 	if r.endpointPath == "" || r.servicePath == "" {
 		return errors.New("config(endpoint-path, service-path) is empty")
-	} else {
-		return r.retriever.Init(config)
 	}
+	r.retrievers = make([]*zk.ZookeeperRetriever, len(active))
+	for i := range active {
+		id := active[i]
+		r.retrievers[i] = zk.NewZookeeperRetriever(id)
+		zkconf := config.Sub(id)
+		zkconf.SetGlobalAlias(map[string]string{
+			"address":  "zookeeper.address",
+			"password": "zookeeper.password",
+			"timeout":  "zookeeper.timeout",
+		})
+		if len(r.globalAlias) != 0 {
+			zkconf.SetGlobalAlias(r.globalAlias)
+		}
+		logger.Infow("ZookeeperRegistry start zk registry", "registry-id", id)
+		if err := r.retrievers[i].Init(zkconf); nil != err {
+			return err
+		}
+	}
+	return nil
 }
 
 // WatchHttpEndpoints Listen http endpoints events
@@ -85,19 +92,20 @@ func (r *ZookeeperMetadataRegistry) WatchHttpEndpoints() (<-chan flux.HttpEndpoi
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("Zookeeper node listening", "event", event, "error", r)
+				logger.Errorw("ZookeeperRegistry node listening", "event", event, "error", r)
 			}
 		}()
 		if evt, ok := NewEndpointEvent(event.Data, event.EventType); ok {
 			r.endpointEvents <- evt
 		}
 	}
-	logger.Infow("Zookeeper start listen endpoints node", "node-path", r.endpointPath)
-	if err := r.watch(r.endpointPath, listener); err != nil {
-		return nil, err
-	} else {
-		return r.endpointEvents, err
+	logger.Infow("ZookeeperRegistry start listen endpoints node", "node-path", r.endpointPath)
+	for _, retriever := range r.retrievers {
+		if err := r.watch(retriever, r.endpointPath, listener); err != nil {
+			return nil, err
+		}
 	}
+	return r.endpointEvents, nil
 }
 
 // WatchBackendServices Listen gateway services events
@@ -105,32 +113,33 @@ func (r *ZookeeperMetadataRegistry) WatchBackendServices() (<-chan flux.BackendS
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("Zookeeper node listening", "event", event, "error", r)
+				logger.Errorw("ZookeeperRegistry node listening", "event", event, "error", r)
 			}
 		}()
 		if evt, ok := NewBackendServiceEvent(event.Data, event.EventType); ok {
 			r.serviceEvents <- evt
 		}
 	}
-	logger.Infow("Zookeeper start listen services node", "node-path", r.servicePath)
-	if err := r.watch(r.servicePath, listener); err != nil {
-		return nil, err
-	} else {
-		return r.serviceEvents, err
+	logger.Infow("ZookeeperRegistry start listen services node", "node-path", r.servicePath)
+	for _, retriever := range r.retrievers {
+		if err := r.watch(retriever, r.servicePath, listener); err != nil {
+			return nil, err
+		}
 	}
+	return r.serviceEvents, nil
 }
 
-func (r *ZookeeperMetadataRegistry) watch(rootpath string, nodeListener func(remoting.NodeEvent)) error {
-	if exist, _ := r.retriever.Exists(rootpath); !exist {
-		if err := r.retriever.Create(rootpath); nil != err {
+func (r *ZookeeperMetadataRegistry) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
+	if exist, _ := retriever.Exists(rootpath); !exist {
+		if err := retriever.Create(rootpath); nil != err {
 			return fmt.Errorf("init metadata node: %w", err)
 		}
 	}
-	logger.Infow("Zookeeper watching metadata node", "path", rootpath)
-	return r.retriever.AddChildrenNodeChangedListener("", rootpath, func(event remoting.NodeEvent) {
-		logger.Infow("Receive child change event", "event", event)
+	logger.Infow("ZookeeperRegistry watching metadata node", "path", rootpath)
+	return retriever.AddChildrenNodeChangedListener("", rootpath, func(event remoting.NodeEvent) {
+		logger.Infow("ZookeeperRegistry receive child change event", "event", event)
 		if event.EventType == remoting.EventTypeChildAdd {
-			if err := r.retriever.AddNodeChangedListener("", event.Path, nodeListener); nil != err {
+			if err := retriever.AddNodeChangedListener("", event.Path, nodeListener); nil != err {
 				logger.Warnw("Watch child node data", "error", err)
 			}
 		}
@@ -139,13 +148,23 @@ func (r *ZookeeperMetadataRegistry) watch(rootpath string, nodeListener func(rem
 
 // Startup Startup registry
 func (r *ZookeeperMetadataRegistry) Startup() error {
-	logger.Info("Startup registry")
-	return r.retriever.Startup()
+	logger.Info("ZookeeperRegistry startup")
+	for _, retriever := range r.retrievers {
+		if err := retriever.Startup(); nil != err {
+			return err
+		}
+	}
+	return nil
 }
 
 // Shutdown Startup registry
 func (r *ZookeeperMetadataRegistry) Shutdown(ctx context.Context) error {
-	logger.Info("Shutdown registry")
+	logger.Info("ZookeeperRegistry shutdown")
 	close(r.endpointEvents)
-	return r.retriever.Shutdown(ctx)
+	for _, retriever := range r.retrievers {
+		if err := retriever.Shutdown(ctx); nil != err {
+			return err
+		}
+	}
+	return nil
 }
