@@ -188,7 +188,8 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 			_ = s.debugServer.ListenAndServe()
 		}()
 	}
-	address := fmt.Sprintf("%s:%d", config.GetString("address"), config.GetInt("port"))
+	address := fmt.Sprintf("%s:%d",
+		config.GetString(HttpWebServerConfigKeyAddress), config.GetInt(HttpWebServerConfigKeyPort))
 	keyFile := config.GetString(HttpWebServerConfigKeyTlsKeyFile)
 	certFile := config.GetString(HttpWebServerConfigKeyTlsCertFile)
 	logger.Infow("HttpServeEngine starting", "address", address, "cert", certFile, "key", keyFile)
