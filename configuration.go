@@ -3,6 +3,7 @@ package flux
 import (
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
+	"strings"
 	"time"
 )
 
@@ -45,11 +46,27 @@ func (c *Configuration) Sub(name string) *Configuration {
 }
 
 // Get 查找指定Key的配置值。
-// 从当前NS查询不到配置时，如果配置了key与globalAlias的另外映射，则会尝试从全局配置中再次查找。
+// 从当前NS查询不到配置时，
+// 2. 如果Value为动态Key，则根据动态Key读取全局配置；
+// 1. 如果配置globalAlias映射，则根据AliasKey读取全局配置。
 // 与Viper的Alias不同的是，Configuration的GlobalAlias是作用于局部命名空间下的别名映射。
 // 当然，这不影响原有Viper的Alias功能。
 func (c *Configuration) Get(key string) interface{} {
 	v := c.instance.Get(key)
+	// 动态全局Key和默认值： ${username:yongjia}
+	if strv, ok := v.(string); ok {
+		dkey, defv, flag := ParseDynamicKey(strv)
+		if flag {
+			if viper.IsSet(dkey) {
+				return viper.Get(dkey)
+			} else {
+				return defv
+			}
+		} else {
+			return v
+		}
+	}
+	// GlobalAlias优先级低一些
 	if nil == v && c.globalAlias != nil {
 		if alias, ok := c.globalAlias[key]; ok {
 			return viper.Get(alias)
@@ -169,4 +186,19 @@ func (c *Configuration) GetStringMap(key string) map[string]interface{} {
 // GetStringMapString returns the value associated with the key as a map of strings.
 func (c *Configuration) GetStringMapString(key string) map[string]string {
 	return cast.ToStringMapString(c.Get(key))
+}
+
+// 解析动态值 ${key:defaultV}
+func ParseDynamicKey(pattern string) (key string, def string, ok bool) {
+	pattern = strings.TrimSpace(pattern)
+	size := len(pattern)
+	if size > 3 && "${" == pattern[:2] && '}' == pattern[size-1] {
+		values := strings.Split(strings.TrimSpace(pattern[2:size-1]), ":")
+		key = values[0]
+		if len(values) > 1 {
+			def = values[1]
+		}
+		return key, def, true
+	}
+	return pattern, "", false
 }
