@@ -42,6 +42,22 @@ var (
 	GenericTypeString = []string{"string"}
 )
 
+func TestToGenericList_IntEmpty(t *testing.T) {
+	a1, err := ToGenericListE(GenericTypeInt, flux.WrapStringMTValue(""))
+	assert := assert2.New(t)
+	assert.NoError(err)
+	fmt.Println(a1)
+	assert.Equal([]interface{}{}, a1)
+}
+
+func TestToGenericList_IntNil(t *testing.T) {
+	a1, err := ToGenericListE(GenericTypeInt, flux.WrapObjectMTValue(nil))
+	assert := assert2.New(t)
+	assert.NoError(err)
+	fmt.Println(a1)
+	assert.Equal([]interface{}{}, a1)
+}
+
 func TestToGenericList_Int(t *testing.T) {
 	a1, err := ToGenericListE(GenericTypeInt, flux.WrapStringMTValue("123"))
 	assert := assert2.New(t)
@@ -77,7 +93,7 @@ func TestToGenericList_EmptyString(t *testing.T) {
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
-	assert.Equal([]interface{}{""}, a1)
+	assert.Equal([]interface{}{}, a1)
 }
 
 func TestToGenericList_ValuesToString(t *testing.T) {
@@ -102,6 +118,29 @@ func TestToStringMap_Err(t *testing.T) {
 	assert := assert2.New(t)
 	_, err1 := ToStringMapE(flux.WrapStringMTValue("123"))
 	assert.Error(err1)
+}
+
+func TestToStringMap_Empty(t *testing.T) {
+	assert := assert2.New(t)
+	sm, err1 := ToStringMapE(flux.WrapStringMTValue(""))
+	assert.NoError(err1)
+	assert.True(0 == len(sm))
+}
+
+func TestCastToStringMap_TextEmpty(t *testing.T) {
+	ext.StoreSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	sm, err := ToStringMapE(flux.WrapStringMTValue(""))
+	assert := assert2.New(t)
+	assert.NoError(err)
+	assert.True(0 == len(sm))
+}
+
+func TestCastToStringMap_TextEmptyJSON(t *testing.T) {
+	ext.StoreSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	sm, err := ToStringMapE(flux.WrapStringMTValue("{}"))
+	assert := assert2.New(t)
+	assert.NoError(err)
+	assert.True(0 == len(sm))
 }
 
 func TestCastToStringMap_Text(t *testing.T) {

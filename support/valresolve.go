@@ -23,18 +23,33 @@ var (
 		return CastDecodeMTValueToString(mtValue)
 	})
 	integerResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+		if isEmptyOrNil(value) {
+			return int(0), nil
+		}
 		return cast.ToIntE(value)
 	}).ResolveMT
 	longResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+		if isEmptyOrNil(value) {
+			return int64(0), nil
+		}
 		return cast.ToInt64E(value)
 	}).ResolveMT
 	float32Resolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+		if isEmptyOrNil(value) {
+			return float32(0), nil
+		}
 		return cast.ToFloat32E(value)
 	}).ResolveMT
 	float64Resolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+		if isEmptyOrNil(value) {
+			return float64(0), nil
+		}
 		return cast.ToFloat64E(value)
 	}).ResolveMT
 	booleanResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+		if isEmptyOrNil(value) {
+			return false, nil
+		}
 		return cast.ToBoolE(value)
 	}).ResolveMT
 	mapResolver = flux.MTValueResolver(func(value flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
@@ -43,8 +58,11 @@ var (
 	listResolver = flux.MTValueResolver(func(value flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
 		return ToGenericListE(genericTypes, value)
 	})
-	complexObjectResolver = flux.MTValueResolver(func(value flux.MTValue, class string, generic []string) (interface{}, error) {
-		sm, err := ToStringMapE(value)
+	complexObjectResolver = flux.MTValueResolver(func(mtValue flux.MTValue, class string, generic []string) (interface{}, error) {
+		if isEmptyOrNil(mtValue.Value) {
+			return map[string]interface{}{"class": class}, nil
+		}
+		sm, err := ToStringMapE(mtValue)
 		sm["class"] = class
 		if nil != err {
 			return nil, err
@@ -89,6 +107,9 @@ func init() {
 // CastDecodeToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
 func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
+	if isEmptyOrNil(mtValue.Value) {
+		return "", nil
+	}
 	// 可直接转String类型：
 	if str, err := cast.ToStringE(mtValue.Value); nil == err {
 		return str, nil
@@ -108,6 +129,9 @@ func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
 // ToStringMapE 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
 func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
+	if isEmptyOrNil(mtValue.Value) {
+		return make(map[string]interface{}, 0), nil
+	}
 	switch mtValue.MediaType {
 	case flux.ValueMediaTypeGoStringMap:
 		return cast.ToStringMap(mtValue.Value), nil
@@ -157,10 +181,10 @@ func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 // ToGenericListE 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
 func ToGenericListE(generics []string, mtValue flux.MTValue) (interface{}, error) {
-	vType := reflect.TypeOf(mtValue.Value)
-	if vType == nil {
-		return []interface{}{}, nil
+	if isEmptyOrNil(mtValue.Value) {
+		return make([]interface{}, 0), nil
 	}
+	vType := reflect.TypeOf(mtValue.Value)
 	// 没有指定泛型类型
 	if len(generics) == 0 {
 		return []interface{}{mtValue.Value}, nil
@@ -215,6 +239,13 @@ func toByteArray0(v interface{}) ([]byte, error) {
 	default:
 		return nil, errCastToByteTypeNotSupported
 	}
+}
+
+func isEmptyOrNil(v interface{}) bool {
+	if s, ok := v.(string); ok {
+		return "" == s
+	}
+	return nil == v
 }
 
 // Tested
