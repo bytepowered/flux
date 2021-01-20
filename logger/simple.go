@@ -23,6 +23,10 @@ func SimpleLogger() flux.Logger {
 	return simLogger
 }
 
+func NewWith(args ...interface{}) *zap.SugaredLogger {
+	return simLogger.With(args...)
+}
+
 // Info ...
 func Info(args ...interface{}) {
 	simLogger.Info(args...)
