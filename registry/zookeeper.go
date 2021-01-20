@@ -18,11 +18,11 @@ const (
 )
 
 var (
-	_ flux.EndpointRegistry = new(ZookeeperMetadataRegistry)
+	_ flux.EndpointRegistry = new(ZkEndpointRegistry)
 )
 
-// ZookeeperMetadataRegistry 基于ZK节点树实现的Endpoint元数据注册中心
-type ZookeeperMetadataRegistry struct {
+// ZkEndpointRegistry 基于ZK节点树实现的Endpoint元数据注册中心
+type ZkEndpointRegistry struct {
 	globalAlias    map[string]string
 	endpointPath   string
 	endpointEvents chan flux.HttpEndpointEvent
@@ -33,7 +33,7 @@ type ZookeeperMetadataRegistry struct {
 
 // ZkEndpointRegistryFactory Factory func to new a zookeeper registry
 func ZkEndpointRegistryFactory() flux.EndpointRegistry {
-	return &ZookeeperMetadataRegistry{
+	return &ZkEndpointRegistry{
 		endpointEvents: make(chan flux.HttpEndpointEvent, 4),
 		serviceEvents:  make(chan flux.BackendServiceEvent, 4),
 	}
@@ -42,7 +42,7 @@ func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 // NewZkEndpointRegistryFactoryWith returns new a zookeeper registry factory
 func NewZkEndpointRegistryFactoryWith(globalAlias map[string]string) ext.EndpointRegistryFactory {
 	return func() flux.EndpointRegistry {
-		return &ZookeeperMetadataRegistry{
+		return &ZkEndpointRegistry{
 			globalAlias:    globalAlias,
 			endpointEvents: make(chan flux.HttpEndpointEvent, 4),
 			serviceEvents:  make(chan flux.BackendServiceEvent, 4),
@@ -51,7 +51,7 @@ func NewZkEndpointRegistryFactoryWith(globalAlias map[string]string) ext.Endpoin
 }
 
 // Init init registry
-func (r *ZookeeperMetadataRegistry) Init(config *flux.Configuration) error {
+func (r *ZkEndpointRegistry) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		"endpoint-path": zkRegistryHttpEndpointPath,
 		"service-path":  zkRegistryBackendServicePath,
@@ -88,7 +88,7 @@ func (r *ZookeeperMetadataRegistry) Init(config *flux.Configuration) error {
 }
 
 // WatchHttpEndpoints Listen http endpoints events
-func (r *ZookeeperMetadataRegistry) WatchHttpEndpoints() (<-chan flux.HttpEndpointEvent, error) {
+func (r *ZkEndpointRegistry) WatchHttpEndpoints() (<-chan flux.HttpEndpointEvent, error) {
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
@@ -109,7 +109,7 @@ func (r *ZookeeperMetadataRegistry) WatchHttpEndpoints() (<-chan flux.HttpEndpoi
 }
 
 // WatchBackendServices Listen gateway services events
-func (r *ZookeeperMetadataRegistry) WatchBackendServices() (<-chan flux.BackendServiceEvent, error) {
+func (r *ZkEndpointRegistry) WatchBackendServices() (<-chan flux.BackendServiceEvent, error) {
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
@@ -129,7 +129,7 @@ func (r *ZookeeperMetadataRegistry) WatchBackendServices() (<-chan flux.BackendS
 	return r.serviceEvents, nil
 }
 
-func (r *ZookeeperMetadataRegistry) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
+func (r *ZkEndpointRegistry) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
 	if exist, _ := retriever.Exists(rootpath); !exist {
 		if err := retriever.Create(rootpath); nil != err {
 			return fmt.Errorf("init metadata node: %w", err)
@@ -147,7 +147,7 @@ func (r *ZookeeperMetadataRegistry) watch(retriever *zk.ZookeeperRetriever, root
 }
 
 // Startup Startup registry
-func (r *ZookeeperMetadataRegistry) Startup() error {
+func (r *ZkEndpointRegistry) Startup() error {
 	logger.Info("ZookeeperRegistry startup")
 	for _, retriever := range r.retrievers {
 		if err := retriever.Startup(); nil != err {
@@ -158,7 +158,7 @@ func (r *ZookeeperMetadataRegistry) Startup() error {
 }
 
 // Shutdown Startup registry
-func (r *ZookeeperMetadataRegistry) Shutdown(ctx context.Context) error {
+func (r *ZkEndpointRegistry) Shutdown(ctx context.Context) error {
 	logger.Info("ZookeeperRegistry shutdown")
 	close(r.endpointEvents)
 	for _, retriever := range r.retrievers {
