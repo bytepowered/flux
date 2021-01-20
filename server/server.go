@@ -248,6 +248,7 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 
 func (s *HttpServeEngine) HandleBackendServiceEvent(event flux.BackendServiceEvent) {
 	service := event.Service
+	initArguments(service.Arguments)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("New service",
@@ -284,6 +285,8 @@ func (s *HttpServeEngine) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) 
 	routeKey := fmt.Sprintf("%s#%s", method, pattern)
 	// Refresh endpoint
 	endpoint := event.Endpoint
+	initArguments(endpoint.Service.Arguments)
+	initArguments(endpoint.Permission.Arguments)
 	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
@@ -449,5 +452,13 @@ func isAllowedHttpMethod(method string) bool {
 		// http.MethodConnect, and Others
 		logger.Errorw("Ignore unsupported http method:", "method", method)
 		return false
+	}
+}
+
+func initArguments(args []flux.Argument) {
+	for i := range args {
+		args[i].ValueResolver = ext.LoadMTValueResolver(args[i].Class)
+		args[i].LookupFunc = ext.LoadArgumentLookupFunc()
+		initArguments(args[i].Fields)
 	}
 }

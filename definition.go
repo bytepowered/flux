@@ -1,6 +1,8 @@
 package flux
 
-import "github.com/spf13/cast"
+import (
+	"github.com/spf13/cast"
+)
 
 type (
 	EventType int
@@ -79,22 +81,24 @@ const (
 	EndpointAttrTagAuthorize
 )
 
-// ArgumentValueLookupFunc 参数值查找函数
-type ArgumentValueLookupFunc func(scope, key string, context Context) (value MTValue, err error)
-
-// ArgumentValueResolveFunc 参数值解析函数
-type ArgumentValueResolveFunc func(mtValue MTValue, argument Argument, context Context) (value interface{}, err error)
+type (
+	// ArgumentLookupFunc 参数值查找函数
+	ArgumentLookupFunc func(scope, key string, ctx Context) (MTValue, error)
+)
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
-	Name        string         `json:"name"`      // 参数名称
-	Type        string         `json:"type"`      // 参数结构类型
-	Class       string         `json:"class"`     // 参数类型
-	Generic     []string       `json:"generic"`   // 泛型类型
-	HttpName    string         `json:"httpName"`  // 映射Http的参数Key
-	HttpScope   string         `json:"httpScope"` // 映射Http参数值域
-	Fields      []Argument     `json:"fields"`    // 子结构字段
-	ValueLoader func() MTValue `json:"-"`
+	Name      string     `json:"name"`      // 参数名称
+	Type      string     `json:"type"`      // 参数结构类型
+	Class     string     `json:"class"`     // 参数类型
+	Generic   []string   `json:"generic"`   // 泛型类型
+	HttpName  string     `json:"httpName"`  // 映射Http的参数Key
+	HttpScope string     `json:"httpScope"` // 映射Http参数值域
+	Fields    []Argument `json:"fields"`    // 子结构字段
+	// helper
+	ValueLoader   func() MTValue     `json:"-"`
+	LookupFunc    ArgumentLookupFunc `json:"-"`
+	ValueResolver MTValueResolver    `json:"-"`
 }
 
 // Attribute 定义服务的属性信息

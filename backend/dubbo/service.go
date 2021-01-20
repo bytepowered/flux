@@ -82,7 +82,7 @@ type BackendTransportService struct {
 func NewDubboBackendTransport() flux.BackendTransport {
 	return &BackendTransportService{
 		ReferenceOptionsFuncs: make([]ReferenceOptionsFunc, 0),
-		ArgumentsAssembleFunc: DefaultArgumentsAssembleFunc,
+		ArgumentsAssembleFunc: DefaultAssembleFunc,
 	}
 }
 
@@ -111,7 +111,7 @@ func (b *BackendTransportService) Init(config *flux.Configuration) error {
 		b.ReferenceOptionsFuncs = make([]ReferenceOptionsFunc, 0)
 	}
 	if pkg.IsNil(b.ArgumentsAssembleFunc) {
-		b.ArgumentsAssembleFunc = DefaultArgumentsAssembleFunc
+		b.ArgumentsAssembleFunc = DefaultAssembleFunc
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()

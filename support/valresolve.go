@@ -23,32 +23,33 @@ var (
 		return CastDecodeMTValueToString(mtValue)
 	})
 	integerResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToInt(value), nil
+		return cast.ToIntE(value)
 	}).ResolveMT
 	longResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToInt64(value), nil
+		return cast.ToInt64E(value)
 	}).ResolveMT
 	float32Resolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToFloat32(value), nil
+		return cast.ToFloat32E(value)
 	}).ResolveMT
 	float64Resolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToFloat64(value), nil
+		return cast.ToFloat64E(value)
 	}).ResolveMT
 	booleanResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
-		return cast.ToBool(value), nil
+		return cast.ToBoolE(value)
 	}).ResolveMT
 	mapResolver = flux.MTValueResolver(func(value flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
-		return CastDecodeMTValueToStringMap(value)
+		return ToStringMapE(value)
 	})
 	listResolver = flux.MTValueResolver(func(value flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
-		return CastDecodeMTValueToSliceList(genericTypes, value)
+		return ToGenericListE(genericTypes, value)
 	})
-	complexObjectResolver = flux.MTValueResolver(func(mtValue flux.MTValue, typeClass string, typeGeneric []string) (interface{}, error) {
-		return map[string]interface{}{
-			"class":   typeClass,
-			"generic": typeGeneric,
-			"value":   mtValue.Value,
-		}, nil
+	complexObjectResolver = flux.MTValueResolver(func(value flux.MTValue, class string, generic []string) (interface{}, error) {
+		sm, err := ToStringMapE(value)
+		sm["class"] = class
+		if nil != err {
+			return nil, err
+		}
+		return sm, nil
 	})
 )
 
@@ -92,23 +93,21 @@ func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
 	if str, err := cast.ToStringE(mtValue.Value); nil == err {
 		return str, nil
 	}
-	if data, err := toByteArray0(mtValue.Value); nil != err {
-		if err != errCastToByteTypeNotSupported {
-			return "", err
-		}
-		if data, err := ext.JSONMarshal(mtValue.Value); nil != err {
-			return "", err
-		} else {
-			return string(data), nil
-		}
+	if data, err := toByteArray0(mtValue.Value); nil == err {
+		return string(data), nil
+	} else if err != errCastToByteTypeNotSupported {
+		return "", err
+	}
+	if data, err := ext.JSONMarshal(mtValue.Value); nil != err {
+		return "", err
 	} else {
 		return string(data), nil
 	}
 }
 
-// CastDecodeMTValueToStringMap 最大努力地将值转换成map[string]any类型。
+// ToStringMapE 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
-func CastDecodeMTValueToStringMap(mtValue flux.MTValue) (map[string]interface{}, error) {
+func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 	switch mtValue.MediaType {
 	case flux.ValueMediaTypeGoStringMap:
 		return cast.ToStringMap(mtValue.Value), nil
@@ -155,24 +154,37 @@ func CastDecodeMTValueToStringMap(mtValue flux.MTValue) (map[string]interface{},
 	}
 }
 
-// CastDecodeMTValueToSliceList 最大努力地将值转换成[]any类型。
+// ToGenericListE 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
-func CastDecodeMTValueToSliceList(genericTypes []string, mtValue flux.MTValue) (interface{}, error) {
+func ToGenericListE(generics []string, mtValue flux.MTValue) (interface{}, error) {
 	vType := reflect.TypeOf(mtValue.Value)
-	if vType.Kind() == reflect.Slice {
-		return mtValue.Value, nil
+	if vType == nil {
+		return []interface{}{}, nil
 	}
-	// SingleValue to arraylist
-	if len(genericTypes) > 0 {
-		typeClass := genericTypes[0]
-		resolver := ext.LoadMTValueResolver(typeClass)
-		if v, err := resolver(mtValue, typeClass, []string{}); nil != err {
-			return nil, err
-		} else {
-			return []interface{}{v}, nil
-		}
-	} else {
+	// 没有指定泛型类型
+	if len(generics) == 0 {
 		return []interface{}{mtValue.Value}, nil
+	}
+	// 进行特定泛型类型转换
+	generic := generics[0]
+	resolver := ext.LoadMTValueResolver(generic)
+	kind := vType.Kind()
+	if kind == reflect.Slice {
+		vValue := reflect.ValueOf(mtValue.Value)
+		out := make([]interface{}, vValue.Len())
+		for i := 0; i < vValue.Len(); i++ {
+			if v, err := resolver(flux.WrapObjectMTValue(vValue.Index(i).Interface()), generic, []string{}); nil != err {
+				return nil, err
+			} else {
+				out[i] = v
+			}
+		}
+		return out, nil
+	}
+	if v, err := resolver(mtValue, generic, []string{}); nil != err {
+		return nil, err
+	} else {
+		return []interface{}{v}, nil
 	}
 }
 

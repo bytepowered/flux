@@ -11,8 +11,7 @@ func init() {
 	// Default logger factory
 	ext.StoreLoggerFactory(DefaultLoggerFactory)
 	// 参数查找与解析函数
-	ext.StoreArgumentValueLookupFunc(support.DefaultArgumentValueLookupFunc)
-	ext.StoreArgumentValueResolveFunc(support.DefaultArgumentValueResolveFunc)
+	ext.StoreArgumentLookupFunc(support.DefaultArgumentValueLookupFunc)
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()
