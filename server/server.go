@@ -67,7 +67,7 @@ type HttpServeEngine struct {
 	httpConfig        *flux.Configuration
 	httpVersionHeader string
 	router            *Router
-	endpointRegistry  flux.EndpointRegistry
+	registry          flux.EndpointRegistry
 	pool              sync.Pool
 	started           chan struct{}
 	stopped           chan struct{}
@@ -186,7 +186,7 @@ func (s *HttpServeEngine) Initial() error {
 		if err := s.router.InitialHook(registry, config); nil != err {
 			return err
 		}
-		s.endpointRegistry = registry
+		s.registry = registry
 	}
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
@@ -214,7 +214,7 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 		return err
 	}
 	// Http endpoints
-	if events, err := s.endpointRegistry.WatchHttpEndpoints(); nil != err {
+	if events, err := s.registry.WatchHttpEndpoints(); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
 		go func() {
@@ -226,7 +226,7 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 		}()
 	}
 	// Backend services
-	if events, err := s.endpointRegistry.WatchBackendServices(); nil != err {
+	if events, err := s.registry.WatchBackendServices(); nil != err {
 		return fmt.Errorf("start registry watching: %w", err)
 	} else {
 		go func() {
