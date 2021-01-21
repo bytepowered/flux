@@ -187,6 +187,7 @@ func (e EmbeddedExtensions) ExtInt(name string) int {
 type BackendService struct {
 	AliasId    string     `json:"aliasId"`    // Service别名
 	ServiceId  string     `json:"serviceId"`  // Service的标识ID
+	Scheme     string     `json:"scheme"`     // Service侧URL的Scheme
 	RemoteHost string     `json:"remoteHost"` // Service侧的Host
 	Interface  string     `json:"interface"`  // Service侧的URL
 	Method     string     `json:"method"`     // Service侧的方法

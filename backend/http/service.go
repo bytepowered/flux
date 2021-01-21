@@ -103,7 +103,7 @@ func (ex *BackendTransportService) Assemble(service *flux.BackendService, inURL 
 	newUrl := &url.URL{
 		Host:       service.RemoteHost,
 		Path:       service.Interface,
-		Scheme:     inURL.Scheme,
+		Scheme:     service.Scheme,
 		Opaque:     inURL.Opaque,
 		User:       inURL.User,
 		RawPath:    inURL.RawPath,
