@@ -57,6 +57,18 @@ func TestParseDynamicKey(t *testing.T) {
 			expectedDef:  "yongjia",
 			expectedFlag: true,
 		},
+		{
+			pattern:      "${     address:http://bytepowered.net:8080  }",
+			expectedKey:  "address",
+			expectedDef:  "http://bytepowered.net:8080",
+			expectedFlag: true,
+		},
+		{
+			pattern:      "${     host:  }",
+			expectedKey:  "host",
+			expectedDef:  "",
+			expectedFlag: true,
+		},
 	}
 	assert := assert2.New(t)
 	for _, tcase := range cases {
