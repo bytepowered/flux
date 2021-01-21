@@ -106,13 +106,18 @@ func NewDubboBackendTransportWith(opts ...Option) flux.BackendTransport {
 
 // NewDubboBackendTransport New dubbo backend instance
 func NewDubboBackendTransport() flux.BackendTransport {
-	return NewDubboBackendTransportWith(
+	return NewDubboBackendTransportOverrides()
+}
+
+// NewDubboBackendTransportOverrides New dubbo backend instance
+func NewDubboBackendTransportOverrides(overrides ...Option) flux.BackendTransport {
+	opts := []Option{
 		WithArgumentAssembleFunc(DefaultArgAssembleFunc),
 		WithAttachmentAssembleFunc(DefaultAttAssembleFun),
 		WithRegistryAlias(map[string]string{
 			"id":       "dubbo.registry.id",
 			"protocol": "dubbo.registry.protocol",
-			"group":    "dubbo.registry.protocol",
+			"group":    "dubbo.registry.group",
 			"timeout":  "dubbo.registry.timeout",
 			"address":  "dubbo.registry.address",
 			"username": "dubbo.registry.username",
@@ -127,7 +132,8 @@ func NewDubboBackendTransport() flux.BackendTransport {
 			"load-balance":          "random",
 			"protocol":              dubbo.DUBBO,
 		}),
-	)
+	}
+	return NewDubboBackendTransportWith(append(opts, overrides...)...)
 }
 
 // Configuration get config instance

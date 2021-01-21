@@ -121,8 +121,11 @@ func WithPrepareHooks(hooks ...flux.PrepareHookFunc) Option {
 }
 
 func NewHttpServeEngine() *HttpServeEngine {
-	return NewHttpServeEngineWith(DefaultContextFactory,
-		WithServerBanner(defaultBanner),
+	return NewHttpServeEngineOverride()
+}
+
+func NewHttpServeEngineOverride(overrides ...Option) *HttpServeEngine {
+	opts := []Option{WithServerBanner(defaultBanner),
 		WithServerResponseWriter(DefaultServerResponseWriter),
 		WithServerErrorsWriter(DefaultServerErrorsWriter),
 		WithServerWebInterceptors(
@@ -137,8 +140,8 @@ func NewHttpServeEngine() *HttpServeEngine {
 			HttpWebServerConfigKeyFeatureDebugPort:   9527,
 			HttpWebServerConfigKeyAddress:            "0.0.0.0",
 			HttpWebServerConfigKeyPort:               8080,
-		}),
-	)
+		})}
+	return NewHttpServeEngineWith(DefaultContextFactory, append(opts, overrides...)...)
 }
 
 func NewHttpServeEngineWith(factory func() flux.Context, opts ...Option) *HttpServeEngine {
