@@ -3,15 +3,11 @@
 address = "0.0.0.0"
 port = 8080
 body-limit = "100K"
-version-header = "X-Version"
 #tls-cret-file = ""
 #tls-key-file = ""
 request-log-enable = true
-#feature-cors-enable = false
 feature-debug-enable = true
 feature-echo-enable = true
-debug-auth-username = "yongjia.chen"
-debug-auth-password = "yongjiapro"
 
 # ENDPOINTREGISTRY: 网关端点注册中心
 [ENDPOINTREGISTRY]

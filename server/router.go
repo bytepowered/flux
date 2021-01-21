@@ -13,16 +13,28 @@ import (
 
 type Router struct {
 	metrics *Metrics
+	hooks   []flux.PrepareHookFunc
 }
 
 func NewRouter() *Router {
 	return &Router{
 		metrics: NewMetrics(),
+		hooks:   make([]flux.PrepareHookFunc, 0, 4),
 	}
 }
 
+func (r *Router) Prepare() error {
+	logger.Info("Router preparing")
+	for _, hook := range append(ext.LoadPrepareHooks(), r.hooks...) {
+		if err := hook(); nil != err {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *Router) Initial() error {
-	logger.Infof("Router initialing")
+	logger.Info("Router initialing")
 	// Backends
 	for proto, backend := range ext.LoadBackendTransports() {
 		ns := "BACKEND." + proto

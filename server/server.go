@@ -31,8 +31,6 @@ const (
 	HttpWebServerConfigKeyFeatureEchoEnable  = "feature-echo-enable"
 	HttpWebServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
 	HttpWebServerConfigKeyFeatureDebugPort   = "feature-debug-port"
-	HttpWebServerConfigKeyVersionHeader      = "version-header"
-	HttpWebServerConfigKeyRequestIdHeaders   = "request-id-headers"
 	HttpWebServerConfigKeyRequestLogEnable   = "request-log-enable"
 	HttpWebServerConfigKeyAddress            = "address"
 	HttpWebServerConfigKeyPort               = "port"
@@ -40,38 +38,30 @@ const (
 	HttpWebServerConfigKeyTlsKeyFile         = "tls-key-file"
 )
 
-var (
-	HttpWebServerConfigDefaults = map[string]interface{}{
-		HttpWebServerConfigKeyVersionHeader:      DefaultHttpHeaderVersion,
-		HttpWebServerConfigKeyFeatureDebugEnable: false,
-		HttpWebServerConfigKeyFeatureDebugPort:   9527,
-		HttpWebServerConfigKeyAddress:            "0.0.0.0",
-		HttpWebServerConfigKeyPort:               8080,
-	}
-)
-
 type (
 	// Option 配置HttpServeEngine函数
 	Option func(engine *HttpServeEngine)
+	// VersionLookupFunc Http请求版本查找函数
+	VersionLookupFunc func(webc flux.WebContext) string
 )
 
 // ServeEngine
 type HttpServeEngine struct {
-	httpWebServer     flux.WebServer
-	responseWriter    flux.ServerResponseWriter
-	errorsWriter      flux.ServerErrorsWriter
-	requestHooks      []flux.ServerContextHookFunc
-	prepareHooks      []flux.PrepareHookFunc
-	webInterceptors   []flux.WebInterceptor
-	debugServer       *http.Server
-	httpConfig        *flux.Configuration
-	httpVersionHeader string
-	router            *Router
-	registry          flux.EndpointRegistry
-	pool              sync.Pool
-	started           chan struct{}
-	stopped           chan struct{}
-	banner            string
+	httpWebServer  flux.WebServer
+	responseWriter flux.ServerResponseWriter
+	errorsWriter   flux.ServerErrorsWriter
+	ctxHooks       []flux.ServerContextHookFunc
+	interceptors   []flux.WebInterceptor
+	debugServer    *http.Server
+	config         *flux.Configuration
+	defaults       map[string]interface{}
+	router         *Router
+	registry       flux.EndpointRegistry
+	versionLookup  VersionLookupFunc
+	ctxPool        sync.Pool
+	started        chan struct{}
+	stopped        chan struct{}
+	banner         string
 }
 
 // WithServerResponseWriter 用于配置Web服务响应数据输出函数
@@ -91,21 +81,28 @@ func WithServerErrorsWriter(writer flux.ServerErrorsWriter) Option {
 // WithServerContextHooks 配置请求Hook函数列表
 func WithServerContextHooks(hooks ...flux.ServerContextHookFunc) Option {
 	return func(engine *HttpServeEngine) {
-		engine.requestHooks = append(engine.requestHooks, hooks...)
-	}
-}
-
-// WithServerPrepareHooks 配置服务启动预备阶段Hook函数列表
-func WithServerPrepareHooks(hooks ...flux.PrepareHookFunc) Option {
-	return func(engine *HttpServeEngine) {
-		engine.prepareHooks = append(engine.prepareHooks, hooks...)
+		engine.ctxHooks = append(engine.ctxHooks, hooks...)
 	}
 }
 
 // WithServerWebInterceptors 配置Web服务拦截器列表
 func WithServerWebInterceptors(wis ...flux.WebInterceptor) Option {
 	return func(engine *HttpServeEngine) {
-		engine.webInterceptors = append(engine.webInterceptors, wis...)
+		engine.interceptors = append(engine.interceptors, wis...)
+	}
+}
+
+// WithServerWebVersionLookupFunc 配置Web请求版本选择函数
+func WithServerWebVersionLookupFunc(fun VersionLookupFunc) Option {
+	return func(engine *HttpServeEngine) {
+		engine.versionLookup = fun
+	}
+}
+
+// WithServerDefaults 配置Web服务默认配置
+func WithServerDefaults(defaults map[string]interface{}) Option {
+	return func(engine *HttpServeEngine) {
+		engine.defaults = defaults
 	}
 }
 
@@ -113,6 +110,13 @@ func WithServerWebInterceptors(wis ...flux.WebInterceptor) Option {
 func WithServerBanner(banner string) Option {
 	return func(engine *HttpServeEngine) {
 		engine.banner = banner
+	}
+}
+
+// WithPrepareHooks 配置服务启动预备阶段Hook函数列表
+func WithPrepareHooks(hooks ...flux.PrepareHookFunc) Option {
+	return func(engine *HttpServeEngine) {
+		engine.router.hooks = append(engine.router.hooks, hooks...)
 	}
 }
 
@@ -125,21 +129,29 @@ func NewHttpServeEngine() *HttpServeEngine {
 			webmidware.NewCORSMiddleware(),
 			webmidware.NewRequestIdMiddlewareWithinHeader(),
 		),
+		WithServerWebVersionLookupFunc(func(webc flux.WebContext) string {
+			return webc.HeaderValue(DefaultHttpHeaderVersion)
+		}),
+		WithServerDefaults(map[string]interface{}{
+			HttpWebServerConfigKeyFeatureDebugEnable: false,
+			HttpWebServerConfigKeyFeatureDebugPort:   9527,
+			HttpWebServerConfigKeyAddress:            "0.0.0.0",
+			HttpWebServerConfigKeyPort:               8080,
+		}),
 	)
 }
 
 func NewHttpServeEngineWith(factory func() flux.Context, opts ...Option) *HttpServeEngine {
 	hse := &HttpServeEngine{
-		router:          NewRouter(),
-		responseWriter:  DefaultServerResponseWriter,
-		errorsWriter:    DefaultServerErrorsWriter,
-		pool:            sync.Pool{New: func() interface{} { return factory() }},
-		requestHooks:    make([]flux.ServerContextHookFunc, 0, 4),
-		prepareHooks:    make([]flux.PrepareHookFunc, 0, 4),
-		webInterceptors: make([]flux.WebInterceptor, 0, 4),
-		started:         make(chan struct{}),
-		stopped:         make(chan struct{}),
-		banner:          defaultBanner,
+		router:         NewRouter(),
+		responseWriter: DefaultServerResponseWriter,
+		errorsWriter:   DefaultServerErrorsWriter,
+		ctxPool:        sync.Pool{New: func() interface{} { return factory() }},
+		ctxHooks:       make([]flux.ServerContextHookFunc, 0, 4),
+		interceptors:   make([]flux.WebInterceptor, 0, 4),
+		started:        make(chan struct{}),
+		stopped:        make(chan struct{}),
+		banner:         defaultBanner,
 	}
 	for _, opt := range opts {
 		opt(hse)
@@ -148,33 +160,26 @@ func NewHttpServeEngineWith(factory func() flux.Context, opts ...Option) *HttpSe
 }
 
 // Prepare Call before init and startup
-func (s *HttpServeEngine) Prepare(hooks ...flux.PrepareHookFunc) error {
-	hooks = append(s.prepareHooks, hooks...)
-	for _, hook := range append(ext.LoadPrepareHooks(), hooks...) {
-		if err := hook(); nil != err {
-			return err
-		}
-	}
-	return nil
+func (s *HttpServeEngine) Prepare() error {
+	return s.router.Prepare()
 }
 
 // Initial
 func (s *HttpServeEngine) Initial() error {
 	// Http server
-	s.httpConfig = flux.NewConfigurationOf(HttpWebServerConfigRootName)
-	s.httpConfig.SetDefaults(HttpWebServerConfigDefaults)
-	s.httpVersionHeader = s.httpConfig.GetString(HttpWebServerConfigKeyVersionHeader)
+	s.config = flux.NewConfigurationOf(HttpWebServerConfigRootName)
+	s.config.SetDefaults(s.defaults)
 	// 创建WebServer
-	s.httpWebServer = ext.LoadWebServerFactory()(s.httpConfig)
+	s.httpWebServer = ext.LoadWebServerFactory()(s.config)
 	// 默认必备的WebServer功能
 	s.httpWebServer.SetWebErrorHandler(s.defaultServerErrorHandler)
 	s.httpWebServer.SetWebNotFoundHandler(s.defaultNotFoundErrorHandler)
 	// 第一优先级的拦截器
-	for _, wi := range s.webInterceptors {
+	for _, wi := range s.interceptors {
 		s.AddWebInterceptor(wi)
 	}
 	// Internal Web Server
-	port := s.httpConfig.GetInt(HttpWebServerConfigKeyFeatureDebugPort)
+	port := s.config.GetInt(HttpWebServerConfigKeyFeatureDebugPort)
 	s.debugServer = &http.Server{
 		Handler: http.DefaultServeMux,
 		Addr:    fmt.Sprintf("0.0.0.0:%d", port),
@@ -189,13 +194,13 @@ func (s *HttpServeEngine) Initial() error {
 		s.registry = registry
 	}
 	// - Debug特性支持：默认关闭，需要配置开启
-	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
+	if s.config.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
 		http.DefaultServeMux.Handle("/debug/endpoints", NewDebugQueryEndpointHandler())
 		http.DefaultServeMux.Handle("/debug/services", NewDebugQueryServiceHandler())
 		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
 	}
 	// Echo feature
-	if s.httpConfig.GetBool(HttpWebServerConfigKeyFeatureEchoEnable) {
+	if s.config.GetBool(HttpWebServerConfigKeyFeatureEchoEnable) {
 		logger.Info("EchoEndpoint register")
 		for _, evt := range NewEchoEndpoints() {
 			s.HandleHttpEndpointEvent(evt)
@@ -205,12 +210,13 @@ func (s *HttpServeEngine) Initial() error {
 }
 
 func (s *HttpServeEngine) Startup(version flux.BuildInfo) error {
-	return s.StartServe(version, s.httpConfig)
+	return s.StartServe(version, s.config)
 }
 
 // StartServe server
 func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configuration) error {
-	if err := s.ensure().router.Startup(); nil != err {
+	s.ensure()
+	if err := s.router.Startup(); nil != err {
 		return err
 	}
 	// Http endpoints
@@ -258,7 +264,7 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 }
 
 func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints *MultiEndpoint, tracing bool) error {
-	version := webc.HeaderValue(s.httpVersionHeader)
+	version := s.versionLookup(webc)
 	endpoint, found := endpoints.FindByVersion(version)
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	defer func() {
@@ -292,7 +298,7 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 	}
 	start := time.Now()
 	// Context hook
-	for _, hook := range s.requestHooks {
+	for _, hook := range s.ctxHooks {
 		hook(webc, ctxw)
 	}
 	// Route and response
@@ -375,7 +381,7 @@ func (s *HttpServeEngine) Shutdown(ctx context.Context) error {
 		_ = s.debugServer.Close()
 	}
 	if err := s.httpWebServer.Shutdown(ctx); nil != err {
-		return err
+		logger.Warnw("HttpServeEngine shutdown http server", "error", err)
 	}
 	return s.router.Shutdown(ctx)
 }
@@ -392,7 +398,7 @@ func (s *HttpServeEngine) StateStopped() <-chan struct{} {
 
 // HttpConfig return Http server configuration
 func (s *HttpServeEngine) HttpConfig() *flux.Configuration {
-	return s.httpConfig
+	return s.config
 }
 
 // AddWebInterceptor 添加Http前拦截器。将在Http被路由到对应Handler之前执行
@@ -427,11 +433,11 @@ func (s *HttpServeEngine) DebugServer() (*http.Server, bool) {
 
 // AddServerContextHookFunc 添加Http与Flux的Context桥接函数
 func (s *HttpServeEngine) AddServerContextHookFunc(f flux.ServerContextHookFunc) {
-	s.requestHooks = append(s.requestHooks, f)
+	s.ctxHooks = append(s.ctxHooks, f)
 }
 
 func (s *HttpServeEngine) newWrappedEndpointHandler(endpoint *MultiEndpoint) flux.WebHandler {
-	enabled := s.httpConfig.GetBool(HttpWebServerConfigKeyRequestLogEnable)
+	enabled := s.config.GetBool(HttpWebServerConfigKeyRequestLogEnable)
 	return func(webc flux.WebContext) error {
 		return s.HandleEndpointRequest(webc, endpoint, enabled)
 	}
@@ -446,14 +452,14 @@ func (s *HttpServeEngine) selectMultiEndpoint(routeKey string, endpoint *flux.En
 }
 
 func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *DefaultContext {
-	ctx := s.pool.Get().(*DefaultContext)
+	ctx := s.ctxPool.Get().(*DefaultContext)
 	ctx.Reattach(id, webc, endpoint)
 	return ctx
 }
 
 func (s *HttpServeEngine) releaseContext(context *DefaultContext) {
 	context.Release()
-	s.pool.Put(context)
+	s.ctxPool.Put(context)
 }
 
 func (s *HttpServeEngine) ensure() *HttpServeEngine {
