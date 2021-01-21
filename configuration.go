@@ -193,10 +193,12 @@ func ParseDynamicKey(pattern string) (key string, def string, ok bool) {
 	pattern = strings.TrimSpace(pattern)
 	size := len(pattern)
 	if size > 3 && "${" == pattern[:2] && '}' == pattern[size-1] {
-		values := strings.Split(strings.TrimSpace(pattern[2:size-1]), ":")
-		key = values[0]
-		if len(values) > 1 {
-			def = values[1]
+		values := strings.TrimSpace(pattern[2 : size-1])
+		idx := strings.IndexByte(values, ':')
+		key = values
+		if idx > 0 {
+			key = values[:idx]
+			def = values[idx+1:]
 		}
 		return key, def, true
 	}
