@@ -21,6 +21,11 @@ var (
 	_ flux.EndpointRegistry = new(ZkEndpointRegistry)
 )
 
+type (
+	// Option 配置函数
+	Option func(registry *ZkEndpointRegistry)
+)
+
 // ZkEndpointRegistry 基于ZK节点树实现的Endpoint元数据注册中心
 type ZkEndpointRegistry struct {
 	globalAlias    map[string]string
@@ -29,6 +34,13 @@ type ZkEndpointRegistry struct {
 	servicePath    string
 	serviceEvents  chan flux.BackendServiceEvent
 	retrievers     []*zk.ZookeeperRetriever
+}
+
+// WithRegistryAlias 配置注册中心的配置别名
+func WithRegistryAlias(alias map[string]string) Option {
+	return func(registry *ZkEndpointRegistry) {
+		registry.globalAlias = alias
+	}
 }
 
 // ZkEndpointRegistryFactory Factory func to new a zookeeper registry
@@ -40,13 +52,16 @@ func ZkEndpointRegistryFactory() flux.EndpointRegistry {
 }
 
 // NewZkEndpointRegistryFactoryWith returns new a zookeeper registry factory
-func NewZkEndpointRegistryFactoryWith(globalAlias map[string]string) ext.EndpointRegistryFactory {
+func NewZkEndpointRegistryFactoryWith(opts ...Option) ext.EndpointRegistryFactory {
 	return func() flux.EndpointRegistry {
-		return &ZkEndpointRegistry{
-			globalAlias:    globalAlias,
+		r := &ZkEndpointRegistry{
 			endpointEvents: make(chan flux.HttpEndpointEvent, 4),
 			serviceEvents:  make(chan flux.BackendServiceEvent, 4),
 		}
+		for _, opt := range opts {
+			opt(r)
+		}
+		return r
 	}
 }
 
