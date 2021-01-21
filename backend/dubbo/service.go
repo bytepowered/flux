@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/apache/dubbo-go/protocol/dubbo"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
 	"sync"
@@ -11,17 +12,15 @@ import (
 
 	"github.com/apache/dubbo-go/common/constant"
 	dubgo "github.com/apache/dubbo-go/config"
-	"github.com/apache/dubbo-go/protocol/dubbo"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	"github.com/spf13/cast"
 )
 
 const (
-	configKeyTraceEnable    = "trace-enable"
-	configKeyReferenceDelay = "reference-delay"
+	ConfigKeyTraceEnable    = "trace-enable"
+	ConfigKeyReferenceDelay = "reference-delay"
 )
 
 var (
@@ -30,60 +29,105 @@ var (
 )
 
 var (
-	registryGlobalAlias = make(map[string]string, 16)
-	internalJSON        = jsoniter.ConfigCompatibleWithStandardLibrary
+	_     flux.BackendTransport = new(BackendTransportService)
+	_json                       = jsoniter.ConfigCompatibleWithStandardLibrary
 )
-
-var (
-	_ flux.BackendTransport = new(BackendTransportService)
-)
-
-func init() {
-	SetRegistryGlobalAlias(map[string]string{
-		"id":       "dubbo.registry.id",
-		"protocol": "dubbo.registry.protocol",
-		"group":    "dubbo.registry.protocol",
-		"timeout":  "dubbo.registry.timeout",
-		"address":  "dubbo.registry.address",
-		"username": "dubbo.registry.username",
-		"password": "dubbo.registry.password",
-	})
-}
 
 type (
+	// Option func to set option
+	Option func(service *BackendTransportService)
 	// ReferenceOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
 	ReferenceOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 	// ArgumentsAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
 	ArgumentsAssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
+	// AttachmentAssembleFun 封装Attachment附件的函数
+	AttachmentAssembleFun func(context flux.Context) (interface{}, error)
 )
-
-// GetRegistryGlobalAlias 获取默认DubboRegistry全局别名配置
-func GetRegistryGlobalAlias() map[string]string {
-	return registryGlobalAlias
-}
-
-// SetRegistryGlobalAlias 设置DubboRegistry全局别名配置
-func SetRegistryGlobalAlias(alias map[string]string) {
-	registryGlobalAlias = pkg.RequireNotNil(alias, "alias is nil").(map[string]string)
-}
 
 // BackendTransportService 集成DubboRPC框架的BackendService
 type BackendTransportService struct {
 	// 可外部配置
-	ReferenceOptionsFuncs []ReferenceOptionsFunc
-	ArgumentsAssembleFunc ArgumentsAssembleFunc
+	defaults             map[string]interface{} // 配置默认值
+	registryAlias        map[string]string      // Registry的别名
+	referenceOptionsFunc []ReferenceOptionsFunc // Dubbo Reference 配置函数
+	argAssembleFunc      ArgumentsAssembleFunc  // Dubbo参数封装函数
+	attAssembleFun       AttachmentAssembleFun  // Attachment封装函数
 	// 内部私有
 	traceEnable   bool
 	configuration *flux.Configuration
 	serviceMutex  sync.RWMutex
 }
 
+// WithArgumentAssembleFunc 用于配置Dubbo参数封装实现函数
+func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
+	return func(service *BackendTransportService) {
+		service.argAssembleFunc = fun
+	}
+}
+
+// WithAttachmentAssembleFunc 用于配置Attachment封装实现函数
+func WithAttachmentAssembleFunc(fun AttachmentAssembleFun) Option {
+	return func(service *BackendTransportService) {
+		service.attAssembleFun = fun
+	}
+}
+
+// WithReferenceOptionsFunc 用于配置DubboReference的参数配置函数
+func WithReferenceOptionsFunc(fun ReferenceOptionsFunc) Option {
+	return func(service *BackendTransportService) {
+		service.referenceOptionsFunc = append(service.referenceOptionsFunc, fun)
+	}
+}
+
+// WithRegistryAlias 用于配置DubboRegistry注册中心的配置别名
+func WithRegistryAlias(alias map[string]string) Option {
+	return func(service *BackendTransportService) {
+		service.registryAlias = alias
+	}
+}
+
+// WithDefaults 用于配置默认配置值
+func WithDefaults(defaults map[string]interface{}) Option {
+	return func(service *BackendTransportService) {
+		service.defaults = defaults
+	}
+}
+
+// NewDubboBackendTransportWith New dubbo backend service with options
+func NewDubboBackendTransportWith(opts ...Option) flux.BackendTransport {
+	bts := &BackendTransportService{
+		referenceOptionsFunc: make([]ReferenceOptionsFunc, 0),
+	}
+	for _, opt := range opts {
+		opt(bts)
+	}
+	return bts
+}
+
 // NewDubboBackendTransport New dubbo backend instance
 func NewDubboBackendTransport() flux.BackendTransport {
-	return &BackendTransportService{
-		ReferenceOptionsFuncs: make([]ReferenceOptionsFunc, 0),
-		ArgumentsAssembleFunc: DefaultAssembleFunc,
-	}
+	return NewDubboBackendTransportWith(
+		WithArgumentAssembleFunc(DefaultArgAssembleFunc),
+		WithAttachmentAssembleFunc(DefaultAttAssembleFun),
+		WithRegistryAlias(map[string]string{
+			"id":       "dubbo.registry.id",
+			"protocol": "dubbo.registry.protocol",
+			"group":    "dubbo.registry.protocol",
+			"timeout":  "dubbo.registry.timeout",
+			"address":  "dubbo.registry.address",
+			"username": "dubbo.registry.username",
+			"password": "dubbo.registry.password",
+		}),
+		WithDefaults(map[string]interface{}{
+			ConfigKeyReferenceDelay: time.Millisecond * 10,
+			ConfigKeyTraceEnable:    false,
+			"timeout":               "5000",
+			"retries":               "0",
+			"cluster":               "failover",
+			"load-balance":          "random",
+			"protocol":              dubbo.DUBBO,
+		}),
+	)
 }
 
 // Configuration get config instance
@@ -94,30 +138,22 @@ func (b *BackendTransportService) Configuration() *flux.Configuration {
 // Init init backend
 func (b *BackendTransportService) Init(config *flux.Configuration) error {
 	logger.Info("Dubbo backend transport initializing")
-	config.SetDefaults(map[string]interface{}{
-		configKeyReferenceDelay: time.Millisecond * 30,
-		configKeyTraceEnable:    false,
-		"timeout":               "5000",
-		"retries":               "0",
-		"cluster":               "failover",
-		"load-balance":          "random",
-		"protocol":              dubbo.DUBBO,
-	})
+	config.SetDefaults(b.defaults)
 	b.configuration = config
-	b.traceEnable = config.GetBool(configKeyTraceEnable)
+	b.traceEnable = config.GetBool(ConfigKeyTraceEnable)
 	logger.Infow("Dubbo backend transport request trace", "enable", b.traceEnable)
 	// Set default impl if not present
-	if nil == b.ReferenceOptionsFuncs {
-		b.ReferenceOptionsFuncs = make([]ReferenceOptionsFunc, 0)
+	if nil == b.referenceOptionsFunc {
+		b.referenceOptionsFunc = make([]ReferenceOptionsFunc, 0)
 	}
-	if pkg.IsNil(b.ArgumentsAssembleFunc) {
-		b.ArgumentsAssembleFunc = DefaultAssembleFunc
+	if pkg.IsNil(b.argAssembleFunc) {
+		b.argAssembleFunc = DefaultArgAssembleFunc
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
 	// 支持定义Registry
 	registry := b.configuration.Sub("registry")
-	registry.SetGlobalAlias(GetRegistryGlobalAlias())
+	registry.SetGlobalAlias(b.registryAlias)
 	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
 		consumerc.Registries[id] = rconfig
 		logger.Infow("Dubbo backend transport setup registry", "id", id, "config", rconfig)
@@ -144,7 +180,7 @@ func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
 
 // Invoke invoke backend service with context
 func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
-	types, values, err := b.ArgumentsAssembleFunc(service.Arguments, ctx)
+	types, values, err := b.argAssembleFunc(service.Arguments, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -163,9 +199,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		logger.TraceContext(ctx).Infow("Dubbo invoking",
 			"backend-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
 	}
-	// Note: must be map[string]string
-	// See: dubbo-go@v1.5.1/common/proxy/proxy.go:150
-	attachments, err := cast.ToStringMapStringE(ctx.Attributes())
+	att, err := b.attAssembleFun(ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("Dubbo attachment error",
 			"backend-service", service.ServiceID(),
@@ -177,7 +211,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 			Internal:   err,
 		}
 	}
-	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
+	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
 	generic := b.LoadGenericService(&service)
 	if resp, err := generic.Invoke(goctx, []interface{}{service.Method, types, values}); err != nil {
 		logger.TraceContext(ctx).Errorw("Dubbo rpc error",
@@ -190,7 +224,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		}
 	} else {
 		if b.traceEnable {
-			text, err := internalJSON.MarshalToString(resp)
+			text, err := _json.MarshalToString(resp)
 			ctxLogger := logger.TraceContext(ctx)
 			if nil == err {
 				ctxLogger.Infow("Dubbo received response", "backend-service", service.ServiceID(), "response.json", text)
@@ -213,7 +247,7 @@ func (b *BackendTransportService) LoadGenericService(definition *flux.BackendSer
 	newRef := NewReference(definition.Interface, definition, b.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
-	for _, optsFunc := range b.ReferenceOptionsFuncs {
+	for _, optsFunc := range b.referenceOptionsFunc {
 		if nil != optsFunc {
 			newRef = pkg.RequireNotNil(optsFunc(definition, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
@@ -223,7 +257,7 @@ func (b *BackendTransportService) LoadGenericService(definition *flux.BackendSer
 	dubgo.SetConsumerService(service)
 	newRef.Refer(service)
 	newRef.Implement(service)
-	t := b.configuration.GetDuration(configKeyReferenceDelay)
+	t := b.configuration.GetDuration(ConfigKeyReferenceDelay)
 	if t == 0 {
 		t = time.Millisecond * 10
 	}

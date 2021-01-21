@@ -66,7 +66,7 @@ func TestDefaultAssembleFunc(t *testing.T) {
 		"year":     2020,
 	})
 	for _, tcase := range cases {
-		types, values, err := DefaultAssembleFunc(tcase.arguments, ctx)
+		types, values, err := DefaultArgAssembleFunc(tcase.arguments, ctx)
 		assert.Nil(err)
 		assert.Equal(tcase.expectedTypes, types, "types matches")
 		assert.Equal(tcase.expectedValues, values, "values matches")
