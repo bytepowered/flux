@@ -6,31 +6,15 @@ import (
 	"github.com/bytepowered/flux/ext"
 )
 
-var (
-	ErrBackendTransportDecodeFuncNotFound = &flux.ServeError{
-		StatusCode: flux.StatusServerError,
-		ErrorCode:  flux.ErrorCodeGatewayInternal,
-		Message:    flux.ErrorMessageBackendDecoderNotFound,
-	}
-)
-
-func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.ServeError {
+func Exchange(ctx flux.Context, backend flux.BackendTransport) *flux.ServeError {
 	endpoint := ctx.Endpoint()
-	resp, err := exchange.Invoke(endpoint.Service, ctx)
-	if err != nil {
-		return err
+	resp, ierr := backend.Invoke(endpoint.Service, ctx)
+	if ierr != nil {
+		return ierr
 	}
-	// decode responseWriter
-	decoder, ok := ext.LoadBackendTransportDecodeFunc(endpoint.Service.AttrRpcProto())
-	if !ok {
-		return ErrBackendTransportDecodeFuncNotFound
-	}
-	if code, headers, body, err := decoder(ctx, resp); nil == err {
-		ctx.Response().SetStatusCode(code)
-		ctx.Response().SetHeaders(headers)
-		ctx.Response().SetBody(body)
-		return nil
-	} else {
+	// decode response
+	result, err := backend.GetResultDecodeFunc()(ctx, resp)
+	if nil != err {
 		return &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -38,10 +22,19 @@ func DoExchange(ctx flux.Context, exchange flux.BackendTransport) *flux.ServeErr
 			Internal:   err,
 		}
 	}
+	writer := ctx.Response()
+	writer.SetStatusCode(result.StatusCode)
+	writer.SetHeaders(result.Headers)
+	writer.SetBody(result.Body)
+	// attachments
+	for k, v := range result.Attachments {
+		ctx.SetAttribute(k, v)
+	}
+	return nil
 }
 
-// DoInvoke 执行后端服务，获取响应结果；
-func DoInvoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
+// Invoke 执行后端服务，获取响应结果；
+func Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	rpcProto := service.AttrRpcProto()
 	backend, ok := ext.LoadBackendTransport(rpcProto)
 	if !ok {

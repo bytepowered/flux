@@ -11,7 +11,21 @@ type BackendTransport interface {
 	Exchange(Context) *ServeError
 	// Invoke 真正执行指定目标EndpointService的通讯，返回响应结果
 	Invoke(BackendService, Context) (interface{}, *ServeError)
+	// GetResultDecodeFunc 获取响应结果解析函数
+	GetResultDecodeFunc() BackendResultDecodeFunc
 }
 
-// BackendTransportDecodeFunc 解析Backend返回的数据
-type BackendTransportDecodeFunc func(ctx Context, response interface{}) (statusCode int, headers http.Header, body interface{}, err error)
+// BackendResult 后端服务返回统一响应数据结构
+type BackendResult struct {
+	// Http状态码
+	StatusCode int
+	// Header
+	Headers http.Header
+	// Attachment
+	Attachments map[string]interface{}
+	// 响应数据体
+	Body interface{}
+}
+
+// BackendResultDecodeFunc 解析Backend返回的数据
+type BackendResultDecodeFunc func(ctx Context, response interface{}) (*BackendResult, error)

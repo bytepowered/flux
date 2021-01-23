@@ -1,39 +1,91 @@
 package http
 
 import (
-	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/backend"
-	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/ext"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
-func NewHttpBackendTransport() *BackendTransportService {
+func init() {
+	ext.StoreBackendTransport(flux.ProtoHttp, NewBackendTransportService())
+}
+
+var _ flux.BackendTransport = new(BackendTransportService)
+
+type (
+	// Option 配置函数
+	Option func(service *BackendTransportService)
+	// ArgumentsAssembleFunc Http调用参数封装函数，可外部化配置为其它协议的值对象
+	ArgumentsAssembleFunc func(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error)
+)
+
+type BackendTransportService struct {
+	httpClient       *http.Client
+	resultDecodeFunc flux.BackendResultDecodeFunc
+	argAssembleFunc  ArgumentsAssembleFunc
+}
+
+func NewBackendTransportService() *BackendTransportService {
 	return &BackendTransportService{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
+		resultDecodeFunc: NewBackendResultDecodeFunc(),
 	}
 }
 
-type BackendTransportService struct {
-	httpClient *http.Client
+func NewBackendTransportServiceWith(opts ...Option) *BackendTransportService {
+	bts := &BackendTransportService{
+		httpClient: &http.Client{
+			Timeout: time.Second * 10,
+		},
+		resultDecodeFunc: NewBackendResultDecodeFunc(),
+	}
+	for _, opt := range opts {
+		opt(bts)
+	}
+	return bts
+}
+
+// WithHttpClient 用于配置HttpClient客户端
+func WithHttpClient(client *http.Client) Option {
+	return func(s *BackendTransportService) {
+		s.httpClient = client
+	}
+}
+
+// WithResultDecodeFunc 用于配置响应数据解析实现函数
+func WithResultDecodeFunc(fun flux.BackendResultDecodeFunc) Option {
+	return func(service *BackendTransportService) {
+		service.resultDecodeFunc = fun
+	}
+}
+
+// WithArgumentAssembleFunc 用于配置转发Http请求参数封装实现函数
+func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
+	return func(service *BackendTransportService) {
+		service.argAssembleFunc = fun
+	}
+}
+
+func (ex *BackendTransportService) GetResultDecodeFunc() flux.BackendResultDecodeFunc {
+	return ex.resultDecodeFunc
 }
 
 func (ex *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
-	return backend.DoExchange(ctx, ex)
+	return backend.Exchange(ctx, ex)
 }
 
 func (ex *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	inurl, _ := ctx.Request().RequestURL()
 	body, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := ex.Assemble(&service, inurl, body, ctx)
+	newRequest, err := ex.argAssembleFunc(&service, inurl, body, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -69,63 +121,4 @@ func (ex *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ fl
 		}
 	}
 	return resp, nil
-}
-
-func (ex *BackendTransportService) Assemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
-	inParams := service.Arguments
-	newQuery := inURL.RawQuery
-	// 使用可重复读的GetBody函数
-	defer func() {
-		_ = bodyReader.Close()
-	}()
-	var newBodyReader io.Reader = bodyReader
-	if len(inParams) > 0 {
-		// 如果Endpoint定义了参数，即表示限定参数传递
-		var data string
-		if values, err := AssembleHttpValues(inParams, ctx); nil != err {
-			return nil, err
-		} else {
-			data = values.Encode()
-		}
-		// GET：参数拼接到URL中；
-		if http.MethodGet == service.Method {
-			if newQuery == "" {
-				newQuery = data
-			} else {
-				newQuery += "&" + data
-			}
-		} else {
-			// 其它方法：拼接到Body中，并设置form-data/x-www-url-encoded
-			newBodyReader = strings.NewReader(data)
-		}
-	}
-	// 未定义参数，即透传Http请求：Rewrite inRequest path
-	newUrl := &url.URL{
-		Host:       service.RemoteHost,
-		Path:       service.Interface,
-		Scheme:     service.Scheme,
-		Opaque:     inURL.Opaque,
-		User:       inURL.User,
-		RawPath:    inURL.RawPath,
-		ForceQuery: inURL.ForceQuery,
-		RawQuery:   newQuery,
-		Fragment:   inURL.Fragment,
-	}
-	to := service.AttrRpcTimeout()
-	timeout, err := time.ParseDuration(to)
-	if err != nil {
-		logger.Warnf("Illegal endpoint rpc-timeout: ", to)
-		timeout = time.Second * 10
-	}
-	toctx, _ := context.WithTimeout(ctx.Context(), timeout)
-	newRequest, err := http.NewRequestWithContext(toctx, service.Method, newUrl.String(), newBodyReader)
-	if nil != err {
-		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", service.Method, newUrl, err)
-	}
-	// Body数据设置application/x-www-url-encoded
-	if http.MethodGet != service.Method {
-		newRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	}
-	newRequest.Header.Set("User-Agent", "FluxGo/Backend/v1")
-	return newRequest, err
 }
