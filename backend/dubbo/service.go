@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/apache/dubbo-go/protocol/dubbo"
+	"github.com/bytepowered/flux/ext"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
 	"sync"
@@ -23,9 +24,13 @@ const (
 	ConfigKeyReferenceDelay = "reference-delay"
 )
 
+func init() {
+	ext.StoreBackendTransport(flux.ProtoDubbo, NewBackendTransportService())
+}
+
 var (
-	ErrDubboDecodeInvalidHeaders = errors.New(flux.ErrorMessageDubboDecodeInvalidHeader)
-	ErrDubboDecodeInvalidStatus  = errors.New(flux.ErrorMessageDubboDecodeInvalidStatus)
+	ErrDecodeInvalidHeaders = errors.New(flux.ErrorMessageDubboDecodeInvalidHeader)
+	ErrDecodeInvalidStatus  = errors.New(flux.ErrorMessageDubboDecodeInvalidStatus)
 )
 
 var (
@@ -47,11 +52,12 @@ type (
 // BackendTransportService 集成DubboRPC框架的BackendService
 type BackendTransportService struct {
 	// 可外部配置
-	defaults             map[string]interface{} // 配置默认值
-	registryAlias        map[string]string      // Registry的别名
-	referenceOptionsFunc []ReferenceOptionsFunc // Dubbo Reference 配置函数
-	argAssembleFunc      ArgumentsAssembleFunc  // Dubbo参数封装函数
-	attAssembleFun       AttachmentAssembleFun  // Attachment封装函数
+	defaults             map[string]interface{}       // 配置默认值
+	registryAlias        map[string]string            // Registry的别名
+	referenceOptionsFunc []ReferenceOptionsFunc       // Dubbo Reference 配置函数
+	argAssembleFunc      ArgumentsAssembleFunc        // Dubbo参数封装函数
+	attAssembleFunc      AttachmentAssembleFun        // Attachment封装函数
+	resultDecodeFunc     flux.BackendResultDecodeFunc // 解析响应结果的函数
 	// 内部私有
 	traceEnable   bool
 	configuration *flux.Configuration
@@ -68,7 +74,14 @@ func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
 // WithAttachmentAssembleFunc 用于配置Attachment封装实现函数
 func WithAttachmentAssembleFunc(fun AttachmentAssembleFun) Option {
 	return func(service *BackendTransportService) {
-		service.attAssembleFun = fun
+		service.attAssembleFunc = fun
+	}
+}
+
+// WithResultDecodeFunc 用于配置响应数据解析实现函数
+func WithResultDecodeFunc(fun flux.BackendResultDecodeFunc) Option {
+	return func(service *BackendTransportService) {
+		service.resultDecodeFunc = fun
 	}
 }
 
@@ -93,8 +106,8 @@ func WithDefaults(defaults map[string]interface{}) Option {
 	}
 }
 
-// NewDubboBackendTransportWith New dubbo backend service with options
-func NewDubboBackendTransportWith(opts ...Option) flux.BackendTransport {
+// NewBackendTransportServiceWith New dubbo backend service with options
+func NewBackendTransportServiceWith(opts ...Option) flux.BackendTransport {
 	bts := &BackendTransportService{
 		referenceOptionsFunc: make([]ReferenceOptionsFunc, 0),
 	}
@@ -104,16 +117,17 @@ func NewDubboBackendTransportWith(opts ...Option) flux.BackendTransport {
 	return bts
 }
 
-// NewDubboBackendTransport New dubbo backend instance
-func NewDubboBackendTransport() flux.BackendTransport {
-	return NewDubboBackendTransportOverrides()
+// NewBackendTransportService New dubbo backend instance
+func NewBackendTransportService() flux.BackendTransport {
+	return NewBackendTransportServiceOverrides()
 }
 
-// NewDubboBackendTransportOverrides New dubbo backend instance
-func NewDubboBackendTransportOverrides(overrides ...Option) flux.BackendTransport {
+// NewBackendTransportServiceOverrides New dubbo backend instance
+func NewBackendTransportServiceOverrides(overrides ...Option) flux.BackendTransport {
 	opts := []Option{
 		WithArgumentAssembleFunc(DefaultArgAssembleFunc),
 		WithAttachmentAssembleFunc(DefaultAttAssembleFun),
+		WithResultDecodeFunc(NewBackendResultDecodeFunc()),
 		WithRegistryAlias(map[string]string{
 			"id":       "dubbo.registry.id",
 			"protocol": "dubbo.registry.protocol",
@@ -133,12 +147,17 @@ func NewDubboBackendTransportOverrides(overrides ...Option) flux.BackendTranspor
 			"protocol":              dubbo.DUBBO,
 		}),
 	}
-	return NewDubboBackendTransportWith(append(opts, overrides...)...)
+	return NewBackendTransportServiceWith(append(opts, overrides...)...)
 }
 
 // Configuration get config instance
 func (b *BackendTransportService) Configuration() *flux.Configuration {
 	return b.configuration
+}
+
+// GetResultDecodeFunc returns result decode func
+func (b *BackendTransportService) GetResultDecodeFunc() flux.BackendResultDecodeFunc {
+	return b.resultDecodeFunc
 }
 
 // Init init backend
@@ -181,7 +200,7 @@ func (b *BackendTransportService) Shutdown(_ context.Context) error {
 
 // Exchange do exchange with context
 func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
-	return backend.DoExchange(ctx, b)
+	return backend.Exchange(ctx, b)
 }
 
 // Invoke invoke backend service with context
@@ -205,7 +224,7 @@ func (b *BackendTransportService) ExecuteWith(types []string, values interface{}
 		logger.TraceContext(ctx).Infow("Dubbo invoking",
 			"backend-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
 	}
-	att, err := b.attAssembleFun(ctx)
+	att, err := b.attAssembleFunc(ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("Dubbo attachment error",
 			"backend-service", service.ServiceID(),

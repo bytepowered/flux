@@ -1,6 +1,7 @@
 package dubbo
 
 import (
+	"github.com/apache/dubbo-go/protocol"
 	"github.com/bytepowered/flux"
 	"net/http"
 )
@@ -11,28 +12,49 @@ const (
 	ResponseKeyBody       = "@net.bytepowered.flux.http-body"
 )
 
-func NewDubboBackendTransportDecodeFuncWith(codeKey, headerKey, bodyKey string) flux.BackendTransportDecodeFunc {
-	return func(ctx flux.Context, input interface{}) (int, http.Header, interface{}, error) {
-		bodyValues, ok := WrapBodyValues(input)
-		if !ok {
-			return flux.StatusOK, make(http.Header, 0), input, nil
+func NewBackendResultDecodeFuncWith(codeKey, headerKey, bodyKey string) flux.BackendResultDecodeFunc {
+	return func(ctx flux.Context, dubbores interface{}) (*flux.BackendResult, error) {
+		data := dubbores
+		attachments := make(map[string]interface{}, 8)
+		// 支持Dubbo返回Result类型
+		if rpcr, ok := dubbores.(protocol.Result); ok {
+			if err := rpcr.Error(); nil != err {
+				return nil, err
+			}
+			data = rpcr.Result()
+			for k, v := range rpcr.Attachments() {
+				attachments[k] = v
+			}
+		}
+		values, ismapv := WrapBodyValues(data)
+		if !ismapv {
+			return &flux.BackendResult{
+				StatusCode:  flux.StatusOK,
+				Headers:     make(http.Header, 0),
+				Attachments: attachments,
+				Body:        dubbores,
+			}, nil
 		}
 		// Header
-		header, err := bodyValues.ReadHeaderValue(headerKey)
+		header, err := values.ReadHeaderValue(headerKey)
 		if nil != err {
-			return flux.StatusServerError, make(http.Header, 0), nil, err
+			return nil, err
 		}
 		// StatusCode
-		status, err := bodyValues.ReadStatusValue(codeKey)
+		status, err := values.ReadStatusValue(codeKey)
 		if nil != err {
-			return flux.StatusServerError, make(http.Header, 0), nil, err
+			return nil, err
 		}
 		// Body
-		body := bodyValues.ReadBodyValue(bodyKey)
-		return status, header, body, nil
+		return &flux.BackendResult{
+			StatusCode:  status,
+			Headers:     header,
+			Body:        values.ReadBodyValue(bodyKey),
+			Attachments: attachments,
+		}, nil
 	}
 }
 
-func NewDubboBackendTransportDecodeFunc() flux.BackendTransportDecodeFunc {
-	return NewDubboBackendTransportDecodeFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
+func NewBackendResultDecodeFunc() flux.BackendResultDecodeFunc {
+	return NewBackendResultDecodeFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
 }

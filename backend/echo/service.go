@@ -3,23 +3,35 @@ package echo
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/backend"
+	"github.com/bytepowered/flux/ext"
 	"io/ioutil"
 	"net/http"
 )
+
+func init() {
+	ext.StoreBackendTransport(flux.ProtoEcho, NewBackendTransportService())
+}
 
 var (
 	_ flux.BackendTransport = new(BackendTransportService)
 )
 
 type BackendTransportService struct {
+	decodeFunc flux.BackendResultDecodeFunc
 }
 
-func NewEchoBackendTransport() flux.BackendTransport {
-	return &BackendTransportService{}
+func (b *BackendTransportService) GetResultDecodeFunc() flux.BackendResultDecodeFunc {
+	return b.decodeFunc
+}
+
+func NewBackendTransportService() flux.BackendTransport {
+	return &BackendTransportService{
+		decodeFunc: NewEchoBackendResultDecodeFunc(),
+	}
 }
 
 func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
-	return backend.DoExchange(ctx, b)
+	return backend.Exchange(ctx, b)
 }
 
 func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
@@ -42,8 +54,12 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 	}, nil
 }
 
-func NewEchoBackendTransportDecodeFunc() flux.BackendTransportDecodeFunc {
-	return func(ctx flux.Context, value interface{}) (statusCode int, headers http.Header, body interface{}, err error) {
-		return http.StatusOK, http.Header{}, value, nil
+func NewEchoBackendResultDecodeFunc() flux.BackendResultDecodeFunc {
+	return func(ctx flux.Context, value interface{}) (*flux.BackendResult, error) {
+		return &flux.BackendResult{
+			StatusCode: http.StatusOK,
+			Headers:    make(http.Header, 0),
+			Body:       value,
+		}, nil
 	}
 }

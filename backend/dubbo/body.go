@@ -31,7 +31,7 @@ func (b BodyValues) ReadStatusValue(statusKey string) (int, error) {
 		if code, err := cast.ToIntE(status); nil != err {
 			logger.Warnw("Invalid rpc response status",
 				"type", reflect.TypeOf(status), "status", status)
-			return 0, ErrDubboDecodeInvalidStatus
+			return 0, ErrDecodeInvalidStatus
 		} else {
 			return code, nil
 		}
@@ -63,7 +63,7 @@ func (b BodyValues) ReadHeaderValue(headerKey string) (http.Header, error) {
 		return omap, nil
 	}
 	logger.Warnw("Invalid rpc response headers", "type", reflect.TypeOf(hkv), "value", hkv)
-	return nil, ErrDubboDecodeInvalidHeaders
+	return nil, ErrDecodeInvalidHeaders
 }
 
 func _addToHeader(headers http.Header, key string, v interface{}) {
