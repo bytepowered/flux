@@ -3,58 +3,45 @@ package dubbo
 import (
 	"github.com/apache/dubbo-go/protocol"
 	"github.com/bytepowered/flux"
+	"github.com/spf13/cast"
 	"net/http"
 )
 
 const (
 	ResponseKeyStatusCode = "@net.bytepowered.flux.http-status"
 	ResponseKeyHeaders    = "@net.bytepowered.flux.http-headers"
-	ResponseKeyBody       = "@net.bytepowered.flux.http-body"
 )
 
-func NewBackendResultDecodeFuncWith(codeKey, headerKey, bodyKey string) flux.BackendResultDecodeFunc {
-	return func(ctx flux.Context, dubbores interface{}) (*flux.BackendResult, error) {
-		data := dubbores
-		attachments := make(map[string]interface{}, 8)
+func NewBackendResultDecodeFuncWith(codeKey, headerKey string) flux.BackendResponseDecodeFunc {
+	return func(ctx flux.Context, raw interface{}) (*flux.BackendResponse, error) {
 		// 支持Dubbo返回Result类型
-		if rpcr, ok := dubbores.(protocol.Result); ok {
-			if err := rpcr.Error(); nil != err {
-				return nil, err
-			}
-			data = rpcr.Result()
-			for k, v := range rpcr.Attachments() {
-				attachments[k] = v
-			}
-		}
-		values, ismapv := WrapBodyValues(data)
-		if !ismapv {
-			return &flux.BackendResult{
-				StatusCode:  flux.StatusOK,
-				Headers:     make(http.Header, 0),
-				Attachments: attachments,
-				Body:        dubbores,
+		rpcr, ok := raw.(protocol.Result)
+		if !ok {
+			return &flux.BackendResponse{
+				StatusCode: flux.StatusOK, Headers: make(http.Header, 0), Body: raw,
 			}, nil
 		}
-		// Header
-		header, err := values.ReadHeaderValue(headerKey)
-		if nil != err {
+		attrs := make(map[string]interface{}, 8)
+		if err := rpcr.Error(); nil != err {
 			return nil, err
 		}
-		// StatusCode
-		status, err := values.ReadStatusValue(codeKey)
-		if nil != err {
-			return nil, err
+		data := rpcr.Result()
+		status := flux.StatusOK
+		for k, v := range rpcr.Attachments() {
+			if k == codeKey {
+				status = cast.ToInt(v)
+			} else if k == headerKey {
+				// TODO 需要更新Attachment类型为map[string]interface{}
+			} else {
+				attrs[k] = v
+			}
 		}
-		// Body
-		return &flux.BackendResult{
-			StatusCode:  status,
-			Headers:     header,
-			Body:        values.ReadBodyValue(bodyKey),
-			Attachments: attachments,
+		return &flux.BackendResponse{
+			StatusCode: status, Headers: make(http.Header, 0), Attachments: attrs, Body: data,
 		}, nil
 	}
 }
 
-func NewBackendResultDecodeFunc() flux.BackendResultDecodeFunc {
-	return NewBackendResultDecodeFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders, ResponseKeyBody)
+func NewBackendResultDecodeFunc() flux.BackendResponseDecodeFunc {
+	return NewBackendResultDecodeFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders)
 }

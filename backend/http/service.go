@@ -27,7 +27,7 @@ type (
 
 type BackendTransportService struct {
 	httpClient       *http.Client
-	resultDecodeFunc flux.BackendResultDecodeFunc
+	resultDecodeFunc flux.BackendResponseDecodeFunc
 	argAssembleFunc  ArgumentsAssembleFunc
 }
 
@@ -61,7 +61,7 @@ func WithHttpClient(client *http.Client) Option {
 }
 
 // WithResultDecodeFunc 用于配置响应数据解析实现函数
-func WithResultDecodeFunc(fun flux.BackendResultDecodeFunc) Option {
+func WithResultDecodeFunc(fun flux.BackendResponseDecodeFunc) Option {
 	return func(service *BackendTransportService) {
 		service.resultDecodeFunc = fun
 	}
@@ -74,18 +74,37 @@ func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
 	}
 }
 
-func (ex *BackendTransportService) GetResultDecodeFunc() flux.BackendResultDecodeFunc {
-	return ex.resultDecodeFunc
+func (b *BackendTransportService) GetResponseDecodeFunc() flux.BackendResponseDecodeFunc {
+	return b.resultDecodeFunc
 }
 
-func (ex *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
-	return backend.Exchange(ctx, ex)
+func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
+	return backend.DoExchangeTransport(ctx, b)
 }
 
-func (ex *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
+func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
+	// panic("implement me")
+	raw, serr := b.Invoke(ctx, service)
+	if nil != serr {
+		return nil, serr
+	}
+	// decode response
+	result, err := b.GetResponseDecodeFunc()(ctx, raw)
+	if nil != err {
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageBackendDecodeResponse,
+			Internal:   fmt.Errorf("decode http response, err: %w", err),
+		}
+	}
+	return result, nil
+}
+
+func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendService) (interface{}, *flux.ServeError) {
 	inurl, _ := ctx.Request().RequestURL()
 	body, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := ex.argAssembleFunc(&service, inurl, body, ctx)
+	newRequest, err := b.argAssembleFunc(&service, inurl, body, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -94,10 +113,10 @@ func (ex *BackendTransportService) Invoke(service flux.BackendService, ctx flux.
 			Internal:   err,
 		}
 	}
-	return ex.ExecuteRequest(newRequest, service, ctx)
+	return b.ExecuteRequest(newRequest, service, ctx)
 }
 
-func (ex *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
+func (b *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	// Header透传以及传递AttrValues
 	if header, writable := ctx.Request().HeaderValues(); writable {
 		newRequest.Header = header.Clone()
@@ -107,7 +126,7 @@ func (ex *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ fl
 	for k, v := range ctx.Attributes() {
 		newRequest.Header.Set(k, cast.ToString(v))
 	}
-	resp, err := ex.httpClient.Do(newRequest)
+	resp, err := b.httpClient.Do(newRequest)
 	if nil != err {
 		msg := flux.ErrorMessageHttpInvokeFailed
 		if uErr, ok := err.(*url.Error); ok {

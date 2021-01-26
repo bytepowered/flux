@@ -17,10 +17,10 @@ var (
 )
 
 type BackendTransportService struct {
-	decodeFunc flux.BackendResultDecodeFunc
+	decodeFunc flux.BackendResponseDecodeFunc
 }
 
-func (b *BackendTransportService) GetResultDecodeFunc() flux.BackendResultDecodeFunc {
+func (b *BackendTransportService) GetResponseDecodeFunc() flux.BackendResponseDecodeFunc {
 	return b.decodeFunc
 }
 
@@ -31,10 +31,19 @@ func NewBackendTransportService() flux.BackendTransport {
 }
 
 func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
-	return backend.Exchange(ctx, b)
+	return backend.DoExchangeTransport(ctx, b)
 }
 
-func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
+func (b *BackendTransportService) InvokeCodec(context flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
+	resp, err := b.Invoke(context, service)
+	if err != nil {
+		return nil, err
+	}
+	codec, _ := b.decodeFunc(context, resp)
+	return codec, nil
+}
+
+func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendService) (interface{}, *flux.ServeError) {
 	var data []byte
 	if r, err := ctx.Request().RequestBodyReader(); nil == err {
 		data, _ = ioutil.ReadAll(r)
@@ -54,9 +63,9 @@ func (b *BackendTransportService) Invoke(service flux.BackendService, ctx flux.C
 	}, nil
 }
 
-func NewEchoBackendResultDecodeFunc() flux.BackendResultDecodeFunc {
-	return func(ctx flux.Context, value interface{}) (*flux.BackendResult, error) {
-		return &flux.BackendResult{
+func NewEchoBackendResultDecodeFunc() flux.BackendResponseDecodeFunc {
+	return func(ctx flux.Context, value interface{}) (*flux.BackendResponse, error) {
+		return &flux.BackendResponse{
 			StatusCode: http.StatusOK,
 			Headers:    make(http.Header, 0),
 			Body:       value,

@@ -135,9 +135,9 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 	}
 }
 
-// Invoke 执行权限验证的后端服务，获取响应结果；
-func (p *PermissionFilter) Invoke(service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
-	return backend.Invoke(service, ctx)
+// InvokeCodec 执行权限验证的后端服务，获取响应结果；
+func (p *PermissionFilter) InvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
+	return backend.DoInvokeCodec(ctx, service)
 }
 
 func EnsurePermissionStatusCode(status int) int {
