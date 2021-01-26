@@ -3,6 +3,7 @@ package support
 import (
 	"context"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/logger"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
@@ -123,8 +124,9 @@ var _ flux.Context = new(ValuesContext)
 
 func NewValuesContext(values map[string]interface{}) flux.Context {
 	return &ValuesContext{
-		time:    time.Now(),
-		request: NewValuesRequestReader(values),
+		time:      time.Now(),
+		request:   NewValuesRequestReader(values),
+		ctxLogger: logger.SimpleLogger(),
 	}
 }
 
