@@ -125,6 +125,9 @@ type Context interface {
 	// Authorize 返回当前Endpoint是否需要授权
 	Authorize() bool
 
+	// Service 返回EndpointService信息
+	Service() BackendService
+
 	// ServiceInterface 返回Endpoint Service的信息
 	ServiceInterface() (proto, host, interfaceName, methodName string)
 

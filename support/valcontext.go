@@ -182,6 +182,15 @@ func (v *ValuesContext) Authorize() bool {
 	return cast.ToBool(v.request.values["authorize"])
 }
 
+func (v *ValuesContext) Service() flux.BackendService {
+	s, ok := v.request.values["service"]
+	if ok {
+		return s.(flux.BackendService)
+	} else {
+		return flux.BackendService{}
+	}
+}
+
 func (v *ValuesContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
 	return cast.ToString(v.request.values["service.proto"]),
 		cast.ToString(v.request.values["service.host"]),

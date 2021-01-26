@@ -43,6 +43,10 @@ func (c *DefaultContext) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
+func (c *DefaultContext) Service() flux.BackendService {
+	return c.endpoint.Service
+}
+
 func (c *DefaultContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
 	s := c.endpoint.Service
 	return s.AttrRpcProto(), s.RemoteHost, s.Interface, s.Method
