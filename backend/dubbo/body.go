@@ -18,6 +18,14 @@ func WrapBodyValues(v interface{}) (BodyValues, bool) {
 	}
 }
 
+func UnwrapBodyValues(v interface{}) interface{} {
+	if bv, ok := v.(BodyValues); ok {
+		return map[interface{}]interface{}(bv)
+	} else {
+		return v
+	}
+}
+
 func (b BodyValues) ReadBodyValue(bodyKey string) interface{} {
 	if body, ok := b[bodyKey]; ok {
 		return body
