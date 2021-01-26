@@ -174,12 +174,12 @@ type Context interface {
 	// LoadMetrics 返回请求路由的的统计数据
 	LoadMetrics() []Metric
 
-	// SetContextLogger 添加Context范围的Logger。
+	// GetLogger 添加Context范围的Logger。
 	// 通常是将关联一些追踪字段的Logger设置为ContextLogger
-	SetContextLogger(logger Logger)
+	SetLogger(logger Logger)
 
-	// GetContextLogger 返回Context范围的Logger。
-	GetContextLogger() (Logger, bool)
+	// GetLogger 返回Context范围的Logger。
+	GetLogger() Logger
 }
 
 // Metrics 请求路由的的统计数据

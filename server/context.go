@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/logger"
 	"github.com/spf13/cast"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ func DefaultContextFactory() flux.Context {
 	return &DefaultContext{
 		responseWriter: NewDefaultResponseWriter(),
 		requestReader:  NewDefaultRequestReader(),
+		ctxLogger:      logger.SimpleLogger(),
 	}
 }
 
@@ -136,12 +138,12 @@ func (c *DefaultContext) LoadMetrics() []flux.Metric {
 	return dist
 }
 
-func (c *DefaultContext) SetContextLogger(logger flux.Logger) {
+func (c *DefaultContext) SetLogger(logger flux.Logger) {
 	c.ctxLogger = logger
 }
 
-func (c *DefaultContext) GetContextLogger() (flux.Logger, bool) {
-	return c.ctxLogger, nil != c.ctxLogger
+func (c *DefaultContext) GetLogger() flux.Logger {
+	return c.ctxLogger
 }
 
 func (c *DefaultContext) StartTime() time.Time {

@@ -254,10 +254,10 @@ func (v *ValuesContext) Context() context.Context {
 	return context.Background()
 }
 
-func (v *ValuesContext) SetContextLogger(logger flux.Logger) {
+func (v *ValuesContext) SetLogger(logger flux.Logger) {
 	v.ctxLogger = logger
 }
 
-func (v *ValuesContext) GetContextLogger() (flux.Logger, bool) {
-	return v.ctxLogger, v.ctxLogger != nil
+func (v *ValuesContext) GetLogger() flux.Logger {
+	return v.ctxLogger
 }

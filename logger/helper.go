@@ -5,6 +5,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/spf13/cast"
+	"go.uber.org/zap"
 	"strings"
 )
 
@@ -34,8 +35,9 @@ func TraceContextWith(ctx flux.Context, extraFields map[string]string) flux.Logg
 	if nil == ctx {
 		return Trace("no-trace-id")
 	}
-	if ctxLogger, ok := ctx.GetContextLogger(); ok {
-		return ctxLogger
+	logger := ctx.GetLogger()
+	if logger == nil {
+		logger = zap.S()
 	}
 	fields := map[string]string{
 		"request-id":     ctx.RequestId(),
