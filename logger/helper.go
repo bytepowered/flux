@@ -14,26 +14,22 @@ const (
 	Extras  = "extras"
 )
 
-func Trace(traceId string) flux.Logger {
-	return With(context.WithValue(context.Background(), TraceId, traceId))
+func With(traceId string) flux.Logger {
+	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, traceId))
 }
 
-func TraceWith(traceId string, fields map[string]string) flux.Logger {
+func WithFields(traceId string, fields map[string]string) flux.Logger {
 	p := context.WithValue(context.Background(), TraceId, traceId)
-	return With(context.WithValue(p, Extras, fields))
+	return ext.NewLoggerWith(context.WithValue(p, Extras, fields))
 }
 
-func With(values context.Context) flux.Logger {
-	return ext.NewLoggerWith(values)
+func WithContext(ctx flux.Context) flux.Logger {
+	return WithContextExtras(ctx, nil)
 }
 
-func TraceContext(ctx flux.Context) flux.Logger {
-	return TraceContextWith(ctx, nil)
-}
-
-func TraceContextWith(ctx flux.Context, extraFields map[string]string) flux.Logger {
+func WithContextExtras(ctx flux.Context, extraFields map[string]string) flux.Logger {
 	if nil == ctx {
-		return Trace("no-trace-id")
+		return With("no-trace-id")
 	}
 	logger := ctx.GetLogger()
 	if logger == nil {
@@ -55,8 +51,8 @@ func TraceContextWith(ctx flux.Context, extraFields map[string]string) flux.Logg
 		fields["backend-authorize"] = cast.ToString(endpoint.AttrAuthorize())
 		fields["endpoint-version"] = endpoint.Version
 		fields["endpoint-pattern"] = endpoint.HttpPattern
-		return TraceWith(ctx.RequestId(), fields)
+		return WithFields(ctx.RequestId(), fields)
 	} else {
-		return Trace(ctx.RequestId())
+		return With(ctx.RequestId())
 	}
 }
