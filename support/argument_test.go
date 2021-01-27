@@ -8,7 +8,7 @@ import (
 )
 
 func TestPrimitiveArgumentLookupResolve(t *testing.T) {
-	ext.StoreArgumentLookupFunc(DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(DefaultArgumentValueLookupFunc)
 	cases := []struct {
 		definition flux.Argument
 		class      string
@@ -120,7 +120,7 @@ func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 }
 
 func TestComplexArgumentLookupResolve(t *testing.T) {
-	ext.StoreArgumentLookupFunc(DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(DefaultArgumentValueLookupFunc)
 	cases := []struct {
 		definition flux.Argument
 		class      string

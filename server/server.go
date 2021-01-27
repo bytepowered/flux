@@ -172,7 +172,7 @@ func (s *HttpServeEngine) Initial() error {
 	s.config = flux.NewConfigurationOf(HttpWebServerConfigRootName)
 	s.config.SetDefaults(s.defaults)
 	// 创建WebServer
-	s.httpWebServer = ext.LoadWebServerFactory()(s.config)
+	s.httpWebServer = ext.GetWebServerFactory()(s.config)
 	// 默认必备的WebServer功能
 	s.httpWebServer.SetWebErrorHandler(s.defaultServerErrorHandler)
 	s.httpWebServer.SetWebNotFoundHandler(s.defaultNotFoundErrorHandler)
@@ -193,7 +193,7 @@ func (s *HttpServeEngine) Initial() error {
 		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
 	}
 	// Endpoint discovery
-	for _, discovery := range ext.LoadEndpointDiscoveries() {
+	for _, discovery := range ext.GetEndpointDiscoveries() {
 		ns := flux.NamespaceEndpointDiscovery + "." + discovery.Id()
 		if err := s.router.InitialHook(discovery, flux.NewConfigurationOf(ns)); nil != err {
 			return err
@@ -241,7 +241,7 @@ func (s *HttpServeEngine) start(config *flux.Configuration) error {
 }
 
 func (s *HttpServeEngine) startDiscovery(endpoints chan flux.HttpEndpointEvent, services chan flux.BackendServiceEvent) error {
-	for _, discovery := range ext.LoadEndpointDiscoveries() {
+	for _, discovery := range ext.GetEndpointDiscoveries() {
 		if err := discovery.WatchEndpoints(endpoints); nil != err {
 			return err
 		}
@@ -274,7 +274,7 @@ func (s *HttpServeEngine) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 
 func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints *MultiEndpoint, tracing bool) error {
 	version := s.versionLookup(webc)
-	endpoint, found := endpoints.FindByVersion(version)
+	endpoint, found := endpoints.LookupByVersion(version)
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	defer func() {
 		if r := recover(); r != nil {
@@ -330,16 +330,16 @@ func (s *HttpServeEngine) HandleBackendServiceEvent(event flux.BackendServiceEve
 	case flux.EventTypeAdded:
 		logger.Infow("New service",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.StoreBackendService(service)
+		ext.SetBackendService(service)
 		if "" != service.AliasId {
-			ext.StoreBackendServiceById(service.AliasId, service)
+			ext.SetBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("Update service",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.StoreBackendService(service)
+		ext.SetBackendService(service)
 		if "" != service.AliasId {
-			ext.StoreBackendServiceById(service.AliasId, service)
+			ext.SetBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
 		logger.Infow("Delete service",
@@ -522,8 +522,8 @@ func isAllowedHttpMethod(method string) bool {
 
 func initArguments(args []flux.Argument) {
 	for i := range args {
-		args[i].ValueResolver = ext.LoadMTValueResolver(args[i].Class)
-		args[i].LookupFunc = ext.LoadArgumentLookupFunc()
+		args[i].ValueResolver = ext.GetMTValueResolver(args[i].Class)
+		args[i].LookupFunc = ext.GetArgumentLookupFunc()
 		initArguments(args[i].Fields)
 	}
 }

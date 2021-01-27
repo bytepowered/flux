@@ -10,10 +10,10 @@ import (
 )
 
 func TestDefaultAssembleFunc(t *testing.T) {
-	ext.StoreArgumentLookupFunc(support.DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(support.DefaultArgumentValueLookupFunc)
 	serializer := flux.NewJsonSerializer()
-	ext.StoreSerializer(ext.TypeNameSerializerDefault, serializer)
-	ext.StoreSerializer(ext.TypeNameSerializerJson, serializer)
+	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
+	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
 	cases := []struct {
 		arguments      []flux.Argument
 		expectedTypes  []string

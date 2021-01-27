@@ -54,12 +54,12 @@ func TestFilterArrayOrder(t *testing.T) {
 		&TestOrderedFilter{order: 4},
 	}
 	for _, f := range filters {
-		StoreGlobalFilter(f)
-		StoreSelectiveFilter(f)
+		SetGlobalFilter(f)
+		SetSelectiveFilter(f)
 	}
 	shouldBeOrder := []int{1, 2, 3, 4, 5}
-	globals := LoadGlobalFilters()
-	selective := LoadSelectiveFilters()
+	globals := GetGlobalFilters()
+	selective := GetSelectiveFilters()
 	assert := assert2.New(t)
 	assert.Equal(len(filters), len(globals))
 	assert.Equal(len(filters), len(selective))
@@ -84,15 +84,15 @@ func TestFilterArrayMixedOrder(t *testing.T) {
 		&TestOrderedFilter{order: 4},
 	}
 	for _, f := range filters {
-		StoreGlobalFilter(f)
-		StoreSelectiveFilter(f)
+		SetGlobalFilter(f)
+		SetSelectiveFilter(f)
 	}
 	assert := assert2.New(t)
-	f0 := LoadGlobalFilters()[0]
-	f1 := LoadSelectiveFilters()[1]
+	f0 := GetGlobalFilters()[0]
+	f1 := GetSelectiveFilters()[1]
 	assert.Equal("TF001", f0.TypeId())
 	assert.Equal("TF002", f1.TypeId())
-	s0, ok := LoadSelectiveFilter("TF002")
+	s0, ok := GetSelectiveFilter("TF002")
 	assert.Equal(true, ok)
 	assert.Equal("TF002", s0.TypeId())
 }

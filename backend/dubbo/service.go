@@ -33,7 +33,7 @@ const (
 )
 
 func init() {
-	ext.StoreBackendTransport(flux.ProtoDubbo, NewBackendTransportService())
+	ext.SetBackendTransport(flux.ProtoDubbo, NewBackendTransportService())
 }
 
 var (

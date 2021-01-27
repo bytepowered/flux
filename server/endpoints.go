@@ -23,7 +23,7 @@ func RegisterMultiEndpoint(key string, endpoint *flux.Endpoint) *MultiEndpoint {
 	return mve
 }
 
-func LoadEndpoints() map[string]*MultiEndpoint {
+func GetEndpoints() map[string]*MultiEndpoint {
 	out := make(map[string]*MultiEndpoint, 32)
 	endpoints.Range(func(key, value interface{}) bool {
 		out[key.(string)] = value.(*MultiEndpoint)
@@ -48,7 +48,7 @@ func newMultiEndpoint(endpoint *flux.Endpoint) *MultiEndpoint {
 }
 
 // Find find endpoint by version
-func (m *MultiEndpoint) FindByVersion(version string) (*flux.Endpoint, bool) {
+func (m *MultiEndpoint) LookupByVersion(version string) (*flux.Endpoint, bool) {
 	m.RLock()
 	if "" == version || 1 == len(m.endpoint) {
 		rv := m.random()

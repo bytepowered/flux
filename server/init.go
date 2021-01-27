@@ -9,17 +9,17 @@ import (
 
 func init() {
 	// Default logger factory
-	ext.StoreLoggerFactory(DefaultLoggerFactory)
+	ext.SetLoggerFactory(DefaultLoggerFactory)
 	// 参数查找与解析函数
-	ext.StoreArgumentLookupFunc(support.DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(support.DefaultArgumentValueLookupFunc)
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()
-	ext.StoreSerializer(ext.TypeNameSerializerDefault, serializer)
-	ext.StoreSerializer(ext.TypeNameSerializerJson, serializer)
+	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
+	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint discovery
-	ext.StoreEndpointDiscovery(discovery.NewZookeeperServiceWith(discovery.ZookeeperId))
-	ext.StoreEndpointDiscovery(discovery.NewResourceServiceWith(discovery.ResourceId))
+	ext.SetEndpointDiscovery(discovery.NewZookeeperServiceWith(discovery.ZookeeperId))
+	ext.SetEndpointDiscovery(discovery.NewResourceServiceWith(discovery.ResourceId))
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)

@@ -11,11 +11,11 @@ var (
 	argumentLookupFunc flux.ArgumentLookupFunc
 )
 
-func StoreArgumentLookupFunc(f flux.ArgumentLookupFunc) {
+func SetArgumentLookupFunc(f flux.ArgumentLookupFunc) {
 	argumentLookupFunc = pkg.RequireNotNil(f, "ArgumentLookupFunc is nil").(flux.ArgumentLookupFunc)
 }
 
-func LoadArgumentLookupFunc() flux.ArgumentLookupFunc {
+func GetArgumentLookupFunc() flux.ArgumentLookupFunc {
 	return argumentLookupFunc
 }
 
@@ -34,8 +34,8 @@ func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() 
 		HttpName:      name,
 		HttpScope:     flux.ScopeAuto,
 		ValueLoader:   valLoader,
-		LookupFunc:    LoadArgumentLookupFunc(),
-		ValueResolver: LoadMTValueResolver(typeClass),
+		LookupFunc:    GetArgumentLookupFunc(),
+		ValueResolver: GetMTValueResolver(typeClass),
 	}
 }
 
@@ -47,8 +47,8 @@ func NewComplexArgument(typeClass, argName string) flux.Argument {
 		Name:          name,
 		HttpName:      name,
 		HttpScope:     flux.ScopeAuto,
-		LookupFunc:    LoadArgumentLookupFunc(),
-		ValueResolver: LoadMTValueResolver(typeClass),
+		LookupFunc:    GetArgumentLookupFunc(),
+		ValueResolver: GetMTValueResolver(typeClass),
 	}
 }
 

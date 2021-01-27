@@ -14,7 +14,7 @@ import (
 var _ flux.WebServer = new(AdaptWebServer)
 
 func init() {
-	ext.StoreWebServerFactory(NewAdaptWebServer)
+	ext.SetWebServerFactory(NewAdaptWebServer)
 }
 
 func NewAdaptWebServer(config *flux.Configuration) flux.WebServer {

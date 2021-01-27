@@ -18,12 +18,12 @@ var (
 
 ////
 
-func StoreSerializer(typeName string, serializer flux.Serializer) {
+func SetSerializer(typeName string, serializer flux.Serializer) {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
 	typedSerializers[typeName] = pkg.RequireNotNil(serializer, "Serializer is nil").(flux.Serializer)
 }
 
-func LoadSerializer(typeName string) flux.Serializer {
+func GetSerializer(typeName string) flux.Serializer {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
 	return typedSerializers[typeName]
 }

@@ -15,12 +15,12 @@ var (
 	hostedSelectorLock sync.RWMutex
 )
 
-func StoreSelector(s flux.Selector) {
+func SetSelector(s flux.Selector) {
 	pkg.RequireNotNil(s, "Selector is nil")
-	StoreHostedSelector(anyHost, s)
+	SetHostedSelector(anyHost, s)
 }
 
-func StoreHostedSelector(host string, s flux.Selector) {
+func SetHostedSelector(host string, s flux.Selector) {
 	host = pkg.RequireNotEmpty(host, "host is empty")
 	pkg.RequireNotNil(s, "Selector is nil")
 	hostedSelectorLock.Lock()
@@ -32,7 +32,7 @@ func StoreHostedSelector(host string, s flux.Selector) {
 	}
 }
 
-func FindSelectors(host string) []flux.Selector {
+func GetSelectors(host string) []flux.Selector {
 	host = pkg.RequireNotEmpty(host, "host is empty")
 	hostedSelectorLock.RLock()
 	defer hostedSelectorLock.RUnlock()

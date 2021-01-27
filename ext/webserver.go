@@ -10,10 +10,10 @@ var (
 
 type WebServerFactory func(*flux.Configuration) flux.WebServer
 
-func StoreWebServerFactory(f WebServerFactory) {
+func SetWebServerFactory(f WebServerFactory) {
 	webServerFactory = f
 }
 
-func LoadWebServerFactory() WebServerFactory {
+func GetWebServerFactory() WebServerFactory {
 	return webServerFactory
 }

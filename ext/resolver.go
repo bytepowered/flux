@@ -14,15 +14,15 @@ var (
 	mediaTypeValueResolvers = make(map[string]flux.MTValueResolver, 16)
 )
 
-// RegisterMTValueResolver 添加实际值类型解析函数
-func RegisterMTValueResolver(typeName string, resolver flux.MTValueResolver) {
+// SetMTValueResolver 添加实际值类型解析函数
+func SetMTValueResolver(typeName string, resolver flux.MTValueResolver) {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
 	typeName = strings.ToLower(typeName)
 	mediaTypeValueResolvers[typeName] = resolver
 }
 
-// LoadMTValueResolver 获取值类型解析函数；如果指定类型不存在，返回默认解析函数；
-func LoadMTValueResolver(typeName string) flux.MTValueResolver {
+// GetMTValueResolver 获取值类型解析函数；如果指定类型不存在，返回默认解析函数；
+func GetMTValueResolver(typeName string) flux.MTValueResolver {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
 	typeName = strings.ToLower(typeName)
 	if r, ok := mediaTypeValueResolvers[typeName]; ok {

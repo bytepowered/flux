@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	ext.StoreBackendTransport(flux.ProtoEcho, NewBackendTransportService())
+	ext.SetBackendTransport(flux.ProtoEcho, NewBackendTransportService())
 }
 
 var (

@@ -22,14 +22,14 @@ var (
 	selectiveFilter = make([]filterWrapper, 0, 16)
 )
 
-// StoreGlobalFilter 注册全局Filter；
-func StoreGlobalFilter(v interface{}) {
+// SetGlobalFilter 注册全局Filter；
+func SetGlobalFilter(v interface{}) {
 	globalFilter = _checkedAppendFilter(v, globalFilter)
 	sort.Sort(filterArray(globalFilter))
 }
 
-// StoreSelectiveFilter 注册可选Filter；
-func StoreSelectiveFilter(v interface{}) {
+// SetSelectiveFilter 注册可选Filter；
+func SetSelectiveFilter(v interface{}) {
 	selectiveFilter = _checkedAppendFilter(v, selectiveFilter)
 	sort.Sort(filterArray(selectiveFilter))
 }
@@ -39,13 +39,13 @@ func _checkedAppendFilter(v interface{}, in []filterWrapper) (out []filterWrappe
 	return append(in, filterWrapper{filter: f, order: orderOf(v)})
 }
 
-// LoadSelectiveFilters 获取已排序的Filter列表
-func LoadSelectiveFilters() []flux.Filter {
+// GetSelectiveFilters 获取已排序的Filter列表
+func GetSelectiveFilters() []flux.Filter {
 	return getFilters(selectiveFilter)
 }
 
-// LoadGlobalFilters 获取已排序的全局Filter列表
-func LoadGlobalFilters() []flux.Filter {
+// GetGlobalFilters 获取已排序的全局Filter列表
+func GetGlobalFilters() []flux.Filter {
 	return getFilters(globalFilter)
 }
 
@@ -57,8 +57,8 @@ func getFilters(in []filterWrapper) []flux.Filter {
 	return out
 }
 
-// LoadSelectiveFilter 获取已排序的可选Filter列表
-func LoadSelectiveFilter(filterId string) (flux.Filter, bool) {
+// GetSelectiveFilter 获取已排序的可选Filter列表
+func GetSelectiveFilter(filterId string) (flux.Filter, bool) {
 	filterId = pkg.RequireNotEmpty(filterId, "filterId is empty")
 	for _, f := range selectiveFilter {
 		if filterId == f.filter.TypeId() {

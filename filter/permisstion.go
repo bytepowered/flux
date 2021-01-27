@@ -100,7 +100,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			services = append(services, endpoint.Permission)
 		}
 		for _, id := range endpoint.Permissions {
-			if srv, ok := ext.LoadBackendService(id); ok {
+			if srv, ok := ext.GetBackendService(id); ok {
 				services = append(services, srv)
 			} else {
 				return &flux.ServeError{
