@@ -56,7 +56,7 @@ type HttpServeEngine struct {
 	config         *flux.Configuration
 	defaults       map[string]interface{}
 	router         *Router
-	registry       flux.EndpointRegistry
+	discovery      flux.EndpointDiscovery
 	versionLookup  VersionLookupFunc
 	ctxPool        sync.Pool
 	started        chan struct{}
@@ -187,14 +187,14 @@ func (s *HttpServeEngine) Initial() error {
 		Handler: http.DefaultServeMux,
 		Addr:    fmt.Sprintf("0.0.0.0:%d", port),
 	}
-	// Endpoint registry
-	if registry, config, err := activeEndpointRegistry(); nil != err {
+	// Endpoint discovery
+	if registry, config, err := activeEndpointDiscovery(); nil != err {
 		return err
 	} else {
 		if err := s.router.InitialHook(registry, config); nil != err {
 			return err
 		}
-		s.registry = registry
+		s.discovery = registry
 	}
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.config.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
@@ -223,8 +223,8 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 		return err
 	}
 	// Http endpoints
-	if events, err := s.registry.WatchHttpEndpoints(); nil != err {
-		return fmt.Errorf("start registry watching: %w", err)
+	if events, err := s.discovery.OnEndpointChanged(); nil != err {
+		return fmt.Errorf("start discovery watching: %w", err)
 	} else {
 		go func() {
 			logger.Info("HttpEndpoint event loop: starting")
@@ -235,8 +235,8 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 		}()
 	}
 	// Backend services
-	if events, err := s.registry.WatchBackendServices(); nil != err {
-		return fmt.Errorf("start registry watching: %w", err)
+	if events, err := s.discovery.OnServiceChanged(); nil != err {
+		return fmt.Errorf("start discovery watching: %w", err)
 	} else {
 		go func() {
 			logger.Info("BackendService event loop: starting")
@@ -501,13 +501,13 @@ func (s *HttpServeEngine) defaultServerErrorHandler(err error, webc flux.WebCont
 	}
 }
 
-func activeEndpointRegistry() (flux.EndpointRegistry, *flux.Configuration, error) {
+func activeEndpointDiscovery() (flux.EndpointDiscovery, *flux.Configuration, error) {
 	config := flux.NewConfigurationOf(flux.KeyConfigRootEndpointRegistry)
-	config.SetDefault(flux.KeyConfigEndpointRegistryProto, ext.EndpointRegistryProtoDefault)
-	registryProto := config.GetString(flux.KeyConfigEndpointRegistryProto)
-	logger.Infow("Active endpoint registry", "registry-proto", registryProto)
-	if factory, ok := ext.LoadEndpointRegistryFactory(registryProto); !ok {
-		return nil, config, fmt.Errorf("EndpointRegistryFactory not found, proto: %s", registryProto)
+	config.SetDefault(flux.KeyConfigEndpointDiscoveryProto, ext.EndpointDiscoveryProtoDefault)
+	registryProto := config.GetString(flux.KeyConfigEndpointDiscoveryProto)
+	logger.Infow("Active endpoint discovery", "discovery-proto", registryProto)
+	if factory, ok := ext.LoadEndpointDiscoveryFactory(registryProto); !ok {
+		return nil, config, fmt.Errorf("EndpointDiscoveryFactory not found, proto: %s", registryProto)
 	} else {
 		return factory(), config, nil
 	}

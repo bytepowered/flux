@@ -2,8 +2,8 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/discovery"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/registry"
 	"github.com/bytepowered/flux/support"
 )
 
@@ -17,10 +17,10 @@ func init() {
 	serializer := flux.NewJsonSerializer()
 	ext.StoreSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.StoreSerializer(ext.TypeNameSerializerJson, serializer)
-	// Endpoint registry
+	// Endpoint discovery
 	// Default: ZK
-	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryProtoDefault, registry.DefaultRegistryFactory)
-	ext.StoreEndpointRegistryFactory(ext.EndpointRegistryProtoZookeeper, registry.DefaultRegistryFactory)
+	ext.StoreEndpointDiscoveryFactory(ext.EndpointDiscoveryProtoDefault, discovery.DefaultDiscoveryFactory)
+	ext.StoreEndpointDiscoveryFactory(ext.EndpointDiscoveryProtoZookeeper, discovery.DefaultDiscoveryFactory)
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)
