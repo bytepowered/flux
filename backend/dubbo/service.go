@@ -285,12 +285,12 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 // DoInvoke execute backend service with arguments
 func (b *BackendTransportService) DoInvoke(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	if b.traceEnable {
-		logger.TraceContext(ctx).Infow("BACKEND:DUBBO:INVOKE",
+		logger.WithContext(ctx).Infow("BACKEND:DUBBO:INVOKE",
 			"backend-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
 	}
 	att, err := b.attAssembleFunc(ctx)
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("Dubbo attachment error",
+		logger.WithContext(ctx).Errorw("Dubbo attachment error",
 			"backend-service", service.ServiceID(), "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -303,7 +303,7 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 	generic := b.LoadGenericService(&service)
 	resultW := b.dubboInvokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
 	if err := resultW.Error(); err != nil {
-		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:RPC_ERROR",
+		logger.WithContext(ctx).Errorw("BACKEND:DUBBO:RPC_ERROR",
 			"backend-service", service.ServiceID(), "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
@@ -315,7 +315,7 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 		if b.traceEnable {
 			data := resultW.Result()
 			text, err := _json.MarshalToString(data)
-			ctxLogger := logger.TraceContext(ctx)
+			ctxLogger := logger.WithContext(ctx)
 			if nil == err {
 				ctxLogger.Infow("BACKEND:DUBBO:RECEIVED", "backend-service", service.ServiceID(), "response.json", text)
 			} else {

@@ -2,16 +2,16 @@ package server
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/discovery"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/support"
 )
 
 func init() {
 	// Default logger factory
 	ext.SetLoggerFactory(DefaultLoggerFactory)
 	// 参数查找与解析函数
-	ext.SetArgumentLookupFunc(support.DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(backend.DefaultArgumentValueLookupFunc)
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()

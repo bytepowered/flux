@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
+	context2 "github.com/bytepowered/flux/context"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/webmidware"
+	"github.com/bytepowered/flux/webserver"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cast"
 	"net/http"
@@ -128,8 +129,8 @@ func NewHttpServeEngineOverride(overrides ...Option) *HttpServeEngine {
 		WithServerResponseWriter(DefaultServerResponseWriter),
 		WithServerErrorsWriter(DefaultServerErrorsWriter),
 		WithServerWebInterceptors(
-			webmidware.NewCORSMiddleware(),
-			webmidware.NewRequestIdMiddlewareWithinHeader(),
+			webserver.NewCORSInterceptor(),
+			webserver.NewRequestIdInterceptor(),
 		),
 		WithServerWebVersionLookupFunc(func(webc flux.WebContext) string {
 			return webc.HeaderValue(DefaultHttpHeaderVersion)
@@ -140,7 +141,7 @@ func NewHttpServeEngineOverride(overrides ...Option) *HttpServeEngine {
 			HttpWebServerConfigKeyAddress:            "0.0.0.0",
 			HttpWebServerConfigKeyPort:               8080,
 		})}
-	return NewHttpServeEngineWith(DefaultContextFactory, append(opts, overrides...)...)
+	return NewHttpServeEngineWith(context2.DefaultContextFactory, append(opts, overrides...)...)
 }
 
 func NewHttpServeEngineWith(factory func() flux.Context, opts ...Option) *HttpServeEngine {
@@ -278,7 +279,7 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	defer func() {
 		if r := recover(); r != nil {
-			trace := logger.Trace(requestId)
+			trace := logger.With(requestId)
 			if err, ok := r.(error); ok {
 				trace.Errorw("HttpServeEngine panics", "error", err)
 			} else {
@@ -290,7 +291,7 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 	if !found {
 		if tracing {
 			url, _ := webc.RequestURL()
-			logger.Trace(requestId).Infow("HttpServeEngine route not-found",
+			logger.With(requestId).Infow("HttpServeEngine route not-found",
 				"http-pattern", []string{webc.Method(), webc.RequestURI(), url.Path},
 			)
 		}
@@ -299,9 +300,9 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
 	// Route call
-	logger.TraceContext(ctxw).Infow("HttpServeEngine route start")
+	logger.WithContext(ctxw).Infow("HttpServeEngine route start")
 	endcall := func(code int, start time.Time) {
-		logger.TraceContext(ctxw).Infow("HttpServeEngine route end",
+		logger.WithContext(ctxw).Infow("HttpServeEngine route end",
 			"metric", ctxw.LoadMetrics(),
 			"elapses", time.Since(start).String(), "response.code", code)
 	}
@@ -314,7 +315,7 @@ func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints 
 	response := ctxw.Response()
 	if err := s.router.Route(ctxw); nil != err {
 		defer endcall(err.StatusCode, start)
-		logger.TraceContext(ctxw).Errorw("HttpServeEngine route error", "error", err)
+		logger.WithContext(ctxw).Errorw("HttpServeEngine route error", "error", err)
 		err.MergeHeader(response.HeaderValues())
 		return err
 	} else {
@@ -328,7 +329,7 @@ func (s *HttpServeEngine) HandleBackendServiceEvent(event flux.BackendServiceEve
 	initArguments(service.Arguments)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("New service",
+		logger.Infow("With service",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.SetBackendService(service)
 		if "" != service.AliasId {
@@ -367,7 +368,7 @@ func (s *HttpServeEngine) HandleHttpEndpointEvent(event flux.HttpEndpointEvent) 
 	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("New endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
+		logger.Infow("With endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
 		bind.Update(endpoint.Version, &endpoint)
 		if isreg {
 			logger.Infow("Register http handler", "method", method, "pattern", pattern)
@@ -460,13 +461,13 @@ func (s *HttpServeEngine) selectMultiEndpoint(routeKey string, endpoint *flux.En
 	}
 }
 
-func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *DefaultContext {
-	ctx := s.ctxPool.Get().(*DefaultContext)
+func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *context2.DefaultContext {
+	ctx := s.ctxPool.Get().(*context2.DefaultContext)
 	ctx.Reattach(id, webc, endpoint)
 	return ctx
 }
 
-func (s *HttpServeEngine) releaseContext(context *DefaultContext) {
+func (s *HttpServeEngine) releaseContext(context *context2.DefaultContext) {
 	context.Release()
 	s.ctxPool.Put(context)
 }
@@ -503,7 +504,7 @@ func (s *HttpServeEngine) defaultServerErrorHandler(err error, webc flux.WebCont
 	}
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	if err := s.errorsWriter(webc, requestId, serve.Header, serve); nil != err {
-		logger.Trace(requestId).Errorw("HttpServeEngine http response error", "error", err)
+		logger.With(requestId).Errorw("HttpServeEngine http response error", "error", err)
 	}
 }
 

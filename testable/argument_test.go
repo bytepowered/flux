@@ -1,14 +1,16 @@
-package support
+package testable
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/backend"
+	"github.com/bytepowered/flux/context"
 	"github.com/bytepowered/flux/ext"
 	assert2 "github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestPrimitiveArgumentLookupResolve(t *testing.T) {
-	ext.SetArgumentLookupFunc(DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(backend.DefaultArgumentValueLookupFunc)
 	cases := []struct {
 		definition flux.Argument
 		class      string
@@ -95,7 +97,7 @@ func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := NewValuesContext(map[string]interface{}{
+	ctx := context.NewMockContext(map[string]interface{}{
 		"str":       "value:str",
 		"int":       12345,
 		"long":      int64(1234567890),
@@ -120,7 +122,7 @@ func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 }
 
 func TestComplexArgumentLookupResolve(t *testing.T) {
-	ext.SetArgumentLookupFunc(DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(backend.DefaultArgumentValueLookupFunc)
 	cases := []struct {
 		definition flux.Argument
 		class      string
@@ -184,7 +186,7 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := NewValuesContext(map[string]interface{}{
+	ctx := context.NewMockContext(map[string]interface{}{
 		"stringmap": map[string]interface{}{
 			"key": "value",
 			"int": 123,
@@ -229,7 +231,7 @@ func TestComplexArgumentValueLoader(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := NewEmptyContext()
+	ctx := context.NewEmptyContext()
 	for _, tcase := range cases {
 		// check resolve
 		v, err := tcase.definition.Resolve(ctx)
