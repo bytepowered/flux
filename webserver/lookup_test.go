@@ -1,6 +1,7 @@
-package support
+package webserver
 
 import (
+	"github.com/bytepowered/flux/pkg"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -24,7 +25,7 @@ func TestScopeLookupParsePair(t *testing.T) {
 	}
 	assert := assert.New(t)
 	for _, tcase := range cases {
-		scope, key, ok := ParseLookupExpr(tcase.lookup)
+		scope, key, ok := pkg.LookupParseExpr(tcase.lookup)
 		assert.Equal(tcase.ok, ok, "ok: not match")
 		assert.Equal(tcase.scope, scope, "scope: not match")
 		assert.Equal(tcase.key, key, "key: not match")

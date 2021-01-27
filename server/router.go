@@ -130,7 +130,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			if f, ok := ext.LoadSelectiveFilter(typeId); ok {
 				selective = append(selective, f)
 			} else {
-				logger.TraceContext(ctx).Warnw("Filter not found on selector", "type-id", typeId)
+				logger.WithContext(ctx).Warnw("Filter not found on selector", "type-id", typeId)
 			}
 		}
 	}
@@ -143,7 +143,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			ctx.AddMetric("M-Backend", ctx.ElapsedTime())
 		}()
 		if backend, ok := ext.LoadBackendTransport(protoName); !ok {
-			logger.TraceContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
+			logger.WithContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
