@@ -56,7 +56,6 @@ type HttpServeEngine struct {
 	config         *flux.Configuration
 	defaults       map[string]interface{}
 	router         *Router
-	discovery      flux.EndpointDiscovery
 	versionLookup  VersionLookupFunc
 	ctxPool        sync.Pool
 	started        chan struct{}
@@ -187,70 +186,44 @@ func (s *HttpServeEngine) Initial() error {
 		Handler: http.DefaultServeMux,
 		Addr:    fmt.Sprintf("0.0.0.0:%d", port),
 	}
-	// Endpoint discovery
-	if registry, config, err := activeEndpointDiscovery(); nil != err {
-		return err
-	} else {
-		if err := s.router.InitialHook(registry, config); nil != err {
-			return err
-		}
-		s.discovery = registry
-	}
 	// - Debug特性支持：默认关闭，需要配置开启
 	if s.config.GetBool(HttpWebServerConfigKeyFeatureDebugEnable) {
 		http.DefaultServeMux.Handle("/debug/endpoints", NewDebugQueryEndpointHandler())
 		http.DefaultServeMux.Handle("/debug/services", NewDebugQueryServiceHandler())
 		http.DefaultServeMux.Handle("/debug/metrics", promhttp.Handler())
 	}
-	// Echo feature
-	if s.config.GetBool(HttpWebServerConfigKeyFeatureEchoEnable) {
-		logger.Info("EchoEndpoint register")
-		for _, evt := range NewEchoEndpoints() {
-			s.HandleHttpEndpointEvent(evt)
+	// Endpoint discovery
+	for _, discovery := range ext.LoadEndpointDiscoveries() {
+		ns := flux.NamespaceEndpointDiscovery + "." + discovery.Id()
+		if err := s.router.InitialHook(discovery, flux.NewConfigurationOf(ns)); nil != err {
+			return err
 		}
 	}
 	return s.router.Initial()
 }
 
-func (s *HttpServeEngine) Startup(version flux.BuildInfo) error {
-	return s.StartServe(version, s.config)
+func (s *HttpServeEngine) Startup(info flux.BuildInfo) error {
+	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
+	if "" != s.banner {
+		logger.Info(s.banner)
+	}
+	return s.start(s.config)
 }
 
-// StartServe server
-func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configuration) error {
+func (s *HttpServeEngine) start(config *flux.Configuration) error {
 	s.ensure()
 	if err := s.router.Startup(); nil != err {
 		return err
 	}
-	// Http endpoints
-	if events, err := s.discovery.OnEndpointChanged(); nil != err {
-		return fmt.Errorf("start discovery watching: %w", err)
-	} else {
-		go func() {
-			logger.Info("HttpEndpoint event loop: starting")
-			for event := range events {
-				s.HandleHttpEndpointEvent(event)
-			}
-			logger.Info("HttpEndpoint event loop: Stopped")
-		}()
+	endpoints := make(chan flux.HttpEndpointEvent, 2)
+	services := make(chan flux.BackendServiceEvent, 2)
+	defer func() {
+		close(endpoints)
+		close(services)
+	}()
+	if err := s.startDiscovery(endpoints, services); nil != err {
+		return err
 	}
-	// Backend services
-	if events, err := s.discovery.OnServiceChanged(); nil != err {
-		return fmt.Errorf("start discovery watching: %w", err)
-	} else {
-		go func() {
-			logger.Info("BackendService event loop: starting")
-			for event := range events {
-				s.HandleBackendServiceEvent(event)
-			}
-			logger.Info("BackendService event loop: Stopped")
-		}()
-	}
-	close(s.started)
-	if "" != s.banner {
-		logger.Info(s.banner)
-	}
-	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
 	// Start Servers
 	if s.debugServer != nil {
 		go func() {
@@ -263,7 +236,40 @@ func (s *HttpServeEngine) StartServe(info flux.BuildInfo, config *flux.Configura
 	keyFile := config.GetString(HttpWebServerConfigKeyTlsKeyFile)
 	certFile := config.GetString(HttpWebServerConfigKeyTlsCertFile)
 	logger.Infow("HttpServeEngine starting", "address", address, "cert", certFile, "key", keyFile)
+	close(s.started)
 	return s.httpWebServer.StartTLS(address, certFile, keyFile)
+}
+
+func (s *HttpServeEngine) startDiscovery(endpoints chan flux.HttpEndpointEvent, services chan flux.BackendServiceEvent) error {
+	for _, discovery := range ext.LoadEndpointDiscoveries() {
+		if err := discovery.WatchEndpoints(endpoints); nil != err {
+			return err
+		}
+		if err := discovery.WatchServices(services); nil != err {
+			return err
+		}
+	}
+	go func() {
+		logger.Info("Discovery event loop: START")
+	Loop:
+		for {
+			select {
+			case epEvt, ok := <-endpoints:
+				if !ok {
+					break Loop
+				}
+				s.HandleHttpEndpointEvent(epEvt)
+
+			case esEvt, ok := <-services:
+				if !ok {
+					break Loop
+				}
+				s.HandleBackendServiceEvent(esEvt)
+			}
+		}
+		logger.Info("Discovery event loop: STOP")
+	}()
+	return nil
 }
 
 func (s *HttpServeEngine) HandleEndpointRequest(webc flux.WebContext, endpoints *MultiEndpoint, tracing bool) error {
@@ -498,18 +504,6 @@ func (s *HttpServeEngine) defaultServerErrorHandler(err error, webc flux.WebCont
 	requestId := cast.ToString(webc.GetValue(flux.HeaderXRequestId))
 	if err := s.errorsWriter(webc, requestId, serve.Header, serve); nil != err {
 		logger.Trace(requestId).Errorw("HttpServeEngine http response error", "error", err)
-	}
-}
-
-func activeEndpointDiscovery() (flux.EndpointDiscovery, *flux.Configuration, error) {
-	config := flux.NewConfigurationOf(flux.KeyConfigRootEndpointRegistry)
-	config.SetDefault(flux.KeyConfigEndpointDiscoveryProto, ext.EndpointDiscoveryProtoDefault)
-	registryProto := config.GetString(flux.KeyConfigEndpointDiscoveryProto)
-	logger.Infow("Active endpoint discovery", "discovery-proto", registryProto)
-	if factory, ok := ext.LoadEndpointDiscoveryFactory(registryProto); !ok {
-		return nil, config, fmt.Errorf("EndpointDiscoveryFactory not found, proto: %s", registryProto)
-	} else {
-		return factory(), config, nil
 	}
 }
 

@@ -1,0 +1,40 @@
+# 配置Endpoint节点列表
+version: 1.0
+
+endpoints:
+    -   application: "flux"
+        version: "1.0"
+        httpPattern: "/debug/flux/echo/get"
+        httpMethod: "GET"
+        # 后端服务配置
+        service:
+            serviceId: "flux.debug.echo.get"
+            interface: "flux.debug.echo"
+            method: "get"
+            attributes:
+                -   tag: 1
+                    name: "RpcProto"
+                    value: "ECHO"
+                -   tag: 1
+                    name: "Authorize"
+                    value: false
+
+    -   application: "flux"
+        version: "1.0"
+        httpPattern: "/debug/flux/echo/post"
+        httpMethod: "POST"
+        # 后端服务配置
+        service:
+            serviceId: "flux.debug.echo.post"
+            interface: "flux.debug.echo"
+            method: "post"
+            attributes:
+                -   tag: 1
+                    name: "RpcProto"
+                    value: "ECHO"
+                -   tag: 1
+                    name: "Authorize"
+                    value: false
+
+# Service 配置服务列表
+services: []

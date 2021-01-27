@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/remoting"
 	"github.com/bytepowered/flux/remoting/zk"
@@ -17,62 +16,59 @@ const (
 	zkDiscoveryBackendServicePath = "/flux-service"
 )
 
-var (
-	_ flux.EndpointDiscovery = new(DefaultDiscovery)
+const (
+	ZookeeperId = "zookeeper"
 )
+
+var _ flux.EndpointDiscovery = new(ZookeeperDiscoveryService)
 
 type (
-	// Option 配置函数
-	Option func(discovery *DefaultDiscovery)
+	// ZookeeperOption 配置函数
+	ZookeeperOption func(discovery *ZookeeperDiscoveryService)
 )
 
-// DefaultDiscovery 基于ZK节点树实现的Endpoint元数据注册中心
-type DefaultDiscovery struct {
-	globalAlias    map[string]string
-	endpointPath   string
-	servicePath    string
-	endpointEvents chan flux.HttpEndpointEvent
-	serviceEvents  chan flux.BackendServiceEvent
-	retrievers     []*zk.ZookeeperRetriever
+// ZookeeperDiscoveryService 基于ZK节点树实现的Endpoint元数据注册中心
+type ZookeeperDiscoveryService struct {
+	id           string
+	globalAlias  map[string]string
+	endpointPath string
+	servicePath  string
+	retrievers   []*zk.ZookeeperRetriever
 }
 
-// WithConfigAlias 配置注册中心的配置别名
-func WithConfigAlias(alias map[string]string) Option {
-	return func(discovery *DefaultDiscovery) {
+// WithGlobalAlias 配置注册中心的配置别名
+func WithGlobalAlias(alias map[string]string) ZookeeperOption {
+	return func(discovery *ZookeeperDiscoveryService) {
 		discovery.globalAlias = alias
 	}
 }
 
-// DefaultDiscoveryFactory Factory func to new a zookeeper discovery
-func DefaultDiscoveryFactory() flux.EndpointDiscovery {
-	return NewDefaultDiscoveryFactoryWith()()
+// NewZookeeperServiceWith returns new a zookeeper discovery factory
+func NewZookeeperServiceWith(id string, opts ...ZookeeperOption) *ZookeeperDiscoveryService {
+	r := &ZookeeperDiscoveryService{
+		id: id,
+	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r
 }
 
-// NewDefaultDiscoveryFactoryWith returns new a zookeeper discovery factory
-func NewDefaultDiscoveryFactoryWith(opts ...Option) ext.EndpointDiscoveryFactory {
-	return func() flux.EndpointDiscovery {
-		r := &DefaultDiscovery{
-			endpointEvents: make(chan flux.HttpEndpointEvent, 4),
-			serviceEvents:  make(chan flux.BackendServiceEvent, 4),
-		}
-		for _, opt := range opts {
-			opt(r)
-		}
-		return r
-	}
+func (r *ZookeeperDiscoveryService) Id() string {
+	return r.id
 }
 
 // Init init discovery
-func (r *DefaultDiscovery) Init(config *flux.Configuration) error {
+func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		"endpoint-path": zkDiscoveryHttpEndpointPath,
 		"service-path":  zkDiscoveryBackendServicePath,
 	})
-	active := config.GetStringSlice("discovery-active")
+	active := config.GetStringSlice("active-id")
 	if len(active) == 0 {
 		active = []string{"default"}
 	}
-	logger.Infow("DefaultZkDiscovery active discovery", "active-ids", active)
+	logger.Infow("ZkEndpointDiscovery active discovery", "active-ids", active)
 	r.endpointPath = config.GetString("endpoint-path")
 	r.servicePath = config.GetString("service-path")
 	if r.endpointPath == "" || r.servicePath == "" {
@@ -91,7 +87,7 @@ func (r *DefaultDiscovery) Init(config *flux.Configuration) error {
 		if len(r.globalAlias) != 0 {
 			zkconf.SetGlobalAlias(r.globalAlias)
 		}
-		logger.Infow("DefaultZkDiscovery start zk discovery", "discovery-id", id)
+		logger.Infow("ZkEndpointDiscovery start zk discovery", "discovery-id", id)
 		if err := r.retrievers[i].Init(zkconf); nil != err {
 			return err
 		}
@@ -100,56 +96,56 @@ func (r *DefaultDiscovery) Init(config *flux.Configuration) error {
 }
 
 // OnEndpointChanged Listen http endpoints events
-func (r *DefaultDiscovery) OnEndpointChanged() (<-chan flux.HttpEndpointEvent, error) {
+func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpointEvent) error {
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("DefaultZkDiscovery node listening", "event", event, "error", r)
+				logger.Errorw("ZkEndpointDiscovery node listening", "event", event, "error", r)
 			}
 		}()
 		if evt, ok := NewEndpointEvent(event.Data, event.EventType); ok {
-			r.endpointEvents <- evt
+			events <- evt
 		}
 	}
-	logger.Infow("DefaultZkDiscovery start listen endpoints node", "node-path", r.endpointPath)
+	logger.Infow("ZkEndpointDiscovery start listen endpoints node", "node-path", r.endpointPath)
 	for _, retriever := range r.retrievers {
 		if err := r.watch(retriever, r.endpointPath, listener); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return r.endpointEvents, nil
+	return nil
 }
 
 // OnServiceChanged Listen gateway services events
-func (r *DefaultDiscovery) OnServiceChanged() (<-chan flux.BackendServiceEvent, error) {
+func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux.BackendServiceEvent) error {
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("DefaultZkDiscovery node listening", "event", event, "error", r)
+				logger.Errorw("ZkEndpointDiscovery node listening", "event", event, "error", r)
 			}
 		}()
 		if evt, ok := NewBackendServiceEvent(event.Data, event.EventType); ok {
-			r.serviceEvents <- evt
+			events <- evt
 		}
 	}
-	logger.Infow("DefaultZkDiscovery start listen services node", "node-path", r.servicePath)
+	logger.Infow("ZkEndpointDiscovery start listen services node", "node-path", r.servicePath)
 	for _, retriever := range r.retrievers {
 		if err := r.watch(retriever, r.servicePath, listener); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return r.serviceEvents, nil
+	return nil
 }
 
-func (r *DefaultDiscovery) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
+func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
 	if exist, _ := retriever.Exists(rootpath); !exist {
 		if err := retriever.Create(rootpath); nil != err {
 			return fmt.Errorf("init metadata node: %w", err)
 		}
 	}
-	logger.Infow("DefaultZkDiscovery watching metadata node", "path", rootpath)
+	logger.Infow("ZkEndpointDiscovery watching metadata node", "path", rootpath)
 	return retriever.AddChildrenNodeChangedListener("", rootpath, func(event remoting.NodeEvent) {
-		logger.Infow("DefaultZkDiscovery receive child change event", "event", event)
+		logger.Infow("ZkEndpointDiscovery receive child change event", "event", event)
 		if event.EventType == remoting.EventTypeChildAdd {
 			if err := retriever.AddNodeChangedListener("", event.Path, nodeListener); nil != err {
 				logger.Warnw("Watch child node data", "error", err)
@@ -159,8 +155,8 @@ func (r *DefaultDiscovery) watch(retriever *zk.ZookeeperRetriever, rootpath stri
 }
 
 // Startup startup discovery service
-func (r *DefaultDiscovery) Startup() error {
-	logger.Info("DefaultZkDiscovery startup")
+func (r *ZookeeperDiscoveryService) Startup() error {
+	logger.Info("ZkEndpointDiscovery startup")
 	for _, retriever := range r.retrievers {
 		if err := retriever.Startup(); nil != err {
 			return err
@@ -170,9 +166,8 @@ func (r *DefaultDiscovery) Startup() error {
 }
 
 // Shutdown shutdown discovery service
-func (r *DefaultDiscovery) Shutdown(ctx context.Context) error {
-	logger.Info("DefaultZkDiscovery shutdown")
-	close(r.endpointEvents)
+func (r *ZookeeperDiscoveryService) Shutdown(ctx context.Context) error {
+	logger.Info("ZkEndpointDiscovery shutdown")
 	for _, retriever := range r.retrievers {
 		if err := retriever.Shutdown(ctx); nil != err {
 			return err

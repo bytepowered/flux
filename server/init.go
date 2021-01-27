@@ -18,9 +18,8 @@ func init() {
 	ext.StoreSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.StoreSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint discovery
-	// Default: ZK
-	ext.StoreEndpointDiscoveryFactory(ext.EndpointDiscoveryProtoDefault, discovery.DefaultDiscoveryFactory)
-	ext.StoreEndpointDiscoveryFactory(ext.EndpointDiscoveryProtoZookeeper, discovery.DefaultDiscoveryFactory)
+	ext.StoreEndpointDiscovery(discovery.NewZookeeperServiceWith(discovery.ZookeeperId))
+	ext.StoreEndpointDiscovery(discovery.NewResourceServiceWith(discovery.ResourceId))
 	// Server
 	SetServerWriterSerializer(serializer)
 	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)
