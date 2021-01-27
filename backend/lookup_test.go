@@ -1,7 +1,8 @@
-package support
+package backend
 
 import (
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/context"
 	assert2 "github.com/stretchr/testify/assert"
 	"net/http"
 	"net/url"
@@ -11,7 +12,7 @@ import (
 func TestNilContext(t *testing.T) {
 	assert := assert2.New(t)
 	// Scope & key
-	_, err0 := DefaultArgumentValueLookupFunc("", "", NewEmptyContext())
+	_, err0 := DefaultArgumentValueLookupFunc("", "", context.NewEmptyContext())
 	assert.Error(err0, "must error")
 	// Nil context
 	_, err1 := DefaultArgumentValueLookupFunc("a", "b", nil)
@@ -33,7 +34,7 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 		"auto":          "auto",
 		"value":         "value",
 	}
-	valctx := NewValuesContext(values)
+	valctx := context.NewMockContext(values)
 	cases := []struct {
 		scope  string
 		key    string

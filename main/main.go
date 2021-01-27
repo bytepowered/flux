@@ -6,7 +6,7 @@ import (
 	_ "github.com/bytepowered/flux/backend/echo"
 	_ "github.com/bytepowered/flux/backend/http"
 	"github.com/bytepowered/flux/server"
-	_ "github.com/bytepowered/flux/webecho"
+	_ "github.com/bytepowered/flux/webserver"
 )
 
 var (

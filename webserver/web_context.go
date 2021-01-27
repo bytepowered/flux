@@ -1,4 +1,4 @@
-package webecho
+package webserver
 
 import (
 	"context"

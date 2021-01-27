@@ -1,8 +1,10 @@
-package support
+package backend
 
 import (
 	"errors"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/pkg"
+	"net/url"
 	"strings"
 )
 
@@ -46,7 +48,7 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 		reader, err := req.RequestBodyReader()
 		return flux.MTValue{Value: reader, MediaType: req.HeaderValue(flux.HeaderContentType)}, err
 	case flux.ScopeParam:
-		v, _ := SearchValueProviders(key, req.QueryValues, req.FormValues)
+		v, _ := pkg.LookupByProviders(key, req.QueryValues, req.FormValues)
 		return flux.WrapStringMTValue(v), nil
 	case flux.ScopeValue:
 		v, _ := ctx.GetValue(key)
@@ -63,7 +65,10 @@ func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value 
 	case flux.ScopeAuto:
 		fallthrough
 	default:
-		if v, ok := SearchValueProviders(key, req.PathValues, req.QueryValues, req.FormValues, WrapHeaderProviderFunc(req)); ok {
+		if v, ok := pkg.LookupByProviders(key, req.PathValues, req.QueryValues, req.FormValues, func() url.Values {
+			h, _ := req.HeaderValues()
+			return url.Values(h)
+		}); ok {
 			return flux.WrapStringMTValue(v), nil
 		}
 		if v, ok := ctx.GetAttribute(key); ok {

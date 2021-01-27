@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
+	context2 "github.com/bytepowered/flux/context"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/webmidware"
+	"github.com/bytepowered/flux/webserver"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cast"
 	"net/http"
@@ -128,8 +129,8 @@ func NewHttpServeEngineOverride(overrides ...Option) *HttpServeEngine {
 		WithServerResponseWriter(DefaultServerResponseWriter),
 		WithServerErrorsWriter(DefaultServerErrorsWriter),
 		WithServerWebInterceptors(
-			webmidware.NewCORSMiddleware(),
-			webmidware.NewRequestIdMiddlewareWithinHeader(),
+			webserver.NewCORSInterceptor(),
+			webserver.NewRequestIdInterceptor(),
 		),
 		WithServerWebVersionLookupFunc(func(webc flux.WebContext) string {
 			return webc.HeaderValue(DefaultHttpHeaderVersion)
@@ -140,7 +141,7 @@ func NewHttpServeEngineOverride(overrides ...Option) *HttpServeEngine {
 			HttpWebServerConfigKeyAddress:            "0.0.0.0",
 			HttpWebServerConfigKeyPort:               8080,
 		})}
-	return NewHttpServeEngineWith(DefaultContextFactory, append(opts, overrides...)...)
+	return NewHttpServeEngineWith(context2.DefaultContextFactory, append(opts, overrides...)...)
 }
 
 func NewHttpServeEngineWith(factory func() flux.Context, opts ...Option) *HttpServeEngine {
@@ -460,13 +461,13 @@ func (s *HttpServeEngine) selectMultiEndpoint(routeKey string, endpoint *flux.En
 	}
 }
 
-func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *DefaultContext {
-	ctx := s.ctxPool.Get().(*DefaultContext)
+func (s *HttpServeEngine) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *context2.DefaultContext {
+	ctx := s.ctxPool.Get().(*context2.DefaultContext)
 	ctx.Reattach(id, webc, endpoint)
 	return ctx
 }
 
-func (s *HttpServeEngine) releaseContext(context *DefaultContext) {
+func (s *HttpServeEngine) releaseContext(context *context2.DefaultContext) {
 	context.Release()
 	s.ctxPool.Put(context)
 }

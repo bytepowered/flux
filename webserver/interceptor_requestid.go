@@ -1,4 +1,4 @@
-package webmidware
+package webserver
 
 import (
 	"github.com/bwmarrin/snowflake"
@@ -31,8 +31,8 @@ func SetRequestIdLookupFunc(f RequestIdLookupFunc) {
 	requestIdLookupFunc = f
 }
 
-// NewRequestIdMiddlewareWithinHeader 生成从Header中查找的RequestId中间件的函数
-func NewRequestIdMiddlewareWithinHeader(headers ...string) flux.WebInterceptor {
+// NewRequestIdInterceptor 生成从Header中查找的RequestId中间件的函数
+func NewRequestIdInterceptor(headers ...string) flux.WebInterceptor {
 	id, err := snowflake.NewNode(1)
 	if nil != err {
 		logger.Panicw("request-id-middleware: new snowflake node", "error", err)

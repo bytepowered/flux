@@ -3,14 +3,15 @@ package dubbo
 import (
 	hessian "github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/backend"
+	"github.com/bytepowered/flux/context"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/support"
 	assert2 "github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestDefaultAssembleFunc(t *testing.T) {
-	ext.StoreArgumentLookupFunc(support.DefaultArgumentValueLookupFunc)
+	ext.StoreArgumentLookupFunc(backend.DefaultArgumentValueLookupFunc)
 	serializer := flux.NewJsonSerializer()
 	ext.StoreSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.StoreSerializer(ext.TypeNameSerializerJson, serializer)
@@ -49,7 +50,7 @@ func TestDefaultAssembleFunc(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := support.NewValuesContext(map[string]interface{}{
+	ctx := context.NewMockContext(map[string]interface{}{
 		"stringmap": map[string]interface{}{
 			"key": "value",
 			"int": 123,

@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package webmidware
+package webserver
 
 import (
 	"github.com/bytepowered/flux"
@@ -40,7 +40,7 @@ type CorsConfig struct {
 	MaxAge           int
 }
 
-func NewCORSMiddleware() flux.WebInterceptor {
+func NewCORSInterceptor() flux.WebInterceptor {
 	return NewCORSMiddlewareWith(CorsConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete},
