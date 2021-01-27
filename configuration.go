@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const (
+	NamespaceEndpointDiscovery = "EndpointDiscovery"
+)
+
 // NewGlobalConfiguration 创建全局Viper实例的配置对象
 func NewGlobalConfiguration() *Configuration {
 	return NewConfiguration(viper.GetViper())
@@ -45,13 +49,17 @@ func (c *Configuration) Sub(name string) *Configuration {
 	return NewConfiguration(c.instance.Sub(name))
 }
 
-// Get 查找指定Key的配置值。
+func (c *Configuration) Get(key string) interface{} {
+	return c.GetOrDefault(key, nil)
+}
+
+// GetOrDefault 查找指定Key的配置值。
 // 从当前NS查询不到配置时，
 // 2. 如果Value为动态Key，则根据动态Key读取全局配置；
 // 1. 如果配置globalAlias映射，则根据AliasKey读取全局配置。
 // 与Viper的Alias不同的是，Configuration的GlobalAlias是作用于局部命名空间下的别名映射。
 // 当然，这不影响原有Viper的Alias功能。
-func (c *Configuration) Get(key string) interface{} {
+func (c *Configuration) GetOrDefault(key string, def interface{}) interface{} {
 	v := c.instance.Get(key)
 	// 动态全局Key和默认值： ${username:yongjia}
 	if strv, ok := v.(string); ok {
@@ -69,8 +77,11 @@ func (c *Configuration) Get(key string) interface{} {
 	// GlobalAlias优先级低一些
 	if nil == v && c.globalAlias != nil {
 		if alias, ok := c.globalAlias[key]; ok {
-			return viper.Get(alias)
+			v = viper.Get(alias)
 		}
+	}
+	if nil == v {
+		v = def
 	}
 	return v
 }

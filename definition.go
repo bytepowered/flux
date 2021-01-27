@@ -88,13 +88,13 @@ type (
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
-	Name      string     `json:"name"`      // 参数名称
-	Type      string     `json:"type"`      // 参数结构类型
-	Class     string     `json:"class"`     // 参数类型
-	Generic   []string   `json:"generic"`   // 泛型类型
-	HttpName  string     `json:"httpName"`  // 映射Http的参数Key
-	HttpScope string     `json:"httpScope"` // 映射Http参数值域
-	Fields    []Argument `json:"fields"`    // 子结构字段
+	Name      string     `json:"name" yaml:"name"`           // 参数名称
+	Type      string     `json:"type" yaml:"type"`           // 参数结构类型
+	Class     string     `json:"class" yaml:"class"`         // 参数类型
+	Generic   []string   `json:"generic" yaml:"generic"`     // 泛型类型
+	HttpName  string     `json:"httpName" yaml:"httpName"`   // 映射Http的参数Key
+	HttpScope string     `json:"httpScope" yaml:"httpScope"` // 映射Http参数值域
+	Fields    []Argument `json:"fields" yaml:"fields"`       // 子结构字段
 	// helper
 	ValueLoader   func() MTValue     `json:"-"`
 	LookupFunc    ArgumentLookupFunc `json:"-"`
@@ -103,9 +103,9 @@ type Argument struct {
 
 // Attribute 定义服务的属性信息
 type Attribute struct {
-	Tag   uint8       `json:"tag"`
-	Name  string      `json:"name"`
-	Value interface{} `json:"value"`
+	Tag   uint8       `json:"tag" yaml:"tag"`
+	Name  string      `json:"name" yaml:"name"`
+	Value interface{} `json:"value" yaml:"value"`
 }
 
 func (a Attribute) ValueString() string {
@@ -122,7 +122,7 @@ func (a Attribute) ValueBool() bool {
 
 // EmbeddedAttributes
 type EmbeddedAttributes struct {
-	Attributes []Attribute `json:"attributes"`
+	Attributes []Attribute `json:"attributes" yaml:"attributes"`
 }
 
 func (c EmbeddedAttributes) AttrByTag(tag uint8) Attribute {
@@ -148,7 +148,7 @@ func (c EmbeddedAttributes) AttrLookup(tf func(Attribute) bool) Attribute {
 
 // EmbeddedExtensions
 type EmbeddedExtensions struct {
-	Extensions map[string]interface{} `json:"extensions"` // 扩展信息
+	Extensions map[string]interface{} `json:"extensions" yaml:"extensions"` // 扩展信息
 }
 
 func (e EmbeddedExtensions) Ext(name string) (interface{}, bool) {
@@ -185,21 +185,21 @@ func (e EmbeddedExtensions) ExtInt(name string) int {
 
 // BackendService 定义连接上游目标服务的信息
 type BackendService struct {
-	AliasId    string     `json:"aliasId"`    // Service别名
-	ServiceId  string     `json:"serviceId"`  // Service的标识ID
-	Scheme     string     `json:"scheme"`     // Service侧URL的Scheme
-	RemoteHost string     `json:"remoteHost"` // Service侧的Host
-	Interface  string     `json:"interface"`  // Service侧的URL
-	Method     string     `json:"method"`     // Service侧的方法
-	Arguments  []Argument `json:"arguments"`  // Service侧的参数结构
+	AliasId    string     `json:"aliasId" yaml:"aliasId"`       // Service别名
+	ServiceId  string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
+	Scheme     string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
+	RemoteHost string     `json:"remoteHost" yaml:"remoteHost"` // Service侧的Host
+	Interface  string     `json:"interface" yaml:"interface"`   // Service侧的URL
+	Method     string     `json:"method" yaml:"method"`         // Service侧的方法
+	Arguments  []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
 	// Extends
-	EmbeddedAttributes
-	EmbeddedExtensions
-	RpcProto   string `json:"rpcProto"`   // Deprecated Service侧的协议
-	RpcGroup   string `json:"rpcGroup"`   // Deprecated Service侧的接口分组
-	RpcVersion string `json:"rpcVersion"` // Deprecated Service侧的接口版本
-	RpcTimeout string `json:"rpcTimeout"` // Deprecated Service侧的调用超时
-	RpcRetries string `json:"rpcRetries"` // Deprecated Service侧的调用重试
+	EmbeddedAttributes `yaml:",inline"`
+	EmbeddedExtensions `yaml:",inline"`
+	RpcProto           string `json:"rpcProto" yaml:"rpcProto"`     // Deprecated Service侧的协议
+	RpcGroup           string `json:"rpcGroup" yaml:"rpcGroup"`     // Deprecated Service侧的接口分组
+	RpcVersion         string `json:"rpcVersion" yaml:"rpcVersion"` // Deprecated Service侧的接口版本
+	RpcTimeout         string `json:"rpcTimeout" yaml:"rpcTimeout"` // Deprecated Service侧的调用超时
+	RpcRetries         string `json:"rpcRetries" yaml:"rpcRetries"` // Deprecated Service侧的调用重试
 }
 
 func (b BackendService) AttrRpcProto() string {
@@ -239,15 +239,15 @@ func (b BackendService) ServiceID() string {
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
-	Application string         `json:"application"` // 所属应用名
-	Version     string         `json:"version"`     // 端点版本号
-	HttpPattern string         `json:"httpPattern"` // 映射Http侧的UriPattern
-	HttpMethod  string         `json:"httpMethod"`  // 映射Http侧的Method
-	Service     BackendService `json:"service"`     // 上游服务
-	Permission  BackendService `json:"permission"`  // Deprecated 权限验证定义
-	Permissions []string       `json:"permissions"` // 多组权限验证服务ID列表
-	EmbeddedAttributes
-	EmbeddedExtensions
+	Application        string         `json:"application" yaml:"application"` // 所属应用名
+	Version            string         `json:"version" yaml:"version"`         // 端点版本号
+	HttpPattern        string         `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
+	HttpMethod         string         `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
+	Service            BackendService `json:"service" yaml:"service"`         // 上游服务
+	Permission         BackendService `json:"permission" yaml:"permission"`   // Deprecated 权限验证定义
+	Permissions        []string       `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
+	EmbeddedAttributes `yaml:",inline"`
+	EmbeddedExtensions `yaml:",inline"`
 }
 
 func (e Endpoint) PermissionServiceIds() []string {
