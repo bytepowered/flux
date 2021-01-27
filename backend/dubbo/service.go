@@ -70,14 +70,14 @@ type (
 // BackendTransportService 集成DubboRPC框架的BackendService
 type BackendTransportService struct {
 	// 可外部配置
-	defaults         map[string]interface{}         // 配置默认值
-	registryAlias    map[string]string              // Registry的别名
-	dubboOptionsFunc []DubboGenericOptionsFunc      // Dubbo Reference 配置函数
-	dubboServiceFunc DubboGenericServiceFunc        // Dubbo Service 构建函数
-	dubboInvokeFunc  DubboGenericInvokeFunc         // 执行Dubbo泛调用的函数
-	argAssembleFunc  ArgumentsAssembleFunc          // Dubbo参数封装函数
-	attAssembleFunc  AttachmentAssembleFun          // Attachment封装函数
-	resultDecodeFunc flux.BackendResponseDecodeFunc // 解析响应结果的函数
+	defaults          map[string]interface{}        // 配置默认值
+	registryAlias     map[string]string             // Registry的别名
+	dubboOptionsFunc  []DubboGenericOptionsFunc     // Dubbo Reference 配置函数
+	dubboServiceFunc  DubboGenericServiceFunc       // Dubbo Service 构建函数
+	dubboInvokeFunc   DubboGenericInvokeFunc        // 执行Dubbo泛调用的函数
+	argAssembleFunc   ArgumentsAssembleFunc         // Dubbo参数封装函数
+	attAssembleFunc   AttachmentAssembleFun         // Attachment封装函数
+	responseCodecFunc flux.BackendResponseCodecFunc // 解析响应结果的函数
 	// 内部私有
 	traceEnable   bool
 	configuration *flux.Configuration
@@ -98,10 +98,10 @@ func WithAttachmentAssembleFunc(fun AttachmentAssembleFun) Option {
 	}
 }
 
-// WithResultDecodeFunc 用于配置响应数据解析实现函数
-func WithResultDecodeFunc(fun flux.BackendResponseDecodeFunc) Option {
+// WithResponseCodecFunc 用于配置响应数据解析实现函数
+func WithResponseCodecFunc(fun flux.BackendResponseCodecFunc) Option {
 	return func(service *BackendTransportService) {
-		service.resultDecodeFunc = fun
+		service.responseCodecFunc = fun
 	}
 }
 
@@ -161,7 +161,7 @@ func NewBackendTransportServiceOverrides(overrides ...Option) flux.BackendTransp
 	opts := []Option{
 		WithArgumentAssembleFunc(DefaultArgAssembleFunc),
 		WithAttachmentAssembleFunc(DefaultAttAssembleFun),
-		WithResultDecodeFunc(NewBackendResultDecodeFunc()),
+		WithResponseCodecFunc(NewBackendResponseCodecFunc()),
 		WithRegistryAlias(map[string]string{
 			"id":       "dubbo.registry.id",
 			"protocol": "dubbo.registry.protocol",
@@ -202,8 +202,8 @@ func (b *BackendTransportService) Configuration() *flux.Configuration {
 }
 
 // GetResultDecodeFunc returns result decode func
-func (b *BackendTransportService) GetResponseDecodeFunc() flux.BackendResponseDecodeFunc {
-	return b.resultDecodeFunc
+func (b *BackendTransportService) GetResponseCodecFunc() flux.BackendResponseCodecFunc {
+	return b.responseCodecFunc
 }
 
 // Init init backend
@@ -270,7 +270,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 		return nil, serr
 	}
 	// decode response
-	result, err := b.GetResponseDecodeFunc()(ctx, raw)
+	result, err := b.GetResponseCodecFunc()(ctx, raw)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,

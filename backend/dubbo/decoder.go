@@ -12,7 +12,7 @@ const (
 	ResponseKeyHeaders    = "@net.bytepowered.flux.http-headers"
 )
 
-func NewBackendResultDecodeFuncWith(codeKey, headerKey string) flux.BackendResponseDecodeFunc {
+func NewBackendResponseCodecFuncWith(codeKey, headerKey string) flux.BackendResponseCodecFunc {
 	return func(ctx flux.Context, raw interface{}) (*flux.BackendResponse, error) {
 		// 支持Dubbo返回Result类型
 		rpcr, ok := raw.(protocol.Result)
@@ -42,6 +42,6 @@ func NewBackendResultDecodeFuncWith(codeKey, headerKey string) flux.BackendRespo
 	}
 }
 
-func NewBackendResultDecodeFunc() flux.BackendResponseDecodeFunc {
-	return NewBackendResultDecodeFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders)
+func NewBackendResponseCodecFunc() flux.BackendResponseCodecFunc {
+	return NewBackendResponseCodecFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders)
 }

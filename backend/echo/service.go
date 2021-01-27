@@ -17,16 +17,16 @@ var (
 )
 
 type BackendTransportService struct {
-	decodeFunc flux.BackendResponseDecodeFunc
+	decodeFunc flux.BackendResponseCodecFunc
 }
 
-func (b *BackendTransportService) GetResponseDecodeFunc() flux.BackendResponseDecodeFunc {
+func (b *BackendTransportService) GetResponseCodecFunc() flux.BackendResponseCodecFunc {
 	return b.decodeFunc
 }
 
 func NewBackendTransportService() flux.BackendTransport {
 	return &BackendTransportService{
-		decodeFunc: NewEchoBackendResultDecodeFunc(),
+		decodeFunc: NewBackendResponseCodecFunc(),
 	}
 }
 
@@ -63,7 +63,7 @@ func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendS
 	}, nil
 }
 
-func NewEchoBackendResultDecodeFunc() flux.BackendResponseDecodeFunc {
+func NewBackendResponseCodecFunc() flux.BackendResponseCodecFunc {
 	return func(ctx flux.Context, value interface{}) (*flux.BackendResponse, error) {
 		return &flux.BackendResponse{
 			StatusCode: http.StatusOK,

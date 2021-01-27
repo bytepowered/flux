@@ -26,9 +26,9 @@ type (
 )
 
 type BackendTransportService struct {
-	httpClient       *http.Client
-	resultDecodeFunc flux.BackendResponseDecodeFunc
-	argAssembleFunc  ArgumentsAssembleFunc
+	httpClient        *http.Client
+	responseCodecFunc flux.BackendResponseCodecFunc
+	argAssembleFunc   ArgumentsAssembleFunc
 }
 
 func NewBackendTransportService() *BackendTransportService {
@@ -36,7 +36,7 @@ func NewBackendTransportService() *BackendTransportService {
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		resultDecodeFunc: NewBackendResultDecodeFunc(),
+		responseCodecFunc: NewBackendResponseCodecFunc(),
 	}
 }
 
@@ -45,7 +45,7 @@ func NewBackendTransportServiceWith(opts ...Option) *BackendTransportService {
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		resultDecodeFunc: NewBackendResultDecodeFunc(),
+		responseCodecFunc: NewBackendResponseCodecFunc(),
 	}
 	for _, opt := range opts {
 		opt(bts)
@@ -60,10 +60,10 @@ func WithHttpClient(client *http.Client) Option {
 	}
 }
 
-// WithResultDecodeFunc 用于配置响应数据解析实现函数
-func WithResultDecodeFunc(fun flux.BackendResponseDecodeFunc) Option {
+// WithResponseCodecFunc 用于配置响应数据解析实现函数
+func WithResponseCodecFunc(fun flux.BackendResponseCodecFunc) Option {
 	return func(service *BackendTransportService) {
-		service.resultDecodeFunc = fun
+		service.responseCodecFunc = fun
 	}
 }
 
@@ -74,8 +74,8 @@ func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
 	}
 }
 
-func (b *BackendTransportService) GetResponseDecodeFunc() flux.BackendResponseDecodeFunc {
-	return b.resultDecodeFunc
+func (b *BackendTransportService) GetResponseCodecFunc() flux.BackendResponseCodecFunc {
+	return b.responseCodecFunc
 }
 
 func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
@@ -89,7 +89,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 		return nil, serr
 	}
 	// decode response
-	result, err := b.GetResponseDecodeFunc()(ctx, raw)
+	result, err := b.GetResponseCodecFunc()(ctx, raw)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,

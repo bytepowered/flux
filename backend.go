@@ -14,8 +14,8 @@ type (
 		Invoke(Context, BackendService) (interface{}, *ServeError)
 		// InvokeCodec 执行指定目标EndpointService的通讯，返回响应结果，并解析响应数据
 		InvokeCodec(Context, BackendService) (*BackendResponse, *ServeError)
-		// GetResultDecodeFunc 获取响应结果解析函数
-		GetResponseDecodeFunc() BackendResponseDecodeFunc
+		// GetResponseCodecFunc 获取响应结果解析函数
+		GetResponseCodecFunc() BackendResponseCodecFunc
 	}
 
 	// BackendResponse 后端服务返回统一响应数据结构
@@ -30,8 +30,8 @@ type (
 		Body interface{}
 	}
 
-	// BackendResponseDecodeFunc 解析Backend返回的原始数据
-	BackendResponseDecodeFunc func(ctx Context, raw interface{}) (*BackendResponse, error)
+	// BackendResponseCodecFunc 解析Backend返回的原始数据
+	BackendResponseCodecFunc func(ctx Context, raw interface{}) (*BackendResponse, error)
 )
 
 func (b *BackendResponse) GetStatusCode() int {
