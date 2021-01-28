@@ -20,7 +20,7 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEn
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
-		logger.Infow("Invalid endpoint event data.size", "data", string(bytes))
+		logger.Warnw("Invalid endpoint event data.size", "data", string(bytes))
 		return invalidHttpEndpointEvent, false
 	}
 	comp := CompatibleEndpoint{}
@@ -29,28 +29,32 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEn
 			"event-type", etype, "data", string(bytes), "error", err)
 		return invalidHttpEndpointEvent, false
 	}
-	logger.Infow("Received endpoint event",
-		"event-type", etype, "method", comp.HttpMethod, "pattern", comp.HttpPattern, "data", string(bytes))
-	// 兼容旧协议数据格式
-	fixesServiceAttributes(&comp.Service)
-	fixesServiceAttributes(&comp.Permission)
-	if len(comp.Attributes) == 0 {
-		comp.Attributes = []flux.Attribute{
-			{
-				Tag:   flux.EndpointAttrTagAuthorize,
-				Name:  "Authorize",
-				Value: comp.Authorize,
-			},
-		}
-	}
 	// 检查有效性
 	if !comp.IsValid() {
 		logger.Warnw("illegal http-metadata", "data", string(bytes))
 		return invalidHttpEndpointEvent, false
 	}
-	if !comp.Service.IsValid() {
-		logger.Warnw("illegal service", "service", comp.Service, "data", string(bytes))
-		return invalidHttpEndpointEvent, false
+	setupServiceAttributes(&comp.Service)
+	ensureServiceAttributeTagName(&comp.Service)
+	if comp.Permission.IsValid() {
+		setupServiceAttributes(&comp.Permission)
+		ensureServiceAttributeTagName(&comp.Permission)
+	}
+	if len(comp.Attributes) == 0 {
+		comp.Attributes = []flux.Attribute{
+			{
+				Tag:   flux.EndpointAttrTagAuthorize,
+				Name:  flux.EndpointAttrTagNames[flux.EndpointAttrTagAuthorize],
+				Value: comp.Authorize,
+			},
+		}
+	}
+	// 订正Tag与Name的关系
+	for i := range comp.Attributes {
+		ptr := &comp.Attributes[i]
+		newT, newName := flux.EnsureEndpointAttribute(ptr.Tag, ptr.Name)
+		ptr.Tag = newT
+		ptr.Name = newName
 	}
 
 	event := flux.HttpEndpointEvent{

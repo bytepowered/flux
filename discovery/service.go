@@ -25,7 +25,7 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
-		logger.Infow("Invalid service event data.size", "data", string(bytes))
+		logger.Warnw("Invalid service event data.size", "data", string(bytes))
 		return invalidBackendServiceEvent, false
 	}
 	service := flux.BackendService{}
@@ -34,14 +34,13 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.
 			"event-type", etype, "data", string(bytes), "error", err)
 		return invalidBackendServiceEvent, false
 	}
-	logger.Infow("Received service event",
-		"event-type", etype, "service-id", service.ServiceId, "data", string(bytes))
 	// 检查有效性
-	fixesServiceAttributes(&service)
 	if !service.IsValid() {
 		logger.Warnw("illegal backend service", "service", service)
 		return invalidBackendServiceEvent, false
 	}
+	setupServiceAttributes(&service)
+	ensureServiceAttributeTagName(&service)
 	event := flux.BackendServiceEvent{
 		Service: service,
 	}
@@ -58,35 +57,45 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.
 	return event, true
 }
 
-func fixesServiceAttributes(service *flux.BackendService) {
-	// 兼容旧协议数据格式
+// setupServiceAttributes 兼容旧协议数据格式
+func setupServiceAttributes(service *flux.BackendService) {
 	if len(service.Attributes) == 0 {
 		service.Attributes = []flux.Attribute{
 			{
 				Tag:   flux.ServiceAttrTagRpcProto,
-				Name:  "RpcProto",
+				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcProto],
 				Value: service.RpcProto,
 			},
 			{
 				Tag:   flux.ServiceAttrTagRpcGroup,
-				Name:  "RpcGroup",
+				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcGroup],
 				Value: service.RpcGroup,
 			},
 			{
 				Tag:   flux.ServiceAttrTagRpcVersion,
-				Name:  "RpcVersion",
+				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcVersion],
 				Value: service.RpcVersion,
 			},
 			{
 				Tag:   flux.ServiceAttrTagRpcRetries,
-				Name:  "RpcRetries",
+				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcRetries],
 				Value: service.RpcRetries,
 			},
 			{
 				Tag:   flux.ServiceAttrTagRpcTimeout,
-				Name:  "RpcTimeout",
+				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcTimeout],
 				Value: service.RpcTimeout,
 			},
 		}
+	}
+}
+
+func ensureServiceAttributeTagName(service *flux.BackendService) {
+	// 订正Tag与Name的关系
+	for i := range service.Attributes {
+		ptr := &service.Attributes[i]
+		newT, newName := flux.EnsureServiceAttribute(ptr.Tag, ptr.Name)
+		ptr.Tag = newT
+		ptr.Name = newName
 	}
 }

@@ -67,7 +67,7 @@ const (
 
 // ServiceAttributes
 const (
-	ServiceAttrTagNotDefined = iota
+	ServiceAttrTagNotDefined uint8 = iota
 	ServiceAttrTagRpcProto
 	ServiceAttrTagRpcGroup
 	ServiceAttrTagRpcVersion
@@ -75,11 +75,25 @@ const (
 	ServiceAttrTagRpcRetries
 )
 
+var ServiceAttrTagNames = map[uint8]string{
+	ServiceAttrTagNotDefined: "NotDefined",
+	ServiceAttrTagRpcProto:   "RpcProto",
+	ServiceAttrTagRpcGroup:   "RpcGroup",
+	ServiceAttrTagRpcVersion: "RpcVersion",
+	ServiceAttrTagRpcTimeout: "RpcTimeout",
+	ServiceAttrTagRpcRetries: "RpcRetries",
+}
+
 // EndpointAttributes
 const (
-	EndpointAttrTagNotDefined = iota
+	EndpointAttrTagNotDefined uint8 = iota
 	EndpointAttrTagAuthorize
 )
+
+var EndpointAttrTagNames = map[uint8]string{
+	EndpointAttrTagNotDefined: "NotDefined",
+	EndpointAttrTagAuthorize:  "Authorize",
+}
 
 type (
 	// ArgumentLookupFunc 参数值查找函数
@@ -222,9 +236,9 @@ func (b BackendService) AttrRpcRetries() string {
 	return b.AttrByTag(ServiceAttrTagRpcRetries).ValueString()
 }
 
-// IsValid 判断服务配置是否有效；Proto+Interface+Method不能为空；
+// IsValid 判断服务配置是否有效；Interface+Method不能为空；
 func (b BackendService) IsValid() bool {
-	return len(b.Attributes) > 0 && "" != b.Interface && "" != b.Method
+	return "" != b.Interface && "" != b.Method
 }
 
 // HasArgs 判定是否有参数
@@ -277,4 +291,26 @@ type HttpEndpointEvent struct {
 type BackendServiceEvent struct {
 	EventType EventType
 	Service   BackendService
+}
+
+func EnsureServiceAttribute(tag uint8, name string) (uint8, string) {
+	return EnsureAttribute(tag, name, ServiceAttrTagNames)
+}
+
+func EnsureEndpointAttribute(tag uint8, name string) (uint8, string) {
+	return EnsureAttribute(tag, name, EndpointAttrTagNames)
+}
+
+func EnsureAttribute(tag uint8, name string, mapping map[uint8]string) (uint8, string) {
+	if tag > 0 && name == "" {
+		name = mapping[tag]
+	}
+	if name != "" && tag <= 0 {
+		for t, n := range mapping {
+			if name == n {
+				tag = t
+			}
+		}
+	}
+	return tag, name
 }
