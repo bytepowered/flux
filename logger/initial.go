@@ -1,16 +1,17 @@
-package server
+package logger
 
 import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/logger"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"os"
 	"reflect"
+	"runtime"
+	"syscall"
 )
 
 const (
@@ -23,20 +24,20 @@ var (
 	defaultZapLogger = NewZapLogger(defaultZapConfig)
 )
 
-func DefaultLoggerFactory(values context.Context) flux.Logger {
-	return SugaredLoggerFactoryFactory(defaultZapLogger)(values)
+func DefaultFactory(values context.Context) flux.Logger {
+	return SugaredFactory(defaultZapLogger)(values)
 }
 
-func SugaredLoggerFactoryFactory(sugar *zap.SugaredLogger) flux.LoggerFactory {
+func SugaredFactory(sugar *zap.SugaredLogger) flux.LoggerFactory {
 	return func(values context.Context) flux.Logger {
 		if values == nil {
 			return sugar
 		}
 		newLogger := sugar
-		if traceId := values.Value(logger.TraceId); nil != traceId {
-			newLogger = newLogger.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+		if traceId := values.Value(TraceId); nil != traceId {
+			newLogger = newLogger.With(zap.String(TraceId, cast.ToString(traceId)))
 		}
-		if extras, ok := values.Value(logger.Extras).(map[string]string); ok && len(extras) > 0 {
+		if extras, ok := values.Value(Extras).(map[string]string); ok && len(extras) > 0 {
 			fields := make([]interface{}, 0, len(extras))
 			for name, val := range extras {
 				fields = append(fields, zap.String(name, val))
@@ -47,22 +48,22 @@ func SugaredLoggerFactoryFactory(sugar *zap.SugaredLogger) flux.LoggerFactory {
 	}
 }
 
-func LoadLoggerConfig(file string) (zap.Config, error) {
-	if file == "" {
-		file = os.Getenv(EnvKeyApplicationLogConfFile)
+func LoadConfig(logfile string) (zap.Config, error) {
+	if logfile == "" {
+		logfile = os.Getenv(EnvKeyApplicationLogConfFile)
 	}
 	config := defaultZapConfig
-	if file == "" {
-		return config, errors.New("log configure file name is nil")
+	if logfile == "" {
+		return config, errors.New("log configure logfile name is nil")
 	}
 	v := viper.New()
-	v.SetConfigFile(file)
+	v.SetConfigFile(logfile)
 	if err := v.ReadInConfig(); nil != err {
-		return config, fmt.Errorf("read logger config, path: %s, err: %w", file, err)
+		return config, fmt.Errorf("read logger config, path: %s, err: %w", logfile, err)
 	}
 	// AtomicLevel转换
 	if err := v.Unmarshal(&config, viper.DecodeHook(stringToAtomicLevel)); nil != err {
-		return config, fmt.Errorf("unmarshal logger config, path: %s, err: %w", file, err)
+		return config, fmt.Errorf("unmarshal logger config, path: %s, err: %w", logfile, err)
 	}
 	return config, nil
 }
@@ -73,6 +74,28 @@ func NewZapLogger(config zap.Config) *zap.SugaredLogger {
 		panic(err)
 	}
 	return zLogger.Sugar()
+}
+
+var (
+	gStdErrFileHandler *os.File
+)
+
+func RewriteError(errfile string) error {
+	file, err := os.OpenFile(errfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	gStdErrFileHandler = file
+	if err = syscall.Dup2(int(file.Fd()), int(os.Stderr.Fd())); err != nil {
+		fmt.Println(err)
+		return err
+	}
+	// 内存回收前关闭文件描述符
+	runtime.SetFinalizer(gStdErrFileHandler, func(fd *os.File) {
+		_ = fd.Close()
+	})
+	return nil
 }
 
 func stringToAtomicLevel(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {

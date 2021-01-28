@@ -5,11 +5,12 @@ import (
 	"github.com/bytepowered/flux/backend"
 	"github.com/bytepowered/flux/discovery"
 	"github.com/bytepowered/flux/ext"
+	"github.com/bytepowered/flux/logger"
 )
 
 func init() {
 	// Default logger factory
-	ext.SetLoggerFactory(DefaultLoggerFactory)
+	ext.SetLoggerFactory(logger.DefaultFactory)
 	// 参数查找与解析函数
 	ext.SetArgumentLookupFunc(backend.DefaultArgumentValueLookupFunc)
 	// Serializer

@@ -18,11 +18,11 @@ const (
 )
 
 func InitDefaultLogger() {
-	config, err := LoadLoggerConfig("")
+	config, err := logger.LoadConfig("")
 	if nil != err {
 		panic(err)
 	}
-	sugar := NewZapLogger(config)
+	sugar := logger.NewZapLogger(config)
 	logger.SetSimpleLogger(sugar)
 	zap.ReplaceGlobals(sugar.Desugar())
 	ext.SetLoggerFactory(func(values context.Context) flux.Logger {
@@ -36,7 +36,7 @@ func InitDefaultLogger() {
 	})
 }
 
-func InitConfiguration(envKey string) {
+func InitAppConfig(envKey string) {
 	file := "application"
 	env := os.Getenv(envKey)
 	if env != "" {
@@ -52,7 +52,7 @@ func InitConfiguration(envKey string) {
 }
 
 func Run(ver flux.BuildInfo) {
-	InitConfiguration(EnvKeyDeployEnv)
+	InitAppConfig(EnvKeyDeployEnv)
 	engine := NewHttpServeEngine()
 	if err := engine.Prepare(); nil != err {
 		logger.Panic("HttpServeEngine prepare:", err)
