@@ -3,7 +3,7 @@ package flux
 import "context"
 
 // Build version info
-type BuildInfo struct {
+type Build struct {
 	CommitId string
 	Version  string
 	Date     string

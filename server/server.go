@@ -206,8 +206,8 @@ func (s *HttpServeEngine) Initial() error {
 	return s.router.Initial()
 }
 
-func (s *HttpServeEngine) Startup(info flux.BuildInfo) error {
-	logger.Infof(VersionFormat, info.CommitId, info.Version, info.Date)
+func (s *HttpServeEngine) Startup(build flux.Build) error {
+	logger.Infof(VersionFormat, build.CommitId, build.Version, build.Date)
 	if "" != s.banner {
 		logger.Info(s.banner)
 	}

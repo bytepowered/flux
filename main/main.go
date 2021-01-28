@@ -19,5 +19,5 @@ var (
 // 或者导入 _ "github.com/bytepowered/flux/webecho" 自动注册WebServer；
 func main() {
 	server.InitDefaultLogger()
-	server.Run(flux.BuildInfo{CommitId: GitCommit, Version: Version, Date: BuildDate})
+	server.Run(flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate})
 }
