@@ -43,7 +43,7 @@ func DefaultServerErrorsWriter(webc flux.WebContext, requestId string, header ht
 	if nil != serr.Internal {
 		resp["error"] = serr.Internal.Error()
 	}
-	bytes, err := SerializeWith(serverWriterSerializer, resp)
+	bytes, err := SerializeWith(GetServerWriterSerializer(), resp)
 	if nil != err {
 		return err
 	}
@@ -78,7 +78,7 @@ func DefaultServerResponseWriter(webc flux.WebContext, requestId string, header 
 		logger.With(requestId).Infow("Http responseWriter, logging", "data", string(output))
 	}()
 	// 写入Http响应发生的错误，没必要向上抛出Error错误处理。因为已无法通过WriteError写到客户端
-	if err := WriteHttpResponse(webc, status, serverResponseContentType, output); nil != err {
+	if err := WriteHttpResponse(webc, status, GetServerResponseContentType(), output); nil != err {
 		logger.With(requestId).Errorw("Http responseWriter, write channel", "data", string(output), "error", err)
 	}
 	return nil
