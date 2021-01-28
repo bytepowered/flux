@@ -11,7 +11,7 @@ import (
 )
 
 func TestDefaultAssembleFunc(t *testing.T) {
-	ext.SetArgumentLookupFunc(backend.DefaultArgumentValueLookupFunc)
+	ext.SetArgumentLookupFunc(backend.DefaultArgumentLookupFunc)
 	serializer := flux.NewJsonSerializer()
 	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)

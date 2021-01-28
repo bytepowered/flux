@@ -9,7 +9,7 @@ import (
 )
 
 // 默认实现：查找Argument的值函数
-func DefaultArgumentValueLookupFunc(scope, key string, ctx flux.Context) (value flux.MTValue, err error) {
+func DefaultArgumentLookupFunc(scope, key string, ctx flux.Context) (value flux.MTValue, err error) {
 	if "" == scope || "" == key {
 		return flux.WrapObjectMTValue(nil), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
 	}

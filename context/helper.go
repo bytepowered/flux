@@ -16,7 +16,7 @@ func LookupContextByExpr(lookupExpr string, ctx flux.Context) (interface{}, erro
 	if !ok {
 		return "", errors.New("illegal lookup expr: " + lookupExpr)
 	}
-	mtv, err := backend.DefaultArgumentValueLookupFunc(scope, key, ctx)
+	mtv, err := backend.DefaultArgumentLookupFunc(scope, key, ctx)
 	if nil != err {
 		return "", err
 	}

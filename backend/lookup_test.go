@@ -12,10 +12,10 @@ import (
 func TestNilContext(t *testing.T) {
 	assert := assert2.New(t)
 	// Scope & key
-	_, err0 := DefaultArgumentValueLookupFunc("", "", context.NewEmptyContext())
+	_, err0 := DefaultArgumentLookupFunc("", "", context.NewEmptyContext())
 	assert.Error(err0, "must error")
 	// Nil context
-	_, err1 := DefaultArgumentValueLookupFunc("a", "b", nil)
+	_, err1 := DefaultArgumentLookupFunc("a", "b", nil)
 	assert.Error(err1, "must error")
 }
 
@@ -55,7 +55,7 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 	}
 	assert := assert2.New(t)
 	for _, c := range cases {
-		mtv, err := DefaultArgumentValueLookupFunc(c.scope, c.key, valctx)
+		mtv, err := DefaultArgumentLookupFunc(c.scope, c.key, valctx)
 		assert.NoError(err, "must no error")
 		assert.Equal(c.expect, mtv)
 	}
