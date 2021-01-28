@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// LookupWebContextByExpr 搜索LookupExpr表达式指定域的值。
-func LookupWebContextByExpr(lookupExpr string, webc flux.WebContext) string {
+// LookupValueByExpr 搜索LookupExpr表达式指定域的值。
+func LookupValueByExpr(lookupExpr string, webc flux.WebContext) string {
 	if "" == lookupExpr || nil == webc {
 		return ""
 	}
@@ -17,36 +17,35 @@ func LookupWebContextByExpr(lookupExpr string, webc flux.WebContext) string {
 	if !ok {
 		return ""
 	}
-	return LookupWebContext(scope, key, webc)
+	return LookupValue(scope, key, webc)
 }
 
-func LookupWebContext(scope, key string, webc flux.WebContext) string {
+func LookupValue(scope, key string, webc flux.WebContext) string {
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
-		return webc.PathValue(key)
+		return webc.PathVar(key)
 	case flux.ScopeQuery:
-		return webc.QueryValue(key)
+		return webc.QueryVar(key)
 	case flux.ScopeForm:
-		return webc.FormValue(key)
+		return webc.FormVar(key)
 	case flux.ScopeHeader:
-		return webc.HeaderValue(key)
-	case flux.ScopeAttr:
+		return webc.HeaderVar(key)
+	case flux.ScopeValue:
 		return cast.ToString(webc.GetValue(key))
 	case flux.ScopeRequest:
 		switch strings.ToLower(key) {
 		case "method":
 			return webc.Method()
 		case "uri":
-			return webc.RequestURI()
+			return webc.URI()
 		}
 		return webc.Method()
 	case flux.ScopeParam:
-		v, _ := pkg.LookupByProviders(key, webc.QueryValues, webc.FormValues)
+		v, _ := pkg.LookupByProviders(key, webc.QueryVars, webc.FormVars)
 		return v
 	case flux.ScopeAuto:
-		if v, ok := pkg.LookupByProviders(key, webc.PathValues, webc.QueryValues, webc.FormValues, func() url.Values {
-			h, _ := webc.HeaderValues()
-			return url.Values(h)
+		if v, ok := pkg.LookupByProviders(key, webc.PathVars, webc.QueryVars, webc.FormVars, func() url.Values {
+			return url.Values(webc.HeaderVars())
 		}); ok {
 			return v
 		}

@@ -45,19 +45,19 @@ func (b *BackendTransportService) InvokeCodec(context flux.Context, service flux
 
 func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendService) (interface{}, *flux.ServeError) {
 	var data []byte
-	if r, err := ctx.Request().RequestBodyReader(); nil == err {
+	if r, err := ctx.Request().BodyReader(); nil == err {
 		data, _ = ioutil.ReadAll(r)
 		_ = r.Close()
 	}
-	header, _ := ctx.Request().HeaderValues()
+	header := ctx.Request().HeaderVars()
 	return map[string]interface{}{
 		"backend-service":      service,
 		"request-id":           ctx.RequestId(),
-		"request-uri":          ctx.RequestURI(),
+		"request-uri":          ctx.URI(),
 		"request-method":       ctx.Method(),
-		"request-pathValues":   ctx.Request().PathValues(),
-		"request-queryValues":  ctx.Request().QueryValues(),
-		"request-formValues":   ctx.Request().FormValues(),
+		"request-pathValues":   ctx.Request().PathVars(),
+		"request-queryValues":  ctx.Request().QueryVars(),
+		"request-formValues":   ctx.Request().FormVars(),
 		"request-headerValues": header,
 		"request-body":         string(data),
 	}, nil

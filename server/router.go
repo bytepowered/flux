@@ -11,20 +11,20 @@ import (
 	"sort"
 )
 
-type Router struct {
+type AppRouter struct {
 	metrics *Metrics
 	hooks   []flux.PrepareHookFunc
 }
 
-func NewRouter() *Router {
-	return &Router{
+func NewAppRouter() *AppRouter {
+	return &AppRouter{
 		metrics: NewMetrics(),
 		hooks:   make([]flux.PrepareHookFunc, 0, 4),
 	}
 }
 
-func (r *Router) Prepare() error {
-	logger.Info("Router preparing")
+func (r *AppRouter) Prepare() error {
+	logger.Info("AppRouter preparing")
 	for _, hook := range append(ext.GetPrepareHooks(), r.hooks...) {
 		if err := hook(); nil != err {
 			return err
@@ -33,8 +33,8 @@ func (r *Router) Prepare() error {
 	return nil
 }
 
-func (r *Router) Initial() error {
-	logger.Info("Router initialing")
+func (r *AppRouter) Initial() error {
+	logger.Info("AppRouter initialing")
 	// Backends
 	for proto, backend := range ext.GetBackendTransports() {
 		ns := "BACKEND." + proto
@@ -78,7 +78,7 @@ func (r *Router) Initial() error {
 	return nil
 }
 
-func (r *Router) InitialHook(ref interface{}, config *flux.Configuration) error {
+func (r *AppRouter) InitialHook(ref interface{}, config *flux.Configuration) error {
 	if init, ok := ref.(flux.Initializer); ok {
 		if err := init.Init(config); nil != err {
 			return err
@@ -88,7 +88,7 @@ func (r *Router) InitialHook(ref interface{}, config *flux.Configuration) error 
 	return nil
 }
 
-func (r *Router) Startup() error {
+func (r *AppRouter) Startup() error {
 	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -97,7 +97,7 @@ func (r *Router) Startup() error {
 	return nil
 }
 
-func (r *Router) Shutdown(ctx context.Context) error {
+func (r *AppRouter) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -106,7 +106,7 @@ func (r *Router) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Router) Route(ctx flux.Context) *flux.ServeError {
+func (r *AppRouter) Route(ctx flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
@@ -143,7 +143,8 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			ctx.AddMetric("M-Backend", ctx.ElapsedTime())
 		}()
 		if backend, ok := ext.GetBackendTransport(protoName); !ok {
-			logger.WithContext(ctx).Warnw("Route, unsupported protocol", "proto", protoName, "service", ctx.Endpoint().Service)
+			logger.WithContext(ctx).Warnw("Route, unsupported protocol",
+				"proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
@@ -159,7 +160,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	return doMetricEndpointFunc(err)
 }
 
-func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
+func (r *AppRouter) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}

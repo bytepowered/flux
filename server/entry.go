@@ -55,10 +55,10 @@ func Run(build flux.Build) {
 	InitAppConfig(EnvKeyDeployEnv)
 	engine := NewHttpServeEngine()
 	if err := engine.Prepare(); nil != err {
-		logger.Panic("HttpServeEngine prepare:", err)
+		logger.Panic("AppServer prepare:", err)
 	}
 	if err := engine.Initial(); nil != err {
-		logger.Panic("HttpServeEngine init:", err)
+		logger.Panic("AppServer init:", err)
 	}
 	go func() {
 		if err := engine.Startup(build); nil != err && err != http.ErrServerClosed {

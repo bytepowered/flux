@@ -19,36 +19,35 @@ func DefaultArgumentLookupFunc(scope, key string, ctx flux.Context) (value flux.
 	req := ctx.Request()
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
-		return flux.WrapStringMTValue(req.PathValue(key)), nil
+		return flux.WrapStringMTValue(req.PathVar(key)), nil
 	case flux.ScopePathMap:
-		return flux.WrapStrValuesMapMTValue(req.PathValues()), nil
+		return flux.WrapStrValuesMapMTValue(req.PathVars()), nil
 	case flux.ScopeQuery:
-		return flux.WrapStringMTValue(req.QueryValue(key)), nil
+		return flux.WrapStringMTValue(req.QueryVar(key)), nil
 	case flux.ScopeQueryMulti:
-		return flux.WrapStrListMTValue(req.QueryValues()[key]), nil
+		return flux.WrapStrListMTValue(req.QueryVars()[key]), nil
 	case flux.ScopeQueryMap:
-		return flux.WrapStrValuesMapMTValue(req.QueryValues()), nil
+		return flux.WrapStrValuesMapMTValue(req.QueryVars()), nil
 	case flux.ScopeForm:
-		return flux.WrapStringMTValue(req.FormValue(key)), nil
+		return flux.WrapStringMTValue(req.FormVar(key)), nil
 	case flux.ScopeFormMap:
-		return flux.WrapStrValuesMapMTValue(req.FormValues()), nil
+		return flux.WrapStrValuesMapMTValue(req.FormVars()), nil
 	case flux.ScopeFormMulti:
-		return flux.WrapStrListMTValue(req.FormValues()[key]), nil
+		return flux.WrapStrListMTValue(req.FormVars()[key]), nil
 	case flux.ScopeHeader:
-		return flux.WrapStringMTValue(req.HeaderValue(key)), nil
+		return flux.WrapStringMTValue(req.HeaderVar(key)), nil
 	case flux.ScopeHeaderMap:
-		header, _ := req.HeaderValues()
-		return flux.WrapStrValuesMapMTValue(header), nil
+		return flux.WrapStrValuesMapMTValue(req.HeaderVars()), nil
 	case flux.ScopeAttr:
 		v, _ := ctx.GetAttribute(key)
 		return flux.WrapObjectMTValue(v), nil
 	case flux.ScopeAttrs:
 		return flux.WrapStrMapMTValue(ctx.Attributes()), nil
 	case flux.ScopeBody:
-		reader, err := req.RequestBodyReader()
-		return flux.MTValue{Value: reader, MediaType: req.HeaderValue(flux.HeaderContentType)}, err
+		reader, err := req.BodyReader()
+		return flux.MTValue{Value: reader, MediaType: req.HeaderVar(flux.HeaderContentType)}, err
 	case flux.ScopeParam:
-		v, _ := pkg.LookupByProviders(key, req.QueryValues, req.FormValues)
+		v, _ := pkg.LookupByProviders(key, req.QueryVars, req.FormVars)
 		return flux.WrapStringMTValue(v), nil
 	case flux.ScopeValue:
 		v, _ := ctx.GetValue(key)
@@ -58,16 +57,15 @@ func DefaultArgumentLookupFunc(scope, key string, ctx flux.Context) (value flux.
 		case "method":
 			return flux.WrapStringMTValue(ctx.Method()), nil
 		case "uri":
-			return flux.WrapStringMTValue(ctx.RequestURI()), nil
+			return flux.WrapStringMTValue(ctx.URI()), nil
 		default:
 			return flux.WrapStringMTValue(""), nil
 		}
 	case flux.ScopeAuto:
 		fallthrough
 	default:
-		if v, ok := pkg.LookupByProviders(key, req.PathValues, req.QueryValues, req.FormValues, func() url.Values {
-			h, _ := req.HeaderValues()
-			return url.Values(h)
+		if v, ok := pkg.LookupByProviders(key, req.PathVars, req.QueryVars, req.FormVars, func() url.Values {
+			return url.Values(req.HeaderVars())
 		}); ok {
 			return flux.WrapStringMTValue(v), nil
 		}

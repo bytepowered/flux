@@ -31,14 +31,14 @@ func WithContextExtras(ctx flux.Context, extraFields map[string]string) flux.Log
 	if nil == ctx {
 		return With("no-trace-id")
 	}
-	logger := ctx.GetLogger()
+	logger := ctx.Logger()
 	if logger == nil {
 		logger = zap.S()
 	}
 	fields := map[string]string{
 		"request-id":     ctx.RequestId(),
 		"request-method": ctx.Method(),
-		"request-uri":    ctx.RequestURI(),
+		"request-uri":    ctx.URI(),
 	}
 	for k, v := range extraFields {
 		fields[k] = v

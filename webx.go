@@ -10,7 +10,7 @@ import (
 
 var (
 	ErrHttpRequestNotSupported  = errors.New("webserver: http.request not supported")
-	ErrHttpResponseNotSupported = errors.New("webserver: http.responsewriter not supported")
+	ErrHttpResponseNotSupported = errors.New("webserver: http.response-writer not supported")
 )
 
 const (
@@ -110,6 +110,10 @@ type (
 // WebContext 定义封装Web框架的RequestContext的接口；
 // 用于 WebHandler，WebInterceptor 实现Web请求处理；
 type WebContext interface {
+
+	// Context 返回请求的Context对象
+	Context() context.Context
+
 	// Method 返回请求的HttpMethod
 	Method() string
 
@@ -119,58 +123,54 @@ type WebContext interface {
 	// UserAgent 返回请求的UserAgent
 	UserAgent() string
 
-	// RequestURI 返回请求的URI
-	RequestURI() string
+	// URI 返回请求的URI
+	URI() string
 
-	// RequestURL 返回请求对象的URL
+	// URL 返回请求对象的URL
 	// 注意：部分Web框架返回只读url.URL
-	RequestURL() (url *url.URL, writable bool)
+	URL() *url.URL
 
-	// RequestBodyReader 返回可重复读取的Reader接口；
-	RequestBodyReader() (io.ReadCloser, error)
+	// Address 返回请求对象的地址
+	Address() string
 
-	// RequestRewrite 修改请求方法和路径；
-	RequestRewrite(method string, path string)
+	// OnHeaderVars 访问请求Headers
+	OnHeaderVars(access func(header http.Header))
 
-	// SetRequestHeader 设置请求的Header
-	SetRequestHeader(name, value string)
+	// HeaderVars 返回请求对象的Header；只读；
+	HeaderVars() http.Header
 
-	// AddRequestHeader 添加请求的Header
-	AddRequestHeader(name, value string)
+	// QueryVars 返回Query查询参数键值对；只读；
+	QueryVars() url.Values
 
-	// RemoveRequestHeader 移除请求中的Header
-	RemoveRequestHeader(name string)
+	// PathVars 返回动态路径参数的键值对；只读；
+	PathVars() url.Values
 
-	// HeaderValues 返回请求对象的Header
-	// 注意：部分Web框架返回只读http.Header
-	HeaderValues() (header http.Header, writable bool)
+	// FormVars 返回Form表单参数键值对；只读；
+	FormVars() url.Values
 
-	// QueryValues 返回Query查询参数键值对；只读；
-	QueryValues() url.Values
+	// CookieVars 返回Cookie列表；只读；
+	CookieVars() []*http.Cookie
 
-	// PathValues 返回动态路径参数的键值对；只读；
-	PathValues() url.Values
+	// HeaderVar 读取请求的Header参数值
+	HeaderVar(name string) string
 
-	// FormValues 返回Form表单参数键值对；只读；
-	FormValues() url.Values
-
-	// QueryValues 返回Cookie列表；只读；
-	CookieValues() []*http.Cookie
-
-	// HeaderValue 读取请求的Header
-	HeaderValue(name string) string
-
-	// QueryValue 查询指定Name的Query参数值
-	QueryValue(name string) string
+	// QueryVar 查询指定Name的Query参数值
+	QueryVar(name string) string
 
 	// PathValue 查询指定Name的动态路径参数值
-	PathValue(name string) string
+	PathVar(name string) string
 
 	// FormValue 查询指定Name的表单参数值
-	FormValue(name string) string
+	FormVar(name string) string
 
 	// CookieValue 查询指定Name的Cookie对象，并返回是否存在标识
-	CookieValue(name string) (cookie *http.Cookie, ok bool)
+	CookieVar(name string) *http.Cookie
+
+	// BodyReader 返回可重复读取的Reader接口；
+	BodyReader() (io.ReadCloser, error)
+
+	// Rewrite 修改请求方法和路径；
+	Rewrite(method string, path string)
 
 	// Write 写入响应状态码和响应数据
 	Write(statusCode int, contentType string, bytes []byte) error
@@ -178,85 +178,77 @@ type WebContext interface {
 	// WriteStream 写入响应状态码和流数据
 	WriteStream(statusCode int, contentType string, reader io.Reader) error
 
-	// ResponseHeader 返回响应对象的Header以及是否只读
-	// 注意：部分Web框架返回只读http.Header
-	ResponseHeader() (header http.Header, writable bool)
-
-	// GetResponseHeader 获取已设置的Header键值
-	GetResponseHeader(name string) string
-
-	// SetResponseHeader 设置的Header键值
+	// SetResponseHeader 设置响应Response的Header键值
 	SetResponseHeader(key, value string)
 
-	// AddResponseHeader 添加指定Name的Header键值
-	AddResponseHeader(key, value string)
+	// AddResponseHeader 添加响应Response指定Name的Header键值
+	AddResponseHeader(key, values string)
 
 	// SetResponseWriter 设置ResponseWriter
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
 	SetResponseWriter(w http.ResponseWriter) error
 
+	// GetResponseWriter 返回Http标准ResponseWriter对象。
+	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
+	GetResponseWriter() (http.ResponseWriter, error)
+
 	// SetValue 设置Context域键值；作用域与请求生命周期相同；
-	SetValue(name string, value interface{})
+	SetValue(key string, value interface{})
 
 	// GetValue 获取Context域键值；作用域与请求生命周期相同；
-	GetValue(name string) interface{}
+	GetValue(key string) interface{}
 
 	// HttpRequest 返回Http标准Request对象。
 	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
 	HttpRequest() (*http.Request, error)
 
-	// Context 返回请求的Context对象
-	Context() context.Context
+	// WebContext 返回具体Web框架实现的WebContext对象
+	WebContext() interface{}
 
-	// HttpResponseWriter 返回Http标准ResponseWriter对象。
-	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
-	HttpResponseWriter() (http.ResponseWriter, error)
+	// WebRequest 返回具体Web框架实现的Request对象
+	WebRequest() interface{}
 
-	// Context 返回具体Web框架实现的WebContext对象
-	RawWebContext() interface{}
-
-	// RawWebRequest 返回具体Web框架实现的Request对象
-	RawWebRequest() interface{}
-
-	// RawWebResponse 返回具体Web框架实现的Response对象
-	RawWebResponse() interface{}
+	// WebResponse 返回具体Web框架实现的Response对象
+	WebResponse() interface{}
 }
 
-// RawWebServer 定义Web框架服务器的接口；通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。
-// 例如默认Web框架为labstack.echo；可以支持git, fasthttp等框架。
-type WebServer interface {
-	// SetWebErrorHandler 设置Web请求错误处理函数
-	SetWebErrorHandler(h WebErrorHandler)
+// ListenServer 定义Web框架服务器的接口；
+// 通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。
+// 例如默认Web框架为 labstack.echo；
+// 可以支持git, fasthttp等框架。
+type ListenServer interface {
+	// SetErrorHandler 设置Web请求错误处理函数
+	SetErrorHandler(h WebErrorHandler)
 
-	// SetWebNotFoundHandler 设置Web路由不存在处理函数
-	SetWebNotFoundHandler(h WebHandler)
+	// SetNotfoundHandler 设置Web路由不存在处理函数
+	SetNotfoundHandler(h WebHandler)
 
-	// SetWebRequestBodyDecoder 设置Body体解析接口
-	SetWebRequestBodyDecoder(decoder WebRequestBodyDecoder)
+	// SetRequestBodyDecoder 设置Body体解析接口
+	SetRequestBodyDecoder(decoder WebRequestBodyDecoder)
 
-	// AddWebInterceptor 添加全局请求拦截器，作用于路由请求前
-	AddWebInterceptor(m WebInterceptor)
+	// AddInterceptor 添加全局请求拦截器，作用于路由请求前
+	AddInterceptor(m WebInterceptor)
 
-	// AddWebHandler 添加请求路由处理函数及其中间件
-	AddWebHandler(method, pattern string, h WebHandler, m ...WebInterceptor)
+	// AddHandler 添加请求路由处理函数及其中间件
+	AddHandler(method, pattern string, h WebHandler, m ...WebInterceptor)
 
-	// AddWebHttpHandler 添加http标准请求路由处理函数及其中间件
-	AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
+	// AddHttpHandler 添加http标准请求路由处理函数及其中间件
+	AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 
-	// HandleWebNotFound 处理Web无法处理路由的请求
-	HandleWebNotFound(webc WebContext) error
+	// HandleNotfound 处理Web无法处理路由的请求
+	HandleNotfound(webc WebContext) error
 
-	// RawWebServer 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
-	RawWebServer() interface{}
+	// Server 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
+	Server() interface{}
 
-	// RawWebServer 返回具体实现的WebRouter路由处理对象，如echo,fasthttp的Router
-	RawWebRouter() interface{}
+	// Router 返回具体实现的WebRouter路由处理对象，如echo,fasthttp的Router
+	Router() interface{}
 
-	// StartTLS 启动TLS服务
-	StartTLS(addr string, certFile, keyFile string) error
+	// Listen 启动服务，监听端口
+	Listen(addr string, certFile, keyFile string) error
 
-	// Shutdown 停止服务
-	Shutdown(ctx context.Context) error
+	// Close 停止服务
+	Close(ctx context.Context) error
 }
 
 /// Wrapper functions
@@ -264,7 +256,7 @@ type WebServer interface {
 func WrapHttpHandler(h http.Handler) WebHandler {
 	return func(webc WebContext) error {
 		// 注意：部分Web框架不支持返回标准Request/Response
-		resp, err := webc.HttpResponseWriter()
+		resp, err := webc.GetResponseWriter()
 		if nil != err {
 			return err
 		}

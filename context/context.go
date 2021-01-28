@@ -13,32 +13,32 @@ var _ flux.Context = new(DefaultContext)
 
 // Context接口实现
 type DefaultContext struct {
-	requestId      string
-	webc           flux.WebContext
-	endpoint       *flux.Endpoint
-	attributes     *sync.Map
-	values         *sync.Map
-	metrics        []flux.Metric
-	beginTime      time.Time
-	requestReader  *DefaultRequestReader
-	responseWriter *DefaultResponseWriter
-	ctxLogger      flux.Logger
+	requestId  string
+	webc       flux.WebContext
+	endpoint   *flux.Endpoint
+	attributes *sync.Map
+	values     *sync.Map
+	metrics    []flux.Metric
+	startTime  time.Time
+	request    *DefaultRequest
+	response   *DefaultResponse
+	ctxLogger  flux.Logger
 }
 
 func DefaultContextFactory() flux.Context {
 	return &DefaultContext{
-		responseWriter: NewDefaultResponseWriter(),
-		requestReader:  NewDefaultRequestReader(),
-		ctxLogger:      logger.SimpleLogger(),
+		response:  NewDefaultResponse(),
+		request:   NewDefaultRequest(),
+		ctxLogger: logger.SimpleLogger(),
 	}
 }
 
-func (c *DefaultContext) Request() flux.RequestReader {
-	return c.requestReader
+func (c *DefaultContext) Request() flux.Request {
+	return c.request
 }
 
-func (c *DefaultContext) Response() flux.ResponseWriter {
-	return c.responseWriter
+func (c *DefaultContext) Response() flux.Response {
+	return c.response
 }
 
 func (c *DefaultContext) Endpoint() flux.Endpoint {
@@ -70,8 +70,8 @@ func (c *DefaultContext) Method() string {
 	return c.webc.Method()
 }
 
-func (c *DefaultContext) RequestURI() string {
-	return c.webc.RequestURI()
+func (c *DefaultContext) URI() string {
+	return c.webc.URI()
 }
 
 func (c *DefaultContext) RequestId() string {
@@ -132,7 +132,7 @@ func (c *DefaultContext) Context() context.Context {
 	return c.webc.Context()
 }
 
-func (c *DefaultContext) LoadMetrics() []flux.Metric {
+func (c *DefaultContext) Metrics() []flux.Metric {
 	dist := make([]flux.Metric, len(c.metrics))
 	copy(dist, c.metrics)
 	return dist
@@ -142,16 +142,16 @@ func (c *DefaultContext) SetLogger(logger flux.Logger) {
 	c.ctxLogger = logger
 }
 
-func (c *DefaultContext) GetLogger() flux.Logger {
+func (c *DefaultContext) Logger() flux.Logger {
 	return c.ctxLogger
 }
 
 func (c *DefaultContext) StartTime() time.Time {
-	return c.beginTime
+	return c.startTime
 }
 
 func (c *DefaultContext) ElapsedTime() time.Duration {
-	return time.Since(c.beginTime)
+	return time.Since(c.startTime)
 }
 
 func (c *DefaultContext) AddMetric(name string, elapsed time.Duration) {
@@ -167,10 +167,10 @@ func (c *DefaultContext) Reattach(requestId string, webc flux.WebContext, endpoi
 	c.attributes = new(sync.Map)
 	c.values = new(sync.Map)
 	c.metrics = make([]flux.Metric, 0, 8)
-	c.beginTime = time.Now()
-	c.requestReader.reattach(webc)
-	// duplicated: c.responseWriter.reset()
-	c.SetAttribute(flux.XRequestTime, c.beginTime.Unix())
+	c.startTime = time.Now()
+	c.request.reattach(webc)
+	// duplicated: c.response.reset()
+	c.SetAttribute(flux.XRequestTime, c.startTime.Unix())
 	c.SetAttribute(flux.XRequestId, c.requestId)
 	c.SetAttribute(flux.XRequestHost, webc.Host())
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
@@ -183,7 +183,7 @@ func (c *DefaultContext) Release() {
 	c.attributes = nil
 	c.values = nil
 	c.metrics = nil
-	c.requestReader.reset()
-	c.responseWriter.reset()
+	c.request.reset()
+	c.response.reset()
 	c.ctxLogger = nil
 }

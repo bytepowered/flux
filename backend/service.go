@@ -17,8 +17,12 @@ func DoExchangeTransport(ctx flux.Context, transport flux.BackendTransport) *flu
 	}
 	writer := ctx.Response()
 	writer.SetStatusCode(result.StatusCode)
-	writer.SetHeaders(result.Headers)
-	writer.SetBody(result.Body)
+	for k, vs := range result.Headers {
+		for _, v := range vs {
+			writer.AddHeader(k, v)
+		}
+	}
+	writer.SetPayload(result.Body)
 	return nil
 }
 

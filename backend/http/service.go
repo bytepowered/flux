@@ -102,9 +102,8 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 }
 
 func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendService) (interface{}, *flux.ServeError) {
-	inurl, _ := ctx.Request().RequestURL()
-	body, _ := ctx.Request().RequestBodyReader()
-	newRequest, err := b.argAssembleFunc(&service, inurl, body, ctx)
+	body, _ := ctx.Request().BodyReader()
+	newRequest, err := b.argAssembleFunc(&service, ctx.Request().URL(), body, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -118,11 +117,7 @@ func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendS
 
 func (b *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	// Header透传以及传递AttrValues
-	if header, writable := ctx.Request().HeaderValues(); writable {
-		newRequest.Header = header.Clone()
-	} else {
-		newRequest.Header = header
-	}
+	newRequest.Header = ctx.Request().HeaderVars()
 	for k, v := range ctx.Attributes() {
 		newRequest.Header.Set(k, cast.ToString(v))
 	}

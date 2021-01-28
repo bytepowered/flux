@@ -71,7 +71,7 @@ func DefaultRequestIdLookupFuncFactory(names []string, generator *snowflake.Node
 		}
 		// 查Header
 		for _, name := range names {
-			id := webc.HeaderValue(name)
+			id := webc.HeaderVar(name)
 			if "" != id {
 				return id
 			}

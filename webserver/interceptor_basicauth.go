@@ -72,7 +72,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)
 			}
-			auth := webc.HeaderValue(HeaderAuthorization)
+			auth := webc.HeaderVar(HeaderAuthorization)
 			l := len(basic)
 			if len(auth) > l+1 && strings.ToLower(auth[:l]) == basic {
 				b, err := base64.StdEncoding.DecodeString(auth[l+1:])

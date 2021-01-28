@@ -11,41 +11,53 @@ import (
 	"time"
 )
 
-var _ flux.RequestReader = new(MockRequestReader)
+var _ flux.Request = new(MockRequest)
 
-func NewMockRequestReader(values map[string]interface{}) *MockRequestReader {
-	return &MockRequestReader{values: values}
+func NewMockRequest(values map[string]interface{}) *MockRequest {
+	return &MockRequest{values: values}
 }
 
-type MockRequestReader struct {
+type MockRequest struct {
 	values map[string]interface{}
 }
 
-func (r *MockRequestReader) Method() string {
+func (r *MockRequest) Context() context.Context {
+	return context.TODO()
+}
+
+func (r *MockRequest) Address() string {
+	return cast.ToString(r.values["address"])
+}
+
+func (r *MockRequest) OnHeaderVars(access func(header http.Header)) {
+	access(r.HeaderVars())
+}
+
+func (r *MockRequest) Method() string {
 	return cast.ToString(r.values["method"])
 }
 
-func (r *MockRequestReader) Host() string {
+func (r *MockRequest) Host() string {
 	return cast.ToString(r.values["host"])
 }
 
-func (r *MockRequestReader) UserAgent() string {
+func (r *MockRequest) UserAgent() string {
 	return cast.ToString(r.values["user-agent"])
 }
 
-func (r *MockRequestReader) RequestURI() string {
+func (r *MockRequest) URI() string {
 	return cast.ToString(r.values["request-uri"])
 }
 
-func (r *MockRequestReader) RequestURL() (u *url.URL, writable bool) {
+func (r *MockRequest) URL() *url.URL {
 	if v, ok := r.values["url"]; ok {
-		return v.(*url.URL), false
+		return v.(*url.URL)
 	} else {
-		return nil, false
+		return nil
 	}
 }
 
-func (r *MockRequestReader) RequestBodyReader() (io.ReadCloser, error) {
+func (r *MockRequest) BodyReader() (io.ReadCloser, error) {
 	if v, ok := r.values["body"]; ok {
 		return v.(io.ReadCloser), nil
 	} else {
@@ -53,20 +65,20 @@ func (r *MockRequestReader) RequestBodyReader() (io.ReadCloser, error) {
 	}
 }
 
-func (r *MockRequestReader) RequestRewrite(method string, path string) {
+func (r *MockRequest) Rewrite(method string, path string) {
 	r.values["method"] = method
 	r.values["path"] = path
 }
 
-func (r *MockRequestReader) HeaderValues() (header http.Header, writable bool) {
+func (r *MockRequest) HeaderVars() http.Header {
 	if v, ok := r.values["header-values"]; ok {
-		return v.(http.Header), false
+		return v.(http.Header)
 	} else {
-		return header, false
+		return nil
 	}
 }
 
-func (r *MockRequestReader) QueryValues() url.Values {
+func (r *MockRequest) QueryVars() url.Values {
 	if v, ok := r.values["query-values"]; ok {
 		return v.(url.Values)
 	} else {
@@ -74,7 +86,7 @@ func (r *MockRequestReader) QueryValues() url.Values {
 	}
 }
 
-func (r *MockRequestReader) PathValues() url.Values {
+func (r *MockRequest) PathVars() url.Values {
 	if v, ok := r.values["path-values"]; ok {
 		return v.(url.Values)
 	} else {
@@ -82,7 +94,7 @@ func (r *MockRequestReader) PathValues() url.Values {
 	}
 }
 
-func (r *MockRequestReader) FormValues() url.Values {
+func (r *MockRequest) FormVars() url.Values {
 	if v, ok := r.values["form-values"]; ok {
 		return v.(url.Values)
 	} else {
@@ -90,7 +102,7 @@ func (r *MockRequestReader) FormValues() url.Values {
 	}
 }
 
-func (r *MockRequestReader) CookieValues() []*http.Cookie {
+func (r *MockRequest) CookieVars() []*http.Cookie {
 	if v, ok := r.values["cookie-values"]; ok {
 		return v.([]*http.Cookie)
 	} else {
@@ -98,24 +110,24 @@ func (r *MockRequestReader) CookieValues() []*http.Cookie {
 	}
 }
 
-func (r *MockRequestReader) HeaderValue(name string) string {
+func (r *MockRequest) HeaderVar(name string) string {
 	return cast.ToString(r.values[name])
 }
 
-func (r *MockRequestReader) QueryValue(name string) string {
+func (r *MockRequest) QueryVar(name string) string {
 	return cast.ToString(r.values[name])
 }
 
-func (r *MockRequestReader) PathValue(name string) string {
+func (r *MockRequest) PathVar(name string) string {
 	return cast.ToString(r.values[name])
 }
 
-func (r *MockRequestReader) FormValue(name string) string {
+func (r *MockRequest) FormVar(name string) string {
 	return cast.ToString(r.values[name])
 }
 
-func (r *MockRequestReader) CookieValue(name string) (cookie *http.Cookie, ok bool) {
-	return nil, false
+func (r *MockRequest) CookieVar(name string) *http.Cookie {
+	return nil
 }
 
 ////
@@ -125,7 +137,7 @@ var _ flux.Context = new(MockContext)
 func NewMockContext(values map[string]interface{}) flux.Context {
 	return &MockContext{
 		time:      time.Now(),
-		request:   NewMockRequestReader(values),
+		request:   NewMockRequest(values),
 		ctxLogger: logger.SimpleLogger(),
 	}
 }
@@ -136,7 +148,7 @@ func NewEmptyContext() flux.Context {
 
 type MockContext struct {
 	time      time.Time
-	request   *MockRequestReader
+	request   *MockRequest
 	ctxLogger flux.Logger
 }
 
@@ -152,7 +164,7 @@ func (v *MockContext) AddMetric(name string, elapsed time.Duration) {
 	// nop
 }
 
-func (v *MockContext) LoadMetrics() []flux.Metric {
+func (v *MockContext) Metrics() []flux.Metric {
 	return nil
 }
 
@@ -160,19 +172,19 @@ func (v *MockContext) Method() string {
 	return v.request.Method()
 }
 
-func (v *MockContext) RequestURI() string {
-	return v.request.RequestURI()
+func (v *MockContext) URI() string {
+	return v.request.URI()
 }
 
 func (v *MockContext) RequestId() string {
 	return cast.ToString(v.request.values["request-id"])
 }
 
-func (v *MockContext) Request() flux.RequestReader {
+func (v *MockContext) Request() flux.Request {
 	return v.request
 }
 
-func (v *MockContext) Response() flux.ResponseWriter {
+func (v *MockContext) Response() flux.Response {
 	return nil
 }
 
@@ -258,6 +270,6 @@ func (v *MockContext) SetLogger(logger flux.Logger) {
 	v.ctxLogger = logger
 }
 
-func (v *MockContext) GetLogger() flux.Logger {
+func (v *MockContext) Logger() flux.Logger {
 	return v.ctxLogger
 }

@@ -11,13 +11,13 @@ import (
 	"strings"
 )
 
-var _ flux.WebServer = new(AdaptWebServer)
+var _ flux.ListenServer = new(AdaptWebServer)
 
 func init() {
 	ext.SetWebServerFactory(NewAdaptWebServer)
 }
 
-func NewAdaptWebServer(config *flux.Configuration) flux.WebServer {
+func NewAdaptWebServer(config *flux.Configuration) flux.ListenServer {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
@@ -44,25 +44,25 @@ type AdaptWebServer struct {
 	bodyDecoder flux.WebRequestBodyDecoder
 }
 
-func (w *AdaptWebServer) SetWebRequestBodyDecoder(decoder flux.WebRequestBodyDecoder) {
+func (w *AdaptWebServer) SetRequestBodyDecoder(decoder flux.WebRequestBodyDecoder) {
 	w.bodyDecoder = decoder
 }
 
-func (w *AdaptWebServer) SetWebNotFoundHandler(fun flux.WebHandler) {
+func (w *AdaptWebServer) SetNotfoundHandler(fun flux.WebHandler) {
 	echo.NotFoundHandler = AdaptWebRouteHandler(fun).AdaptFunc
 }
 
-func (w *AdaptWebServer) HandleWebNotFound(webc flux.WebContext) error {
-	return echo.NotFoundHandler(webc.RawWebContext().(echo.Context))
+func (w *AdaptWebServer) HandleNotfound(webc flux.WebContext) error {
+	return echo.NotFoundHandler(webc.WebContext().(echo.Context))
 }
 
-func (w *AdaptWebServer) SetWebErrorHandler(fun flux.WebErrorHandler) {
+func (w *AdaptWebServer) SetErrorHandler(fun flux.WebErrorHandler) {
 	w.server.HTTPErrorHandler = func(err error, c echo.Context) {
 		fun(err, toAdaptWebContext(c))
 	}
 }
 
-func (w *AdaptWebServer) AddWebInterceptor(m flux.WebInterceptor) {
+func (w *AdaptWebServer) AddInterceptor(m flux.WebInterceptor) {
 	w.server.Pre(AdaptWebInterceptor(m).AdaptFunc)
 }
 
@@ -70,7 +70,7 @@ func (w *AdaptWebServer) AddWebMiddleware(m flux.WebInterceptor) {
 	w.server.Use(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (w *AdaptWebServer) AddWebHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
+func (w *AdaptWebServer) AddHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mi := range m {
 		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
@@ -78,7 +78,7 @@ func (w *AdaptWebServer) AddWebHandler(method, pattern string, h flux.WebHandler
 	w.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
 }
 
-func (w *AdaptWebServer) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+func (w *AdaptWebServer) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mf := range m {
 		wms[i] = echo.WrapMiddleware(mf)
@@ -86,15 +86,15 @@ func (w *AdaptWebServer) AddWebHttpHandler(method, pattern string, h http.Handle
 	w.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wms...)
 }
 
-func (w *AdaptWebServer) RawWebRouter() interface{} {
+func (w *AdaptWebServer) Router() interface{} {
 	return w.server
 }
 
-func (w *AdaptWebServer) RawWebServer() interface{} {
+func (w *AdaptWebServer) Server() interface{} {
 	return w.server
 }
 
-func (w *AdaptWebServer) StartTLS(addr string, certFile, keyFile string) error {
+func (w *AdaptWebServer) Listen(addr string, certFile, keyFile string) error {
 	if "" == certFile || "" == keyFile {
 		return w.server.Start(addr)
 	} else {
@@ -102,7 +102,7 @@ func (w *AdaptWebServer) StartTLS(addr string, certFile, keyFile string) error {
 	}
 }
 
-func (w *AdaptWebServer) Shutdown(ctx context.Context) error {
+func (w *AdaptWebServer) Close(ctx context.Context) error {
 	return w.server.Shutdown(ctx)
 }
 

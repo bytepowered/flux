@@ -58,7 +58,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 				return next(webc)
 			}
 
-			origin := webc.HeaderValue(flux.HeaderOrigin)
+			origin := webc.HeaderVar(flux.HeaderOrigin)
 			allowOrigin := ""
 
 			// Check allowed origins
@@ -102,7 +102,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 			if allowHeaders != "" {
 				webc.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
-				h := webc.HeaderValue(flux.HeaderAccessControlRequestHeaders)
+				h := webc.HeaderVar(flux.HeaderAccessControlRequestHeaders)
 				if h != "" {
 					webc.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, h)
 				}
