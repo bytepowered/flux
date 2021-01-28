@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
 	context2 "github.com/bytepowered/flux/context"
 	"github.com/bytepowered/flux/ext"
@@ -12,6 +13,8 @@ import (
 	"github.com/spf13/cast"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -394,6 +397,19 @@ func (s *HttpServeEngine) Shutdown(ctx context.Context) error {
 		logger.Warnw("HttpServeEngine shutdown http server", "error", err)
 	}
 	return s.router.Shutdown(ctx)
+}
+
+// GracefulShutdown
+func (s *HttpServeEngine) OnSignalShutdown(quit chan os.Signal, to time.Duration) {
+	// 接收停止信号
+	signal.Notify(quit, dubgo.ShutdownSignals...)
+	<-quit
+	logger.Infof("HttpServeEngine received shutdown signal, shutdown...")
+	ctx, cancel := context.WithTimeout(context.Background(), to)
+	defer cancel()
+	if err := s.Shutdown(ctx); nil != err {
+		logger.Error("HttpServeEngine shutdown, error: ", err)
+	}
 }
 
 // StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。

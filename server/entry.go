@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
@@ -11,7 +10,6 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"os"
-	"os/signal"
 	"time"
 )
 
@@ -68,11 +66,5 @@ func Run(ver flux.BuildInfo) {
 		}
 	}()
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, dubgo.ShutdownSignals...)
-	<-quit
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := engine.Shutdown(ctx); nil != err && err != http.ErrServerClosed {
-		logger.Error(err)
-	}
+	engine.OnSignalShutdown(quit, 10*time.Second)
 }
