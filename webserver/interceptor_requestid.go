@@ -53,7 +53,7 @@ func NewRequestIdMiddleware(lookupFunc RequestIdLookupFunc) flux.WebInterceptor 
 	return func(next flux.WebHandler) flux.WebHandler {
 		return func(webc flux.WebContext) error {
 			requestId := lookupFunc(webc)
-			webc.SetValue(flux.HeaderXRequestId, requestId)
+			webc.SetScopeValue(flux.HeaderXRequestId, requestId)
 			webc.SetResponseHeader(flux.HeaderXRequestId, requestId)
 			return next(webc)
 		}

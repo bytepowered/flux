@@ -1,13 +1,28 @@
 # 网关Http服务器配置
-HttpWebServer:
-    address: "0.0.0.0"
-    port: 8080
-    body-limit: "100K"
-    #tls-cret-file: ""
-    #tls-key-file: ""
-    request-log-enable: true
-    feature-debug-enable: true
-    feature-echo-enable: true
+ListenServer:
+    # 默认Web服务
+    Default:
+        name: "web-server"
+        # 服务器绑定地址
+        address: "0.0.0.0:8080"
+        # 设置TLS密钥文件地址
+        tls-cret-file: ""
+        tls-key-file: ""
+        # 功能特性
+        Features:
+            # 设置限制请求Body大小，默认为 1M
+            body-limit: "100K"
+            # 设置请求压缩级别，可选 [NoCompression, BestSpeed, BestCompression, DefaultCompression, HuffmanOnly]；默认为 DefaultCompression
+            gzip-level: "DefaultCompression"
+            # 设置是否开启支持跨域访问特性，默认关闭
+            cors-enable: true
+            # 设置是否开启检查跨站请求伪造特性，默认关闭
+            csrf-enable: true
+
+    # 网关内部管理服务
+    Admin:
+        name: "manager-server"
+        address: "0.0.0.0:9527"
 
 # EndpointDiscovery 配置
 EndpointDiscovery:
@@ -16,15 +31,13 @@ EndpointDiscovery:
         endpoint-path: "/flux-endpoint"
         service-path: "/flux-service"
         # 启用的注册中心，默认default；其ID为下面多注册中心的key（不区分大小写）
-        active-id:
-            - "default"
-            - "qcloud"
+        active-id: [ "default" ]
         # 支持多注册中心
         Default:
-            address: "${zookeeper.address:zookeeper:2181}"
+            address: "${zookeeper.address:172.16.248.132:2181}"
             timeout: "${zookeeper.timeout:5s}"
         QCloud:
-            address: "${tx.zookeeper.address:tx.zookeeper:2181}"
+            address: "${tx.zookeeper.address:172.16.248.133:2181}"
         HiCloud:
             address: "${hw.zookeeper.address:hw.zookeeper:2181}"
 

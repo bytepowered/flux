@@ -1,4 +1,4 @@
-package server
+package boot
 
 import (
 	"github.com/bytepowered/flux"

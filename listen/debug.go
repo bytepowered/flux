@@ -1,4 +1,4 @@
-package server
+package listen
 
 import (
 	"github.com/bytepowered/flux"
@@ -19,7 +19,7 @@ const (
 	queryKeyServiceId1   = "serviceId"
 )
 
-type EndpointFilter func(ep *MultiEndpoint) bool
+type EndpointFilter func(ep *flux.MultiEndpoint) bool
 
 var (
 	endpointQueryKeys = []string{queryKeyApplication, queryKeyProtocol,
@@ -35,18 +35,18 @@ var (
 
 func init() {
 	endpointFilterFactories[queryKeyApplication] = func(query string) EndpointFilter {
-		return func(ep *MultiEndpoint) bool {
+		return func(ep *flux.MultiEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().Application)
 		}
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
-		return func(ep *MultiEndpoint) bool {
+		return func(ep *flux.MultiEndpoint) bool {
 			proto := ep.RandomVersion().Service.AttrRpcProto()
 			return queryMatch(query, proto)
 		}
 	}
 	httpPatternFilter := func(query string) EndpointFilter {
-		return func(ep *MultiEndpoint) bool {
+		return func(ep *flux.MultiEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().HttpPattern)
 		}
 	}
@@ -55,7 +55,7 @@ func init() {
 	endpointFilterFactories[queryKeyHttpPattern1] = httpPatternFilter
 
 	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
-		return func(ep *MultiEndpoint) bool {
+		return func(ep *flux.MultiEndpoint) bool {
 			return queryMatch(query, ep.RandomVersion().Service.Interface)
 		}
 	}
@@ -96,7 +96,7 @@ func NewDebugQueryServiceHandler() http.HandlerFunc {
 }
 
 func queryEndpoints(request *http.Request) interface{} {
-	data := GetEndpoints()
+	data := ext.LoadEndpoints()
 	filters := make([]EndpointFilter, 0)
 	query := request.URL.Query()
 	for _, key := range endpointQueryKeys {
@@ -116,7 +116,7 @@ func queryEndpoints(request *http.Request) interface{} {
 	return queryWithEndpointFilters(data, filters...)
 }
 
-func queryWithEndpointFilters(data map[string]*MultiEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
+func queryWithEndpointFilters(data map[string]*flux.MultiEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
 	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {

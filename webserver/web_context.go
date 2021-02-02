@@ -11,26 +11,28 @@ import (
 
 const (
 	keyWebContext     = "$internal.web.adapted.context"
-	keyWebBodyDecoder = "$internal.web.adapted.body.decoder"
+	keyWebBodyDecoder = "$internal.web.adapted.body.resolver"
 )
 
 var _ flux.WebContext = new(AdaptWebContext)
 
-func NewAdaptContext(echoc echo.Context, decoder flux.WebRequestBodyDecoder) *AdaptWebContext {
+func NewAdaptContext(echoc echo.Context, decoder flux.WebRequestResolver) *AdaptWebContext {
 	echoc.Set(keyWebBodyDecoder, decoder)
 	return &AdaptWebContext{
-		echoc:   echoc,
-		decoder: decoder,
+		echoc:           echoc,
+		requestResolver: decoder,
 	}
 }
 
 // AdaptWebContext 默认实现的基于echo框架的WebContext
 // 注意：保持 AdaptWebContext 的公共访问性
 type AdaptWebContext struct {
-	echoc      echo.Context
-	decoder    flux.WebRequestBodyDecoder
-	pathValues url.Values
-	bodyValues url.Values
+	echoc           echo.Context
+	serverRef       flux.ListenServer
+	requestResolver flux.WebRequestResolver
+	responseWriter  flux.WebResponseWriter
+	pathValues      url.Values
+	bodyValues      url.Values
 }
 
 func (c *AdaptWebContext) Context() context.Context {
@@ -89,7 +91,7 @@ func (c *AdaptWebContext) PathVars() url.Values {
 
 func (c *AdaptWebContext) FormVars() url.Values {
 	if c.bodyValues == nil {
-		c.bodyValues = c.decoder(c)
+		c.bodyValues = c.requestResolver(c)
 	}
 	return c.bodyValues
 }
@@ -143,6 +145,14 @@ func (c *AdaptWebContext) WriteStream(statusCode int, contentType string, reader
 	return c.echoc.Stream(statusCode, contentType, reader)
 }
 
+func (c *AdaptWebContext) Send(webc flux.WebContext, header http.Header, status int, data interface{}) error {
+	return c.serverRef.Write(webc, header, status, data)
+}
+
+func (c *AdaptWebContext) SendError(error *flux.ServeError) {
+	c.serverRef.WriteError(c, error)
+}
+
 func (c *AdaptWebContext) SetResponseHeader(key, value string) {
 	c.echoc.Response().Header().Set(key, value)
 }
@@ -151,20 +161,20 @@ func (c *AdaptWebContext) AddResponseHeader(key, value string) {
 	c.echoc.Response().Header().Add(key, value)
 }
 
-func (c *AdaptWebContext) SetResponseWriter(w http.ResponseWriter) error {
+func (c *AdaptWebContext) SetHttpResponseWriter(w http.ResponseWriter) error {
 	c.echoc.Response().Writer = w
 	return nil
 }
 
-func (c *AdaptWebContext) GetResponseWriter() (http.ResponseWriter, error) {
+func (c *AdaptWebContext) HttpResponseWriter() (http.ResponseWriter, error) {
 	return c.echoc.Response().Writer, nil
 }
 
-func (c *AdaptWebContext) SetValue(key string, value interface{}) {
+func (c *AdaptWebContext) SetScopeValue(key string, value interface{}) {
 	c.echoc.Set(key, value)
 }
 
-func (c *AdaptWebContext) GetValue(key string) interface{} {
+func (c *AdaptWebContext) ScopeValue(key string) interface{} {
 	return c.echoc.Get(key)
 }
 
@@ -187,11 +197,11 @@ func (c *AdaptWebContext) WebResponse() interface{} {
 func toAdaptWebContext(echo echo.Context) flux.WebContext {
 	webc, ok := echo.Get(keyWebContext).(*AdaptWebContext)
 	if !ok {
-		decoder, ok := echo.Get(keyWebBodyDecoder).(flux.WebRequestBodyDecoder)
+		resolver, ok := echo.Get(keyWebBodyDecoder).(flux.WebRequestResolver)
 		if !ok {
-			decoder = DefaultRequestBodyDecoder
+			resolver = DefaultRequestResolver
 		}
-		webc = NewAdaptContext(echo, decoder)
+		webc = NewAdaptContext(echo, resolver)
 		echo.Set(keyWebContext, webc)
 	}
 	return webc

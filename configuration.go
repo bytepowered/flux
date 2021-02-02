@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	NamespaceListenServer      = "ListenServer"
 	NamespaceEndpointDiscovery = "EndpointDiscovery"
 )
 

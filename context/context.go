@@ -113,7 +113,7 @@ func (c *DefaultContext) GetValue(name string) (interface{}, bool) {
 	// then: WebContext values
 	if lv, ok := c.values.Load(name); ok {
 		return lv, true
-	} else if cv := c.webc.GetValue(name); nil != cv {
+	} else if cv := c.webc.ScopeValue(name); nil != cv {
 		return cv, true
 	} else {
 		return nil, false
