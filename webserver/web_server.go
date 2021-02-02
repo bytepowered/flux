@@ -72,7 +72,8 @@ func NewAdaptWebServer(options *flux.Configuration) flux.ListenServer {
 	// 注入EchoContext
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			c.Set(keyWebBodyDecoder, aws.requestResolver)
+			c.Set(keyWebResolver, aws.requestResolver)
+			c.Set(keyWebServer, aws)
 			return next(c)
 		}
 	})
@@ -140,7 +141,7 @@ func (w *AdaptWebServer) SetNotfoundHandler(fun flux.WebHandler) {
 
 func (w *AdaptWebServer) SetServerErrorHandler(handler flux.WebServerErrorHandler) {
 	w.server.HTTPErrorHandler = func(err error, c echo.Context) {
-		handler(toAdaptWebContext(c), err)
+		handler(ensureAdaptWebContext(c), err)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/admin"
 	"github.com/bytepowered/flux/context"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/listen"
@@ -94,9 +95,13 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 			return webc.HeaderVar(DefaultHttpHeaderVersion)
 		}),
 		// Default ListenServer
-		WithListenServer(ListenServerIdDefault, listen.NewServer(loadListenServerConfig(ListenServerIdDefault), nil)),
+		WithListenServer(ListenServerIdDefault,
+			listen.NewServer(loadListenServerConfig(ListenServerIdDefault), nil)),
 		// Admin ListenServer
-		WithListenServer(ListenServerIdAdmin, listen.NewServer(loadListenServerConfig(ListenServerIdAdmin), nil)),
+		WithListenServer(ListenServerIdAdmin,
+			listen.NewServer(loadListenServerConfig(ListenServerIdAdmin), nil,
+				admin.EnableInspectFeature,
+			)),
 	}
 	return NewBootstrapServerWith(context.DefaultContextFactory, append(opts, options...)...)
 }

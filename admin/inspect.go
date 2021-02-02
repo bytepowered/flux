@@ -1,4 +1,4 @@
-package listen
+package admin
 
 import (
 	"github.com/bytepowered/flux"
@@ -11,22 +11,20 @@ const (
 	queryKeyApplication  = "application"
 	queryKeyProtocol     = "protocol"
 	queryKeyHttpPattern  = "http-pattern"
-	queryKeyHttpPattern0 = "httpPattern"
-	queryKeyHttpPattern1 = "httppattern"
+	queryKeyHttpPattern0 = "pattern"
 	queryKeyInterface    = "interface"
-	queryKeyServiceId    = "serviceid"
 	queryKeyServiceId0   = "service-id"
-	queryKeyServiceId1   = "serviceId"
+	queryKeyServiceId1   = "service"
 )
 
 type EndpointFilter func(ep *flux.MultiEndpoint) bool
 
 var (
 	endpointQueryKeys = []string{queryKeyApplication, queryKeyProtocol,
-		queryKeyHttpPattern, queryKeyHttpPattern0, queryKeyHttpPattern1,
+		queryKeyHttpPattern, queryKeyHttpPattern0,
 		queryKeyInterface,
 	}
-	serviceQueryKeys = []string{queryKeyServiceId, queryKeyServiceId0, queryKeyServiceId1}
+	serviceQueryKeys = []string{queryKeyServiceId0, queryKeyServiceId1}
 )
 
 var (
@@ -52,7 +50,6 @@ func init() {
 	}
 	endpointFilterFactories[queryKeyHttpPattern] = httpPatternFilter
 	endpointFilterFactories[queryKeyHttpPattern0] = httpPatternFilter
-	endpointFilterFactories[queryKeyHttpPattern1] = httpPatternFilter
 
 	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
@@ -61,59 +58,56 @@ func init() {
 	}
 }
 
-// NewDebugQueryEndpointHandler Endpoint查询
-func NewDebugQueryEndpointHandler() http.HandlerFunc {
-	serializer := ext.GetSerializer(ext.TypeNameSerializerJson)
-	return newSerializableHttpHandler(serializer, func(request *http.Request) interface{} {
-		return queryEndpoints(request)
-	})
+func EnableInspectFeature(srv flux.ListenServer) {
+	srv.AddHandler("GET", "/inspect/endpoints", newInspectEndpointsHandler())
+	srv.AddHandler("GET", "/inspect/services", newInspectServicesHandler())
 }
 
-// NewDebugQueryServiceHandler Service查询
-func NewDebugQueryServiceHandler() http.HandlerFunc {
-	serializer := ext.GetSerializer(ext.TypeNameSerializerJson)
-	return newSerializableHttpHandler(serializer, func(request *http.Request) interface{} {
-		query := request.URL.Query()
-		for _, key := range serviceQueryKeys {
-			if id := query.Get(key); "" != id {
-				service, ok := ext.GetBackendService(id)
-				if ok {
-					return service
-				} else {
-					return map[string]string{
-						"status":     "failed",
-						"message":    "service not found",
-						"service-id": id,
-					}
+func newInspectEndpointsHandler() flux.WebHandler {
+	return func(ctx flux.WebContext) error {
+		filters := make([]EndpointFilter, 0)
+		for _, key := range endpointQueryKeys {
+			if query := ctx.QueryVar(key); "" != query {
+				if f, ok := endpointFilterFactories[key]; ok {
+					filters = append(filters, f(query))
 				}
 			}
 		}
-		return map[string]string{
-			"status":  "failed",
-			"message": "param is required: serviceId",
+		data := ext.LoadEndpoints()
+		if len(filters) == 0 {
+			m := make(map[string]map[string]*flux.Endpoint, 16)
+			for k, v := range data {
+				m[k] = v.ToSerializable()
+			}
+			return ctx.Send(ctx, http.Header{}, flux.StatusOK, nil)
+		} else {
+			return ctx.Send(ctx, http.Header{}, flux.StatusOK, queryWithEndpointFilters(data, filters...))
 		}
-	})
+	}
 }
 
-func queryEndpoints(request *http.Request) interface{} {
-	data := ext.LoadEndpoints()
-	filters := make([]EndpointFilter, 0)
-	query := request.URL.Query()
-	for _, key := range endpointQueryKeys {
-		if query := query.Get(key); "" != query {
-			if f, ok := endpointFilterFactories[key]; ok {
-				filters = append(filters, f(query))
+func newInspectServicesHandler() flux.WebHandler {
+	return func(ctx flux.WebContext) error {
+		noheader := http.Header{}
+		for _, key := range serviceQueryKeys {
+			if id := ctx.QueryVar(key); "" != id {
+				service, ok := ext.GetBackendService(id)
+				if ok {
+					return ctx.Send(ctx, noheader, flux.StatusOK, service)
+				} else {
+					return ctx.Send(ctx, noheader, flux.StatusNotFound, map[string]string{
+						"status":     "failed",
+						"message":    "service not found",
+						"service-id": id,
+					})
+				}
 			}
 		}
+		return ctx.Send(ctx, noheader, flux.StatusBadRequest, map[string]string{
+			"status":  "failed",
+			"message": "param is required: serviceId",
+		})
 	}
-	if len(filters) == 0 {
-		m := make(map[string]map[string]*flux.Endpoint, 16)
-		for k, v := range data {
-			m[k] = v.ToSerializable()
-		}
-		return m
-	}
-	return queryWithEndpointFilters(data, filters...)
 }
 
 func queryWithEndpointFilters(data map[string]*flux.MultiEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
@@ -131,21 +125,7 @@ DataLoop:
 	return items
 }
 
-func newSerializableHttpHandler(serializer flux.Serializer, queryHandler func(request *http.Request) interface{}) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		data := queryHandler(request)
-		if data, err := serializer.Marshal(data); nil != err {
-			writer.WriteHeader(http.StatusInternalServerError)
-			_, _ = writer.Write([]byte(err.Error()))
-		} else {
-			writer.WriteHeader(http.StatusOK)
-			writer.Header().Set("Content-Type", "application/json;charset=UTF-8")
-			_, _ = writer.Write(data)
-		}
-	}
-}
-
 func queryMatch(input, expected string) bool {
 	input, expected = strings.ToLower(input), strings.ToLower(expected)
-	return input == expected || strings.Contains(expected, input)
+	return strings.Contains(expected, input)
 }

@@ -10,16 +10,17 @@ import (
 )
 
 const (
-	keyWebContext     = "$internal.web.adapted.context"
-	keyWebBodyDecoder = "$internal.web.adapted.body.resolver"
+	keyWebServer   = "$internal.web.adapted.server"
+	keyWebContext  = "$internal.web.adapted.context"
+	keyWebResolver = "$internal.web.adapted.body.resolver"
 )
 
 var _ flux.WebContext = new(AdaptWebContext)
 
-func NewAdaptContext(echoc echo.Context, decoder flux.WebRequestResolver) *AdaptWebContext {
-	echoc.Set(keyWebBodyDecoder, decoder)
+func NewAdaptContext(echoc echo.Context, server flux.ListenServer, decoder flux.WebRequestResolver) *AdaptWebContext {
 	return &AdaptWebContext{
 		echoc:           echoc,
+		serverRef:       server,
 		requestResolver: decoder,
 	}
 }
@@ -194,14 +195,18 @@ func (c *AdaptWebContext) WebResponse() interface{} {
 	return c.echoc.Response()
 }
 
-func toAdaptWebContext(echo echo.Context) flux.WebContext {
+func ensureAdaptWebContext(echo echo.Context) flux.WebContext {
 	webc, ok := echo.Get(keyWebContext).(*AdaptWebContext)
 	if !ok {
-		resolver, ok := echo.Get(keyWebBodyDecoder).(flux.WebRequestResolver)
+		resolver, ok := echo.Get(keyWebResolver).(flux.WebRequestResolver)
 		if !ok {
-			resolver = DefaultRequestResolver
+			panic("Echo.context web resolver has bean removed or not set")
 		}
-		webc = NewAdaptContext(echo, resolver)
+		server, ok := echo.Get(keyWebServer).(flux.ListenServer)
+		if !ok {
+			panic("Echo.context listen server has bean removed or not set")
+		}
+		webc = NewAdaptContext(echo, server, resolver)
 		echo.Set(keyWebContext, webc)
 	}
 	return webc

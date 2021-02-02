@@ -11,15 +11,14 @@ type (
 	Option func(server flux.ListenServer)
 )
 
-func NewServer(config *flux.Configuration, wis []flux.WebInterceptor) flux.ListenServer {
-	return NewServerWith(config,
+func NewServer(config *flux.Configuration, wis []flux.WebInterceptor, opts ...Option) flux.ListenServer {
+	opts = append([]Option{
 		WithServerErrorHandler(DefaultServerErrorHandler),
 		WithNotfoundHandler(DefaultNotfoundHandler),
 		WithResponseWriter(DefaultResponseWriter),
-		WithInterceptors(append([]flux.WebInterceptor{
-			webserver.NewRequestIdInterceptor(),
-		}, wis...)),
-	)
+		WithInterceptors(append([]flux.WebInterceptor{webserver.NewRequestIdInterceptor()}, wis...)),
+	}, opts...)
+	return NewServerWith(config, opts...)
 }
 
 func NewServerWith(config *flux.Configuration, opts ...Option) flux.ListenServer {
