@@ -39,10 +39,8 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.
 		logger.Warnw("illegal backend service", "service", service)
 		return invalidBackendServiceEvent, false
 	}
-	setupServiceAttributes(&service)
-	ensureServiceAttributeTagName(&service)
 	event := flux.BackendServiceEvent{
-		Service: service,
+		Service: *EnsureService(&service),
 	}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
@@ -55,6 +53,18 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.
 		return invalidBackendServiceEvent, false
 	}
 	return event, true
+}
+
+func EnsureService(service *flux.BackendService) *flux.BackendService {
+	setupServiceAttributes(service)
+	// 订正Tag与Name的关系
+	for i := range service.Attributes {
+		ptr := &service.Attributes[i]
+		newT, newName := flux.EnsureServiceAttribute(ptr.Tag, ptr.Name)
+		ptr.Tag = newT
+		ptr.Name = newName
+	}
+	return service
 }
 
 // setupServiceAttributes 兼容旧协议数据格式
@@ -87,15 +97,5 @@ func setupServiceAttributes(service *flux.BackendService) {
 				Value: service.RpcTimeout,
 			},
 		}
-	}
-}
-
-func ensureServiceAttributeTagName(service *flux.BackendService) {
-	// 订正Tag与Name的关系
-	for i := range service.Attributes {
-		ptr := &service.Attributes[i]
-		newT, newName := flux.EnsureServiceAttribute(ptr.Tag, ptr.Name)
-		ptr.Tag = newT
-		ptr.Name = newName
 	}
 }

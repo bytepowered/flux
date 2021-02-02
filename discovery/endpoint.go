@@ -34,12 +34,6 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEn
 		logger.Warnw("illegal http-metadata", "data", string(bytes))
 		return invalidHttpEndpointEvent, false
 	}
-	setupServiceAttributes(&comp.Service)
-	ensureServiceAttributeTagName(&comp.Service)
-	if comp.Permission.IsValid() {
-		setupServiceAttributes(&comp.Permission)
-		ensureServiceAttributeTagName(&comp.Permission)
-	}
 	if len(comp.Attributes) == 0 {
 		comp.Attributes = []flux.Attribute{
 			{
@@ -49,16 +43,8 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEn
 			},
 		}
 	}
-	// 订正Tag与Name的关系
-	for i := range comp.Attributes {
-		ptr := &comp.Attributes[i]
-		newT, newName := flux.EnsureEndpointAttribute(ptr.Tag, ptr.Name)
-		ptr.Tag = newT
-		ptr.Name = newName
-	}
-
 	event := flux.HttpEndpointEvent{
-		Endpoint: comp.Endpoint,
+		Endpoint: *EnsureEndpoint(&comp.Endpoint),
 	}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
@@ -71,4 +57,19 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEn
 		return invalidHttpEndpointEvent, false
 	}
 	return event, true
+}
+
+func EnsureEndpoint(ep *flux.Endpoint) *flux.Endpoint {
+	// 订正Tag与Name的关系
+	for i := range ep.Attributes {
+		ptr := &ep.Attributes[i]
+		newT, newName := flux.EnsureEndpointAttribute(ptr.Tag, ptr.Name)
+		ptr.Tag = newT
+		ptr.Name = newName
+	}
+	EnsureService(&ep.Service)
+	if ep.Permission.IsValid() {
+		EnsureService(&ep.Permission)
+	}
+	return ep
 }

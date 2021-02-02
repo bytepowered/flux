@@ -6,17 +6,18 @@ endpoints:
         version: "1.0"
         httpPattern: "/debug/flux/echo/get"
         httpMethod: "GET"
+        attributes:
+            -   name: "ServerTag"
+                value: "admin"
         # 后端服务配置
         service:
             serviceId: "flux.debug.echo.get"
             interface: "flux.debug.echo"
             method: "get"
             attributes:
-                -   tag: 1
-                    name: "RpcProto"
+                -   name: "RpcProto"
                     value: "ECHO"
-                -   tag: 1
-                    name: "Authorize"
+                -   name: "Authorize"
                     value: false
 
     -   application: "flux"
@@ -29,11 +30,9 @@ endpoints:
             interface: "flux.debug.echo"
             method: "post"
             attributes:
-                -   tag: 1
-                    name: "RpcProto"
+                -   name: "RpcProto"
                     value: "ECHO"
-                -   tag: 1
-                    name: "Authorize"
+                -   name: "Authorize"
                     value: false
 
 # Service 配置服务列表

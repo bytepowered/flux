@@ -2,6 +2,7 @@ package flux
 
 import (
 	"github.com/spf13/cast"
+	"strings"
 	"sync"
 )
 
@@ -77,25 +78,25 @@ const (
 )
 
 var ServiceAttrTagNames = map[uint8]string{
-	ServiceAttrTagNotDefined: "NotDefined",
-	ServiceAttrTagRpcProto:   "RpcProto",
-	ServiceAttrTagRpcGroup:   "RpcGroup",
-	ServiceAttrTagRpcVersion: "RpcVersion",
-	ServiceAttrTagRpcTimeout: "RpcTimeout",
-	ServiceAttrTagRpcRetries: "RpcRetries",
+	ServiceAttrTagNotDefined: "notdefined",
+	ServiceAttrTagRpcProto:   "rpcproto",
+	ServiceAttrTagRpcGroup:   "rpcgroup",
+	ServiceAttrTagRpcVersion: "rpcversion",
+	ServiceAttrTagRpcTimeout: "rpctimeout",
+	ServiceAttrTagRpcRetries: "rpcretries",
 }
 
 // EndpointAttributes
 const (
-	EndpointAttrTagNotDefined uint8 = iota
-	EndpointAttrTagAuthorize
-	EndpointAttrTagListenOn
+	EndpointAttrTagNotDefined uint8 = iota // 默认的，未定义的属性
+	EndpointAttrTagAuthorize               // 标识Endpoint访问是否需要授权
+	EndpointAttrTagServerTag               // 标识Endpoint绑定到哪个ListenServer服务
 )
 
 var EndpointAttrTagNames = map[uint8]string{
-	EndpointAttrTagNotDefined: "NotDefined",
-	EndpointAttrTagAuthorize:  "Authorize",
-	EndpointAttrTagListenOn:   "ListenOn",
+	EndpointAttrTagNotDefined: "notdefined",
+	EndpointAttrTagAuthorize:  "authorize",
+	EndpointAttrTagServerTag:  "servertag",
 }
 
 type (
@@ -377,8 +378,8 @@ func EnsureAttribute(tag uint8, name string, mapping map[uint8]string) (uint8, s
 		name = mapping[tag]
 	}
 	if name != "" && tag <= 0 {
-		for t, n := range mapping {
-			if name == n {
+		for t, tname := range mapping {
+			if strings.ToLower(name) == tname {
 				tag = t
 			}
 		}
