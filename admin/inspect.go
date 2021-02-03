@@ -58,56 +58,47 @@ func init() {
 	}
 }
 
-func EnableInspectFeature(srv flux.ListenServer) {
-	srv.AddHandler("GET", "/inspect/endpoints", newInspectEndpointsHandler())
-	srv.AddHandler("GET", "/inspect/services", newInspectServicesHandler())
-}
-
-func newInspectEndpointsHandler() flux.WebHandler {
-	return func(ctx flux.WebContext) error {
-		filters := make([]EndpointFilter, 0)
-		for _, key := range endpointQueryKeys {
-			if query := ctx.QueryVar(key); "" != query {
-				if f, ok := endpointFilterFactories[key]; ok {
-					filters = append(filters, f(query))
-				}
+func InspectEndpointsHandler(ctx flux.WebContext) error {
+	filters := make([]EndpointFilter, 0)
+	for _, key := range endpointQueryKeys {
+		if query := ctx.QueryVar(key); "" != query {
+			if f, ok := endpointFilterFactories[key]; ok {
+				filters = append(filters, f(query))
 			}
 		}
-		data := ext.LoadEndpoints()
-		if len(filters) == 0 {
-			m := make(map[string]map[string]*flux.Endpoint, 16)
-			for k, v := range data {
-				m[k] = v.ToSerializable()
-			}
-			return ctx.Send(ctx, http.Header{}, flux.StatusOK, nil)
-		} else {
-			return ctx.Send(ctx, http.Header{}, flux.StatusOK, queryWithEndpointFilters(data, filters...))
+	}
+	data := ext.LoadEndpoints()
+	if len(filters) == 0 {
+		m := make(map[string]map[string]*flux.Endpoint, 16)
+		for k, v := range data {
+			m[k] = v.ToSerializable()
 		}
+		return ctx.Send(ctx, http.Header{}, flux.StatusOK, nil)
+	} else {
+		return ctx.Send(ctx, http.Header{}, flux.StatusOK, queryWithEndpointFilters(data, filters...))
 	}
 }
 
-func newInspectServicesHandler() flux.WebHandler {
-	return func(ctx flux.WebContext) error {
-		noheader := http.Header{}
-		for _, key := range serviceQueryKeys {
-			if id := ctx.QueryVar(key); "" != id {
-				service, ok := ext.GetBackendService(id)
-				if ok {
-					return ctx.Send(ctx, noheader, flux.StatusOK, service)
-				} else {
-					return ctx.Send(ctx, noheader, flux.StatusNotFound, map[string]string{
-						"status":     "failed",
-						"message":    "service not found",
-						"service-id": id,
-					})
-				}
+func InspectServicesHandler(ctx flux.WebContext) error {
+	noheader := http.Header{}
+	for _, key := range serviceQueryKeys {
+		if id := ctx.QueryVar(key); "" != id {
+			service, ok := ext.GetBackendService(id)
+			if ok {
+				return ctx.Send(ctx, noheader, flux.StatusOK, service)
+			} else {
+				return ctx.Send(ctx, noheader, flux.StatusNotFound, map[string]string{
+					"status":     "failed",
+					"message":    "service not found",
+					"service-id": id,
+				})
 			}
 		}
-		return ctx.Send(ctx, noheader, flux.StatusBadRequest, map[string]string{
-			"status":  "failed",
-			"message": "param is required: serviceId",
-		})
 	}
+	return ctx.Send(ctx, noheader, flux.StatusBadRequest, map[string]string{
+		"status":  "failed",
+		"message": "param is required: serviceId",
+	})
 }
 
 func queryWithEndpointFilters(data map[string]*flux.MultiEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {

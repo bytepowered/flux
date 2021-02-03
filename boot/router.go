@@ -16,7 +16,7 @@ type Router struct {
 	hooks   []flux.PrepareHookFunc
 }
 
-func NewAppRouter() *Router {
+func NewRouter() *Router {
 	return &Router{
 		metrics: NewMetrics(),
 		hooks:   make([]flux.PrepareHookFunc, 0, 4),
@@ -143,7 +143,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			ctx.AddMetric("M-Backend", ctx.ElapsedTime())
 		}()
 		if backend, ok := ext.GetBackendTransport(protoName); !ok {
-			logger.WithContext(ctx).Warnw("Route, unsupported protocol",
+			logger.WithContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,

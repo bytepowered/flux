@@ -5,6 +5,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/webserver"
 	"github.com/spf13/viper"
+	"net/http"
 )
 
 type (
@@ -50,10 +51,50 @@ func WithNotfoundHandler(f flux.WebHandler) Option {
 	}
 }
 
-func WithInterceptors(wis []flux.WebInterceptor) Option {
+func WithInterceptors(array []flux.WebInterceptor) Option {
+	return WithInterceptor(array...)
+}
+
+func WithInterceptor(array ...flux.WebInterceptor) Option {
 	return func(server flux.ListenServer) {
-		for _, wi := range wis {
+		for _, wi := range array {
 			server.AddInterceptor(wi)
 		}
 	}
+}
+
+func WithWebHandlers(tuples []WebHandlerTuple) Option {
+	return WithWebHandler(tuples...)
+}
+
+func WithWebHandler(tuples ...WebHandlerTuple) Option {
+	return func(server flux.ListenServer) {
+		for _, h := range tuples {
+			server.AddHandler(h.Method, h.Pattern, h.Handler)
+		}
+	}
+}
+
+type WebHandlerTuple struct {
+	Method  string
+	Pattern string
+	Handler flux.WebHandler
+}
+
+func WithHttpHandlers(tuples []HttpHandlerTuple) Option {
+	return WithHttpHandler(tuples...)
+}
+
+func WithHttpHandler(tuples ...HttpHandlerTuple) Option {
+	return func(server flux.ListenServer) {
+		for _, h := range tuples {
+			server.AddHttpHandler(h.Method, h.Pattern, http.HandlerFunc(h.Handler))
+		}
+	}
+}
+
+type HttpHandlerTuple struct {
+	Method  string
+	Pattern string
+	Handler func(http.ResponseWriter, *http.Request)
 }

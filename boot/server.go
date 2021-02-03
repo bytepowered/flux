@@ -96,11 +96,15 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 		}),
 		// Default ListenServer
 		WithListenServer(ListenServerIdDefault,
-			listen.NewServer(loadListenServerConfig(ListenServerIdDefault), nil)),
+			listen.NewServer(LoadListenServerConfig(ListenServerIdDefault), nil)),
 		// Admin ListenServer
 		WithListenServer(ListenServerIdAdmin,
-			listen.NewServer(loadListenServerConfig(ListenServerIdAdmin), nil,
-				admin.EnableInspectFeature,
+			listen.NewServer(LoadListenServerConfig(ListenServerIdAdmin), nil,
+				// 内部元数据查询
+				listen.WithWebHandlers([]listen.WebHandlerTuple{
+					{Method: "GET", Pattern: "/inspect/endpoints", Handler: admin.InspectEndpointsHandler},
+					{Method: "GET", Pattern: "/inspect/services", Handler: admin.InspectServicesHandler},
+				}),
 			)),
 	}
 	return NewBootstrapServerWith(context.DefaultContextFactory, append(opts, options...)...)
@@ -108,7 +112,7 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 
 func NewBootstrapServerWith(factory func() flux.Context, opts ...Option) *BootstrapServer {
 	srv := &BootstrapServer{
-		router:        NewAppRouter(),
+		router:        NewRouter(),
 		listenServers: make(map[string]flux.ListenServer, 2),
 		ctxPool:       sync.Pool{New: func() interface{} { return factory() }},
 		ctxHooks:      make([]flux.ServerContextHookFunc, 0, 4),
@@ -212,7 +216,7 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 	return nil
 }
 
-func (s *BootstrapServer) Handle(webc flux.WebContext, server flux.ListenServer, endpoints *flux.MultiEndpoint, trace bool) error {
+func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, endpoints *flux.MultiEndpoint) error {
 	version := s.endpointSelectFunc(webc)
 	endpoint, found := endpoints.LookupByVersion(version)
 	requestId := cast.ToString(webc.ScopeValue(flux.HeaderXRequestId))
@@ -220,16 +224,16 @@ func (s *BootstrapServer) Handle(webc flux.WebContext, server flux.ListenServer,
 		if r := recover(); r != nil {
 			trace := logger.With(requestId)
 			if err, ok := r.(error); ok {
-				trace.Errorw("CRITICAL:SERVER_PANIC", "error", err)
+				trace.Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", err)
 			} else {
-				trace.Errorw("CRITICAL:SERVER_PANIC", "recover", r)
+				trace.Errorw("SERVER:ROUTE:CRITICAL_PANIC", "recover", r)
 			}
 			trace.Error(string(debug.Stack()))
 		}
 	}()
 	if !found {
-		if trace {
-			logger.With(requestId).Infow("Server route not-found",
+		if s.routeTraceEnabled {
+			logger.With(requestId).Infow("SERVER:ROUTE:NOT_FOUND",
 				"http-pattern", []string{webc.Method(), webc.URI(), webc.URL().Path},
 			)
 		}
@@ -237,10 +241,10 @@ func (s *BootstrapServer) Handle(webc flux.WebContext, server flux.ListenServer,
 	}
 	ctxw := s.acquireContext(requestId, webc, endpoint)
 	defer s.releaseContext(ctxw)
-	// Route call
-	logger.WithContext(ctxw).Infow("Server route start")
+	// route call
+	logger.WithContext(ctxw).Infow("SERVER:ROUTE:START")
 	endcall := func(code int, start time.Time) {
-		logger.WithContext(ctxw).Infow("Server route end",
+		logger.WithContext(ctxw).Infow("SERVER:ROUTE:END",
 			"metric", ctxw.Metrics(),
 			"elapses", time.Since(start).String(), "response.code", code)
 	}
@@ -249,10 +253,10 @@ func (s *BootstrapServer) Handle(webc flux.WebContext, server flux.ListenServer,
 	for _, hook := range s.ctxHooks {
 		hook(webc, ctxw)
 	}
-	// Route and response
+	// route and response
 	if err := s.router.Route(ctxw); nil != err {
 		defer endcall(err.StatusCode, start)
-		logger.WithContext(ctxw).Errorw("Server route error", "error", err)
+		logger.WithContext(ctxw).Errorw("SERVER:ROUTE:ERROR", "error", err)
 		err.MergeHeader(ctxw.Response().HeaderVars())
 		return err
 	}
@@ -266,21 +270,21 @@ func (s *BootstrapServer) onBackendServiceEvent(event flux.BackendServiceEvent) 
 	initArguments(service.Arguments)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("Add service",
+		logger.Infow("SERVER:META:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.SetBackendService(service)
 		if "" != service.AliasId {
 			ext.SetBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
-		logger.Infow("Update service",
+		logger.Infow("SERVER:META:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.SetBackendService(service)
 		if "" != service.AliasId {
 			ext.SetBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
-		logger.Infow("Delete service",
+		logger.Infow("SERVER:META:SERVICE:REMOVE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RemoveBackendService(service.ServiceId)
 		if "" != service.AliasId {
@@ -305,7 +309,7 @@ func (s *BootstrapServer) onHttpEndpointEvent(event flux.HttpEndpointEvent) {
 	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("Add endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
+		logger.Infow("SERVER:META:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
 		bind.Update(endpoint.Version, &endpoint)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if isreg {
@@ -315,17 +319,17 @@ func (s *BootstrapServer) onHttpEndpointEvent(event flux.HttpEndpointEvent) {
 			}
 			server, ok := s.ListenServer(id)
 			if ok {
-				logger.Infow("Register http handler, on server: "+id, "method", method, "pattern", pattern)
+				logger.Infow("SERVER:META:ENDPOINT:HTTP_HANDLER/"+id, "method", method, "pattern", pattern)
 				server.AddHandler(method, pattern, s.newEndpointHandler(server, bind))
 			} else {
-				logger.Errorw("Register http handler, server not found: "+id, "method", method, "pattern", pattern)
+				logger.Errorw("SERVER:META:ENDPOINT:LISTENER_MISSED/"+id, "method", method, "pattern", pattern)
 			}
 		}
 	case flux.EventTypeUpdated:
-		logger.Infow("Update endpoint", "version", endpoint.Version, "method", method, "pattern", pattern)
+		logger.Infow("SERVER:META:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
 		bind.Update(endpoint.Version, &endpoint)
 	case flux.EventTypeRemoved:
-		logger.Infow("Delete endpoint", "method", method, "pattern", pattern)
+		logger.Infow("SERVER:META:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
 		bind.Delete(endpoint.Version)
 	}
 }
@@ -403,7 +407,7 @@ func (s *BootstrapServer) AddServerContextHookFunc(f flux.ServerContextHookFunc)
 
 func (s *BootstrapServer) newEndpointHandler(server flux.ListenServer, endpoint *flux.MultiEndpoint) flux.WebHandler {
 	return func(webc flux.WebContext) error {
-		return s.Handle(webc, server, endpoint, s.routeTraceEnabled)
+		return s.route(webc, server, endpoint)
 	}
 }
 
@@ -443,7 +447,7 @@ func (s *BootstrapServer) defaultListenServer() flux.ListenServer {
 	return nil
 }
 
-func loadListenServerConfig(id string) *flux.Configuration {
+func LoadListenServerConfig(id string) *flux.Configuration {
 	return flux.NewConfigurationOf(flux.NamespaceListenServer + "." + id)
 }
 
