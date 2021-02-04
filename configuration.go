@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	NamespaceEndpointDiscovery = "EndpointDiscovery"
+	NamespaceEndpointDiscovery = "endpoint_discovery"
 )
 
 // NewGlobalConfiguration 创建全局Viper实例的配置对象

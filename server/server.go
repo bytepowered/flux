@@ -31,14 +31,14 @@ const (
 )
 
 const (
-	HttpWebServerConfigRootName              = "HttpWebServer"
-	HttpWebServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
+	HttpWebServerConfigRootName              = "http_web_server"
+	HttpWebServerConfigKeyFeatureDebugEnable = "feature_debug_enable"
 	HttpWebServerConfigKeyFeatureDebugPort   = "feature-debug-port"
-	HttpWebServerConfigKeyRequestLogEnable   = "request-log-enable"
+	HttpWebServerConfigKeyRequestLogEnable   = "request_log_enable"
 	HttpWebServerConfigKeyAddress            = "address"
 	HttpWebServerConfigKeyPort               = "port"
-	HttpWebServerConfigKeyTlsCertFile        = "tls-cert-file"
-	HttpWebServerConfigKeyTlsKeyFile         = "tls-key-file"
+	HttpWebServerConfigKeyTlsCertFile        = "tls_cert_file"
+	HttpWebServerConfigKeyTlsKeyFile         = "tls_key_file"
 )
 
 type (

@@ -61,18 +61,18 @@ func (r *ZookeeperDiscoveryService) Id() string {
 // Init init discovery
 func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		"endpoint-path": zkDiscoveryHttpEndpointPath,
-		"service-path":  zkDiscoveryBackendServicePath,
+		"rootpath_endpoint": zkDiscoveryHttpEndpointPath,
+		"rootpath_service":  zkDiscoveryBackendServicePath,
 	})
-	active := config.GetStringSlice("active-id")
+	active := config.GetStringSlice("active_id")
 	if len(active) == 0 {
 		active = []string{"default"}
 	}
 	logger.Infow("ZkEndpointDiscovery active discovery", "active-ids", active)
-	r.endpointPath = config.GetString("endpoint-path")
-	r.servicePath = config.GetString("service-path")
+	r.endpointPath = config.GetString("rootpath_endpoint")
+	r.servicePath = config.GetString("rootpath_service")
 	if r.endpointPath == "" || r.servicePath == "" {
-		return errors.New("config(endpoint-path, service-path) is empty")
+		return errors.New("config(rootpath_endpoint, rootpath_service) is empty")
 	}
 	r.retrievers = make([]*zk.ZookeeperRetriever, len(active))
 	for i := range active {

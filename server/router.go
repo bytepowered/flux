@@ -37,7 +37,7 @@ func (r *AppRouter) Initial() error {
 	logger.Info("AppRouter initialing")
 	// Backends
 	for proto, backend := range ext.GetBackendTransports() {
-		ns := "BACKEND." + proto
+		ns := "backend_transports." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
 		if err := r.InitialHook(backend, flux.NewConfigurationOf(ns)); nil != err {
 			return err
