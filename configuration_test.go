@@ -88,13 +88,13 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		expected interface{}
 	}{
 		{
-			config:   NewConfigurationOf("empty"),
+			config:   NewConfigurationOfNS("empty"),
 			lookup:   "user",
 			expected: nil,
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOf("empty")
+				c := NewConfigurationOfNS("empty")
 				c.Set("user", "chen")
 				return c
 			}(),
@@ -103,7 +103,7 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOf("empty")
+				c := NewConfigurationOfNS("empty")
 				c.Set("user", "${username}")
 				return c
 			}(),
@@ -112,7 +112,7 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOf("empty")
+				c := NewConfigurationOfNS("empty")
 				c.Set("user", "${usernameX:haha}")
 				return c
 			}(),
@@ -121,7 +121,7 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOf("empty")
+				c := NewConfigurationOfNS("empty")
 				c.Set("user", "${user.year}")
 				return c
 			}(),

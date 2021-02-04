@@ -1,57 +1,56 @@
 # 网关Http服务器配置
-HttpWebServer:
+http_web_server:
     address: "0.0.0.0"
     port: 8080
-    body-limit: "100K"
-    #tls-cret-file: ""
-    #tls-key-file: ""
-    request-log-enable: true
-    feature-debug-enable: true
-    feature-echo-enable: true
+    body_limit: "100K"
+    #tls_cert_file: ""
+    #tls_key_file: ""
+    request_log_enable: true
+    feature_debug_enable: true
+    feature_echo_enable: true
 
-# EndpointDiscovery 配置
-EndpointDiscovery:
-    # 默认为zookeeper，支持多注册中心。
-    Zookeeper:
-        endpoint-path: "/flux-endpoint"
-        service-path: "/flux-service"
+# EndpointDiscoveryService (EDS) 配置
+endpoint_discovery_services:
+    # 默认EDS为 zookeeper；支持多注册中心。
+    zookeeper:
+        rootpath_endpoint: "/flux-endpoint"
+        rootpath_service: "/flux-service"
         # 启用的注册中心，默认default；其ID为下面多注册中心的key（不区分大小写）
-        active-id:
-            - "default"
-            - "qcloud"
+        registry_selector: [ "default", "qcloud" ]
         # 支持多注册中心
-        Default:
-            address: "${zookeeper.address:zookeeper:2181}"
-            timeout: "${zookeeper.timeout:5s}"
-        QCloud:
-            address: "${tx.zookeeper.address:tx.zookeeper:2181}"
-        HiCloud:
-            address: "${hw.zookeeper.address:hw.zookeeper:2181}"
+        registry_centers:
+            default:
+                address: "${zookeeper.address:zookeeper:2181}"
+                timeout: "${zookeeper.timeout:5s}"
+            qcloud:
+                address: "${tx.zookeeper.address:tx.zookeeper:2181}"
+            hicloud:
+                address: "${hw.zookeeper.address:hw.zookeeper:2181}"
 
     # Resource 本地静态资源配置
-    Resource:
+    resource:
         # 指定资源配置地址列表
         includes:
             - "./resources/echo.yml"
-        endpoints:
+        endpoints: [ ]
         # 指定当前配置Endpoint列表
-        services:
+        services: [ ]
         # 指定当前配置Service列表
 
 # BACKEND 配置参数
-Backend:
+backend_transports:
     # Dubbo 协议后端服务配置
-    Dubbo:
+    dubbo:
         # 集群策略：[Failover, Failfast, Failsafe/Failback, Available, Broadcast, Forking]
         cluster: "failover"
         # 负载策略: [Random, RoundRobin, LeastActive, ConsistentHash]
-        load-balance: "random"
+        load_balance: "random"
         # 日志开关；如果开启则打印Dubbo调用细节
-        trace-enable: false
+        trace_enable: false
         # DuoobReference 初始化等待延时
-        reference-delay: "30ms"
+        reference_delay: "30ms"
         # Dubbo注册中心列表
-        Registry:
+        registry:
             id: "default"
             protocol: "zookeeper"
             timeout: "3s"
@@ -60,7 +59,7 @@ Backend:
             password: ""
 
     # Http协议后端服务配置
-    Http:
+    http:
         timeout: "10s"
         # 日志开关；如果开启则打印Dubbo调用细节
-        trace-enable: false
+        trace_enable: false

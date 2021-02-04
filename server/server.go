@@ -31,14 +31,14 @@ const (
 )
 
 const (
-	HttpWebServerConfigRootName              = "HttpWebServer"
-	HttpWebServerConfigKeyFeatureDebugEnable = "feature-debug-enable"
+	HttpWebServerConfigRootName              = "http_web_server"
+	HttpWebServerConfigKeyFeatureDebugEnable = "feature_debug_enable"
 	HttpWebServerConfigKeyFeatureDebugPort   = "feature-debug-port"
-	HttpWebServerConfigKeyRequestLogEnable   = "request-log-enable"
+	HttpWebServerConfigKeyRequestLogEnable   = "request_log_enable"
 	HttpWebServerConfigKeyAddress            = "address"
 	HttpWebServerConfigKeyPort               = "port"
-	HttpWebServerConfigKeyTlsCertFile        = "tls-cert-file"
-	HttpWebServerConfigKeyTlsKeyFile         = "tls-key-file"
+	HttpWebServerConfigKeyTlsCertFile        = "tls_cert_file"
+	HttpWebServerConfigKeyTlsKeyFile         = "tls_key_file"
 )
 
 type (
@@ -172,7 +172,7 @@ func (s *AppServer) Prepare() error {
 // Initial
 func (s *AppServer) Initial() error {
 	// Http server
-	s.config = flux.NewConfigurationOf(HttpWebServerConfigRootName)
+	s.config = flux.NewConfigurationOfNS(HttpWebServerConfigRootName)
 	s.config.SetDefaults(s.defaults)
 	// 创建WebServer
 	s.httpWebServer = ext.GetWebServerFactory()(s.config)
@@ -197,8 +197,8 @@ func (s *AppServer) Initial() error {
 	}
 	// Endpoint discovery
 	for _, discovery := range ext.GetEndpointDiscoveries() {
-		ns := flux.NamespaceEndpointDiscovery + "." + discovery.Id()
-		if err := s.router.InitialHook(discovery, flux.NewConfigurationOf(ns)); nil != err {
+		ns := flux.NamespaceEndpointDiscoveryServices + "." + discovery.Id()
+		if err := s.router.InitialHook(discovery, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}
 	}
