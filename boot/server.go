@@ -44,7 +44,7 @@ type (
 // BootstrapServer
 type BootstrapServer struct {
 	listenServers      map[string]flux.ListenServer
-	ctxHooks           []flux.ServerContextHookFunc
+	ctxHooks           []flux.ContextHook
 	endpointSelectFunc EndpointSelectFunc
 	router             *Router
 	ctxPool            sync.Pool
@@ -55,7 +55,7 @@ type BootstrapServer struct {
 }
 
 // WithServerContextHooks 配置请求Hook函数列表
-func WithServerContextHooks(hooks ...flux.ServerContextHookFunc) Option {
+func WithServerContextHooks(hooks ...flux.ContextHook) Option {
 	return func(bs *BootstrapServer) {
 		bs.ctxHooks = append(bs.ctxHooks, hooks...)
 	}
@@ -115,7 +115,7 @@ func NewBootstrapServerWith(factory func() flux.Context, opts ...Option) *Bootst
 		router:        NewRouter(),
 		listenServers: make(map[string]flux.ListenServer, 2),
 		ctxPool:       sync.Pool{New: func() interface{} { return factory() }},
-		ctxHooks:      make([]flux.ServerContextHookFunc, 0, 4),
+		ctxHooks:      make([]flux.ContextHook, 0, 4),
 		started:       make(chan struct{}),
 		stopped:       make(chan struct{}),
 		banner:        defaultBanner,
@@ -135,15 +135,13 @@ func (s *BootstrapServer) Prepare() error {
 func (s *BootstrapServer) Initial() error {
 	// Listen Server
 	for id, srv := range s.listenServers {
-		ns := flux.NamespaceListenServer + "." + id
-		if err := srv.Init(flux.NewConfigurationOf(ns)); nil != err {
+		if err := srv.Init(LoadListenServerConfig(id)); nil != err {
 			return err
 		}
 	}
 	// Discovery
 	for _, dis := range ext.GetEndpointDiscoveries() {
-		ns := flux.NamespaceEndpointDiscovery + "." + dis.Id()
-		if err := s.router.InitialHook(dis, flux.NewConfigurationOf(ns)); nil != err {
+		if err := s.router.RegisterInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
 			return err
 		}
 	}
@@ -195,23 +193,22 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 	}
 	go func() {
 		logger.Info("Discovery event loop: START")
-	Loop:
+		defer logger.Info("Discovery event loop: STOP")
 		for {
 			select {
 			case epEvt, ok := <-endpoints:
 				if !ok {
-					break Loop
+					return
 				}
 				s.onHttpEndpointEvent(epEvt)
 
 			case esEvt, ok := <-services:
 				if !ok {
-					break Loop
+					return
 				}
 				s.onBackendServiceEvent(esEvt)
 			}
 		}
-		logger.Info("Discovery event loop: STOP")
 	}()
 	return nil
 }
@@ -317,7 +314,7 @@ func (s *BootstrapServer) onHttpEndpointEvent(event flux.HttpEndpointEvent) {
 			if id == "" {
 				id = ListenServerIdDefault
 			}
-			server, ok := s.ListenServer(id)
+			server, ok := s.GetListenServer(id)
 			if ok {
 				logger.Infow("SERVER:META:ENDPOINT:HTTP_HANDLER/"+id, "method", method, "pattern", pattern)
 				server.AddHandler(method, pattern, s.newEndpointHandler(server, bind))
@@ -394,14 +391,14 @@ func (s *BootstrapServer) AddListenServer(id string, server flux.ListenServer) {
 	s.listenServers[id] = pkg.RequireNotNil(server, "ListenServer is nil").(flux.ListenServer)
 }
 
-// WebListenServer 返回WebServer实例
-func (s *BootstrapServer) ListenServer(id string) (flux.ListenServer, bool) {
+// GetListenServer 返回ListenServer实例
+func (s *BootstrapServer) GetListenServer(id string) (flux.ListenServer, bool) {
 	ls, ok := s.listenServers[id]
 	return ls, ok
 }
 
-// AddServerContextHookFunc 添加Http与Flux的Context桥接函数
-func (s *BootstrapServer) AddServerContextHookFunc(f flux.ServerContextHookFunc) {
+// AddContextHook 添加Http与Flux的Context桥接函数
+func (s *BootstrapServer) AddContextHook(f flux.ContextHook) {
 	s.ctxHooks = append(s.ctxHooks, f)
 }
 
@@ -449,6 +446,10 @@ func (s *BootstrapServer) defaultListenServer() flux.ListenServer {
 
 func LoadListenServerConfig(id string) *flux.Configuration {
 	return flux.NewConfigurationOf(flux.NamespaceListenServer + "." + id)
+}
+
+func LoadEndpointDiscoveryConfig(id string) *flux.Configuration {
+	return flux.NewConfigurationOf(flux.NamespaceEndpointDiscovery + "." + id)
 }
 
 func isAllowedHttpMethod(method string) bool {
