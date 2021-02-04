@@ -16,22 +16,22 @@ type CompatibleEndpoint struct {
 	Authorize bool `json:"authorize"` // 此端点是否需要授权
 }
 
-func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.HttpEndpointEvent, ok bool) {
+func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.HttpEndpointEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
-		logger.Warnw("Invalid endpoint event data.size", "data", string(bytes))
+		logger.Warnw("DISCOVERY:ENDPOINT:ILLEGAL_JSONSIZE", "data", string(bytes), "node", node)
 		return invalidHttpEndpointEvent, false
 	}
 	comp := CompatibleEndpoint{}
 	if err := ext.JSONUnmarshal(bytes, &comp); nil != err {
-		logger.Warnw("invalid endpoint data",
-			"event-type", etype, "data", string(bytes), "error", err)
+		logger.Warnw("DISCOVERY:ENDPOINT:ILLEGAL_JSONFORMAT",
+			"event-type", etype, "data", string(bytes), "error", err, "node", node)
 		return invalidHttpEndpointEvent, false
 	}
 	// 检查有效性
 	if !comp.IsValid() {
-		logger.Warnw("illegal http-metadata", "data", string(bytes))
+		logger.Warnw("DISCOVERY:ENDPOINT:INVALID_VALUES", "data", string(bytes), "node", node)
 		return invalidHttpEndpointEvent, false
 	}
 	if len(comp.Attributes) == 0 {

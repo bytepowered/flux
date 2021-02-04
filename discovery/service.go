@@ -21,22 +21,22 @@ var (
 //	RpcRetries string `json:"rpcRetries"` // Service侧的调用重试
 //}
 
-func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.BackendServiceEvent, ok bool) {
+func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.BackendServiceEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
-		logger.Warnw("Invalid service event data.size", "data", string(bytes))
+		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONSIZE", "data", string(bytes), "node", node)
 		return invalidBackendServiceEvent, false
 	}
 	service := flux.BackendService{}
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
-		logger.Warnw("Invalid service data",
-			"event-type", etype, "data", string(bytes), "error", err)
+		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONFORMAT",
+			"event-type", etype, "data", string(bytes), "error", err, "node", node)
 		return invalidBackendServiceEvent, false
 	}
 	// 检查有效性
 	if !service.IsValid() {
-		logger.Warnw("illegal backend service", "service", service)
+		logger.Warnw("DISCOVERY:SERVICE:INVALID_VALUES", "service", service, "node", node)
 		return invalidBackendServiceEvent, false
 	}
 	event := flux.BackendServiceEvent{
