@@ -20,6 +20,9 @@ func DefaultNotfoundHandler(_ flux.WebContext) error {
 }
 
 func DefaultServerErrorHandler(webc flux.WebContext, err error) {
+	if nil == err {
+		return
+	}
 	if serr, ok := err.(*flux.ServeError); ok {
 		webc.SendError(serr)
 	} else {

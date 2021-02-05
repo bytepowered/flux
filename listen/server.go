@@ -3,7 +3,6 @@ package listen
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/webserver"
 	"github.com/spf13/viper"
 	"net/http"
 )
@@ -17,7 +16,7 @@ func NewServer(config *flux.Configuration, wis []flux.WebInterceptor, opts ...Op
 		WithServerErrorHandler(DefaultServerErrorHandler),
 		WithNotfoundHandler(DefaultNotfoundHandler),
 		WithResponseWriter(DefaultResponseWriter),
-		WithInterceptors(append([]flux.WebInterceptor{webserver.NewRequestIdInterceptor()}, wis...)),
+		WithInterceptors(wis),
 	}, opts...)
 	return NewServerWith(config, opts...)
 }

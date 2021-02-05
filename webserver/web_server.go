@@ -9,6 +9,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
@@ -78,6 +79,7 @@ func NewAdaptWebServer(options *flux.Configuration) flux.ListenServer {
 		return func(c echo.Context) error {
 			c.Set(keyWebResolver, aws.requestResolver)
 			c.Set(keyWebServer, aws)
+			c.Set(flux.XRequestId, uuid.New().String())
 			return next(c)
 		}
 	})
@@ -93,15 +95,20 @@ type AdaptWebServer struct {
 	server          *echo.Echo
 	writer          flux.WebResponseWriter
 	requestResolver flux.WebRequestResolver
-	tlsCert         string
-	tlsKey          string
+	tlsCertFile     string
+	tlsKeyFile      string
 	address         string
 }
 
 func (w *AdaptWebServer) Init(opts *flux.Configuration) error {
-	w.tlsCert = opts.GetString(ConfigKeyTLSCertFile)
-	w.tlsKey = opts.GetString(ConfigKeyTLSKeyFile)
-	w.address = opts.GetString(ConfigKeyAddress) + ":" + opts.GetString(ConfigKeyBindPort)
+	w.tlsCertFile = opts.GetString(ConfigKeyTLSCertFile)
+	w.tlsKeyFile = opts.GetString(ConfigKeyTLSKeyFile)
+	addr, port := opts.GetString(ConfigKeyAddress), opts.GetString(ConfigKeyBindPort)
+	if strings.Contains(addr, ":") {
+		w.address = addr
+	} else {
+		w.address = addr + ":" + port
+	}
 	if w.address == ":" {
 		return errors.New("web server config.address is required, was empty, server: " + w.name)
 	}
@@ -110,8 +117,8 @@ func (w *AdaptWebServer) Init(opts *flux.Configuration) error {
 
 func (w *AdaptWebServer) Listen() error {
 	logger.Infof("WebServer(echo/%s) start listen: %s", w.name, w.address)
-	if "" != w.tlsCert && "" != w.tlsKey {
-		return w.server.StartTLS(w.address, w.tlsCert, w.tlsKey)
+	if "" != w.tlsCertFile && "" != w.tlsKeyFile {
+		return w.server.StartTLS(w.address, w.tlsCertFile, w.tlsKeyFile)
 	} else {
 		return w.server.Start(w.address)
 	}
@@ -145,6 +152,9 @@ func (w *AdaptWebServer) SetNotfoundHandler(fun flux.WebHandler) {
 
 func (w *AdaptWebServer) SetServerErrorHandler(handler flux.WebServerErrorHandler) {
 	w.server.HTTPErrorHandler = func(err error, c echo.Context) {
+		if nil == err {
+			return
+		}
 		handler(ensureAdaptWebContext(c), err)
 	}
 }
