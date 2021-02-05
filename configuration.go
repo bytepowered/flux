@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
+	"os"
 	"strings"
 	"time"
 )
@@ -80,14 +81,22 @@ func (c *Configuration) GetOrDefault(key string, def interface{}) interface{} {
 	v := c.instance.Get(key)
 	// 动态全局Key和默认值： ${username:yongjia}
 	if strv, ok := v.(string); ok {
-		dkey, defv, flag := ParseDynamicKey(strv)
-		if flag {
+		dkey, defv, typ := ParseDynamicKey(strv)
+		switch typ {
+		case DynamicTypeConfig:
 			if viper.IsSet(dkey) {
 				return viper.Get(dkey)
 			} else {
 				return defv
 			}
-		} else {
+		case DynamicTypeEnv:
+			if ev, ok := os.LookupEnv(dkey); ok {
+				return ev
+			} else {
+				return defv
+			}
+
+		default:
 			return v
 		}
 	}
@@ -223,11 +232,22 @@ func (c *Configuration) GetConfigurationSlice(key string) []*Configuration {
 	return nil
 }
 
-// 解析动态值 ${key:defaultV}
-func ParseDynamicKey(pattern string) (key string, def string, ok bool) {
+const (
+	DynamicTypeValue  = 0
+	DynamicTypeConfig = 1
+	DynamicTypeEnv    = 2
+)
+
+// 解析动态值：配置参数：${key:defaultV}，环境变量：#{key:defaultV}
+func ParseDynamicKey(pattern string) (key string, def string, typ int) {
 	pattern = strings.TrimSpace(pattern)
 	size := len(pattern)
-	if size > 3 && "${" == pattern[:2] && '}' == pattern[size-1] {
+	if size <= 3 {
+		return pattern, "", DynamicTypeValue
+	}
+	dyn := "${" == pattern[:2]
+	env := "#{" == pattern[:2]
+	if (dyn || env) && '}' == pattern[size-1] {
 		values := strings.TrimSpace(pattern[2 : size-1])
 		idx := strings.IndexByte(values, ':')
 		key = values
@@ -235,7 +255,11 @@ func ParseDynamicKey(pattern string) (key string, def string, ok bool) {
 			key = values[:idx]
 			def = values[idx+1:]
 		}
-		return key, def, true
+		if env {
+			return key, def, DynamicTypeEnv
+		} else {
+			return key, def, DynamicTypeConfig
+		}
 	}
-	return pattern, "", false
+	return pattern, "", DynamicTypeValue
 }
