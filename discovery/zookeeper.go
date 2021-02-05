@@ -20,6 +20,12 @@ const (
 	ZookeeperId = "zookeeper"
 )
 
+const (
+	zkConfigRootpathEndpoint = "rootpath_endpoint"
+	zkConfigRootpathService  = "rootpath_service"
+	zkConfigRegistrySelector = "registry_selector"
+)
+
 var _ flux.EndpointDiscovery = new(ZookeeperDiscoveryService)
 
 type (
@@ -61,24 +67,25 @@ func (r *ZookeeperDiscoveryService) Id() string {
 // Init init discovery
 func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		"endpoint-path": zkDiscoveryHttpEndpointPath,
-		"service-path":  zkDiscoveryBackendServicePath,
+		zkConfigRootpathEndpoint: zkDiscoveryHttpEndpointPath,
+		zkConfigRootpathService:  zkDiscoveryBackendServicePath,
 	})
-	active := config.GetStringSlice("active-id")
-	if len(active) == 0 {
-		active = []string{"default"}
+	selected := config.GetStringSlice(zkConfigRegistrySelector)
+	if len(selected) == 0 {
+		selected = []string{"default"}
 	}
-	logger.Infow("ZkEndpointDiscovery active discovery", "active-ids", active)
-	r.endpointPath = config.GetString("endpoint-path")
-	r.servicePath = config.GetString("service-path")
+	logger.Infow("ZkEndpointDiscovery selected discovery", "selected-ids", selected)
+	r.endpointPath = config.GetString(zkConfigRootpathEndpoint)
+	r.servicePath = config.GetString(zkConfigRootpathService)
 	if r.endpointPath == "" || r.servicePath == "" {
-		return errors.New("config(endpoint-path, service-path) is empty")
+		return errors.New("config(rootpath_endpoint, rootpath_service) is empty")
 	}
-	r.retrievers = make([]*zk.ZookeeperRetriever, len(active))
-	for i := range active {
-		id := active[i]
+	r.retrievers = make([]*zk.ZookeeperRetriever, len(selected))
+	registries := config.Sub("registry_centers")
+	for i := range selected {
+		id := selected[i]
 		r.retrievers[i] = zk.NewZookeeperRetriever(id)
-		zkconf := config.Sub(id)
+		zkconf := registries.Sub(id)
 		zkconf.SetGlobalAlias(map[string]string{
 			"address":  "zookeeper.address",
 			"password": "zookeeper.password",

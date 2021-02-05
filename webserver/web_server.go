@@ -17,11 +17,15 @@ import (
 )
 
 const (
-	ConfigKeyServerName = "name"
-	ConfigKeyBodyLimit  = "body-limit"
-	ConfigKeyGzipLevel  = "gzip-level"
-	ConfigKeyCORSEnable = "cors-enable"
-	ConfigKeyCSRFEnable = "csrf-enable"
+	ConfigKeyServerName  = "name"
+	ConfigKeyAddress     = "address"
+	ConfigKeyBindPort    = "bind_port"
+	ConfigKeyTLSCertFile = "tls_cert_file"
+	ConfigKeyTLSKeyFile  = "tls_key_file"
+	ConfigKeyBodyLimit   = "body_limit"
+	ConfigKeyGzipLevel   = "gzip_level"
+	ConfigKeyCORSEnable  = "cors_enable"
+	ConfigKeyCSRFEnable  = "csrf_enable"
 )
 
 var _ flux.ListenServer = new(AdaptWebServer)
@@ -42,7 +46,7 @@ func NewAdaptWebServer(options *flux.Configuration) flux.ListenServer {
 	features := options.Sub("features")
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
-		logger.Infof("WebServer(echo/%s), enabled body limit: %s", aws.name, limit)
+		logger.Infof("WebServer(echo/%s), feature BODY-LIMIT: enabled, size= %s", aws.name, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
 	// 是否设置压缩
@@ -54,19 +58,19 @@ func NewAdaptWebServer(options *flux.Configuration) flux.ListenServer {
 			"defaultcompression": flate.DefaultCompression,
 			"huffmanonly":        flate.HuffmanOnly,
 		}
-		logger.Infof("WebServer(echo/%s), enabled gzip level: %s", aws.name, level)
+		logger.Infof("WebServer(echo/%s), feature GZIP: enabled, level=%s", aws.name, level)
 		server.Pre(middleware.GzipWithConfig(middleware.GzipConfig{
 			Level: levels[strings.ToLower(level)],
 		}))
 	}
 	// 是否开启CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
-		logger.Infof("WebServer(echo/%s), enabled CORS feature", aws.name)
+		logger.Infof("WebServer(echo/%s), feature CORS: enabled", aws.name)
 		server.Pre(middleware.CORS())
 	}
 	// 是否开启CSRF
 	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
-		logger.Infof("WebServer(echo/%s), enabled CSRF feature", aws.name)
+		logger.Infof("WebServer(echo/%s), feature CSRF: enabled", aws.name)
 		server.Pre(middleware.CSRF())
 	}
 	// 注入EchoContext
@@ -95,10 +99,10 @@ type AdaptWebServer struct {
 }
 
 func (w *AdaptWebServer) Init(opts *flux.Configuration) error {
-	w.tlsCert = opts.GetString("tlsCertFile")
-	w.tlsKey = opts.GetString("tlsKeyFile")
-	w.address = opts.GetString("address")
-	if w.address == "" {
+	w.tlsCert = opts.GetString(ConfigKeyTLSCertFile)
+	w.tlsKey = opts.GetString(ConfigKeyTLSKeyFile)
+	w.address = opts.GetString(ConfigKeyAddress) + ":" + opts.GetString(ConfigKeyBindPort)
+	if w.address == ":" {
 		return errors.New("web server config.address is required, was empty, server: " + w.name)
 	}
 	return nil

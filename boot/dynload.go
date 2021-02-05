@@ -29,7 +29,7 @@ func dynamicFilters() ([]AwareConfig, error) {
 			logger.Infow("Filter configuration is empty or without typeId", "typeId", id)
 			continue
 		}
-		config := flux.NewConfiguration(v)
+		config := flux.NewConfigurationOfViper(v)
 		typeId := config.GetString(dynConfigKeyTypeId)
 		if config.GetBool(dynConfigKeyDisable) {
 			logger.Infow("Filter is DISABLED", "typeId", typeId, "id", id)

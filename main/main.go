@@ -9,6 +9,14 @@ import (
 	_ "github.com/bytepowered/flux/webserver"
 )
 
+import (
+	_ "github.com/apache/dubbo-go/cluster/cluster_impl"
+	_ "github.com/apache/dubbo-go/cluster/loadbalance"
+	_ "github.com/apache/dubbo-go/filter/filter_impl"
+	_ "github.com/apache/dubbo-go/registry/protocol"
+	_ "github.com/apache/dubbo-go/registry/zookeeper"
+)
+
 var (
 	GitCommit string
 	Version   string

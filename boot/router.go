@@ -37,9 +37,9 @@ func (r *Router) Initial() error {
 	logger.Info("Router initialing")
 	// Backends
 	for proto, backend := range ext.GetBackendTransports() {
-		ns := "BACKEND." + proto
+		ns := flux.NamespaceBackendTransports + "." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
-		if err := r.RegisterInitHook(backend, flux.NewConfigurationOf(ns)); nil != err {
+		if err := r.RegisterInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}
 	}
@@ -47,7 +47,7 @@ func (r *Router) Initial() error {
 	for _, filter := range append(ext.GetGlobalFilters(), ext.GetSelectiveFilters()...) {
 		ns := filter.TypeId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
-		config := flux.NewConfigurationOf(ns)
+		config := flux.NewConfigurationOfNS(ns)
 		if _isDisabled(config) {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
 			continue

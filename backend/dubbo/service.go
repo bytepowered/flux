@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	ConfigKeyTraceEnable    = "trace-enable"
-	ConfigKeyReferenceDelay = "reference-delay"
+	ConfigKeyTraceEnable    = "trace_enable"
+	ConfigKeyReferenceDelay = "reference_delay"
 )
 
 func init() {
@@ -177,7 +177,7 @@ func NewBackendTransportServiceOverrides(overrides ...Option) flux.BackendTransp
 			"timeout":               "5000",
 			"retries":               "0",
 			"cluster":               "failover",
-			"load-balance":          "random",
+			"load_balance":          "random",
 			"protocol":              dubbo.DUBBO,
 		}),
 		WithGenericServiceFunc(func(backend *flux.BackendService) common.RPCService {
@@ -389,7 +389,7 @@ func NewReference(refid string, service *flux.BackendService, config *flux.Confi
 	ref.Retries = service.AttrRpcRetries()
 	ref.Cluster = config.GetString("cluster")
 	ref.Protocol = config.GetString("protocol")
-	ref.Loadbalance = config.GetString("load-balance")
+	ref.Loadbalance = config.GetString("load_balance")
 	ref.Generic = true
 	return ref
 }

@@ -445,11 +445,11 @@ func (s *BootstrapServer) defaultListenServer() flux.ListenServer {
 }
 
 func LoadListenServerConfig(id string) *flux.Configuration {
-	return flux.NewConfigurationOf(flux.NamespaceListenServer + "." + id)
+	return flux.NewConfigurationOfNS(flux.NamespaceListenServer + "." + id)
 }
 
 func LoadEndpointDiscoveryConfig(id string) *flux.Configuration {
-	return flux.NewConfigurationOf(flux.NamespaceEndpointDiscovery + "." + id)
+	return flux.NewConfigurationOfNS(flux.NamespaceEndpointDiscoveryServices + "." + id)
 }
 
 func isAllowedHttpMethod(method string) bool {

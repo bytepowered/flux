@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"fmt"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"strings"
@@ -8,26 +9,41 @@ import (
 )
 
 const (
-	NamespaceListenServer      = "ListenServer"
-	NamespaceEndpointDiscovery = "EndpointDiscovery"
+	NamespaceListenServer              = "listen_servers"
+	NamespaceBackendTransports         = "backend_transports"
+	NamespaceEndpointDiscoveryServices = "endpoint_discovery_services"
 )
 
 // NewGlobalConfiguration 创建全局Viper实例的配置对象
 func NewGlobalConfiguration() *Configuration {
-	return NewConfiguration(viper.GetViper())
+	return NewConfigurationOfViper(viper.GetViper())
 }
 
-// NewConfigurationOf 根据指定Namespace，在Viper全局配置中查找配置实例。如果NS不存在，新建一个空配置实例。
-func NewConfigurationOf(namespace string) *Configuration {
+// NewEmptyConfiguration 创建空的Viper实例的配置对象
+func NewEmptyConfiguration() *Configuration {
+	return NewConfigurationOfViper(viper.New())
+}
+
+// NewConfigurationOfMap 根据指定Map实例来构建。
+func NewConfigurationOfMap(config map[string]interface{}) *Configuration {
+	v := viper.New()
+	for key, val := range config {
+		v.Set(key, val)
+	}
+	return NewConfigurationOfViper(v)
+}
+
+// NewConfigurationOfNS 根据指定Namespace，在Viper全局配置中查找配置实例。如果NS不存在，新建一个空配置实例。
+func NewConfigurationOfNS(namespace string) *Configuration {
 	v := viper.Sub(namespace)
 	if v == nil {
 		v = viper.New()
 	}
-	return &Configuration{instance: v}
+	return NewConfigurationOfViper(v)
 }
 
-// NewConfiguration 根据指定Viper实例来构建。如果Viper实例为nil，新建一个空配置实例。
-func NewConfiguration(in *viper.Viper) *Configuration {
+// NewConfigurationOfViper 根据指定Viper实例来构建。如果Viper实例为nil，新建一个空配置实例。
+func NewConfigurationOfViper(in *viper.Viper) *Configuration {
 	if nil == in {
 		in = viper.New()
 	}
@@ -47,7 +63,7 @@ func (c *Configuration) Reference() *viper.Viper {
 
 // Sub 获取当前实例的子级配置对象
 func (c *Configuration) Sub(name string) *Configuration {
-	return NewConfiguration(c.instance.Sub(name))
+	return NewConfigurationOfViper(c.instance.Sub(name))
 }
 
 func (c *Configuration) Get(key string) interface{} {
@@ -198,6 +214,13 @@ func (c *Configuration) GetStringMap(key string) map[string]interface{} {
 // GetStringMapString returns the value associated with the key as a map of strings.
 func (c *Configuration) GetStringMapString(key string) map[string]string {
 	return cast.ToStringMapString(c.Get(key))
+}
+
+// GetStringMapString returns the value associated with the key as a map of strings.
+func (c *Configuration) GetConfigurationSlice(key string) []*Configuration {
+	slice := c.Get(key)
+	fmt.Println(slice)
+	return nil
 }
 
 // 解析动态值 ${key:defaultV}
