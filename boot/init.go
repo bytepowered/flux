@@ -1,4 +1,4 @@
-package server
+package boot
 
 import (
 	"github.com/bytepowered/flux"
@@ -21,7 +21,4 @@ func init() {
 	// Endpoint discovery
 	ext.SetEndpointDiscovery(discovery.NewZookeeperServiceWith(discovery.ZookeeperId))
 	ext.SetEndpointDiscovery(discovery.NewResourceServiceWith(discovery.ResourceId))
-	// Server
-	SetServerWriterSerializer(serializer)
-	SetServerResponseContentType(flux.MIMEApplicationJSONCharsetUTF8)
 }

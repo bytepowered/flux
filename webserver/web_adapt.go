@@ -9,7 +9,7 @@ import (
 type AdaptWebRouteHandler flux.WebHandler
 
 func (f AdaptWebRouteHandler) AdaptFunc(ctx echo.Context) error {
-	return f(toAdaptWebContext(ctx))
+	return f(ensureAdaptWebContext(ctx))
 }
 
 // AdaptWebInterceptor 实现flux.WebInterceptor与Echo框架的echo.MiddlewareFunc函数适配
@@ -20,6 +20,6 @@ func (m AdaptWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(webc.(*AdaptWebContext).echoc)
 	})
 	return func(echoc echo.Context) error {
-		return handler(toAdaptWebContext(echoc))
+		return handler(ensureAdaptWebContext(echoc))
 	}
 }

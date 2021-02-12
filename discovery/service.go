@@ -21,28 +21,26 @@ var (
 //	RpcRetries string `json:"rpcRetries"` // Service侧的调用重试
 //}
 
-func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.BackendServiceEvent, ok bool) {
+func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.BackendServiceEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
-		logger.Warnw("Invalid service event data.size", "data", string(bytes))
+		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONSIZE", "data", string(bytes), "node", node)
 		return invalidBackendServiceEvent, false
 	}
 	service := flux.BackendService{}
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
-		logger.Warnw("Invalid service data",
-			"event-type", etype, "data", string(bytes), "error", err)
+		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONFORMAT",
+			"event-type", etype, "data", string(bytes), "error", err, "node", node)
 		return invalidBackendServiceEvent, false
 	}
 	// 检查有效性
 	if !service.IsValid() {
-		logger.Warnw("illegal backend service", "service", service)
+		logger.Warnw("DISCOVERY:SERVICE:INVALID_VALUES", "service", service, "node", node)
 		return invalidBackendServiceEvent, false
 	}
-	setupServiceAttributes(&service)
-	ensureServiceAttributeTagName(&service)
 	event := flux.BackendServiceEvent{
-		Service: service,
+		Service: *EnsureService(&service),
 	}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
@@ -55,6 +53,18 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.
 		return invalidBackendServiceEvent, false
 	}
 	return event, true
+}
+
+func EnsureService(service *flux.BackendService) *flux.BackendService {
+	setupServiceAttributes(service)
+	// 订正Tag与Name的关系
+	for i := range service.Attributes {
+		ptr := &service.Attributes[i]
+		newT, newName := flux.EnsureServiceAttribute(ptr.Tag, ptr.Name)
+		ptr.Tag = newT
+		ptr.Name = newName
+	}
+	return service
 }
 
 // setupServiceAttributes 兼容旧协议数据格式
@@ -87,15 +97,5 @@ func setupServiceAttributes(service *flux.BackendService) {
 				Value: service.RpcTimeout,
 			},
 		}
-	}
-}
-
-func ensureServiceAttributeTagName(service *flux.BackendService) {
-	// 订正Tag与Name的关系
-	for i := range service.Attributes {
-		ptr := &service.Attributes[i]
-		newT, newName := flux.EnsureServiceAttribute(ptr.Tag, ptr.Name)
-		ptr.Tag = newT
-		ptr.Name = newName
 	}
 }

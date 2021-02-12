@@ -1,4 +1,4 @@
-package server
+package boot
 
 import (
 	"context"
@@ -11,20 +11,20 @@ import (
 	"sort"
 )
 
-type AppRouter struct {
+type Router struct {
 	metrics *Metrics
 	hooks   []flux.PrepareHookFunc
 }
 
-func NewAppRouter() *AppRouter {
-	return &AppRouter{
+func NewRouter() *Router {
+	return &Router{
 		metrics: NewMetrics(),
 		hooks:   make([]flux.PrepareHookFunc, 0, 4),
 	}
 }
 
-func (r *AppRouter) Prepare() error {
-	logger.Info("AppRouter preparing")
+func (r *Router) Prepare() error {
+	logger.Info("Router preparing")
 	for _, hook := range append(ext.GetPrepareHooks(), r.hooks...) {
 		if err := hook(); nil != err {
 			return err
@@ -33,13 +33,13 @@ func (r *AppRouter) Prepare() error {
 	return nil
 }
 
-func (r *AppRouter) Initial() error {
-	logger.Info("AppRouter initialing")
+func (r *Router) Initial() error {
+	logger.Info("Router initialing")
 	// Backends
 	for proto, backend := range ext.GetBackendTransports() {
 		ns := flux.NamespaceBackendTransports + "." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
-		if err := r.InitialHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
+		if err := r.RegisterInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}
 	}
@@ -52,7 +52,7 @@ func (r *AppRouter) Initial() error {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
 			continue
 		}
-		if err := r.InitialHook(filter, config); nil != err {
+		if err := r.RegisterInitHook(filter, config); nil != err {
 			return err
 		}
 	}
@@ -68,7 +68,7 @@ func (r *AppRouter) Initial() error {
 			logger.Infow("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
 			continue
 		}
-		if err := r.InitialHook(filter, item.Config); nil != err {
+		if err := r.RegisterInitHook(filter, item.Config); nil != err {
 			return err
 		}
 		if filter, ok := filter.(flux.Filter); ok {
@@ -78,7 +78,7 @@ func (r *AppRouter) Initial() error {
 	return nil
 }
 
-func (r *AppRouter) InitialHook(ref interface{}, config *flux.Configuration) error {
+func (r *Router) RegisterInitHook(ref interface{}, config *flux.Configuration) error {
 	if init, ok := ref.(flux.Initializer); ok {
 		if err := init.Init(config); nil != err {
 			return err
@@ -88,7 +88,7 @@ func (r *AppRouter) InitialHook(ref interface{}, config *flux.Configuration) err
 	return nil
 }
 
-func (r *AppRouter) Startup() error {
+func (r *Router) Startup() error {
 	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -97,7 +97,7 @@ func (r *AppRouter) Startup() error {
 	return nil
 }
 
-func (r *AppRouter) Shutdown(ctx context.Context) error {
+func (r *Router) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -106,7 +106,7 @@ func (r *AppRouter) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *AppRouter) Route(ctx flux.Context) *flux.ServeError {
+func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
@@ -143,7 +143,7 @@ func (r *AppRouter) Route(ctx flux.Context) *flux.ServeError {
 			ctx.AddMetric("M-Backend", ctx.ElapsedTime())
 		}()
 		if backend, ok := ext.GetBackendTransport(protoName); !ok {
-			logger.WithContext(ctx).Warnw("Route, unsupported protocol",
+			logger.WithContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
@@ -160,7 +160,7 @@ func (r *AppRouter) Route(ctx flux.Context) *flux.ServeError {
 	return doMetricEndpointFunc(err)
 }
 
-func (r *AppRouter) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
+func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}

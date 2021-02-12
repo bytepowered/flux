@@ -12,15 +12,15 @@ import (
 )
 
 const (
-	HystrixConfigKeyTimeout                = "hystrix-timeout"
-	HystrixConfigKeyMaxRequest             = "hystrix-max-requests"
-	HystrixConfigKeyRequestVolumeThreshold = "hystrix-request-volume-threshold"
-	HystrixConfigKeySleepWindow            = "hystrix-sleep-window"
-	HystrixConfigKeyErrorPercentThreshold  = "hystrix-error-threshold"
+	HystrixConfigKeyTimeout                = "hystrix_timeout"
+	HystrixConfigKeyMaxRequest             = "hystrix_max_requests"
+	HystrixConfigKeyRequestVolumeThreshold = "hystrix_request_volume_threshold"
+	HystrixConfigKeySleepWindow            = "hystrix_sleep_window"
+	HystrixConfigKeyErrorPercentThreshold  = "hystrix_error_threshold"
 )
 
 const (
-	TypeIdHystrixFilter = "HystrixFilter"
+	TypeIdHystrixFilter = "hystrix_filter"
 )
 
 func NewHystrixFilter(c HystrixConfig) flux.Filter {

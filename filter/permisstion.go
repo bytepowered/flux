@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	TypeIdPermissionV2Filter = "PermissionFilter"
+	TypeIdPermissionV2Filter = "permission_filter"
 )
 
 type (

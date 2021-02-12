@@ -97,14 +97,17 @@ type (
 	// WebHandler 定义处理Web请求的处理函数
 	WebHandler func(WebContext) error
 
-	// WebErrorHandler 定义Web服务处理异常错误的处理函数
-	WebErrorHandler func(error, WebContext)
-
 	// WebSkipper 用于部分WebInterceptor逻辑，实现忽略部分请求的功能；
 	WebSkipper func(WebContext) bool
 
-	// WebRequestBodyDecoder 解析请求体数据
-	WebRequestBodyDecoder func(WebContext) url.Values
+	// WebRequestResolver 解析请求体数据
+	WebRequestResolver func(WebContext) url.Values
+
+	// WebServerErrorHandler 定义Web服务处理异常错误的处理函数
+	WebServerErrorHandler func(WebContext, error)
+
+	// WebResponseWriter 用于写入Body响应数据到WebServer
+	WebResponseWriter func(webc WebContext, header http.Header, status int, body interface{}, error *ServeError) error
 )
 
 // WebContext 定义封装Web框架的RequestContext的接口；
@@ -172,10 +175,16 @@ type WebContext interface {
 	// Rewrite 修改请求方法和路径；
 	Rewrite(method string, path string)
 
-	// Write 写入响应状态码和响应数据
+	// Send 写入响应体数据；
+	Send(webc WebContext, header http.Header, status int, data interface{}) error
+
+	// SendError 写入错误状态数据
+	SendError(error *ServeError)
+
+	// SendBytes 直接写入并返回响应状态码和响应数据到客户端
 	Write(statusCode int, contentType string, bytes []byte) error
 
-	// WriteStream 写入响应状态码和流数据
+	// SendStream 直接写入并返回响应状态码和流数据到客户端
 	WriteStream(statusCode int, contentType string, reader io.Reader) error
 
 	// SetResponseHeader 设置响应Response的Header键值
@@ -184,19 +193,19 @@ type WebContext interface {
 	// AddResponseHeader 添加响应Response指定Name的Header键值
 	AddResponseHeader(key, values string)
 
-	// SetResponseWriter 设置ResponseWriter
+	// SetHttpResponseWriter 设置HttpWeb服务器的ResponseWriter
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
-	SetResponseWriter(w http.ResponseWriter) error
+	SetHttpResponseWriter(w http.ResponseWriter) error
 
-	// GetResponseWriter 返回Http标准ResponseWriter对象。
+	// HttpResponseWriter 返回HttpWeb服务器的ResponseWriter对象。
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
-	GetResponseWriter() (http.ResponseWriter, error)
+	HttpResponseWriter() (http.ResponseWriter, error)
 
-	// SetValue 设置Context域键值；作用域与请求生命周期相同；
-	SetValue(key string, value interface{})
+	// SetScopeValue 设置Context域键值；作用域与请求生命周期相同；
+	SetScopeValue(key string, value interface{})
 
-	// GetValue 获取Context域键值；作用域与请求生命周期相同；
-	GetValue(key string) interface{}
+	// ScopeValue 获取Context域键值；作用域与请求生命周期相同；
+	ScopeValue(key string) interface{}
 
 	// HttpRequest 返回Http标准Request对象。
 	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
@@ -217,14 +226,27 @@ type WebContext interface {
 // 例如默认Web框架为 labstack.echo；
 // 可以支持git, fasthttp等框架。
 type ListenServer interface {
+
+	// Init 初始化服务
+	Init(opts *Configuration) error
+
+	// Listen 启动服务，监听端口
+	Listen() error
+
+	// Close 停止服务
+	Close(ctx context.Context) error
+
 	// SetErrorHandler 设置Web请求错误处理函数
-	SetErrorHandler(h WebErrorHandler)
+	SetServerErrorHandler(h WebServerErrorHandler)
 
 	// SetNotfoundHandler 设置Web路由不存在处理函数
 	SetNotfoundHandler(h WebHandler)
 
+	// SetResponseWriter 设置Web响应写入函数
+	SetResponseWriter(WebResponseWriter)
+
 	// SetRequestBodyDecoder 设置Body体解析接口
-	SetRequestBodyDecoder(decoder WebRequestBodyDecoder)
+	SetRequestResolver(decoder WebRequestResolver)
 
 	// AddInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddInterceptor(m WebInterceptor)
@@ -235,28 +257,28 @@ type ListenServer interface {
 	// AddHttpHandler 添加http标准请求路由处理函数及其中间件
 	AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 
-	// HandleNotfound 处理Web无法处理路由的请求
-	HandleNotfound(webc WebContext) error
+	// Write 处理并写入业务响应数据；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
+	Write(webc WebContext, header http.Header, status int, data interface{}) error
+
+	// WriteError 处理并写入错误响应数据
+	WriteError(webc WebContext, err *ServeError)
+
+	// WriteNotfound 处理Web无法处理路由的请求；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
+	WriteNotfound(webc WebContext) error
 
 	// Server 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
 	Server() interface{}
 
 	// Router 返回具体实现的WebRouter路由处理对象，如echo,fasthttp的Router
 	Router() interface{}
-
-	// Listen 启动服务，监听端口
-	Listen(addr string, certFile, keyFile string) error
-
-	// Close 停止服务
-	Close(ctx context.Context) error
 }
 
-/// Wrapper functions
+// Wrapper functions
 
 func WrapHttpHandler(h http.Handler) WebHandler {
 	return func(webc WebContext) error {
 		// 注意：部分Web框架不支持返回标准Request/Response
-		resp, err := webc.GetResponseWriter()
+		writer, err := webc.HttpResponseWriter()
 		if nil != err {
 			return err
 		}
@@ -264,7 +286,7 @@ func WrapHttpHandler(h http.Handler) WebHandler {
 		if nil != err {
 			return err
 		}
-		h.ServeHTTP(resp, req)
+		h.ServeHTTP(writer, req)
 		return nil
 	}
 }

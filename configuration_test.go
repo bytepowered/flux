@@ -11,7 +11,7 @@ func TestParseDynamicKey(t *testing.T) {
 		pattern      string
 		expectedKey  string
 		expectedDef  string
-		expectedFlag bool
+		expectedType int
 	}{
 		{
 			pattern:     "",
@@ -37,45 +37,57 @@ func TestParseDynamicKey(t *testing.T) {
 			pattern:      "${user}",
 			expectedKey:  "user",
 			expectedDef:  "",
-			expectedFlag: true,
+			expectedType: DynamicTypeConfig,
 		},
 		{
 			pattern:      "${   user }",
 			expectedKey:  "user",
 			expectedDef:  "",
-			expectedFlag: true,
+			expectedType: DynamicTypeConfig,
 		},
 		{
 			pattern:      "${user:yongjia}",
 			expectedKey:  "user",
 			expectedDef:  "yongjia",
-			expectedFlag: true,
+			expectedType: DynamicTypeConfig,
 		},
 		{
 			pattern:      "${     user:yongjia  }",
 			expectedKey:  "user",
 			expectedDef:  "yongjia",
-			expectedFlag: true,
+			expectedType: DynamicTypeConfig,
 		},
 		{
 			pattern:      "${     address:http://bytepowered.net:8080  }",
 			expectedKey:  "address",
 			expectedDef:  "http://bytepowered.net:8080",
-			expectedFlag: true,
+			expectedType: DynamicTypeConfig,
 		},
 		{
 			pattern:      "${     host:  }",
 			expectedKey:  "host",
 			expectedDef:  "",
-			expectedFlag: true,
+			expectedType: DynamicTypeConfig,
+		},
+		{
+			pattern:      "#{     DEPLOY_ENV:  }",
+			expectedKey:  "DEPLOY_ENV",
+			expectedDef:  "",
+			expectedType: DynamicTypeEnv,
+		},
+		{
+			pattern:      "#{     DEPLOY_ENV:2020  }",
+			expectedKey:  "DEPLOY_ENV",
+			expectedDef:  "2020",
+			expectedType: DynamicTypeEnv,
 		},
 	}
 	assert := assert2.New(t)
 	for _, tcase := range cases {
-		key, def, ok := ParseDynamicKey(tcase.pattern)
+		key, def, typ := ParseDynamicKey(tcase.pattern)
 		assert.Equal(tcase.expectedKey, key)
 		assert.Equal(tcase.expectedDef, def)
-		assert.Equal(tcase.expectedFlag, ok)
+		assert.Equal(tcase.expectedType, typ)
 	}
 }
 

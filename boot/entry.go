@@ -1,4 +1,4 @@
-package server
+package boot
 
 import (
 	"context"
@@ -53,18 +53,18 @@ func InitAppConfig(envKey string) {
 
 func Run(build flux.Build) {
 	InitAppConfig(EnvKeyDeployEnv)
-	engine := NewHttpServeEngine()
-	if err := engine.Prepare(); nil != err {
-		logger.Panic("AppServer prepare:", err)
+	server := NewDefaultBootstrapServer()
+	if err := server.Prepare(); nil != err {
+		logger.Panic("BootstrapServer prepare:", err)
 	}
-	if err := engine.Initial(); nil != err {
-		logger.Panic("AppServer init:", err)
+	if err := server.Initial(); nil != err {
+		logger.Panic("BootstrapServer init:", err)
 	}
 	go func() {
-		if err := engine.Startup(build); nil != err && err != http.ErrServerClosed {
+		if err := server.Startup(build); nil != err && err != http.ErrServerClosed {
 			logger.Error(err)
 		}
 	}()
 	quit := make(chan os.Signal, 1)
-	engine.OnSignalShutdown(quit, 10*time.Second)
+	server.OnSignalShutdown(quit, 10*time.Second)
 }

@@ -104,17 +104,18 @@ func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 
 // OnEndpointChanged Listen http endpoints events
 func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpointEvent) error {
+	const msg = "DISCOVERY:ZOOKEEPER:ENDPOINT:LISTEN_NODE"
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("ZkEndpointDiscovery node listening", "event", event, "error", r)
+				logger.Errorw(msg, "event", event, "error", r)
 			}
 		}()
-		if evt, ok := NewEndpointEvent(event.Data, event.EventType); ok {
+		if evt, ok := NewEndpointEvent(event.Data, event.EventType, event.Path); ok {
 			events <- evt
 		}
 	}
-	logger.Infow("ZkEndpointDiscovery start listen endpoints node", "node-path", r.endpointPath)
+	logger.Infow(msg, "node-path", r.endpointPath)
 	for _, retriever := range r.retrievers {
 		if err := r.watch(retriever, r.endpointPath, listener); err != nil {
 			return err
@@ -125,17 +126,18 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpoi
 
 // OnServiceChanged Listen gateway services events
 func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux.BackendServiceEvent) error {
+	const msg = "DISCOVERY:ZOOKEEPER:SERVICE:LISTEN_NODE"
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("ZkEndpointDiscovery node listening", "event", event, "error", r)
+				logger.Errorw(msg, "event", event, "error", r)
 			}
 		}()
-		if evt, ok := NewBackendServiceEvent(event.Data, event.EventType); ok {
+		if evt, ok := NewBackendServiceEvent(event.Data, event.EventType, event.Path); ok {
 			events <- evt
 		}
 	}
-	logger.Infow("ZkEndpointDiscovery start listen services node", "node-path", r.servicePath)
+	logger.Infow(msg, "node-path", r.servicePath)
 	for _, retriever := range r.retrievers {
 		if err := r.watch(retriever, r.servicePath, listener); err != nil {
 			return err
@@ -150,9 +152,9 @@ func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, root
 			return fmt.Errorf("init metadata node: %w", err)
 		}
 	}
-	logger.Infow("ZkEndpointDiscovery watching metadata node", "path", rootpath)
+	logger.Infow("DISCOVERY:ZOOKEEPER:META:WATCH", "path", rootpath)
 	return retriever.AddChildrenNodeChangedListener("", rootpath, func(event remoting.NodeEvent) {
-		logger.Infow("ZkEndpointDiscovery receive child change event", "event", event)
+		logger.Infow("DISCOVERY:ZOOKEEPER:META:RECEIVED", "event", event)
 		if event.EventType == remoting.EventTypeChildAdd {
 			if err := retriever.AddNodeChangedListener("", event.Path, nodeListener); nil != err {
 				logger.Warnw("Watch child node data", "error", err)

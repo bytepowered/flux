@@ -2,6 +2,8 @@ package flux
 
 import (
 	"github.com/spf13/cast"
+	"strings"
+	"sync"
 )
 
 type (
@@ -76,28 +78,34 @@ const (
 )
 
 var ServiceAttrTagNames = map[uint8]string{
-	ServiceAttrTagNotDefined: "NotDefined",
-	ServiceAttrTagRpcProto:   "RpcProto",
-	ServiceAttrTagRpcGroup:   "RpcGroup",
-	ServiceAttrTagRpcVersion: "RpcVersion",
-	ServiceAttrTagRpcTimeout: "RpcTimeout",
-	ServiceAttrTagRpcRetries: "RpcRetries",
+	ServiceAttrTagNotDefined: "notdefined",
+	ServiceAttrTagRpcProto:   "rpcproto",
+	ServiceAttrTagRpcGroup:   "rpcgroup",
+	ServiceAttrTagRpcVersion: "rpcversion",
+	ServiceAttrTagRpcTimeout: "rpctimeout",
+	ServiceAttrTagRpcRetries: "rpcretries",
 }
 
 // EndpointAttributes
 const (
-	EndpointAttrTagNotDefined uint8 = iota
-	EndpointAttrTagAuthorize
+	EndpointAttrTagNotDefined uint8 = iota // 默认的，未定义的属性
+	EndpointAttrTagAuthorize               // 标识Endpoint访问是否需要授权
+	EndpointAttrTagServerTag               // 标识Endpoint绑定到哪个ListenServer服务
 )
 
 var EndpointAttrTagNames = map[uint8]string{
-	EndpointAttrTagNotDefined: "NotDefined",
-	EndpointAttrTagAuthorize:  "Authorize",
+	EndpointAttrTagNotDefined: "notdefined",
+	EndpointAttrTagAuthorize:  "authorize",
+	EndpointAttrTagServerTag:  "servertag",
 }
 
 type (
 	// ArgumentLookupFunc 参数值查找函数
 	ArgumentLookupFunc func(scope, key string, ctx Context) (MTValue, error)
+
+	// ContextHook 用于WebContext与Context的交互勾子；
+	// 在每个请求被路由执行时，在创建Context后被调用。
+	ContextHook func(WebContext, Context)
 )
 
 // Argument 定义Endpoint的参数结构元数据
@@ -281,6 +289,70 @@ func (e Endpoint) AttrAuthorize() bool {
 	return e.AttrByTag(EndpointAttrTagAuthorize).ValueBool()
 }
 
+// Multi version Endpoint
+type MultiEndpoint struct {
+	endpoint      map[string]*Endpoint // 各版本数据
+	*sync.RWMutex                      // 读写锁
+}
+
+func NewMultiEndpoint(endpoint *Endpoint) *MultiEndpoint {
+	return &MultiEndpoint{
+		endpoint: map[string]*Endpoint{
+			endpoint.Version: endpoint,
+		},
+		RWMutex: new(sync.RWMutex),
+	}
+}
+
+// Find find endpoint by version
+func (m *MultiEndpoint) LookupByVersion(version string) (*Endpoint, bool) {
+	m.RLock()
+	if "" == version || 1 == len(m.endpoint) {
+		rv := m.random()
+		m.RUnlock()
+		return rv, nil != rv
+	}
+	v, ok := m.endpoint[version]
+	m.RUnlock()
+	return v, ok
+}
+
+func (m *MultiEndpoint) Update(version string, endpoint *Endpoint) {
+	m.Lock()
+	m.endpoint[version] = endpoint
+	m.Unlock()
+}
+
+func (m *MultiEndpoint) Delete(version string) {
+	m.Lock()
+	delete(m.endpoint, version)
+	m.Unlock()
+}
+
+func (m *MultiEndpoint) RandomVersion() *Endpoint {
+	m.RLock()
+	rv := m.random()
+	m.RUnlock()
+	return rv
+}
+
+func (m *MultiEndpoint) random() *Endpoint {
+	for _, v := range m.endpoint {
+		return v
+	}
+	return nil
+}
+
+func (m *MultiEndpoint) ToSerializable() map[string]*Endpoint {
+	copies := make(map[string]*Endpoint)
+	m.RLock()
+	for k, v := range m.endpoint {
+		copies[k] = v
+	}
+	m.RUnlock()
+	return copies
+}
+
 // HttpEndpointEvent  定义从注册中心接收到的Endpoint数据变更
 type HttpEndpointEvent struct {
 	EventType EventType
@@ -306,8 +378,8 @@ func EnsureAttribute(tag uint8, name string, mapping map[uint8]string) (uint8, s
 		name = mapping[tag]
 	}
 	if name != "" && tag <= 0 {
-		for t, n := range mapping {
-			if name == n {
+		for t, tname := range mapping {
+			if strings.ToLower(name) == tname {
 				tag = t
 			}
 		}

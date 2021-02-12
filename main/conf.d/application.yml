@@ -1,13 +1,30 @@
 # 网关Http服务器配置
-http_web_server:
-    address: "0.0.0.0"
-    port: 8080
-    body_limit: "100K"
-    #tls_cert_file: ""
-    #tls_key_file: ""
-    request_log_enable: true
-    feature_debug_enable: true
-    feature_echo_enable: true
+listen_servers:
+    # 默认Web服务
+    default:
+        name: "web-server"
+        # 服务器绑定地址
+        address: "0.0.0.0"
+        bind_port: 8080
+        # 设置TLS密钥文件地址
+        tls_cert_file: ""
+        tls_key_file: ""
+        # 功能特性
+        features:
+            # 设置限制请求Body大小，默认为 1M
+            body_limit: "100K"
+            # 设置请求压缩级别，可选 [NoCompression, BestSpeed, BestCompression, DefaultCompression, HuffmanOnly]；默认为 DefaultCompression
+            gzip_level: "DefaultCompression"
+            # 设置是否开启支持跨域访问特性，默认关闭
+            cors_enable: true
+            # 设置是否开启检查跨站请求伪造特性，默认关闭
+            csrf_enable: true
+
+    # 网关内部管理服务
+    admin:
+        name: "manager-server"
+        address: "0.0.0.0"
+        bind_port: 9527
 
 # EndpointDiscoveryService (EDS) 配置
 endpoint_discovery_services:
@@ -20,10 +37,10 @@ endpoint_discovery_services:
         # 支持多注册中心
         registry_centers:
             default:
-                address: "${zookeeper.address:zookeeper:2181}"
+                address: "${zookeeper.address:172.16.248.132:2181}"
                 timeout: "${zookeeper.timeout:5s}"
             qcloud:
-                address: "${tx.zookeeper.address:tx.zookeeper:2181}"
+                address: "${tx.zookeeper.address:172.16.248.133:2181}"
             hicloud:
                 address: "${hw.zookeeper.address:hw.zookeeper:2181}"
 
