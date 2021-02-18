@@ -57,12 +57,21 @@ type (
 	FilterHandler func(Context) *ServeError
 	// FilterSkipper 定义一个函数，用于Filter执行中跳过某些处理。返回True跳过某些处理，见具体Filter的实现逻辑。
 	FilterSkipper func(Context) bool
+	// Filter 用于定义处理方法的顺序及内在业务逻辑
+	Filter interface {
+		// TypeId Filter的类型标识
+		TypeId() string
+		// DoFilter 执行Filter链
+		DoFilter(next FilterHandler) FilterHandler
+	}
 )
 
-// Filter 用于定义处理方法的顺序及内在业务逻辑
-type Filter interface {
-	// TypeId Filter的类型标识
-	TypeId() string
-	// DoFilter 执行Filter链
-	DoFilter(next FilterHandler) FilterHandler
-}
+type (
+	// Selector 用于请求处理前的动态选择Filter
+	Selector interface {
+		// Activate 返回当前请求是否激活Selector
+		Activate(ctx Context) bool
+		// DoSelect 根据请求返回激活的选择器列表
+		DoSelect(ctx Context) []Filter
+	}
+)

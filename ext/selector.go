@@ -3,51 +3,19 @@ package ext
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/pkg"
-	"sync"
-)
-
-const (
-	anyHost = "*"
 )
 
 var (
-	hostedSelectors    = make(map[string][]flux.Selector, 16)
-	hostedSelectorLock sync.RWMutex
+	selectors = make([]flux.Selector, 0, 8)
 )
 
-func SetSelector(s flux.Selector) {
+func AddSelector(s flux.Selector) {
 	pkg.RequireNotNil(s, "Selector is nil")
-	SetHostedSelector(anyHost, s)
+	selectors = append(selectors, s)
 }
 
-func SetHostedSelector(host string, s flux.Selector) {
-	host = pkg.RequireNotEmpty(host, "host is empty")
-	pkg.RequireNotNil(s, "Selector is nil")
-	hostedSelectorLock.Lock()
-	defer hostedSelectorLock.Unlock()
-	if l, ok := hostedSelectors[host]; ok {
-		hostedSelectors[host] = append(l, s)
-	} else {
-		hostedSelectors[host] = []flux.Selector{s}
-	}
-}
-
-func GetSelectors(host string) []flux.Selector {
-	host = pkg.RequireNotEmpty(host, "host is empty")
-	hostedSelectorLock.RLock()
-	defer hostedSelectorLock.RUnlock()
-	if hosted, ok := hostedSelectors[host]; ok {
-		return _newSelectors(hosted)
-	} else if anyHost != host {
-		if any, ok := hostedSelectors[anyHost]; ok {
-			return _newSelectors(any)
-		}
-	}
-	return nil
-}
-
-func _newSelectors(src []flux.Selector) []flux.Selector {
-	out := make([]flux.Selector, len(src))
-	copy(out, src)
+func GetSelectors() []flux.Selector {
+	out := make([]flux.Selector, len(selectors))
+	copy(out, selectors)
 	return out
 }

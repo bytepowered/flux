@@ -123,20 +123,15 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 		ctx.AddMetric("M-Route", ctx.ElapsedTime())
 	}()
 	// Select filters
-	globals := ext.GetGlobalFilters()
 	selective := make([]flux.Filter, 0, 16)
-	for _, selector := range ext.GetSelectors(ctx.Request().Host()) {
-		for _, typeId := range selector.Select(ctx).FilterId {
-			if f, ok := ext.GetSelectiveFilter(typeId); ok {
-				selective = append(selective, f)
-			} else {
-				logger.WithContext(ctx).Warnw("Filter not found on selector", "type-id", typeId)
-			}
+	for _, selector := range ext.GetSelectors() {
+		if selector.Activate(ctx) {
+			selective = append(selective, selector.DoSelect(ctx)...)
 		}
 	}
 	ctx.AddMetric("M-Selector", ctx.ElapsedTime())
 	// Walk filters
-	filters := append(globals, selective...)
+	filters := append(ext.GetGlobalFilters(), selective...)
 	err := r.walk(func(ctx flux.Context) *flux.ServeError {
 		protoName := ctx.ServiceProto()
 		defer func() {
