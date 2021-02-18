@@ -54,8 +54,8 @@ func TestFilterArrayOrder(t *testing.T) {
 		&TestOrderedFilter{order: 4},
 	}
 	for _, f := range filters {
-		SetGlobalFilter(f)
-		SetSelectiveFilter(f)
+		AddGlobalFilter(f)
+		AddSelectiveFilter(f)
 	}
 	shouldBeOrder := []int{1, 2, 3, 4, 5}
 	globals := GetGlobalFilters()
@@ -84,8 +84,8 @@ func TestFilterArrayMixedOrder(t *testing.T) {
 		&TestOrderedFilter{order: 4},
 	}
 	for _, f := range filters {
-		SetGlobalFilter(f)
-		SetSelectiveFilter(f)
+		AddGlobalFilter(f)
+		AddSelectiveFilter(f)
 	}
 	assert := assert2.New(t)
 	f0 := GetGlobalFilters()[0]

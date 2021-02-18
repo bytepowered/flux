@@ -141,7 +141,7 @@ func (s *BootstrapServer) Initial() error {
 	}
 	// Discovery
 	for _, dis := range ext.GetEndpointDiscoveries() {
-		if err := s.router.RegisterInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
+		if err := s.router.AddInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
 			return err
 		}
 	}

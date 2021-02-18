@@ -11,8 +11,8 @@ var (
 	hooksShutdown = make([]flux.Shutdowner, 0, 16)
 )
 
-// SetHookFunc 添加生命周期启动与停止的钩子接口
-func SetHookFunc(hook interface{}) {
+// AddHookFunc 添加生命周期启动与停止的钩子接口
+func AddHookFunc(hook interface{}) {
 	pkg.RequireNotNil(hook, "Hook is nil")
 	if startup, ok := hook.(flux.Startuper); ok {
 		hooksStartup = append(hooksStartup, startup)

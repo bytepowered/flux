@@ -39,7 +39,7 @@ func (r *Router) Initial() error {
 	for proto, backend := range ext.GetBackendTransports() {
 		ns := flux.NamespaceBackendTransports + "." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
-		if err := r.RegisterInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
+		if err := r.AddInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}
 	}
@@ -52,7 +52,7 @@ func (r *Router) Initial() error {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
 			continue
 		}
-		if err := r.RegisterInitHook(filter, config); nil != err {
+		if err := r.AddInitHook(filter, config); nil != err {
 			return err
 		}
 	}
@@ -68,23 +68,23 @@ func (r *Router) Initial() error {
 			logger.Infow("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
 			continue
 		}
-		if err := r.RegisterInitHook(filter, item.Config); nil != err {
+		if err := r.AddInitHook(filter, item.Config); nil != err {
 			return err
 		}
 		if filter, ok := filter.(flux.Filter); ok {
-			ext.SetSelectiveFilter(filter)
+			ext.AddSelectiveFilter(filter)
 		}
 	}
 	return nil
 }
 
-func (r *Router) RegisterInitHook(ref interface{}, config *flux.Configuration) error {
+func (r *Router) AddInitHook(ref interface{}, config *flux.Configuration) error {
 	if init, ok := ref.(flux.Initializer); ok {
 		if err := init.Init(config); nil != err {
 			return err
 		}
 	}
-	ext.SetHookFunc(ref)
+	ext.AddHookFunc(ref)
 	return nil
 }
 

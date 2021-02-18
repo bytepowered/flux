@@ -22,14 +22,14 @@ var (
 	selectiveFilter = make([]filterWrapper, 0, 16)
 )
 
-// SetGlobalFilter 注册全局Filter；
-func SetGlobalFilter(v interface{}) {
+// AddGlobalFilter 注册全局Filter；
+func AddGlobalFilter(v interface{}) {
 	globalFilter = _checkedAppendFilter(v, globalFilter)
 	sort.Sort(filterArray(globalFilter))
 }
 
-// SetSelectiveFilter 注册可选Filter；
-func SetSelectiveFilter(v interface{}) {
+// AddSelectiveFilter 注册可选Filter；
+func AddSelectiveFilter(v interface{}) {
 	selectiveFilter = _checkedAppendFilter(v, selectiveFilter)
 	sort.Sort(filterArray(selectiveFilter))
 }
