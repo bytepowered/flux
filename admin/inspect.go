@@ -67,15 +67,15 @@ func InspectEndpointsHandler(ctx flux.WebContext) error {
 			}
 		}
 	}
-	data := ext.LoadEndpoints()
 	if len(filters) == 0 {
 		m := make(map[string]map[string]*flux.Endpoint, 16)
-		for k, v := range data {
+		for k, v := range ext.LoadEndpoints() {
 			m[k] = v.ToSerializable()
 		}
-		return ctx.Send(ctx, http.Header{}, flux.StatusOK, nil)
+		return ctx.Send(ctx, http.Header{}, flux.StatusOK, m)
 	} else {
-		return ctx.Send(ctx, http.Header{}, flux.StatusOK, queryWithEndpointFilters(data, filters...))
+		return ctx.Send(ctx, http.Header{}, flux.StatusOK,
+			queryWithEndpointFilters(ext.LoadEndpoints(), filters...))
 	}
 }
 
