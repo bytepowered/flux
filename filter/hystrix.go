@@ -23,7 +23,7 @@ const (
 	TypeIdHystrixFilter = "HystrixFilter"
 )
 
-func NewHystrixFilter(c HystrixConfig) flux.Filter {
+func NewHystrixFilter(c HystrixConfig) *HystrixFilter {
 	return &HystrixFilter{
 		Config: c,
 		marks:  sync.Map{},
@@ -81,6 +81,13 @@ func (r *HystrixFilter) Init(config *flux.Configuration) error {
 	if pkg.IsNil(r.Config.ServiceTestFunc) {
 		return errors.New("Hystrix.ServiceTestFunc is nil")
 	}
+	logger.Infow("Hystrix config",
+		"timeout(ms)", r.Config.timeout,
+		"max-concurrent-requests", r.Config.maxConcurrentRequests,
+		"request-volume-threshold", r.Config.requestVolumeThreshold,
+		"sleep-window(ms)", r.Config.sleepWindow,
+		"error-percent-threshold", r.Config.errorPercentThreshold,
+	)
 	return nil
 }
 
@@ -101,8 +108,8 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 			}
 		}, func(_ context.Context, err error) error {
 			_, ok := err.(hystrix.CircuitError)
-			logger.WithContext(ctx).Infow("Hystrix check",
-				"is-circuit-error", ok, "service-name", serviceName, "error", err)
+			logger.Infow("HYSTRIX:CHECKED_CIRCUITED",
+				"is-circuited", ok, "service-name", serviceName, "error", err)
 			return err
 		})
 		if nil == err {
