@@ -39,7 +39,8 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string)
 		logger.Warnw("DISCOVERY:SERVICE:INVALID_VALUES", "service", service, "node", node)
 		return invalidBackendServiceEvent, false
 	}
-	ensureAttrs(&service)
+	EnsureServiceAttrs(&service)
+
 	event := flux.BackendServiceEvent{Service: service}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
@@ -51,11 +52,12 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string)
 	default:
 		return invalidBackendServiceEvent, false
 	}
+
 	return event, true
 }
 
-// ensureAttrs 兼容旧协议数据格式
-func ensureAttrs(service *flux.BackendService) {
+// EnsureServiceAttrs 兼容旧协议数据格式
+func EnsureServiceAttrs(service *flux.BackendService) *flux.BackendService {
 	if len(service.Attributes) == 0 {
 		service.Attributes = []flux.Attribute{
 			{Name: flux.ServiceAttrTagRpcProto, Value: service.RpcProto},
@@ -65,4 +67,5 @@ func ensureAttrs(service *flux.BackendService) {
 			{Name: flux.ServiceAttrTagRpcTimeout, Value: service.RpcTimeout},
 		}
 	}
+	return service
 }

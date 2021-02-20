@@ -41,6 +41,9 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEv
 			{Name: flux.EndpointAttrTagAuthorize, Value: comp.Authorize},
 		}
 	}
+	EnsureServiceAttrs(&comp.Service)
+	EnsureServiceAttrs(&comp.Permission)
+
 	event := flux.HttpEndpointEvent{Endpoint: comp.Endpoint}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
