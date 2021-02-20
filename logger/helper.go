@@ -45,7 +45,7 @@ func WithContextExtras(ctx flux.Context, extraFields map[string]string) flux.Log
 	}
 	endpoint := ctx.Endpoint()
 	if endpoint.IsValid() {
-		fields["backend-appid"] = endpoint.Application
+		fields["application"] = endpoint.Application
 		fields["backend-service"] = endpoint.Service.ServiceID()
 		fields["backend-permission"] = strings.Join(endpoint.PermissionServiceIds(), ",")
 		fields["backend-authorize"] = cast.ToString(endpoint.AttrAuthorize())
