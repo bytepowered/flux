@@ -82,6 +82,7 @@ const (
 	EndpointAttrTagNotDefined = ""          // 默认的，未定义的属性
 	EndpointAttrTagAuthorize  = "authorize" // 标识Endpoint访问是否需要授权
 	EndpointAttrTagServerId   = "serverid"  // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAttrTagBizId      = "bizid"     // 标识Endpoint绑定到业务标识
 )
 
 type (
