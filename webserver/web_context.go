@@ -171,11 +171,11 @@ func (c *AdaptWebContext) HttpResponseWriter() (http.ResponseWriter, error) {
 	return c.echoc.Response().Writer, nil
 }
 
-func (c *AdaptWebContext) SetScopeValue(key string, value interface{}) {
+func (c *AdaptWebContext) SetVariable(key string, value interface{}) {
 	c.echoc.Set(key, value)
 }
 
-func (c *AdaptWebContext) ScopeValue(key string) interface{} {
+func (c *AdaptWebContext) Variable(key string) interface{} {
 	return c.echoc.Get(key)
 }
 

@@ -125,51 +125,41 @@ type Context interface {
 	// Endpoint 返回请求路由定义的元数据
 	Endpoint() Endpoint
 
-	// Authorize 返回当前Endpoint是否需要授权
-	Authorize() bool
+	// BackendService 返回BackendService信息
+	BackendService() BackendService
 
-	// Service 返回EndpointService信息
-	Service() BackendService
-
-	// ServiceInterface 返回Endpoint Service的信息
-	ServiceInterface() (proto, host, interfaceName, methodName string)
-
-	// Protocol 返回Endpoint Service的协议名称
-	ServiceProto() string
-
-	// ServiceName 返回Endpoint Service的服务标识
-	ServiceName() (interfaceName, methodName string)
+	// BackendService 返回Endpoint Service的服务标识
+	BackendServiceId() string
 
 	// Attributes 返回所有Attributes键值对；只读；
 	Attributes() map[string]interface{}
+
+	// Attribute 获取指定key的Attribute。如果不存在，返回默认值；
+	Attribute(key string, defval interface{}) interface{}
 
 	// GetAttribute 获取指定key的Attribute，返回值和是否存在标识
 	GetAttribute(key string) (interface{}, bool)
 
 	// SetAttribute 向Context添加Attribute键值对
-	SetAttribute(name string, value interface{})
+	SetAttribute(key string, value interface{})
 
-	// GetAttributeString 获取指定key的Attribute，返回值转换为String
-	GetAttributeString(key string, defaultValue string) string
+	// Variable 获取指定Key的Variable。
+	// 首先查找Context通过SetVariable的键值；如果不存在，则尝试查找WebContext的键值
+	// 如果不存在，返回默认值；
+	Variable(key string, defval interface{}) interface{}
 
-	// GetValue 获取当前请求范围的值；
-	// 首先查找Context通过SetValue的键值；如果不存在，则尝试查找WebContext的键值
-	GetValue(name string) (interface{}, bool)
+	// GetVariable 获取当前请求范围的值；
+	// 首先查找Context通过SetVariable的键值；如果不存在，则尝试查找WebContext的键值
+	GetVariable(key string) (interface{}, bool)
 
-	// SetValue 设置当前请求范围的KV
-	SetValue(name string, value interface{})
-
-	// GetValueString 获取当前请求范围的值；数据类型转换为String
-	GetValueString(name string, defaultValue string) string
+	// SetVariable 设置当前请求范围的KV
+	SetVariable(key string, value interface{})
 
 	// Context 返回Http请求的Context对象。用于判定Http请求是否被Cancel。
 	Context() context.Context
 
-	// StartTime 返回Http请求起始的服务器时间
-	StartTime() time.Time
-
-	// ElapsedTime 返回Http请求起始至今的过去时间差
-	ElapsedTime() time.Duration
+	// StartAt 返回Http请求起始的服务器时间
+	StartAt() time.Time
 
 	// AddMetric 添加路由耗时统计节点
 	AddMetric(name string, elapsed time.Duration)

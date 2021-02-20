@@ -9,6 +9,7 @@ import (
 	"github.com/bytepowered/flux/pkg"
 	"net/http"
 	"sync"
+	"time"
 )
 
 const (
@@ -101,7 +102,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		r.initCommand(serviceName)
 		// check circuit
 		err := hystrix.DoC(ctx.Context(), serviceName, func(_ context.Context) error {
-			ctx.AddMetric("M-"+r.TypeId(), ctx.ElapsedTime())
+			ctx.AddMetric("M-"+r.TypeId(), time.Since(ctx.StartAt()))
 			return next(ctx)
 		}, func(_ context.Context, err error) error {
 			// 返回两种类型Error：

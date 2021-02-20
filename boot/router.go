@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"reflect"
 	"sort"
+	"time"
 )
 
 type Router struct {
@@ -110,7 +111,8 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
-		proto, _, uri, method := ctx.ServiceInterface()
+		backend := ctx.BackendService()
+		proto, uri, method := backend.AttrRpcProto(), backend.Interface, backend.Method
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
@@ -120,7 +122,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	}
 	// Metric: Route
 	defer func() {
-		ctx.AddMetric("M-Route", ctx.ElapsedTime())
+		ctx.AddMetric("M-Route", time.Since(ctx.StartAt()))
 	}()
 	// Select filters
 	selective := make([]flux.Filter, 0, 16)
@@ -129,14 +131,14 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			selective = append(selective, selector.DoSelect(ctx)...)
 		}
 	}
-	ctx.AddMetric("M-Selector", ctx.ElapsedTime())
+	ctx.AddMetric("M-Selector", time.Since(ctx.StartAt()))
 	// Walk filters
 	filters := append(ext.GetGlobalFilters(), selective...)
 	err := r.walk(func(ctx flux.Context) *flux.ServeError {
-		protoName := ctx.ServiceProto()
 		defer func() {
-			ctx.AddMetric("M-Backend", ctx.ElapsedTime())
+			ctx.AddMetric("M-Backend", time.Since(ctx.StartAt()))
 		}()
+		protoName := ctx.BackendService().AttrRpcProto()
 		if backend, ok := ext.GetBackendTransport(protoName); !ok {
 			logger.WithContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", protoName, "service", ctx.Endpoint().Service)

@@ -216,7 +216,7 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, endpoints *flux.MultiEndpoint) error {
 	version := s.endpointSelectFunc(webc)
 	endpoint, found := endpoints.LookupByVersion(version)
-	requestId := cast.ToString(webc.ScopeValue(flux.HeaderXRequestId))
+	requestId := cast.ToString(webc.Variable(flux.HeaderXRequestId))
 	defer func() {
 		if r := recover(); r != nil {
 			trace := logger.With(requestId)

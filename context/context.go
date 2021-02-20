@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
-	"github.com/spf13/cast"
 	"sync"
 	"time"
 )
@@ -17,7 +16,7 @@ type DefaultContext struct {
 	webc       flux.WebContext
 	endpoint   *flux.Endpoint
 	attributes *sync.Map
-	values     *sync.Map
+	variables  *sync.Map
 	metrics    []flux.Metric
 	startTime  time.Time
 	request    *DefaultRequest
@@ -45,7 +44,7 @@ func (c *DefaultContext) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *DefaultContext) Service() flux.BackendService {
+func (c *DefaultContext) BackendService() flux.BackendService {
 	return c.endpoint.Service
 }
 
@@ -58,8 +57,8 @@ func (c *DefaultContext) ServiceProto() string {
 	return c.endpoint.Service.AttrRpcProto()
 }
 
-func (c *DefaultContext) ServiceName() (interfaceName, methodName string) {
-	return c.endpoint.Service.Interface, c.endpoint.Service.Method
+func (c *DefaultContext) BackendServiceId() string {
+	return c.endpoint.Service.ServiceID()
 }
 
 func (c *DefaultContext) Authorize() bool {
@@ -87,45 +86,45 @@ func (c *DefaultContext) Attributes() map[string]interface{} {
 	return copied
 }
 
-func (c *DefaultContext) SetAttribute(name string, value interface{}) {
-	c.attributes.Store(name, value)
+func (c *DefaultContext) Attribute(key string, defval interface{}) interface{} {
+	if v, ok := c.GetAttribute(key); ok {
+		return v
+	} else {
+		return defval
+	}
 }
 
-func (c *DefaultContext) GetAttribute(name string) (interface{}, bool) {
-	v, ok := c.attributes.Load(name)
+func (c *DefaultContext) SetAttribute(key string, value interface{}) {
+	c.attributes.Store(key, value)
+}
+
+func (c *DefaultContext) GetAttribute(key string) (interface{}, bool) {
+	v, ok := c.attributes.Load(key)
 	return v, ok
 }
 
-func (c *DefaultContext) GetAttributeString(name string, defaultValue string) string {
-	v, ok := c.GetAttribute(name)
-	if !ok {
-		return defaultValue
+func (c *DefaultContext) SetVariable(key string, value interface{}) {
+	c.variables.Store(key, value)
+}
+
+func (c *DefaultContext) Variable(key string, defval interface{}) interface{} {
+	if v, ok := c.GetVariable(key); ok {
+		return v
+	} else {
+		return defval
 	}
-	return cast.ToString(v)
 }
 
-func (c *DefaultContext) SetValue(name string, value interface{}) {
-	c.values.Store(name, value)
-}
-
-func (c *DefaultContext) GetValue(name string) (interface{}, bool) {
-	// first: Local values
-	// then: WebContext values
-	if lv, ok := c.values.Load(name); ok {
+func (c *DefaultContext) GetVariable(key string) (interface{}, bool) {
+	// first: Context Local Variables
+	// then: WebContext Variables
+	if lv, ok := c.variables.Load(key); ok {
 		return lv, true
-	} else if cv := c.webc.ScopeValue(name); nil != cv {
+	} else if cv := c.webc.Variable(key); nil != cv {
 		return cv, true
 	} else {
 		return nil, false
 	}
-}
-
-func (c *DefaultContext) GetValueString(name string, defaultValue string) string {
-	v, ok := c.GetValue(name)
-	if !ok {
-		return defaultValue
-	}
-	return cast.ToString(v)
 }
 
 func (c *DefaultContext) Context() context.Context {
@@ -146,12 +145,8 @@ func (c *DefaultContext) Logger() flux.Logger {
 	return c.ctxLogger
 }
 
-func (c *DefaultContext) StartTime() time.Time {
+func (c *DefaultContext) StartAt() time.Time {
 	return c.startTime
-}
-
-func (c *DefaultContext) ElapsedTime() time.Duration {
-	return time.Since(c.startTime)
 }
 
 func (c *DefaultContext) AddMetric(name string, elapsed time.Duration) {
@@ -165,7 +160,7 @@ func (c *DefaultContext) Reattach(requestId string, webc flux.WebContext, endpoi
 	c.webc = webc
 	c.endpoint = endpoint
 	c.attributes = new(sync.Map)
-	c.values = new(sync.Map)
+	c.variables = new(sync.Map)
 	c.metrics = make([]flux.Metric, 0, 8)
 	c.startTime = time.Now()
 	c.request.reattach(webc)
@@ -181,7 +176,7 @@ func (c *DefaultContext) Release() {
 	c.webc = nil
 	c.endpoint = nil
 	c.attributes = nil
-	c.values = nil
+	c.variables = nil
 	c.metrics = nil
 	c.request.reset()
 	c.response.reset()

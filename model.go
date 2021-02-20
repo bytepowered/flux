@@ -47,8 +47,6 @@ const (
 	// 获取Request元数据
 	ScopeRequest = "REQUEST"
 	// 自动查找数据源
-	ScopeValue = "VALUE"
-	// 自动查找数据源
 	ScopeAuto = "AUTO"
 )
 

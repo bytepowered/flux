@@ -152,52 +152,44 @@ type MockContext struct {
 	ctxLogger flux.Logger
 }
 
-func (v *MockContext) ElapsedTime() time.Duration {
-	return time.Since(v.time)
+func (mc *MockContext) StartAt() time.Time {
+	return mc.time
 }
 
-func (v *MockContext) StartTime() time.Time {
-	return v.time
-}
-
-func (v *MockContext) AddMetric(name string, elapsed time.Duration) {
+func (mc *MockContext) AddMetric(name string, elapsed time.Duration) {
 	// nop
 }
 
-func (v *MockContext) Metrics() []flux.Metric {
+func (mc *MockContext) Metrics() []flux.Metric {
 	return nil
 }
 
-func (v *MockContext) Method() string {
-	return v.request.Method()
+func (mc *MockContext) Method() string {
+	return mc.request.Method()
 }
 
-func (v *MockContext) URI() string {
-	return v.request.URI()
+func (mc *MockContext) URI() string {
+	return mc.request.URI()
 }
 
-func (v *MockContext) RequestId() string {
-	return cast.ToString(v.request.values["request-id"])
+func (mc *MockContext) RequestId() string {
+	return cast.ToString(mc.request.values["request-id"])
 }
 
-func (v *MockContext) Request() flux.Request {
-	return v.request
+func (mc *MockContext) Request() flux.Request {
+	return mc.request
 }
 
-func (v *MockContext) Response() flux.Response {
+func (mc *MockContext) Response() flux.Response {
 	return nil
 }
 
-func (v *MockContext) Endpoint() flux.Endpoint {
+func (mc *MockContext) Endpoint() flux.Endpoint {
 	return flux.Endpoint{}
 }
 
-func (v *MockContext) Authorize() bool {
-	return cast.ToBool(v.request.values["authorize"])
-}
-
-func (v *MockContext) Service() flux.BackendService {
-	s, ok := v.request.values["service"]
+func (mc *MockContext) BackendService() flux.BackendService {
+	s, ok := mc.request.values["service"]
 	if ok {
 		return s.(flux.BackendService)
 	} else {
@@ -205,71 +197,60 @@ func (v *MockContext) Service() flux.BackendService {
 	}
 }
 
-func (v *MockContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
-	return cast.ToString(v.request.values["service.proto"]),
-		cast.ToString(v.request.values["service.host"]),
-		cast.ToString(v.request.values["service.interface"]),
-		cast.ToString(v.request.values["service.method"])
+func (mc *MockContext) BackendServiceId() string {
+	return mc.BackendService().ServiceID()
 }
 
-func (v *MockContext) ServiceProto() string {
-	return cast.ToString(v.request.values["service.proto"])
-}
-
-func (v *MockContext) ServiceName() (interfaceName, methodName string) {
-	return cast.ToString(v.request.values["service.interface"]), cast.ToString(v.request.values["service.method"])
-}
-
-func (v *MockContext) Attributes() map[string]interface{} {
-	m := make(map[string]interface{}, len(v.request.values))
-	for k, v := range v.request.values {
+func (mc *MockContext) Attributes() map[string]interface{} {
+	m := make(map[string]interface{}, len(mc.request.values))
+	for k, v := range mc.request.values {
 		m[k] = v
 	}
 	return m
 }
 
-func (v *MockContext) GetAttribute(key string) (interface{}, bool) {
-	a, ok := v.request.values[key]
-	return a, ok
-}
-
-func (v *MockContext) GetAttributeString(name string, defaultValue string) string {
-	a, ok := v.request.values[name]
-	if !ok {
-		return defaultValue
+func (mc *MockContext) Attribute(key string, defval interface{}) interface{} {
+	if v, ok := mc.request.values[key]; ok {
+		return v
+	} else {
+		return defval
 	}
-	return cast.ToString(a)
 }
 
-func (v *MockContext) SetAttribute(name string, value interface{}) {
-	v.request.values[name] = value
+func (mc *MockContext) GetAttribute(key string) (interface{}, bool) {
+	v, ok := mc.request.values[key]
+	return v, ok
 }
 
-func (v *MockContext) GetValue(name string) (interface{}, bool) {
-	a, ok := v.request.values[name]
-	return a, ok
+func (mc *MockContext) SetAttribute(name string, value interface{}) {
+	mc.request.values[name] = value
 }
 
-func (v *MockContext) SetValue(name string, value interface{}) {
-	v.request.values[name] = value
-}
-
-func (v *MockContext) GetValueString(name string, defaultValue string) string {
-	a, ok := v.request.values[name]
-	if !ok {
-		return defaultValue
+func (mc *MockContext) Variable(name string, defval interface{}) interface{} {
+	if v, ok := mc.request.values[name]; ok {
+		return v
+	} else {
+		return defval
 	}
-	return cast.ToString(a)
 }
 
-func (v *MockContext) Context() context.Context {
+func (mc *MockContext) GetVariable(name string) (interface{}, bool) {
+	v, ok := mc.request.values[name]
+	return v, ok
+}
+
+func (mc *MockContext) SetVariable(name string, value interface{}) {
+	mc.request.values[name] = value
+}
+
+func (mc *MockContext) Context() context.Context {
 	return context.Background()
 }
 
-func (v *MockContext) SetLogger(logger flux.Logger) {
-	v.ctxLogger = logger
+func (mc *MockContext) SetLogger(logger flux.Logger) {
+	mc.ctxLogger = logger
 }
 
-func (v *MockContext) Logger() flux.Logger {
-	return v.ctxLogger
+func (mc *MockContext) Logger() flux.Logger {
+	return mc.ctxLogger
 }

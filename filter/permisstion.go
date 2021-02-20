@@ -9,6 +9,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"net/http"
+	"time"
 )
 
 const (
@@ -112,7 +113,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			}
 		}
 		report, err := p.Configs.VerifyFunc(services, ctx)
-		ctx.AddMetric("M-"+p.TypeId(), ctx.ElapsedTime())
+		ctx.AddMetric("M-"+p.TypeId(), time.Since(ctx.StartAt()))
 		if nil != err {
 			if serr, ok := err.(*flux.ServeError); ok {
 				return serr

@@ -7,7 +7,7 @@ import (
 )
 
 func DoExchangeTransport(ctx flux.Context, transport flux.BackendTransport) *flux.ServeError {
-	result, err := transport.InvokeCodec(ctx, ctx.Service())
+	result, err := transport.InvokeCodec(ctx, ctx.BackendService())
 	if err != nil {
 		return err
 	}
