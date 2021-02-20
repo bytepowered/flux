@@ -75,7 +75,8 @@ func (r *ResourceDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpoin
 	for _, res := range r.resources {
 		for _, ep := range res.Endpoints {
 			if ep.IsValid() {
-				events <- flux.HttpEndpointEvent{EventType: flux.EventTypeAdded, Endpoint: *EnsureEndpoint(&ep)}
+				ensureAttrs(&ep.Service)
+				events <- flux.HttpEndpointEvent{EventType: flux.EventTypeAdded, Endpoint: ep}
 			}
 		}
 	}
@@ -86,7 +87,8 @@ func (r *ResourceDiscoveryService) WatchServices(events chan<- flux.BackendServi
 	for _, res := range r.resources {
 		for _, srv := range res.Services {
 			if srv.IsValid() {
-				events <- flux.BackendServiceEvent{EventType: flux.EventTypeAdded, Service: *EnsureService(&srv)}
+				ensureAttrs(&srv)
+				events <- flux.BackendServiceEvent{EventType: flux.EventTypeAdded, Service: srv}
 			}
 		}
 	}

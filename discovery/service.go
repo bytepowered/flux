@@ -39,9 +39,8 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string)
 		logger.Warnw("DISCOVERY:SERVICE:INVALID_VALUES", "service", service, "node", node)
 		return invalidBackendServiceEvent, false
 	}
-	event := flux.BackendServiceEvent{
-		Service: *EnsureService(&service),
-	}
+	ensureAttrs(&service)
+	event := flux.BackendServiceEvent{Service: service}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
 		event.EventType = flux.EventTypeAdded
@@ -55,47 +54,15 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string)
 	return event, true
 }
 
-func EnsureService(service *flux.BackendService) *flux.BackendService {
-	setupServiceAttributes(service)
-	// 订正Tag与Name的关系
-	for i := range service.Attributes {
-		ptr := &service.Attributes[i]
-		newT, newName := flux.EnsureServiceAttribute(ptr.Tag, ptr.Name)
-		ptr.Tag = newT
-		ptr.Name = newName
-	}
-	return service
-}
-
-// setupServiceAttributes 兼容旧协议数据格式
-func setupServiceAttributes(service *flux.BackendService) {
+// ensureAttrs 兼容旧协议数据格式
+func ensureAttrs(service *flux.BackendService) {
 	if len(service.Attributes) == 0 {
 		service.Attributes = []flux.Attribute{
-			{
-				Tag:   flux.ServiceAttrTagRpcProto,
-				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcProto],
-				Value: service.RpcProto,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcGroup,
-				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcGroup],
-				Value: service.RpcGroup,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcVersion,
-				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcVersion],
-				Value: service.RpcVersion,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcRetries,
-				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcRetries],
-				Value: service.RpcRetries,
-			},
-			{
-				Tag:   flux.ServiceAttrTagRpcTimeout,
-				Name:  flux.ServiceAttrTagNames[flux.ServiceAttrTagRpcTimeout],
-				Value: service.RpcTimeout,
-			},
+			{Name: flux.ServiceAttrTagRpcProto, Value: service.RpcProto},
+			{Name: flux.ServiceAttrTagRpcGroup, Value: service.RpcGroup},
+			{Name: flux.ServiceAttrTagRpcVersion, Value: service.RpcVersion},
+			{Name: flux.ServiceAttrTagRpcRetries, Value: service.RpcRetries},
+			{Name: flux.ServiceAttrTagRpcTimeout, Value: service.RpcTimeout},
 		}
 	}
 }

@@ -13,6 +13,7 @@ var (
 
 type CompatibleEndpoint struct {
 	flux.Endpoint
+	// Deprecated
 	Authorize bool `json:"authorize"` // 此端点是否需要授权
 }
 
@@ -34,18 +35,13 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEv
 		logger.Warnw("DISCOVERY:ENDPOINT:INVALID_VALUES", "data", string(bytes), "node", node)
 		return invalidHttpEndpointEvent, false
 	}
+	// 兼容旧结构
 	if len(comp.Attributes) == 0 {
 		comp.Attributes = []flux.Attribute{
-			{
-				Tag:   flux.EndpointAttrTagAuthorize,
-				Name:  flux.EndpointAttrTagNames[flux.EndpointAttrTagAuthorize],
-				Value: comp.Authorize,
-			},
+			{Name: flux.EndpointAttrTagAuthorize, Value: comp.Authorize},
 		}
 	}
-	event := flux.HttpEndpointEvent{
-		Endpoint: *EnsureEndpoint(&comp.Endpoint),
-	}
+	event := flux.HttpEndpointEvent{Endpoint: comp.Endpoint}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
 		event.EventType = flux.EventTypeAdded
@@ -57,19 +53,4 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEv
 		return invalidHttpEndpointEvent, false
 	}
 	return event, true
-}
-
-func EnsureEndpoint(ep *flux.Endpoint) *flux.Endpoint {
-	// 订正Tag与Name的关系
-	for i := range ep.Attributes {
-		ptr := &ep.Attributes[i]
-		newT, newName := flux.EnsureEndpointAttribute(ptr.Tag, ptr.Name)
-		ptr.Tag = newT
-		ptr.Name = newName
-	}
-	EnsureService(&ep.Service)
-	if ep.Permission.IsValid() {
-		EnsureService(&ep.Permission)
-	}
-	return ep
 }

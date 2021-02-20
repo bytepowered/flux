@@ -310,7 +310,7 @@ func (s *BootstrapServer) onHttpEndpointEvent(event flux.HttpEndpointEvent) {
 		bind.Update(endpoint.Version, &endpoint)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if isreg {
-			id := endpoint.AttrByTag(flux.EndpointAttrTagServerTag).ValueString()
+			id := endpoint.GetAttr(flux.EndpointAttrTagServerId).GetString()
 			if id == "" {
 				id = ListenServerIdDefault
 			}
