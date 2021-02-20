@@ -33,15 +33,15 @@ func NewHystrixFilter(c HystrixConfig) *HystrixFilter {
 type (
 	// HystrixServiceNameFunc 用于构建服务标识的函数
 	HystrixServiceNameFunc func(ctx flux.Context) (serviceName string)
-	// HystrixServiceTestFunc 用于测试StateError是否需要熔断
-	HystrixServiceTestFunc func(err *flux.ServeError) (circuited bool)
+	// HystrixDowngradeFunc 熔断降级处理函数
+	HystrixDowngradeFunc func(ctx flux.Context) *flux.ServeError
 )
 
-// HystrixConfig
+// HystrixConfig 熔断器配置
 type HystrixConfig struct {
 	ServiceSkipFunc        flux.FilterSkipper
 	ServiceNameFunc        HystrixServiceNameFunc
-	ServiceTestFunc        HystrixServiceTestFunc
+	ServiceDowngradeFunc   HystrixDowngradeFunc
 	timeout                int
 	maxConcurrentRequests  int
 	requestVolumeThreshold int
@@ -70,16 +70,17 @@ func (r *HystrixFilter) Init(config *flux.Configuration) error {
 	r.Config.sleepWindow = int(config.GetInt64(HystrixConfigKeySleepWindow))
 	r.Config.errorPercentThreshold = int(config.GetInt64(HystrixConfigKeyErrorPercentThreshold))
 	// 检查必要配置
-	if pkg.IsNil(r.Config.ServiceSkipFunc) {
+	if pkg.IsNil(r.Config.ServiceNameFunc) {
+		return errors.New("Hystrix.ServiceNameFunc is nil")
+	}
+	// 默认实现
+	if r.Config.ServiceSkipFunc == nil {
 		r.Config.ServiceSkipFunc = func(c flux.Context) bool {
 			return false
 		}
 	}
-	if pkg.IsNil(r.Config.ServiceNameFunc) {
-		return errors.New("Hystrix.ServiceNameFunc is nil")
-	}
-	if pkg.IsNil(r.Config.ServiceTestFunc) {
-		return errors.New("Hystrix.ServiceTestFunc is nil")
+	if r.Config.ServiceDowngradeFunc == nil {
+		r.Config.ServiceDowngradeFunc = DefaultDowngradeFunc
 	}
 	logger.Infow("Hystrix config",
 		"timeout(ms)", r.Config.timeout,
@@ -101,36 +102,41 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		// check circuit
 		err := hystrix.DoC(ctx.Context(), serviceName, func(_ context.Context) error {
 			ctx.AddMetric("M-"+r.TypeId(), ctx.ElapsedTime())
-			if ierr := next(ctx); nil != ierr && r.Config.ServiceTestFunc(ierr) {
-				return hystrix.CircuitError{Message: ierr.Message}
-			} else {
-				return nil
-			}
+			return next(ctx)
 		}, func(_ context.Context, err error) error {
-			_, ok := err.(hystrix.CircuitError)
-			logger.Infow("HYSTRIX:CHECKED_CIRCUITED",
-				"is-circuited", ok, "service-name", serviceName, "error", err)
-			return err
+			// 返回两种类型Error：
+			// 1. 执行 next() 返回 *ServeError；
+			// 2. 熔断返回 hystrix.CircuitError;
+			if serr, ok := err.(*flux.ServeError); ok {
+				return serr
+			}
+			if cerr, ok := err.(hystrix.CircuitError); ok {
+				logger.Infow("HYSTRIX:CHECKED_CIRCUITED",
+					"is-circuited", ok, "service-name", serviceName, "circuit-error", cerr)
+				return r.Config.ServiceDowngradeFunc(ctx)
+			}
+			return &flux.ServeError{
+				StatusCode: flux.StatusServerError,
+				ErrorCode:  flux.ErrorCodeGatewayInternal,
+				Message:    "CIRCUIT:UNEXPECTED_ERROR",
+				Internal:   err,
+			}
 		})
-		if nil == err {
-			return nil
-		}
-		msg := flux.ErrorMessageHystrixCircuited
-		if ce, ok := err.(hystrix.CircuitError); ok {
-			msg = ce.Message
-		}
-		return &flux.ServeError{
-			StatusCode: http.StatusBadGateway,
-			ErrorCode:  flux.ErrorCodeGatewayCircuited,
-			Message:    msg,
-			Internal:   err,
-		}
+		return err.(*flux.ServeError)
+	}
+}
+
+func DefaultDowngradeFunc(ctx flux.Context) *flux.ServeError {
+	return &flux.ServeError{
+		StatusCode: http.StatusServiceUnavailable,
+		ErrorCode:  flux.ErrorCodeGatewayCircuited,
+		Message:    "Server busy",
 	}
 }
 
 func (r *HystrixFilter) initCommand(serviceName string) {
 	if _, exist := r.marks.LoadOrStore(serviceName, true); !exist {
-		logger.Infof("Hystrix create command", "service-name", serviceName)
+		logger.Infow("HYSTRIX:COMMAND:INIT", "service-name", serviceName)
 		hystrix.ConfigureCommand(serviceName, hystrix.CommandConfig{
 			Timeout:                r.Config.timeout,
 			MaxConcurrentRequests:  r.Config.maxConcurrentRequests,
