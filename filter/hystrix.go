@@ -101,29 +101,33 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		serviceName := r.Config.ServiceNameFunc(ctx)
 		r.initCommand(serviceName)
 		// check circuit
-		err := hystrix.DoC(ctx.Context(), serviceName, func(_ context.Context) error {
+		work := func(_ context.Context) error {
 			ctx.AddMetric("M-"+r.TypeId(), time.Since(ctx.StartAt()))
 			return next(ctx)
-		}, func(_ context.Context, err error) error {
+		}
+		var reterr *flux.ServeError
+		fallback := func(_ context.Context, err error) error {
 			// 返回两种类型Error：
 			// 1. 执行 next() 返回 *ServeError；
 			// 2. 熔断返回 hystrix.CircuitError;
 			if serr, ok := err.(*flux.ServeError); ok {
-				return serr
-			}
-			if cerr, ok := err.(hystrix.CircuitError); ok {
-				logger.Infow("HYSTRIX:CHECKED_CIRCUITED",
+				reterr = serr
+			} else if cerr, ok := err.(hystrix.CircuitError); ok {
+				logger.Infow("HYSTRIX:CIRCUITED/DOWNGRADE",
 					"is-circuited", ok, "service-name", serviceName, "circuit-error", cerr)
-				return r.Config.ServiceDowngradeFunc(ctx)
+				reterr = r.Config.ServiceDowngradeFunc(ctx)
+			} else {
+				reterr = &flux.ServeError{
+					StatusCode: flux.StatusServerError,
+					ErrorCode:  flux.ErrorCodeGatewayInternal,
+					Message:    "CIRCUIT:UNEXPECTED_ERROR",
+					Internal:   err,
+				}
 			}
-			return &flux.ServeError{
-				StatusCode: flux.StatusServerError,
-				ErrorCode:  flux.ErrorCodeGatewayInternal,
-				Message:    "CIRCUIT:UNEXPECTED_ERROR",
-				Internal:   err,
-			}
-		})
-		return err.(*flux.ServeError)
+			return nil // fallback dont return errors
+		}
+		_ = hystrix.DoC(ctx.Context(), serviceName, work, fallback)
+		return reterr
 	}
 }
 
