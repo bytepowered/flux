@@ -37,7 +37,7 @@ func DefaultServerErrorHandler(webc flux.WebContext, err error) {
 }
 
 func DefaultResponseWriter(webc flux.WebContext, header http.Header, status int, body interface{}, serr *flux.ServeError) error {
-	id := webc.ScopeValue(flux.HeaderXRequestId).(string)
+	id := webc.Variable(flux.HeaderXRequestId).(string)
 	SetupResponseDefaults(webc, id, header)
 	var payload interface{}
 	if nil != serr {

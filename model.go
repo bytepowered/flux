@@ -47,8 +47,6 @@ const (
 	// 获取Request元数据
 	ScopeRequest = "REQUEST"
 	// 自动查找数据源
-	ScopeValue = "VALUE"
-	// 自动查找数据源
 	ScopeAuto = "AUTO"
 )
 
@@ -69,35 +67,21 @@ const (
 
 // ServiceAttributes
 const (
-	ServiceAttrTagNotDefined uint8 = iota
-	ServiceAttrTagRpcProto
-	ServiceAttrTagRpcGroup
-	ServiceAttrTagRpcVersion
-	ServiceAttrTagRpcTimeout
-	ServiceAttrTagRpcRetries
+	ServiceAttrTagNotDefined = ""
+	ServiceAttrTagRpcProto   = "rpcproto"
+	ServiceAttrTagRpcGroup   = "rpcgroup"
+	ServiceAttrTagRpcVersion = "rpcversion"
+	ServiceAttrTagRpcTimeout = "rpctimeout"
+	ServiceAttrTagRpcRetries = "rpcretries"
 )
-
-var ServiceAttrTagNames = map[uint8]string{
-	ServiceAttrTagNotDefined: "notdefined",
-	ServiceAttrTagRpcProto:   "rpcproto",
-	ServiceAttrTagRpcGroup:   "rpcgroup",
-	ServiceAttrTagRpcVersion: "rpcversion",
-	ServiceAttrTagRpcTimeout: "rpctimeout",
-	ServiceAttrTagRpcRetries: "rpcretries",
-}
 
 // EndpointAttributes
 const (
-	EndpointAttrTagNotDefined uint8 = iota // 默认的，未定义的属性
-	EndpointAttrTagAuthorize               // 标识Endpoint访问是否需要授权
-	EndpointAttrTagServerTag               // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAttrTagNotDefined = ""          // 默认的，未定义的属性
+	EndpointAttrTagAuthorize  = "authorize" // 标识Endpoint访问是否需要授权
+	EndpointAttrTagServerId   = "serverid"  // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAttrTagBizId      = "bizid"     // 标识Endpoint绑定到业务标识
 )
-
-var EndpointAttrTagNames = map[uint8]string{
-	EndpointAttrTagNotDefined: "notdefined",
-	EndpointAttrTagAuthorize:  "authorize",
-	EndpointAttrTagServerTag:  "servertag",
-}
 
 type (
 	// ArgumentLookupFunc 参数值查找函数
@@ -125,20 +109,19 @@ type Argument struct {
 
 // Attribute 定义服务的属性信息
 type Attribute struct {
-	Tag   uint8       `json:"tag" yaml:"tag"`
 	Name  string      `json:"name" yaml:"name"`
 	Value interface{} `json:"value" yaml:"value"`
 }
 
-func (a Attribute) ValueString() string {
+func (a Attribute) GetString() string {
 	return cast.ToString(a.Value)
 }
 
-func (a Attribute) ValueInt() int {
+func (a Attribute) GetInt() int {
 	return cast.ToInt(a.Value)
 }
 
-func (a Attribute) ValueBool() bool {
+func (a Attribute) GetBool() bool {
 	return cast.ToBool(a.Value)
 }
 
@@ -147,25 +130,23 @@ type EmbeddedAttributes struct {
 	Attributes []Attribute `json:"attributes" yaml:"attributes"`
 }
 
-func (c EmbeddedAttributes) AttrByTag(tag uint8) Attribute {
-	return c.AttrLookup(func(attr Attribute) bool {
-		return tag == attr.Tag
-	})
-}
-
-func (c EmbeddedAttributes) AttrByName(name string) Attribute {
-	return c.AttrLookup(func(attr Attribute) bool {
-		return name == attr.Name
-	})
-}
-
-func (c EmbeddedAttributes) AttrLookup(tf func(Attribute) bool) Attribute {
+func (c EmbeddedAttributes) GetAttr(name string) Attribute {
 	for _, attr := range c.Attributes {
-		if tf(attr) {
+		if strings.ToLower(attr.Name) == strings.ToLower(name) {
 			return attr
 		}
 	}
 	return Attribute{}
+}
+
+func (c EmbeddedAttributes) GetAttrs(name string) []Attribute {
+	attrs := make([]Attribute, 0, 4)
+	for _, attr := range c.Attributes {
+		if strings.ToLower(attr.Name) == strings.ToLower(name) {
+			attrs = append(attrs, attr)
+		}
+	}
+	return attrs
 }
 
 // EmbeddedExtensions
@@ -173,12 +154,12 @@ type EmbeddedExtensions struct {
 	Extensions map[string]interface{} `json:"extensions" yaml:"extensions"` // 扩展信息
 }
 
-func (e EmbeddedExtensions) Ext(name string) (interface{}, bool) {
+func (e EmbeddedExtensions) GetValue(name string) (interface{}, bool) {
 	v, ok := e.Extensions[name]
 	return v, ok
 }
 
-func (e EmbeddedExtensions) ExtString(name string) string {
+func (e EmbeddedExtensions) GetString(name string) string {
 	v, ok := e.Extensions[name]
 	if ok {
 		return cast.ToString(v)
@@ -187,7 +168,7 @@ func (e EmbeddedExtensions) ExtString(name string) string {
 	}
 }
 
-func (e EmbeddedExtensions) ExtBool(name string) bool {
+func (e EmbeddedExtensions) GetBool(name string) bool {
 	v, ok := e.Extensions[name]
 	if ok {
 		return cast.ToBool(v)
@@ -196,7 +177,7 @@ func (e EmbeddedExtensions) ExtBool(name string) bool {
 	}
 }
 
-func (e EmbeddedExtensions) ExtInt(name string) int {
+func (e EmbeddedExtensions) GetInt(name string) int {
 	v, ok := e.Extensions[name]
 	if ok {
 		return cast.ToInt(v)
@@ -217,31 +198,37 @@ type BackendService struct {
 	// Extends
 	EmbeddedAttributes `yaml:",inline"`
 	EmbeddedExtensions `yaml:",inline"`
-	RpcProto           string `json:"rpcProto" yaml:"rpcProto"`     // Deprecated Service侧的协议
-	RpcGroup           string `json:"rpcGroup" yaml:"rpcGroup"`     // Deprecated Service侧的接口分组
-	RpcVersion         string `json:"rpcVersion" yaml:"rpcVersion"` // Deprecated Service侧的接口版本
-	RpcTimeout         string `json:"rpcTimeout" yaml:"rpcTimeout"` // Deprecated Service侧的调用超时
-	RpcRetries         string `json:"rpcRetries" yaml:"rpcRetries"` // Deprecated Service侧的调用重试
+
+	// Deprecated
+	RpcProto string `json:"rpcProto" yaml:"rpcProto"`
+	// Deprecated
+	RpcGroup string `json:"rpcGroup" yaml:"rpcGroup"`
+	// Deprecated
+	RpcVersion string `json:"rpcVersion" yaml:"rpcVersion"`
+	// Deprecated
+	RpcTimeout string `json:"rpcTimeout" yaml:"rpcTimeout"`
+	// Deprecated
+	RpcRetries string `json:"rpcRetries" yaml:"rpcRetries"`
 }
 
 func (b BackendService) AttrRpcProto() string {
-	return b.AttrByTag(ServiceAttrTagRpcProto).ValueString()
+	return b.GetAttr(ServiceAttrTagRpcProto).GetString()
 }
 
 func (b BackendService) AttrRpcTimeout() string {
-	return b.AttrByTag(ServiceAttrTagRpcTimeout).ValueString()
+	return b.GetAttr(ServiceAttrTagRpcTimeout).GetString()
 }
 
 func (b BackendService) AttrRpcGroup() string {
-	return b.AttrByTag(ServiceAttrTagRpcGroup).ValueString()
+	return b.GetAttr(ServiceAttrTagRpcGroup).GetString()
 }
 
 func (b BackendService) AttrRpcVersion() string {
-	return b.AttrByTag(ServiceAttrTagRpcVersion).ValueString()
+	return b.GetAttr(ServiceAttrTagRpcVersion).GetString()
 }
 
 func (b BackendService) AttrRpcRetries() string {
-	return b.AttrByTag(ServiceAttrTagRpcRetries).ValueString()
+	return b.GetAttr(ServiceAttrTagRpcRetries).GetString()
 }
 
 // IsValid 判断服务配置是否有效；Interface+Method不能为空；
@@ -286,7 +273,7 @@ func (e Endpoint) IsValid() bool {
 }
 
 func (e Endpoint) AttrAuthorize() bool {
-	return e.AttrByTag(EndpointAttrTagAuthorize).ValueBool()
+	return e.GetAttr(EndpointAttrTagAuthorize).GetBool()
 }
 
 // Multi version Endpoint
@@ -363,26 +350,4 @@ type HttpEndpointEvent struct {
 type BackendServiceEvent struct {
 	EventType EventType
 	Service   BackendService
-}
-
-func EnsureServiceAttribute(tag uint8, name string) (uint8, string) {
-	return EnsureAttribute(tag, name, ServiceAttrTagNames)
-}
-
-func EnsureEndpointAttribute(tag uint8, name string) (uint8, string) {
-	return EnsureAttribute(tag, name, EndpointAttrTagNames)
-}
-
-func EnsureAttribute(tag uint8, name string, mapping map[uint8]string) (uint8, string) {
-	if tag > 0 && name == "" {
-		name = mapping[tag]
-	}
-	if name != "" && tag <= 0 {
-		for t, tname := range mapping {
-			if strings.ToLower(name) == tname {
-				tag = t
-			}
-		}
-	}
-	return tag, name
 }

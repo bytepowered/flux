@@ -49,9 +49,6 @@ func DefaultArgumentLookupFunc(scope, key string, ctx flux.Context) (value flux.
 	case flux.ScopeParam:
 		v, _ := pkg.LookupByProviders(key, req.QueryVars, req.FormVars)
 		return flux.WrapStringMTValue(v), nil
-	case flux.ScopeValue:
-		v, _ := ctx.GetValue(key)
-		return flux.WrapObjectMTValue(v), nil
 	case flux.ScopeRequest:
 		switch strings.ToLower(key) {
 		case "method":
@@ -70,9 +67,6 @@ func DefaultArgumentLookupFunc(scope, key string, ctx flux.Context) (value flux.
 			return flux.WrapStringMTValue(v), nil
 		}
 		if v, ok := ctx.GetAttribute(key); ok {
-			return flux.WrapObjectMTValue(v), nil
-		}
-		if v, ok := ctx.GetValue(key); ok {
 			return flux.WrapObjectMTValue(v), nil
 		}
 		return flux.WrapObjectMTValue(nil), nil

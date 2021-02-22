@@ -30,8 +30,6 @@ func LookupValue(scope, key string, webc flux.WebContext) string {
 		return webc.FormVar(key)
 	case flux.ScopeHeader:
 		return webc.HeaderVar(key)
-	case flux.ScopeValue:
-		return cast.ToString(webc.ScopeValue(key))
 	case flux.ScopeRequest:
 		switch strings.ToLower(key) {
 		case "method":
@@ -49,7 +47,7 @@ func LookupValue(scope, key string, webc flux.WebContext) string {
 		}); ok {
 			return v
 		}
-		return cast.ToString(webc.ScopeValue(key))
+		return cast.ToString(webc.Variable(key))
 	default:
 		return ""
 	}

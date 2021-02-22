@@ -98,7 +98,7 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 	assert.Equal("DUBBO", endpoint.Service.RpcProto)
 	assert.Equal("reportDetail", endpoint.Service.Method)
 
-	assert.Equal(map[string]interface{}{"key": "value", "bool": true}, endpoint.Extensions)
+	assert.Equal(map[string]interface{}{"key": "value", "bool": true}, endpoint.EmbeddedAttributes)
 
 	assert.Equal("checkPermission", endpoint.Permission.Method)
 	assert.Equal(2, len(endpoint.Permission.Arguments))

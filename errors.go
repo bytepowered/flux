@@ -13,8 +13,7 @@ const (
 )
 
 const (
-	ErrorMessageBackendDecodeResponse  = "BACKEND:DECODE_RESPONSE"
-	ErrorMessageBackendDecoderNotFound = "BACKEND:DECODER:NOT_FOUND"
+	ErrorMessageBackendDecodeResponse = "BACKEND:DECODE_RESPONSE"
 
 	ErrorMessageDubboInvokeFailed        = "BACKEND:DU:INVOKE"
 	ErrorMessageDubboAssembleFailed      = "BACKEND:DU:ASSEMBLE"
@@ -24,18 +23,13 @@ const (
 	ErrorMessageHttpInvokeFailed   = "BACKEND:HT:INVOKE"
 	ErrorMessageHttpAssembleFailed = "BACKEND:HT:ASSEMBLE"
 
-	ErrorMessageHystrixCircuited = "HYSTRIX:CIRCUITED"
-
 	ErrorMessagePermissionAccessDenied    = "PERMISSION:ACCESS_DENIED"
 	ErrorMessagePermissionServiceNotFound = "PERMISSION:SERVICE:NOT_FOUND"
 	ErrorMessagePermissionVerifyError     = "PERMISSION:VERIFY:ERROR"
 
-	ErrorMessageEndpointVersionNotFound  = "ENDPOINT:VERSION:NOT_FOUND"
-	ErrorMessageWebServerResponseMarshal = "SERVER:RESPONSE:MARSHAL"
 	ErrorMessageWebServerRequestNotFound = "SERVER:REQUEST:NOT_FOUND"
 
 	ErrorMessageRequestPrepare = "REQUEST:BODY:PREPARE"
-	ErrorMessageRequestParsing = "REQUEST:BODY:PARSING"
 )
 
 var (
