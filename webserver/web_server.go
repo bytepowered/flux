@@ -9,7 +9,6 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
@@ -18,15 +17,17 @@ import (
 )
 
 const (
-	ConfigKeyServerName  = "name"
-	ConfigKeyAddress     = "address"
-	ConfigKeyBindPort    = "bind_port"
-	ConfigKeyTLSCertFile = "tls_cert_file"
-	ConfigKeyTLSKeyFile  = "tls_key_file"
-	ConfigKeyBodyLimit   = "body_limit"
-	ConfigKeyGzipLevel   = "gzip_level"
-	ConfigKeyCORSEnable  = "cors_enable"
-	ConfigKeyCSRFEnable  = "csrf_enable"
+	ConfigKeyServerName        = "name"
+	ConfigKeyAddress           = "address"
+	ConfigKeyBindPort          = "bind_port"
+	ConfigKeyTLSCertFile       = "tls_cert_file"
+	ConfigKeyTLSKeyFile        = "tls_key_file"
+	ConfigKeyBodyLimit         = "body_limit"
+	ConfigKeyGzipLevel         = "gzip_level"
+	ConfigKeyCORSEnable        = "cors_enable"
+	ConfigKeyCSRFEnable        = "csrf_enable"
+	ConfigKeyFeatures          = "features"
+	ConfigKeyRequestIdDisabled = "request_id_disabled"
 )
 
 var _ flux.ListenServer = new(AdaptWebServer)
@@ -35,7 +36,11 @@ func init() {
 	ext.SetWebServerFactory(NewAdaptWebServer)
 }
 
-func NewAdaptWebServer(options *flux.Configuration) flux.ListenServer {
+func NewAdaptWebServer(config *flux.Configuration) flux.ListenServer {
+	return NewAdaptWebServerWith(config)
+}
+
+func NewAdaptWebServerWith(options *flux.Configuration, mids ...echo.MiddlewareFunc) flux.ListenServer {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
@@ -44,7 +49,7 @@ func NewAdaptWebServer(options *flux.Configuration) flux.ListenServer {
 		server:          server,
 		requestResolver: DefaultRequestResolver,
 	}
-	features := options.Sub("features")
+	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
 		logger.Infof("WebServer(echo/%s), feature BODY-LIMIT: enabled, size= %s", aws.name, limit)
@@ -74,13 +79,22 @@ func NewAdaptWebServer(options *flux.Configuration) flux.ListenServer {
 		logger.Infof("WebServer(echo/%s), feature CSRF: enabled", aws.name)
 		server.Pre(middleware.CSRF())
 	}
+	// 是否开启RequestId；
+	// 默认开启
+	if disabled := features.GetBool(ConfigKeyRequestIdDisabled); !disabled {
+		logger.Infof("WebServer(echo/%s), feature RequestID: enabled", aws.name)
+		server.Pre(RequestID())
+	}
+	// 应用中间件
+	for _, m := range mids {
+		server.Pre(m)
+	}
 	// 注入EchoContext
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			c.Set(keyWebResolver, aws.requestResolver)
-			c.Set(keyWebServer, aws)
-			c.Set(flux.XRequestId, uuid.New().String())
-			return next(c)
+		return func(echoc echo.Context) error {
+			echoc.Set(ContextKeyWebResolver, aws.requestResolver)
+			echoc.Set(ContextKeyWebBindServer, aws)
+			return next(echoc)
 		}
 	})
 	// 注入对Body的可重读逻辑
@@ -155,7 +169,7 @@ func (w *AdaptWebServer) SetServerErrorHandler(handler flux.WebServerErrorHandle
 		if nil == err {
 			return
 		}
-		handler(ensureAdaptWebContext(c), err)
+		handler(wrapToAdaptWebContext(c), err)
 	}
 }
 

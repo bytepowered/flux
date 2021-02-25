@@ -10,26 +10,29 @@ import (
 )
 
 const (
-	keyWebServer   = "$internal.web.adapted.server"
-	keyWebContext  = "$internal.web.adapted.context"
-	keyWebResolver = "$internal.web.adapted.body.resolver"
+	ContextKeyWebBindServer = "$internal.web.adapted.server"
+	ContextKeyWebContext    = "$internal.web.adapted.context"
+	ContextKeyWebResolver   = "$internal.web.adapted.body.resolver"
+	ContextKeyRequestId     = echo.HeaderXRequestID
 )
 
 var _ flux.WebContext = new(AdaptWebContext)
 
-func NewAdaptContext(echoc echo.Context, server flux.ListenServer, decoder flux.WebRequestResolver) *AdaptWebContext {
+func NewAdaptWebContext(requestId string, echoc echo.Context, server flux.ListenServer, resolver flux.WebRequestResolver) *AdaptWebContext {
 	return &AdaptWebContext{
+		requestId:       requestId,
 		echoc:           echoc,
-		serverRef:       server,
-		requestResolver: decoder,
+		server:          server,
+		requestResolver: resolver,
 	}
 }
 
 // AdaptWebContext 默认实现的基于echo框架的WebContext
 // 注意：保持 AdaptWebContext 的公共访问性
 type AdaptWebContext struct {
+	requestId       string
 	echoc           echo.Context
-	serverRef       flux.ListenServer
+	server          flux.ListenServer
 	requestResolver flux.WebRequestResolver
 	responseWriter  flux.WebResponseWriter
 	pathValues      url.Values
@@ -147,11 +150,11 @@ func (c *AdaptWebContext) WriteStream(statusCode int, contentType string, reader
 }
 
 func (c *AdaptWebContext) Send(webc flux.WebContext, header http.Header, status int, data interface{}) error {
-	return c.serverRef.Write(webc, header, status, data)
+	return c.server.Write(webc, header, status, data)
 }
 
 func (c *AdaptWebContext) SendError(error *flux.ServeError) {
-	c.serverRef.WriteError(c, error)
+	c.server.WriteError(c, error)
 }
 
 func (c *AdaptWebContext) SetResponseHeader(key, value string) {
@@ -179,6 +182,10 @@ func (c *AdaptWebContext) Variable(key string) interface{} {
 	return c.echoc.Get(key)
 }
 
+func (c *AdaptWebContext) RequestId() string {
+	return c.requestId
+}
+
 func (c *AdaptWebContext) HttpRequest() (*http.Request, error) {
 	return c.echoc.Request(), nil
 }
@@ -195,19 +202,24 @@ func (c *AdaptWebContext) WebResponse() interface{} {
 	return c.echoc.Response()
 }
 
-func ensureAdaptWebContext(echo echo.Context) flux.WebContext {
-	webc, ok := echo.Get(keyWebContext).(*AdaptWebContext)
+func wrapToAdaptWebContext(echoc echo.Context) flux.WebContext {
+	webc, ok := echoc.Get(ContextKeyWebContext).(*AdaptWebContext)
 	if !ok {
-		resolver, ok := echo.Get(keyWebResolver).(flux.WebRequestResolver)
+		resolver, ok := echoc.Get(ContextKeyWebResolver).(flux.WebRequestResolver)
 		if !ok {
-			panic("Echo.context web resolver has bean removed or not set")
+			panic("<request-resolver> in echo.context has bean removed or not set")
 		}
-		server, ok := echo.Get(keyWebServer).(flux.ListenServer)
+		server, ok := echoc.Get(ContextKeyWebBindServer).(flux.ListenServer)
 		if !ok {
-			panic("Echo.context listen server has bean removed or not set")
+			panic("<listen-server> in echo.context has bean removed or not set")
 		}
-		webc = NewAdaptContext(echo, server, resolver)
-		echo.Set(keyWebContext, webc)
+		// 从Header中读取RequestId
+		id := echoc.Request().Header.Get(ContextKeyRequestId)
+		if "" == id {
+			panic("<request-id> in echo.context has bean removed or not set")
+		}
+		webc = NewAdaptWebContext(id, echoc, server, resolver)
+		echoc.Set(ContextKeyWebContext, webc)
 	}
 	return webc
 }

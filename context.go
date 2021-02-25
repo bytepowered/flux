@@ -13,9 +13,6 @@ const (
 	XRequestTime  = "X-Request-Time"
 	XRequestHost  = "X-Request-Host"
 	XRequestAgent = "X-Request-Agent"
-	XJwtSubject   = "X-Jwt-Subject"
-	XJwtIssuer    = "X-Jwt-Issuer"
-	XJwtToken     = "X-Jwt-Token"
 )
 
 // Request 定义请求参数读取接口

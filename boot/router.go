@@ -140,7 +140,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 		}()
 		protoName := ctx.BackendService().AttrRpcProto()
 		if backend, ok := ext.GetBackendTransport(protoName); !ok {
-			logger.WithContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
+			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,

@@ -8,11 +8,10 @@ import (
 	"time"
 )
 
-var _ flux.Context = new(DefaultContext)
+var _ flux.Context = new(AttachableContext)
 
 // Context接口实现
-type DefaultContext struct {
-	requestId  string
+type AttachableContext struct {
 	webc       flux.WebContext
 	endpoint   *flux.Endpoint
 	attributes *sync.Map
@@ -25,59 +24,67 @@ type DefaultContext struct {
 }
 
 func DefaultContextFactory() flux.Context {
-	return &DefaultContext{
-		response:  NewDefaultResponse(),
-		request:   NewDefaultRequest(),
-		ctxLogger: logger.SimpleLogger(),
+	return NewDefaultContext(
+		NewDefaultRequest(),
+		NewDefaultResponse(),
+		logger.SimpleLogger(),
+	)
+}
+
+func NewDefaultContext(request *DefaultRequest, response *DefaultResponse, logger flux.Logger) *AttachableContext {
+	return &AttachableContext{
+		request:   request,
+		response:  response,
+		ctxLogger: logger,
 	}
 }
 
-func (c *DefaultContext) Request() flux.Request {
+func (c *AttachableContext) Request() flux.Request {
 	return c.request
 }
 
-func (c *DefaultContext) Response() flux.Response {
+func (c *AttachableContext) Response() flux.Response {
 	return c.response
 }
 
-func (c *DefaultContext) Endpoint() flux.Endpoint {
+func (c *AttachableContext) Endpoint() flux.Endpoint {
 	return *(c.endpoint)
 }
 
-func (c *DefaultContext) BackendService() flux.BackendService {
+func (c *AttachableContext) BackendService() flux.BackendService {
 	return c.endpoint.Service
 }
 
-func (c *DefaultContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
+func (c *AttachableContext) ServiceInterface() (proto, host, interfaceName, methodName string) {
 	s := c.endpoint.Service
 	return s.AttrRpcProto(), s.RemoteHost, s.Interface, s.Method
 }
 
-func (c *DefaultContext) ServiceProto() string {
+func (c *AttachableContext) ServiceProto() string {
 	return c.endpoint.Service.AttrRpcProto()
 }
 
-func (c *DefaultContext) BackendServiceId() string {
+func (c *AttachableContext) BackendServiceId() string {
 	return c.endpoint.Service.ServiceID()
 }
 
-func (c *DefaultContext) Authorize() bool {
+func (c *AttachableContext) Authorize() bool {
 	return c.endpoint.AttrAuthorize()
 }
 
-func (c *DefaultContext) Method() string {
+func (c *AttachableContext) Method() string {
 	return c.webc.Method()
 }
 
-func (c *DefaultContext) URI() string {
+func (c *AttachableContext) URI() string {
 	return c.webc.URI()
 }
 
-func (c *DefaultContext) RequestId() string {
-	return c.requestId
+func (c *AttachableContext) RequestId() string {
+	return c.webc.RequestId()
 }
 
-func (c *DefaultContext) Attributes() map[string]interface{} {
+func (c *AttachableContext) Attributes() map[string]interface{} {
 	copied := make(map[string]interface{}, 16)
 	c.attributes.Range(func(k, v interface{}) bool {
 		copied[k.(string)] = v
@@ -86,7 +93,7 @@ func (c *DefaultContext) Attributes() map[string]interface{} {
 	return copied
 }
 
-func (c *DefaultContext) Attribute(key string, defval interface{}) interface{} {
+func (c *AttachableContext) Attribute(key string, defval interface{}) interface{} {
 	if v, ok := c.GetAttribute(key); ok {
 		return v
 	} else {
@@ -94,20 +101,20 @@ func (c *DefaultContext) Attribute(key string, defval interface{}) interface{} {
 	}
 }
 
-func (c *DefaultContext) SetAttribute(key string, value interface{}) {
+func (c *AttachableContext) SetAttribute(key string, value interface{}) {
 	c.attributes.Store(key, value)
 }
 
-func (c *DefaultContext) GetAttribute(key string) (interface{}, bool) {
+func (c *AttachableContext) GetAttribute(key string) (interface{}, bool) {
 	v, ok := c.attributes.Load(key)
 	return v, ok
 }
 
-func (c *DefaultContext) SetVariable(key string, value interface{}) {
+func (c *AttachableContext) SetVariable(key string, value interface{}) {
 	c.variables.Store(key, value)
 }
 
-func (c *DefaultContext) Variable(key string, defval interface{}) interface{} {
+func (c *AttachableContext) Variable(key string, defval interface{}) interface{} {
 	if v, ok := c.GetVariable(key); ok {
 		return v
 	} else {
@@ -115,7 +122,7 @@ func (c *DefaultContext) Variable(key string, defval interface{}) interface{} {
 	}
 }
 
-func (c *DefaultContext) GetVariable(key string) (interface{}, bool) {
+func (c *AttachableContext) GetVariable(key string) (interface{}, bool) {
 	// first: Context Local Variables
 	// then: WebContext Variables
 	if lv, ok := c.variables.Load(key); ok {
@@ -127,58 +134,57 @@ func (c *DefaultContext) GetVariable(key string) (interface{}, bool) {
 	}
 }
 
-func (c *DefaultContext) Context() context.Context {
+func (c *AttachableContext) Context() context.Context {
 	return c.webc.Context()
 }
 
-func (c *DefaultContext) Metrics() []flux.Metric {
+func (c *AttachableContext) StartAt() time.Time {
+	return c.startTime
+}
+
+func (c *AttachableContext) Metrics() []flux.Metric {
 	dist := make([]flux.Metric, len(c.metrics))
 	copy(dist, c.metrics)
 	return dist
 }
 
-func (c *DefaultContext) SetLogger(logger flux.Logger) {
-	c.ctxLogger = logger
-}
-
-func (c *DefaultContext) Logger() flux.Logger {
-	return c.ctxLogger
-}
-
-func (c *DefaultContext) StartAt() time.Time {
-	return c.startTime
-}
-
-func (c *DefaultContext) AddMetric(name string, elapsed time.Duration) {
+func (c *AttachableContext) AddMetric(name string, elapsed time.Duration) {
 	c.metrics = append(c.metrics, flux.Metric{
 		Name: name, Elapsed: elapsed, Elapses: elapsed.String(),
 	})
 }
 
-func (c *DefaultContext) Reattach(requestId string, webc flux.WebContext, endpoint *flux.Endpoint) {
-	c.requestId = requestId
+func (c *AttachableContext) SetLogger(logger flux.Logger) {
+	c.ctxLogger = logger
+}
+
+func (c *AttachableContext) Logger() flux.Logger {
+	return c.ctxLogger
+}
+
+func (c *AttachableContext) Attach(webc flux.WebContext, endpoint *flux.Endpoint) {
 	c.webc = webc
 	c.endpoint = endpoint
 	c.attributes = new(sync.Map)
 	c.variables = new(sync.Map)
 	c.metrics = make([]flux.Metric, 0, 8)
 	c.startTime = time.Now()
-	c.request.reattach(webc)
-	// duplicated: c.response.reset()
+	c.request.attach(webc)
+	// duplicated:
+	// c.response.release()
 	c.SetAttribute(flux.XRequestTime, c.startTime.Unix())
-	c.SetAttribute(flux.XRequestId, c.requestId)
+	c.SetAttribute(flux.XRequestId, webc.RequestId())
 	c.SetAttribute(flux.XRequestHost, webc.Host())
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 }
 
-func (c *DefaultContext) Release() {
-	c.requestId = ""
+func (c *AttachableContext) Release() {
 	c.webc = nil
 	c.endpoint = nil
 	c.attributes = nil
 	c.variables = nil
 	c.metrics = nil
-	c.request.reset()
+	c.request.release()
 	c.response.reset()
 	c.ctxLogger = nil
 }

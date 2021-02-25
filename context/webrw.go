@@ -44,7 +44,7 @@ func (r *DefaultRequest) Rewrite(method string, path string) {
 	r.WebContext.Rewrite(method, path)
 }
 
-func (r *DefaultRequest) HeaderVars()  http.Header {
+func (r *DefaultRequest) HeaderVars() http.Header {
 	return r.WebContext.HeaderVars()
 }
 
@@ -84,11 +84,11 @@ func (r *DefaultRequest) HeaderVar(name string) string {
 	return r.WebContext.HeaderVar(name)
 }
 
-func (r *DefaultRequest) reattach(webex flux.WebContext) {
+func (r *DefaultRequest) attach(webex flux.WebContext) {
 	r.WebContext = webex
 }
 
-func (r *DefaultRequest) reset() {
+func (r *DefaultRequest) release() {
 	r.WebContext = nil
 }
 

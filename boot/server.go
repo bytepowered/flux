@@ -11,7 +11,6 @@ import (
 	"github.com/bytepowered/flux/listen"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
-	"github.com/spf13/cast"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -216,10 +215,9 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, endpoints *flux.MultiEndpoint) error {
 	version := s.endpointSelectFunc(webc)
 	endpoint, found := endpoints.LookupByVersion(version)
-	requestId := cast.ToString(webc.Variable(flux.HeaderXRequestId))
-	defer func() {
+	defer func(requestId string) {
 		if r := recover(); r != nil {
-			trace := logger.With(requestId)
+			trace := logger.Trace(requestId)
 			if err, ok := r.(error); ok {
 				trace.Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", err)
 			} else {
@@ -227,21 +225,21 @@ func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, 
 			}
 			trace.Error(string(debug.Stack()))
 		}
-	}()
+	}(webc.RequestId())
 	if !found {
 		if s.routeTraceEnabled {
-			logger.With(requestId).Infow("SERVER:ROUTE:NOT_FOUND",
+			logger.Trace(webc.RequestId()).Infow("SERVER:ROUTE:NOT_FOUND",
 				"http-pattern", []string{webc.Method(), webc.URI(), webc.URL().Path},
 			)
 		}
 		return flux.ErrRouteNotFound
 	}
-	ctxw := s.acquireContext(requestId, webc, endpoint)
+	ctxw := s.acquireContext(webc, endpoint)
 	defer s.releaseContext(ctxw)
 	// route call
-	logger.WithContext(ctxw).Infow("SERVER:ROUTE:START")
+	logger.TraceContext(ctxw).Infow("SERVER:ROUTE:START")
 	endcall := func(code int, start time.Time) {
-		logger.WithContext(ctxw).Infow("SERVER:ROUTE:END",
+		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:END",
 			"metric", ctxw.Metrics(),
 			"elapses", time.Since(start).String(), "response.code", code)
 	}
@@ -253,7 +251,7 @@ func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, 
 	// route and response
 	if err := s.router.Route(ctxw); nil != err {
 		defer endcall(err.StatusCode, start)
-		logger.WithContext(ctxw).Errorw("SERVER:ROUTE:ERROR", "error", err)
+		logger.TraceContext(ctxw).Errorw("SERVER:ROUTE:ERROR", "error", err)
 		err.MergeHeader(ctxw.Response().HeaderVars())
 		return err
 	}
@@ -416,15 +414,15 @@ func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux.En
 	}
 }
 
-func (s *BootstrapServer) acquireContext(id string, webc flux.WebContext, endpoint *flux.Endpoint) *context.DefaultContext {
-	ctx := s.ctxPool.Get().(*context.DefaultContext)
-	ctx.Reattach(id, webc, endpoint)
+func (s *BootstrapServer) acquireContext(webc flux.WebContext, endpoint *flux.Endpoint) flux.Context {
+	ctx := s.ctxPool.Get().(*context.AttachableContext)
+	ctx.Attach(webc, endpoint)
 	return ctx
 }
 
-func (s *BootstrapServer) releaseContext(context *context.DefaultContext) {
-	context.Release()
-	s.ctxPool.Put(context)
+func (s *BootstrapServer) releaseContext(ctx flux.Context) {
+	ctx.(*context.AttachableContext).Release()
+	s.ctxPool.Put(ctx)
 }
 
 func (s *BootstrapServer) defaultListenServer() flux.ListenServer {
