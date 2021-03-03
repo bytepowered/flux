@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/random"
 	"io"
 	"net/http"
 	"net/url"
@@ -217,7 +218,7 @@ func wrapToAdaptWebContext(echoc echo.Context) flux.WebContext {
 		// 从Header中读取RequestId
 		id := echoc.Request().Header.Get(ContextKeyRequestId)
 		if "" == id {
-			panic("invalid <request-id> in echo.context, was empty")
+			id = "autoid(empty)_" + random.String(32)
 		}
 		webc = NewAdaptWebContext(id, echoc, server, resolver)
 		echoc.Set(ContextKeyWebContext, webc)

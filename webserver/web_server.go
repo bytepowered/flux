@@ -37,10 +37,10 @@ func init() {
 }
 
 func NewAdaptWebServer(config *flux.Configuration) flux.ListenServer {
-	return NewAdaptWebServerWith(config)
+	return NewAdaptWebServerWith(config, nil)
 }
 
-func NewAdaptWebServerWith(options *flux.Configuration, mids ...echo.MiddlewareFunc) flux.ListenServer {
+func NewAdaptWebServerWith(options *flux.Configuration, mws *AdaptMiddleware) flux.ListenServer {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
@@ -57,17 +57,20 @@ func NewAdaptWebServerWith(options *flux.Configuration, mids ...echo.MiddlewareF
 			return next(echoc)
 		}
 	})
-	// 注入对Body的可重读逻辑
+	// Before feature
 	server.Pre(RepeatableBodyReader)
+	if mws != nil && len(mws.BeforeFeature) > 0 {
+		server.Pre(mws.BeforeFeature...)
+	}
 
-	// 其它功能特性
+	// Feature
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
 		logger.Infof("WebServer(echo/%s), feature BODY-LIMIT: enabled, size= %s", aws.name, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
-	// 是否设置压缩
+	// 请求压缩
 	if level := features.GetString(ConfigKeyGzipLevel); "" != level {
 		levels := map[string]int{
 			"nocompression":      flate.NoCompression,
@@ -81,25 +84,24 @@ func NewAdaptWebServerWith(options *flux.Configuration, mids ...echo.MiddlewareF
 			Level: levels[strings.ToLower(level)],
 		}))
 	}
-	// 是否开启CORS
+	// CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
 		logger.Infof("WebServer(echo/%s), feature CORS: enabled", aws.name)
 		server.Pre(middleware.CORS())
 	}
-	// 是否开启CSRF
+	// CSRF
 	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
 		logger.Infof("WebServer(echo/%s), feature CSRF: enabled", aws.name)
 		server.Pre(middleware.CSRF())
 	}
-	// 是否开启RequestId；
-	// 默认开启
+	// RequestId；默认开启
 	if disabled := features.GetBool(ConfigKeyRequestIdDisabled); !disabled {
 		logger.Infof("WebServer(echo/%s), feature RequestID: enabled", aws.name)
 		server.Pre(RequestID())
 	}
-	// 应用用户定义中间件
-	for _, m := range mids {
-		server.Pre(m)
+	// After features
+	if mws != nil && len(mws.AfterFeature) > 0 {
+		server.Pre(mws.AfterFeature...)
 	}
 	return aws
 }
@@ -228,4 +230,9 @@ func DefaultRequestResolver(webc flux.WebContext) url.Values {
 		panic(fmt.Errorf("parse form params failed, err: %w", err))
 	}
 	return form
+}
+
+type AdaptMiddleware struct {
+	BeforeFeature []echo.MiddlewareFunc
+	AfterFeature  []echo.MiddlewareFunc
 }
