@@ -49,6 +49,18 @@ func NewAdaptWebServerWith(options *flux.Configuration, mids ...echo.MiddlewareF
 		server:          server,
 		requestResolver: DefaultRequestResolver,
 	}
+	// Init context
+	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(echoc echo.Context) error {
+			echoc.Set(ContextKeyWebResolver, aws.requestResolver)
+			echoc.Set(ContextKeyWebBindServer, aws)
+			return next(echoc)
+		}
+	})
+	// 注入对Body的可重读逻辑
+	server.Pre(RepeatableBodyReader)
+
+	// 其它功能特性
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
@@ -85,20 +97,10 @@ func NewAdaptWebServerWith(options *flux.Configuration, mids ...echo.MiddlewareF
 		logger.Infof("WebServer(echo/%s), feature RequestID: enabled", aws.name)
 		server.Pre(RequestID())
 	}
-	// 应用中间件
+	// 应用用户定义中间件
 	for _, m := range mids {
 		server.Pre(m)
 	}
-	// 注入EchoContext
-	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(echoc echo.Context) error {
-			echoc.Set(ContextKeyWebResolver, aws.requestResolver)
-			echoc.Set(ContextKeyWebBindServer, aws)
-			return next(echoc)
-		}
-	})
-	// 注入对Body的可重读逻辑
-	server.Pre(RepeatableBodyReader)
 	return aws
 }
 

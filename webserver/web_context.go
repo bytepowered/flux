@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"context"
+	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -207,16 +208,16 @@ func wrapToAdaptWebContext(echoc echo.Context) flux.WebContext {
 	if !ok {
 		resolver, ok := echoc.Get(ContextKeyWebResolver).(flux.WebRequestResolver)
 		if !ok {
-			panic("<request-resolver> in echo.context has bean removed or not set")
+			panic(fmt.Sprintf("invalid <request-resolver> in echo.context, was: %+v", echoc.Get(ContextKeyWebResolver)))
 		}
 		server, ok := echoc.Get(ContextKeyWebBindServer).(flux.ListenServer)
 		if !ok {
-			panic("<listen-server> in echo.context has bean removed or not set")
+			panic(fmt.Sprintf("invalid <listen-server> in echo.context, was: %+v", echoc.Get(ContextKeyWebBindServer)))
 		}
 		// 从Header中读取RequestId
 		id := echoc.Request().Header.Get(ContextKeyRequestId)
 		if "" == id {
-			panic("<request-id> in echo.context has bean removed or not set")
+			panic("invalid <request-id> in echo.context, was empty")
 		}
 		webc = NewAdaptWebContext(id, echoc, server, resolver)
 		echoc.Set(ContextKeyWebContext, webc)
