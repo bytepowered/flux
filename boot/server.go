@@ -17,7 +17,6 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -46,7 +45,6 @@ type BootstrapServer struct {
 	ctxHooks           []flux.ContextHook
 	endpointSelectFunc EndpointSelectFunc
 	router             *Router
-	ctxPool            sync.Pool
 	started            chan struct{}
 	stopped            chan struct{}
 	banner             string
@@ -106,14 +104,13 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 				}),
 			)),
 	}
-	return NewBootstrapServerWith(context.DefaultContextFactory, append(opts, options...)...)
+	return NewBootstrapServerWith(append(opts, options...)...)
 }
 
-func NewBootstrapServerWith(factory func() flux.Context, opts ...Option) *BootstrapServer {
+func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 	srv := &BootstrapServer{
 		router:        NewRouter(),
 		listenServers: make(map[string]flux.ListenServer, 2),
-		ctxPool:       sync.Pool{New: func() interface{} { return factory() }},
 		ctxHooks:      make([]flux.ContextHook, 0, 4),
 		started:       make(chan struct{}),
 		stopped:       make(chan struct{}),
@@ -234,8 +231,7 @@ func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, 
 		}
 		return flux.ErrRouteNotFound
 	}
-	ctxw := s.acquireContext(webc, endpoint)
-	defer s.releaseContext(ctxw)
+	ctxw := context.NewAttachableContext(webc, endpoint)
 	// route call
 	logger.TraceContext(ctxw).Infow("SERVER:ROUTE:START")
 	endcall := func(code int, start time.Time) {
@@ -412,17 +408,6 @@ func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux.En
 	} else {
 		return ext.RegisterEndpoint(routeKey, endpoint), true
 	}
-}
-
-func (s *BootstrapServer) acquireContext(webc flux.WebContext, endpoint *flux.Endpoint) flux.Context {
-	ctx := s.ctxPool.Get().(*context.AttachableContext)
-	ctx.Attach(webc, endpoint)
-	return ctx
-}
-
-func (s *BootstrapServer) releaseContext(ctx flux.Context) {
-	ctx.(*context.AttachableContext).Release()
-	s.ctxPool.Put(ctx)
 }
 
 func (s *BootstrapServer) defaultListenServer() flux.ListenServer {

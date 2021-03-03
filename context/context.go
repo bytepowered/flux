@@ -23,15 +23,17 @@ type AttachableContext struct {
 	ctxLogger  flux.Logger
 }
 
-func DefaultContextFactory() flux.Context {
-	return NewDefaultContext(
+func NewAttachableContext(webc flux.WebContext, endpoint *flux.Endpoint) *AttachableContext {
+	a := NewAttachableContextWith(
 		NewDefaultRequest(),
 		NewDefaultResponse(),
 		logger.SimpleLogger(),
 	)
+	a.attach(webc, endpoint)
+	return a
 }
 
-func NewDefaultContext(request *DefaultRequest, response *DefaultResponse, logger flux.Logger) *AttachableContext {
+func NewAttachableContextWith(request *DefaultRequest, response *DefaultResponse, logger flux.Logger) *AttachableContext {
 	return &AttachableContext{
 		request:   request,
 		response:  response,
@@ -162,7 +164,7 @@ func (c *AttachableContext) Logger() flux.Logger {
 	return c.ctxLogger
 }
 
-func (c *AttachableContext) Attach(webc flux.WebContext, endpoint *flux.Endpoint) {
+func (c *AttachableContext) attach(webc flux.WebContext, endpoint *flux.Endpoint) *AttachableContext {
 	c.webc = webc
 	c.endpoint = endpoint
 	c.attributes = new(sync.Map)
@@ -170,21 +172,9 @@ func (c *AttachableContext) Attach(webc flux.WebContext, endpoint *flux.Endpoint
 	c.metrics = make([]flux.Metric, 0, 8)
 	c.startTime = time.Now()
 	c.request.attach(webc)
-	// duplicated:
-	// c.response.release()
 	c.SetAttribute(flux.XRequestTime, c.startTime.Unix())
 	c.SetAttribute(flux.XRequestId, webc.RequestId())
 	c.SetAttribute(flux.XRequestHost, webc.Host())
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
-}
-
-func (c *AttachableContext) Release() {
-	c.webc = nil
-	c.endpoint = nil
-	c.attributes = nil
-	c.variables = nil
-	c.metrics = nil
-	c.request.release()
-	c.response.reset()
-	c.ctxLogger = nil
+	return c
 }
