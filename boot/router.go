@@ -132,9 +132,17 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 		}
 	}
 	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
-	// Walk filters
-	filters := append(ext.GetGlobalFilters(), selective...)
-	err := r.walk(func(ctx flux.Context) *flux.ServeError {
+	transport := func(ctx flux.Context) *flux.ServeError {
+		select {
+		case <-ctx.Context().Done():
+			return &flux.ServeError{
+				StatusCode: flux.StatusOK,
+				ErrorCode:  "ROUTE:TRANSPORT/B:CANCELED",
+				CauseError: ctx.Context().Err(),
+			}
+		default:
+			break
+		}
 		defer func() {
 			ctx.AddMetric("backend", time.Since(ctx.StartAt()))
 		}()
@@ -145,16 +153,19 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
-				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName)}
+				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName),
+			}
 		} else {
 			// Backend exchange
 			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("BackendTransport", protoName))
-			ret := backend.Exchange(ctx)
+			err := backend.Exchange(ctx)
 			timer.ObserveDuration()
-			return ret
+			return err
 		}
-	}, filters)(ctx)
-	return doMetricEndpointFunc(err)
+	}
+	// Walk filters
+	filters := append(ext.GetGlobalFilters(), selective...)
+	return doMetricEndpointFunc(r.walk(transport, filters)(ctx))
 }
 
 func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {

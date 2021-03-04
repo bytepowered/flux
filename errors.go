@@ -7,6 +7,7 @@ const (
 	ErrorCodeGatewayBackend   = "GATEWAY:BACKEND"
 	ErrorCodeGatewayEndpoint  = "GATEWAY:ENDPOINT"
 	ErrorCodeGatewayCircuited = "GATEWAY:CIRCUITED"
+	ErrorCodeGatewayCanceled  = "GATEWAY:CANCELED"
 	ErrorCodeRequestInvalid   = "REQUEST:INVALID"
 	ErrorCodeRequestNotFound  = "REQUEST:NOT_FOUND"
 	ErrorCodePermissionDenied = "PERMISSION:ACCESS_DENIED"

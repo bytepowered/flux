@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/internal"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
 	"io"
@@ -12,17 +13,17 @@ import (
 )
 
 const (
-	ContextKeyWebBindServer = "$internal.web.adapted.server"
-	ContextKeyWebContext    = "$internal.web.adapted.context"
-	ContextKeyWebResolver   = "$internal.web.adapted.body.resolver"
-	ContextKeyRequestId     = echo.HeaderXRequestID
+	ContextKeyWebPrefix     = "__webserver_core__"
+	ContextKeyWebBindServer = ContextKeyWebPrefix + ".adapted.server"
+	ContextKeyWebContext    = ContextKeyWebPrefix + ".adapted.context"
+	ContextKeyWebResolver   = ContextKeyWebPrefix + ".adapted.body.resolver"
 )
 
 var _ flux.WebContext = new(AdaptWebContext)
 
 func NewAdaptWebContext(requestId string, echoc echo.Context, server flux.ListenServer, resolver flux.WebRequestResolver) *AdaptWebContext {
 	return &AdaptWebContext{
-		requestId:       requestId,
+		context:         context.WithValue(echoc.Request().Context(), internal.ContextKeyRequestId, requestId),
 		echoc:           echoc,
 		server:          server,
 		requestResolver: resolver,
@@ -32,7 +33,7 @@ func NewAdaptWebContext(requestId string, echoc echo.Context, server flux.Listen
 // AdaptWebContext 默认实现的基于echo框架的WebContext
 // 注意：保持 AdaptWebContext 的公共访问性
 type AdaptWebContext struct {
-	requestId       string
+	context         context.Context
 	echoc           echo.Context
 	server          flux.ListenServer
 	requestResolver flux.WebRequestResolver
@@ -42,7 +43,7 @@ type AdaptWebContext struct {
 }
 
 func (c *AdaptWebContext) Context() context.Context {
-	return c.echoc.Request().Context()
+	return c.context
 }
 
 func (c *AdaptWebContext) Method() string {
@@ -185,7 +186,7 @@ func (c *AdaptWebContext) Variable(key string) interface{} {
 }
 
 func (c *AdaptWebContext) RequestId() string {
-	return c.requestId
+	return c.context.Value(internal.ContextKeyRequestId).(string)
 }
 
 func (c *AdaptWebContext) HttpRequest() (*http.Request, error) {
@@ -204,7 +205,7 @@ func (c *AdaptWebContext) WebResponse() interface{} {
 	return c.echoc.Response()
 }
 
-func newAdaptWebContext(echoc echo.Context) flux.WebContext {
+func toAdaptWebContext(echoc echo.Context) flux.WebContext {
 	if webc, ok := echoc.Get(ContextKeyWebContext).(*AdaptWebContext); ok {
 		return webc
 	}
@@ -217,7 +218,7 @@ func newAdaptWebContext(echoc echo.Context) flux.WebContext {
 		panic(fmt.Sprintf("invalid <listen-server> in echo.context, was: %+v", echoc.Get(ContextKeyWebBindServer)))
 	}
 	// 从Header中读取RequestId
-	id := echoc.Request().Header.Get(ContextKeyRequestId)
+	id := echoc.Request().Header.Get(echo.HeaderXRequestID)
 	if "" == id {
 		id = "autoid(empty)_" + random.String(32)
 	}

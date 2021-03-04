@@ -290,7 +290,7 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 	}
 	att, err := b.attAssembleFunc(ctx)
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("Dubbo attachment error",
+		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:ATTACHMENT",
 			"backend-service", service.ServiceID(), "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -302,6 +302,16 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
 	generic := b.LoadGenericService(&service)
 	resultW := b.dubboInvokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
+	select {
+	case <-goctx.Done():
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusBadRequest,
+			ErrorCode:  "BACKEND:DUBBO:CANCELED",
+			CauseError: goctx.Err(),
+		}
+	default:
+		break
+	}
 	if err := resultW.Error(); err != nil {
 		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:RPC_ERROR",
 			"backend-service", service.ServiceID(), "error", err)

@@ -35,33 +35,33 @@ const (
 type (
 	// Option 配置HttpServeEngine函数
 	Option func(bs *BootstrapServer)
-	// EndpointSelectFunc Http请求版本查找函数
-	EndpointSelectFunc func(webc flux.WebContext) string
+	// VersionLookupFunc Http请求版本查找函数
+	VersionLookupFunc func(webc flux.WebContext) (version string)
 )
 
 // BootstrapServer
 type BootstrapServer struct {
-	listenServers      map[string]flux.ListenServer
-	ctxHooks           []flux.ContextHook
-	endpointSelectFunc EndpointSelectFunc
-	router             *Router
-	started            chan struct{}
-	stopped            chan struct{}
-	banner             string
-	routeTraceEnabled  bool
+	listenServers     map[string]flux.ListenServer
+	hooks             []flux.ContextHook
+	versionLookupFunc VersionLookupFunc
+	router            *Router
+	started           chan struct{}
+	stopped           chan struct{}
+	banner            string
+	routeTraceEnabled bool
 }
 
 // WithServerContextHooks 配置请求Hook函数列表
 func WithServerContextHooks(hooks ...flux.ContextHook) Option {
 	return func(bs *BootstrapServer) {
-		bs.ctxHooks = append(bs.ctxHooks, hooks...)
+		bs.hooks = append(bs.hooks, hooks...)
 	}
 }
 
-// WithEndpointSelectFunc 配置Web请求版本选择函数
-func WithEndpointSelectFunc(fun EndpointSelectFunc) Option {
+// WithVersionLookupFunc 配置Web请求版本选择函数
+func WithVersionLookupFunc(fun VersionLookupFunc) Option {
 	return func(bs *BootstrapServer) {
-		bs.endpointSelectFunc = fun
+		bs.versionLookupFunc = fun
 	}
 }
 
@@ -88,7 +88,7 @@ func WithListenServer(id string, server flux.ListenServer) Option {
 func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 	opts := []Option{
 		WithServerBanner(defaultBanner),
-		WithEndpointSelectFunc(func(webc flux.WebContext) string {
+		WithVersionLookupFunc(func(webc flux.WebContext) string {
 			return webc.HeaderVar(DefaultHttpHeaderVersion)
 		}),
 		// Default ListenServer
@@ -111,7 +111,7 @@ func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 	srv := &BootstrapServer{
 		router:        NewRouter(),
 		listenServers: make(map[string]flux.ListenServer, 2),
-		ctxHooks:      make([]flux.ContextHook, 0, 4),
+		hooks:         make([]flux.ContextHook, 0, 4),
 		started:       make(chan struct{}),
 		stopped:       make(chan struct{}),
 		banner:        defaultBanner,
@@ -210,11 +210,10 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 }
 
 func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, endpoints *flux.MultiEndpoint) error {
-	version := s.endpointSelectFunc(webc)
-	endpoint, found := endpoints.LookupByVersion(version)
-	defer func(requestId string) {
+	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webc))
+	defer func(id string) {
 		if r := recover(); r != nil {
-			trace := logger.Trace(requestId)
+			trace := logger.Trace(id)
 			if err, ok := r.(error); ok {
 				trace.Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", err)
 			} else {
@@ -231,33 +230,27 @@ func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, 
 		}
 		return flux.ErrRouteNotFound
 	}
-	ctxw := context.NewAttachableContext(webc, endpoint)
-	// route call
+	ctxw := context.New(webc, endpoint)
+	defer context.ReleaseContext(ctxw)
 	logger.TraceContext(ctxw).Infow("SERVER:ROUTE:START")
-	endcall := func(code int, start time.Time) {
-		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:END",
-			"metric", ctxw.Metrics(),
-			"elapses", time.Since(start).String(), "response.code", code)
-	}
-	start := time.Now()
-	// Context hook
-	for _, hook := range s.ctxHooks {
+	// hook
+	for _, hook := range s.hooks {
 		hook(webc, ctxw)
 	}
-	// route and response
-	if err := s.router.Route(ctxw); nil != err {
-		defer endcall(err.StatusCode, start)
-		if nil != err.CauseError && strings.Contains(err.CauseError.Error(), goctx.Canceled.Error()) {
-			logger.TraceContext(ctxw).Infow("SERVER:ROUTE:CANCELED")
-		} else {
-			logger.TraceContext(ctxw).Errorw("SERVER:ROUTE:ERROR", "error", err)
-		}
-		err.MergeHeader(ctxw.Response().HeaderVars())
-		return err
+	endfunc := func(start time.Time) {
+		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:END",
+			"metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}
-	r := ctxw.Response()
-	defer endcall(r.StatusCode(), start)
-	return server.Write(webc, r.HeaderVars(), r.StatusCode(), r.Payload())
+	if err := s.router.Route(ctxw); nil == err {
+		r := ctxw.Response()
+		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:RESPONSE/DATA", "statusCode", r.StatusCode())
+		defer endfunc(ctxw.StartAt())
+		return server.Write(webc, r.HeaderVars(), r.StatusCode(), r.Payload())
+	} else {
+		logger.TraceContext(ctxw).Errorw("SERVER:ROUTE:RESPONSE/ERROR", "statusCode", err.StatusCode, "error", err)
+		defer endfunc(ctxw.StartAt())
+		return err.MergeHeader(ctxw.Response().HeaderVars())
+	}
 }
 
 func (s *BootstrapServer) onBackendServiceEvent(event flux.BackendServiceEvent) {
@@ -292,7 +285,7 @@ func (s *BootstrapServer) onHttpEndpointEvent(event flux.HttpEndpointEvent) {
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	// Check http method
 	if !isAllowedHttpMethod(method) {
-		logger.Warnw("Unsupported http method", "method", method, "pattern", event.Endpoint.HttpPattern)
+		logger.Warnw("SERVER:META:ENDPOINT:METHOD/X", "method", method, "pattern", event.Endpoint.HttpPattern)
 		return
 	}
 	pattern := event.Endpoint.HttpPattern
@@ -397,7 +390,7 @@ func (s *BootstrapServer) GetListenServer(id string) (flux.ListenServer, bool) {
 
 // AddContextHook 添加Http与Flux的Context桥接函数
 func (s *BootstrapServer) AddContextHook(f flux.ContextHook) {
-	s.ctxHooks = append(s.ctxHooks, f)
+	s.hooks = append(s.hooks, f)
 }
 
 func (s *BootstrapServer) newEndpointHandler(server flux.ListenServer, endpoint *flux.MultiEndpoint) flux.WebHandler {

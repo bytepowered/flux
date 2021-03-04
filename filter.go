@@ -40,7 +40,7 @@ func (e *ServeError) SetExtras(key string, value interface{}) {
 	e.Extras[key] = value
 }
 
-func (e *ServeError) MergeHeader(header http.Header) {
+func (e *ServeError) MergeHeader(header http.Header) *ServeError {
 	if e.Header == nil {
 		e.Header = header.Clone()
 	} else {
@@ -50,6 +50,7 @@ func (e *ServeError) MergeHeader(header http.Header) {
 			}
 		}
 	}
+	return e
 }
 
 type (

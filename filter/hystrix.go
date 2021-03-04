@@ -8,6 +8,7 @@ import (
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -106,7 +107,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 			return next(ctx)
 		}
 		var reterr *flux.ServeError
-		fallback := func(_ context.Context, err error) error {
+		fallback := func(c context.Context, err error) error {
 			// 返回两种类型Error：
 			// 1. 执行 next() 返回 *ServeError；
 			// 2. 熔断返回 hystrix.CircuitError;
@@ -116,11 +117,18 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 				logger.Infow("HYSTRIX:CIRCUITED/DOWNGRADE",
 					"is-circuited", ok, "service-name", serviceName, "circuit-error", cerr)
 				reterr = r.Config.ServiceDowngradeFunc(ctx)
+			} else if strings.Contains(err.Error(), context.Canceled.Error()) {
+				reterr = &flux.ServeError{
+					StatusCode: flux.StatusOK,
+					ErrorCode:  flux.ErrorCodeGatewayCanceled,
+					Message:    "CIRCUITED:CANCELED:BYCLIENT",
+					CauseError: err,
+				}
 			} else {
 				reterr = &flux.ServeError{
 					StatusCode: flux.StatusServerError,
 					ErrorCode:  flux.ErrorCodeGatewayInternal,
-					Message:    "CIRCUIT:UNEXPECTED_ERROR",
+					Message:    "CIRCUITED:INTERNAL:UNEXPERR",
 					CauseError: err,
 				}
 			}
@@ -135,7 +143,7 @@ func DefaultDowngradeFunc(ctx flux.Context) *flux.ServeError {
 	return &flux.ServeError{
 		StatusCode: http.StatusServiceUnavailable,
 		ErrorCode:  flux.ErrorCodeGatewayCircuited,
-		Message:    "Server busy",
+		Message:    "CIRCUITED:SERVER_BUSY:DOWNGRADE",
 	}
 }
 

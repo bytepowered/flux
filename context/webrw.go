@@ -84,7 +84,7 @@ func (r *DefaultRequest) HeaderVar(name string) string {
 	return r.WebContext.HeaderVar(name)
 }
 
-func (r *DefaultRequest) attach(webex flux.WebContext) {
+func (r *DefaultRequest) reset(webex flux.WebContext) {
 	r.WebContext = webex
 }
 
@@ -142,9 +142,7 @@ func (r *DefaultResponse) reset() {
 }
 
 func NewDefaultResponse() *DefaultResponse {
-	return &DefaultResponse{
-		status:  flux.StatusOK,
-		headers: http.Header{},
-		payload: nil,
-	}
+	dr := new(DefaultResponse)
+	dr.reset()
+	return dr
 }
