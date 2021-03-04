@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/bytepowered/flux/internal"
-
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
 	"sync"
@@ -271,7 +269,6 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 	case <-ctx.Context().Done():
 		logger.TraceContext(ctx).Infow("BACKEND:DUBBO:RPC_CANCELED",
 			"backend-service", service.ServiceID(), "error", ctx.Context().Err())
-		internal.ServerAssert(nil != serr, "error must not nil when return nil response")
 		return nil, serr
 	default:
 		break
@@ -291,7 +288,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
 		}
 	}
-	internal.ServerAssert(nil != result, "result must not nil when return nil error")
+	pkg.ServerAssert(nil != result, "dubbo: <result> must not nil, request.id: "+ctx.RequestId())
 	return result, nil
 }
 
@@ -353,7 +350,7 @@ func (b *BackendTransportService) LoadGenericService(backend *flux.BackendServic
 			newRef = pkg.RequireNotNil(optsFunc(backend, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
-	logger.Infow("Create dubbo generic service: PENDING", "interface", backend.Interface)
+	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", backend.Interface)
 	srv := b.dubboServiceFunc(backend)
 	dubgo.SetConsumerService(srv)
 	newRef.Refer(srv)
@@ -363,7 +360,7 @@ func (b *BackendTransportService) LoadGenericService(backend *flux.BackendServic
 		t = time.Millisecond * 10
 	}
 	<-time.After(t)
-	logger.Infow("Create dubbo generic service: OK", "interface", backend.Interface)
+	logger.Infow("DUBBO:GENERIC:CREATE: OJBK", "interface", backend.Interface)
 	return srv
 }
 

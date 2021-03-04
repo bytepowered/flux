@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
 	"github.com/labstack/echo/v4"
@@ -173,7 +172,7 @@ func (s *AdaptWebServer) SetServerErrorHandler(handler flux.WebServerErrorHandle
 	// Route请求返回的Error，全部经由此函数处理
 	s.server.HTTPErrorHandler = func(err error, c echo.Context) {
 		webc, ok := c.Get(ContextKeyWebContext).(*AdaptWebContext)
-		internal.ServerAssert(ok, "<web-context> is invalid in http-error-handler")
+		pkg.ServerAssert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webc, err)
 	}
 }
