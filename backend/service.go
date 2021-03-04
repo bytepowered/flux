@@ -21,8 +21,8 @@ func DoExchangeTransport(ctx flux.Context, transport flux.BackendTransport) *flu
 			break
 		}
 	}
-	pkg.ServerAssertF(response == nil,
-		"exchange: <response> must-not nil, request-id: %s", ctx.RequestId())
+	pkg.AssertNotNil(response,
+		"exchange: <response> must-not nil, request-id: "+ctx.RequestId())
 	// attachments
 	for k, v := range response.Attachments {
 		ctx.SetAttribute(k, v)

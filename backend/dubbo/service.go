@@ -288,7 +288,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
 		}
 	}
-	pkg.ServerAssert(nil != result, "dubbo: <result> must not nil, request.id: "+ctx.RequestId())
+	pkg.AssertNotNil(result, "dubbo: <result> must not nil, request.id: "+ctx.RequestId())
 	return result, nil
 }
 

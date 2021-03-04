@@ -2,20 +2,26 @@ package pkg
 
 import "fmt"
 
-func ServerAssertT(assert func() bool, message string) {
+func AssertT(assert func() bool, message string) {
 	if !assert() {
 		panic("ServerAssert: " + message)
 	}
 }
 
-func ServerAssert(flag bool, message string) {
-	if !flag {
+func Assert(true bool, message string) {
+	if !true {
 		panic("ServerAssert: " + message)
 	}
 }
 
-func ServerAssertF(flag bool, message string, args ...interface{}) {
-	if !flag {
+func AssertNil(v interface{}, message string, args ...interface{}) {
+	if nil != v {
+		panic("ServerAssert: " + fmt.Sprintf(message, args...))
+	}
+}
+
+func AssertNotNil(v interface{}, message string, args ...interface{}) {
+	if nil == v {
 		panic("ServerAssert: " + fmt.Sprintf(message, args...))
 	}
 }
