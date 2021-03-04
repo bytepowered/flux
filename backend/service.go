@@ -34,8 +34,8 @@ func DoInvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.Backend
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    "GATEWAY:UNKNOWN_PROTOCOL",
-			CauseError: fmt.Errorf("unknown protocol:%s", rpcProto),
+			Message:    flux.ErrorMessageProtocolUnknown,
+			CauseError: fmt.Errorf("unknown rpc protocol:%s", rpcProto),
 		}
 	}
 	return transport.InvokeCodec(ctx, service)

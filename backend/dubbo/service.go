@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytepowered/flux/internal"
 
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
@@ -266,7 +267,18 @@ func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendS
 
 func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
 	raw, serr := b.Invoke(ctx, service)
+	select {
+	case <-ctx.Context().Done():
+		logger.TraceContext(ctx).Infow("BACKEND:DUBBO:RPC_CANCELED",
+			"backend-service", service.ServiceID(), "error", ctx.Context().Err())
+		internal.ServerAssert(nil != serr, "error must not nil when return nil response")
+		return nil, serr
+	default:
+		break
+	}
 	if nil != serr {
+		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:RPC_ERROR",
+			"backend-service", service.ServiceID(), "error", serr.CauseError)
 		return nil, serr
 	}
 	// decode response
@@ -279,6 +291,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
 		}
 	}
+	internal.ServerAssert(nil != result, "result must not nil when return nil error")
 	return result, nil
 }
 
@@ -299,27 +312,15 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 			CauseError: err,
 		}
 	}
-	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
 	generic := b.LoadGenericService(&service)
+	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
 	resultW := b.dubboInvokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
-	select {
-	case <-goctx.Done():
-		return nil, &flux.ServeError{
-			StatusCode: flux.StatusBadRequest,
-			ErrorCode:  "BACKEND:DUBBO:CANCELED",
-			CauseError: goctx.Err(),
-		}
-	default:
-		break
-	}
-	if err := resultW.Error(); err != nil {
-		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:RPC_ERROR",
-			"backend-service", service.ServiceID(), "error", err)
+	if cause := resultW.Error(); cause != nil {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
 			Message:    flux.ErrorMessageDubboInvokeFailed,
-			CauseError: err,
+			CauseError: cause,
 		}
 	} else {
 		if b.traceEnable {

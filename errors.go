@@ -14,6 +14,8 @@ const (
 )
 
 const (
+	ErrorMessageProtocolUnknown = "GATEWAY:PROTOCOL:UNKNOWN"
+
 	ErrorMessageBackendDecodeResponse = "BACKEND:DECODE_RESPONSE"
 
 	ErrorMessageDubboInvokeFailed        = "BACKEND:DU:INVOKE"

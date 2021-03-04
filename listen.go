@@ -87,6 +87,7 @@ const (
 	StatusAccessDenied = http.StatusForbidden
 	StatusServerError  = http.StatusInternalServerError
 	StatusBadGateway   = http.StatusBadGateway
+	StatusNoContent    = http.StatusNoContent
 )
 
 // Web interfaces defines
