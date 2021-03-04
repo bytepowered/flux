@@ -204,24 +204,24 @@ func (c *AdaptWebContext) WebResponse() interface{} {
 	return c.echoc.Response()
 }
 
-func wrapToAdaptWebContext(echoc echo.Context) flux.WebContext {
-	webc, ok := echoc.Get(ContextKeyWebContext).(*AdaptWebContext)
-	if !ok {
-		resolver, ok := echoc.Get(ContextKeyWebResolver).(flux.WebRequestResolver)
-		if !ok {
-			panic(fmt.Sprintf("invalid <request-resolver> in echo.context, was: %+v", echoc.Get(ContextKeyWebResolver)))
-		}
-		server, ok := echoc.Get(ContextKeyWebBindServer).(flux.ListenServer)
-		if !ok {
-			panic(fmt.Sprintf("invalid <listen-server> in echo.context, was: %+v", echoc.Get(ContextKeyWebBindServer)))
-		}
-		// 从Header中读取RequestId
-		id := echoc.Request().Header.Get(ContextKeyRequestId)
-		if "" == id {
-			id = "autoid(empty)_" + random.String(32)
-		}
-		webc = NewAdaptWebContext(id, echoc, server, resolver)
-		echoc.Set(ContextKeyWebContext, webc)
+func newAdaptWebContext(echoc echo.Context) flux.WebContext {
+	if webc, ok := echoc.Get(ContextKeyWebContext).(*AdaptWebContext); ok {
+		return webc
 	}
+	resolver, ok := echoc.Get(ContextKeyWebResolver).(flux.WebRequestResolver)
+	if !ok {
+		panic(fmt.Sprintf("invalid <request-resolver> in echo.context, was: %+v", echoc.Get(ContextKeyWebResolver)))
+	}
+	server, ok := echoc.Get(ContextKeyWebBindServer).(flux.ListenServer)
+	if !ok {
+		panic(fmt.Sprintf("invalid <listen-server> in echo.context, was: %+v", echoc.Get(ContextKeyWebBindServer)))
+	}
+	// 从Header中读取RequestId
+	id := echoc.Request().Header.Get(ContextKeyRequestId)
+	if "" == id {
+		id = "autoid(empty)_" + random.String(32)
+	}
+	webc := NewAdaptWebContext(id, echoc, server, resolver)
+	echoc.Set(ContextKeyWebContext, webc)
 	return webc
 }

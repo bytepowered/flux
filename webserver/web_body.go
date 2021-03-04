@@ -20,7 +20,7 @@ func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 				StatusCode: flux.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    flux.ErrorMessageRequestPrepare,
-				Internal:   fmt.Errorf("read req-body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
+				CauseError: fmt.Errorf("read request body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 			}
 		}
 		request.GetBody = func() (io.ReadCloser, error) {

@@ -257,7 +257,7 @@ func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendS
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageDubboAssembleFailed,
-			Internal:   err,
+			CauseError: err,
 		}
 	} else {
 		return b.DoInvoke(types, values, service, ctx)
@@ -276,7 +276,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageBackendDecodeResponse,
-			Internal:   fmt.Errorf("decode dubbo response, err: %w", err),
+			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
 		}
 	}
 	return result, nil
@@ -296,7 +296,7 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageDubboAssembleFailed,
-			Internal:   err,
+			CauseError: err,
 		}
 	}
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
@@ -309,7 +309,7 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
 			Message:    flux.ErrorMessageDubboInvokeFailed,
-			Internal:   err,
+			CauseError: err,
 		}
 	} else {
 		if b.traceEnable {

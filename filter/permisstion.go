@@ -108,12 +108,12 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 					StatusCode: flux.StatusServerError,
 					ErrorCode:  flux.ErrorCodeGatewayInternal,
 					Message:    flux.ErrorMessagePermissionServiceNotFound,
-					Internal:   errors.New("service not found, id: " + id),
+					CauseError: errors.New("permission.service not found, id: " + id),
 				}
 			}
 		}
 		report, err := p.Configs.VerifyFunc(services, ctx)
-		ctx.AddMetric("M-"+p.TypeId(), time.Since(ctx.StartAt()))
+		ctx.AddMetric(p.TypeId(), time.Since(ctx.StartAt()))
 		if nil != err {
 			if serr, ok := err.(*flux.ServeError); ok {
 				return serr
@@ -122,7 +122,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 				StatusCode: http.StatusForbidden,
 				ErrorCode:  flux.ErrorCodeGatewayInternal,
 				Message:    flux.ErrorMessagePermissionVerifyError,
-				Internal:   err,
+				CauseError: err,
 			}
 		}
 		if !report.Success {

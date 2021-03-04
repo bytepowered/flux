@@ -247,7 +247,7 @@ func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, 
 	// route and response
 	if err := s.router.Route(ctxw); nil != err {
 		defer endcall(err.StatusCode, start)
-		if strings.Contains(err.Internal.Error(), goctx.Canceled.Error()) {
+		if goctx.Canceled == err.CauseError || strings.Contains(err.CauseError.Error(), goctx.Canceled.Error()) {
 			logger.TraceContext(ctxw).Infow("SERVER:ROUTE:CANCELED")
 			return goctx.Canceled
 		} else {

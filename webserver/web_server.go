@@ -118,99 +118,100 @@ type AdaptWebServer struct {
 	address         string
 }
 
-func (w *AdaptWebServer) Init(opts *flux.Configuration) error {
-	w.tlsCertFile = opts.GetString(ConfigKeyTLSCertFile)
-	w.tlsKeyFile = opts.GetString(ConfigKeyTLSKeyFile)
+func (s *AdaptWebServer) Init(opts *flux.Configuration) error {
+	s.tlsCertFile = opts.GetString(ConfigKeyTLSCertFile)
+	s.tlsKeyFile = opts.GetString(ConfigKeyTLSKeyFile)
 	addr, port := opts.GetString(ConfigKeyAddress), opts.GetString(ConfigKeyBindPort)
 	if strings.Contains(addr, ":") {
-		w.address = addr
+		s.address = addr
 	} else {
-		w.address = addr + ":" + port
+		s.address = addr + ":" + port
 	}
-	if w.address == ":" {
-		return errors.New("web server config.address is required, was empty, server: " + w.name)
+	if s.address == ":" {
+		return errors.New("web server config.address is required, was empty, server: " + s.name)
 	}
 	return nil
 }
 
-func (w *AdaptWebServer) Listen() error {
-	logger.Infof("WebServer(echo/%s) start listen: %s", w.name, w.address)
-	if "" != w.tlsCertFile && "" != w.tlsKeyFile {
-		return w.server.StartTLS(w.address, w.tlsCertFile, w.tlsKeyFile)
+func (s *AdaptWebServer) Listen() error {
+	logger.Infof("WebServer(echo/%s) start listen: %s", s.name, s.address)
+	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
+		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 	} else {
-		return w.server.Start(w.address)
+		return s.server.Start(s.address)
 	}
 }
 
-func (w *AdaptWebServer) Write(webc flux.WebContext, header http.Header, status int, data interface{}) error {
-	return w.writer(webc, header, status, data, nil)
+func (s *AdaptWebServer) Write(webc flux.WebContext, header http.Header, status int, data interface{}) error {
+	return s.writer(webc, header, status, data, nil)
 }
 
-func (w *AdaptWebServer) WriteError(webc flux.WebContext, err *flux.ServeError) {
-	if err := w.writer(webc, err.Header, err.StatusCode, nil, err); nil != err {
-		logger.Errorw("WebServer write error failed", "error", err, "server-name", w.name)
+func (s *AdaptWebServer) WriteError(webc flux.WebContext, err *flux.ServeError) {
+	if err := s.writer(webc, err.Header, err.StatusCode, nil, err); nil != err {
+		logger.Errorw("WebServer write error failed", "error", err, "server-name", s.name)
 	}
 }
 
-func (w *AdaptWebServer) WriteNotfound(webc flux.WebContext) error {
+func (s *AdaptWebServer) WriteNotfound(webc flux.WebContext) error {
 	return echo.NotFoundHandler(webc.WebContext().(echo.Context))
 }
 
-func (w *AdaptWebServer) SetResponseWriter(f flux.WebResponseWriter) {
-	w.writer = pkg.RequireNotNil(f, "WebResponseWriter is nil, server: "+w.name).(flux.WebResponseWriter)
+func (s *AdaptWebServer) SetResponseWriter(f flux.WebResponseWriter) {
+	s.writer = pkg.RequireNotNil(f, "WebResponseWriter is nil, server: "+s.name).(flux.WebResponseWriter)
 }
 
-func (w *AdaptWebServer) SetRequestResolver(resolver flux.WebRequestResolver) {
-	w.requestResolver = resolver
+func (s *AdaptWebServer) SetRequestResolver(resolver flux.WebRequestResolver) {
+	s.requestResolver = resolver
 }
 
-func (w *AdaptWebServer) SetNotfoundHandler(fun flux.WebHandler) {
+func (s *AdaptWebServer) SetNotfoundHandler(fun flux.WebHandler) {
 	echo.NotFoundHandler = AdaptWebRouteHandler(fun).AdaptFunc
 }
 
-func (w *AdaptWebServer) SetServerErrorHandler(handler flux.WebServerErrorHandler) {
-	w.server.HTTPErrorHandler = func(err error, c echo.Context) {
+func (s *AdaptWebServer) SetServerErrorHandler(handler flux.WebServerErrorHandler) {
+	// Route请求返回的Error，全部经由此函数处理
+	s.server.HTTPErrorHandler = func(err error, c echo.Context) {
 		if nil == err {
 			return
 		}
-		handler(wrapToAdaptWebContext(c), err)
+		handler(newAdaptWebContext(c), err)
 	}
 }
 
-func (w *AdaptWebServer) AddInterceptor(m flux.WebInterceptor) {
-	w.server.Pre(AdaptWebInterceptor(m).AdaptFunc)
+func (s *AdaptWebServer) AddInterceptor(m flux.WebInterceptor) {
+	s.server.Pre(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (w *AdaptWebServer) AddWebMiddleware(m flux.WebInterceptor) {
-	w.server.Use(AdaptWebInterceptor(m).AdaptFunc)
+func (s *AdaptWebServer) AddWebMiddleware(m flux.WebInterceptor) {
+	s.server.Use(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (w *AdaptWebServer) AddHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
+func (s *AdaptWebServer) AddHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mi := range m {
 		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
 	}
-	w.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
+	s.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
 }
 
-func (w *AdaptWebServer) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+func (s *AdaptWebServer) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mf := range m {
 		wms[i] = echo.WrapMiddleware(mf)
 	}
-	w.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wms...)
+	s.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wms...)
 }
 
-func (w *AdaptWebServer) Router() interface{} {
-	return w.server
+func (s *AdaptWebServer) Router() interface{} {
+	return s.server
 }
 
-func (w *AdaptWebServer) Server() interface{} {
-	return w.server
+func (s *AdaptWebServer) Server() interface{} {
+	return s.server
 }
 
-func (w *AdaptWebServer) Close(ctx context.Context) error {
-	return w.server.Shutdown(ctx)
+func (s *AdaptWebServer) Close(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
 }
 
 func toRoutePattern(uri string) string {

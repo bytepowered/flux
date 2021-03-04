@@ -49,7 +49,7 @@ func (r *Router) Initial() error {
 		ns := filter.TypeId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
 		config := flux.NewConfigurationOfNS(ns)
-		if _isDisabled(config) {
+		if isDisabled(config) {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
 			continue
 		}
@@ -65,7 +65,7 @@ func (r *Router) Initial() error {
 	for _, item := range dynFilters {
 		filter := item.Factory()
 		logger.Infow("Load dynamic-filter", "filter-id", item.Id, "type-id", item.TypeId, "type", reflect.TypeOf(filter))
-		if _isDisabled(item.Config) {
+		if isDisabled(item.Config) {
 			logger.Infow("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
 			continue
 		}
@@ -122,7 +122,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	}
 	// Metric: Route
 	defer func() {
-		ctx.AddMetric("M-Route", time.Since(ctx.StartAt()))
+		ctx.AddMetric("route", time.Since(ctx.StartAt()))
 	}()
 	// Select filters
 	selective := make([]flux.Filter, 0, 16)
@@ -131,12 +131,12 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			selective = append(selective, selector.DoSelect(ctx)...)
 		}
 	}
-	ctx.AddMetric("M-Selector", time.Since(ctx.StartAt()))
+	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
 	// Walk filters
 	filters := append(ext.GetGlobalFilters(), selective...)
 	err := r.walk(func(ctx flux.Context) *flux.ServeError {
 		defer func() {
-			ctx.AddMetric("M-Backend", time.Since(ctx.StartAt()))
+			ctx.AddMetric("backend", time.Since(ctx.StartAt()))
 		}()
 		protoName := ctx.BackendService().AttrRpcProto()
 		if backend, ok := ext.GetBackendTransport(protoName); !ok {
@@ -164,7 +164,7 @@ func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.Filte
 	return next
 }
 
-func _isDisabled(config *flux.Configuration) bool {
+func isDisabled(config *flux.Configuration) bool {
 	return config.GetBool("disable") || config.GetBool("disabled")
 }
 

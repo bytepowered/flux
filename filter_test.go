@@ -22,7 +22,7 @@ func TestStateError_ErrorPresent(t *testing.T) {
 		StatusCode: 500,
 		ErrorCode:  "SERVER_ERROR",
 		Message:    "Server internal error",
-		Internal:   errors.New("error"),
+		CauseError: errors.New("error"),
 	}
 	emsg := err.Error()
 	assert := assert2.New(t)

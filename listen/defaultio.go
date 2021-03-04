@@ -31,7 +31,7 @@ func DefaultServerErrorHandler(webc flux.WebContext, err error) {
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    err.Error(),
 			Header:     http.Header{},
-			Internal:   err,
+			CauseError: err,
 		})
 	}
 }
@@ -44,8 +44,8 @@ func DefaultResponseWriter(webc flux.WebContext, header http.Header, status int,
 			"status":  "error",
 			"message": serr.Message,
 		}
-		if nil != serr.Internal {
-			emap["error"] = serr.Internal.Error()
+		if nil != serr.CauseError {
+			emap["error"] = serr.CauseError.Error()
 		}
 		payload = emap
 	} else {

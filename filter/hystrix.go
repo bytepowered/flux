@@ -102,7 +102,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		r.initCommand(serviceName)
 		// check circuit
 		work := func(_ context.Context) error {
-			ctx.AddMetric("M-"+r.TypeId(), time.Since(ctx.StartAt()))
+			ctx.AddMetric(r.TypeId(), time.Since(ctx.StartAt()))
 			return next(ctx)
 		}
 		var reterr *flux.ServeError
@@ -121,7 +121,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 					StatusCode: flux.StatusServerError,
 					ErrorCode:  flux.ErrorCodeGatewayInternal,
 					Message:    "CIRCUIT:UNEXPECTED_ERROR",
-					Internal:   err,
+					CauseError: err,
 				}
 			}
 			return nil // fallback dont return errors
