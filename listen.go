@@ -87,6 +87,7 @@ const (
 	StatusAccessDenied = http.StatusForbidden
 	StatusServerError  = http.StatusInternalServerError
 	StatusBadGateway   = http.StatusBadGateway
+	StatusNoContent    = http.StatusNoContent
 )
 
 // Web interfaces defines
@@ -206,6 +207,9 @@ type WebContext interface {
 
 	// SetVariable 设置Context域键值；作用域与请求生命周期相同；
 	SetVariable(key string, value interface{})
+
+	// RequestId 获取请求RequestId
+	RequestId() string
 
 	// HttpRequest 返回Http标准Request对象。
 	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported

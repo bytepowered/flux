@@ -95,7 +95,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageBackendDecodeResponse,
-			Internal:   fmt.Errorf("decode http response, err: %w", err),
+			CauseError: fmt.Errorf("decode http response, err: %w", err),
 		}
 	}
 	return result, nil
@@ -109,7 +109,7 @@ func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendS
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageHttpAssembleFailed,
-			Internal:   err,
+			CauseError: err,
 		}
 	}
 	return b.ExecuteRequest(newRequest, service, ctx)
@@ -131,7 +131,7 @@ func (b *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ flu
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayBackend,
 			Message:    msg,
-			Internal:   err,
+			CauseError: err,
 		}
 	}
 	return resp, nil

@@ -14,22 +14,22 @@ const (
 	Extras  = "extras"
 )
 
-func With(traceId string) flux.Logger {
+func Trace(traceId string) flux.Logger {
 	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, traceId))
 }
 
-func WithFields(traceId string, fields map[string]string) flux.Logger {
+func TraceExtras(traceId string, extras map[string]string) flux.Logger {
 	p := context.WithValue(context.Background(), TraceId, traceId)
-	return ext.NewLoggerWith(context.WithValue(p, Extras, fields))
+	return ext.NewLoggerWith(context.WithValue(p, Extras, extras))
 }
 
-func WithContext(ctx flux.Context) flux.Logger {
-	return WithContextExtras(ctx, nil)
+func TraceContext(ctx flux.Context) flux.Logger {
+	return TraceContextExtras(ctx, nil)
 }
 
-func WithContextExtras(ctx flux.Context, extraFields map[string]string) flux.Logger {
+func TraceContextExtras(ctx flux.Context, extras map[string]string) flux.Logger {
 	if nil == ctx {
-		return With("no-trace-id")
+		return Trace("no-trace-id")
 	}
 	logger := ctx.Logger()
 	if logger == nil {
@@ -40,7 +40,7 @@ func WithContextExtras(ctx flux.Context, extraFields map[string]string) flux.Log
 		"request-method": ctx.Method(),
 		"request-uri":    ctx.URI(),
 	}
-	for k, v := range extraFields {
+	for k, v := range extras {
 		fields[k] = v
 	}
 	endpoint := ctx.Endpoint()
@@ -52,8 +52,8 @@ func WithContextExtras(ctx flux.Context, extraFields map[string]string) flux.Log
 		fields["backend-authorize"] = cast.ToString(endpoint.AttrAuthorize())
 		fields["endpoint-version"] = endpoint.Version
 		fields["endpoint-pattern"] = endpoint.HttpPattern
-		return WithFields(ctx.RequestId(), fields)
+		return TraceExtras(ctx.RequestId(), fields)
 	} else {
-		return With(ctx.RequestId())
+		return Trace(ctx.RequestId())
 	}
 }

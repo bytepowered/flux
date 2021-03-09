@@ -13,9 +13,6 @@ const (
 	XRequestTime  = "X-Request-Time"
 	XRequestHost  = "X-Request-Host"
 	XRequestAgent = "X-Request-Agent"
-	XJwtSubject   = "X-Jwt-Subject"
-	XJwtIssuer    = "X-Jwt-Issuer"
-	XJwtToken     = "X-Jwt-Token"
 )
 
 // Request 定义请求参数读取接口
@@ -121,6 +118,8 @@ type Context interface {
 
 	// Response 返回响应数据接口
 	Response() Response
+
+	Application() string
 
 	// Endpoint 返回请求路由定义的元数据
 	Endpoint() Endpoint

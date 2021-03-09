@@ -7,14 +7,14 @@ import (
 	"github.com/bytepowered/flux/pkg"
 )
 
-// LookupContextByExpr 搜索LookupExpr表达式指定域的值。
-func LookupContextByExpr(lookupExpr string, ctx flux.Context) (interface{}, error) {
-	if "" == lookupExpr || nil == ctx {
-		return nil, errors.New("empty lookup expr or context")
+// LookupExpr 搜索LookupExpr表达式指定域的值。
+func LookupExpr(expr string, ctx flux.Context) (interface{}, error) {
+	if "" == expr || nil == ctx {
+		return nil, errors.New("empty lookup expr, or context is nil")
 	}
-	scope, key, ok := pkg.LookupParseExpr(lookupExpr)
+	scope, key, ok := pkg.LookupParseExpr(expr)
 	if !ok {
-		return "", errors.New("illegal lookup expr: " + lookupExpr)
+		return "", errors.New("illegal lookup expr: " + expr)
 	}
 	mtv, err := backend.DefaultArgumentLookupFunc(scope, key, ctx)
 	if nil != err {
