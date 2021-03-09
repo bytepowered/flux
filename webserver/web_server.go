@@ -1,7 +1,6 @@
 package webserver
 
 import (
-	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
@@ -23,7 +22,6 @@ const (
 	ConfigKeyTLSCertFile       = "tls_cert_file"
 	ConfigKeyTLSKeyFile        = "tls_key_file"
 	ConfigKeyBodyLimit         = "body_limit"
-	ConfigKeyGzipLevel         = "gzip_level"
 	ConfigKeyCORSEnable        = "cors_enable"
 	ConfigKeyCSRFEnable        = "csrf_enable"
 	ConfigKeyFeatures          = "features"
@@ -69,20 +67,6 @@ func NewAdaptWebServerWith(options *flux.Configuration, mws *AdaptMiddleware) fl
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
 		logger.Infof("WebServer(echo/%s), feature BODY-LIMIT: enabled, size= %s", aws.name, limit)
 		server.Pre(middleware.BodyLimit(limit))
-	}
-	// 请求压缩
-	if level := features.GetString(ConfigKeyGzipLevel); "" != level {
-		levels := map[string]int{
-			"nocompression":      flate.NoCompression,
-			"bestspeed":          flate.BestSpeed,
-			"bestcompression":    flate.BestCompression,
-			"defaultcompression": flate.DefaultCompression,
-			"huffmanonly":        flate.HuffmanOnly,
-		}
-		logger.Infof("WebServer(echo/%s), feature GZIP: enabled, level=%s", aws.name, level)
-		server.Pre(middleware.GzipWithConfig(middleware.GzipConfig{
-			Level: levels[strings.ToLower(level)],
-		}))
 	}
 	// CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {

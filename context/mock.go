@@ -188,6 +188,10 @@ func (mc *MockContext) Endpoint() flux.Endpoint {
 	return flux.Endpoint{}
 }
 
+func (mc *MockContext) Application() string {
+	return "mock"
+}
+
 func (mc *MockContext) BackendService() flux.BackendService {
 	s, ok := mc.request.values["service"]
 	if ok {
