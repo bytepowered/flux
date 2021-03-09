@@ -58,12 +58,12 @@ type (
 )
 
 type (
-	// DubboGenericOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
-	DubboGenericOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
-	// DubboGenericServiceFunc 用于构建DubboGo泛型调用Service实例
-	DubboGenericServiceFunc func(*flux.BackendService) common.RPCService
-	// DubboGenericInvokeFunc 用于执行Dubbo泛调用方法，返回统一Result数据结构
-	DubboGenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result
+	// GenericOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
+	GenericOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+	// GenericServiceFunc 用于构建DubboGo泛型调用Service实例
+	GenericServiceFunc func(*flux.BackendService) common.RPCService
+	// GenericInvokeFunc 用于执行Dubbo泛调用方法，返回统一Result数据结构
+	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result
 )
 
 // BackendTransportService 集成DubboRPC框架的BackendService
@@ -71,9 +71,9 @@ type BackendTransportService struct {
 	// 可外部配置
 	defaults          map[string]interface{}        // 配置默认值
 	registryAlias     map[string]string             // Registry的别名
-	dubboOptionsFunc  []DubboGenericOptionsFunc     // Dubbo Reference 配置函数
-	dubboServiceFunc  DubboGenericServiceFunc       // Dubbo Service 构建函数
-	dubboInvokeFunc   DubboGenericInvokeFunc        // 执行Dubbo泛调用的函数
+	optionsFunc       []GenericOptionsFunc          // Dubbo Reference 配置函数
+	serviceFunc       GenericServiceFunc            // Dubbo Service 构建函数
+	invokeFunc        GenericInvokeFunc             // 执行Dubbo泛调用的函数
 	argAssembleFunc   ArgumentsAssembleFunc         // Dubbo参数封装函数
 	attAssembleFunc   AttachmentAssembleFun         // Attachment封装函数
 	responseCodecFunc flux.BackendResponseCodecFunc // 解析响应结果的函数
@@ -105,23 +105,23 @@ func WithResponseCodecFunc(fun flux.BackendResponseCodecFunc) Option {
 }
 
 // WithGenericOptionsFunc 用于配置DubboReference的参数配置函数
-func WithGenericOptionsFunc(fun DubboGenericOptionsFunc) Option {
+func WithGenericOptionsFunc(fun GenericOptionsFunc) Option {
 	return func(service *BackendTransportService) {
-		service.dubboOptionsFunc = append(service.dubboOptionsFunc, fun)
+		service.optionsFunc = append(service.optionsFunc, fun)
 	}
 }
 
 // WithGenericServiceFunc 用于构建DubboRPCService的函数
-func WithGenericServiceFunc(fun DubboGenericServiceFunc) Option {
+func WithGenericServiceFunc(fun GenericServiceFunc) Option {
 	return func(service *BackendTransportService) {
-		service.dubboServiceFunc = fun
+		service.serviceFunc = fun
 	}
 }
 
 // WithGenericInvokeFunc 用于调用DubboRPCService执行方法的函数
-func WithGenericInvokeFunc(fun DubboGenericInvokeFunc) Option {
+func WithGenericInvokeFunc(fun GenericInvokeFunc) Option {
 	return func(service *BackendTransportService) {
-		service.dubboInvokeFunc = fun
+		service.invokeFunc = fun
 	}
 }
 
@@ -142,7 +142,7 @@ func WithDefaults(defaults map[string]interface{}) Option {
 // NewBackendTransportServiceWith New dubbo backend service with options
 func NewBackendTransportServiceWith(opts ...Option) flux.BackendTransport {
 	bts := &BackendTransportService{
-		dubboOptionsFunc: make([]DubboGenericOptionsFunc, 0),
+		optionsFunc: make([]GenericOptionsFunc, 0),
 	}
 	for _, opt := range opts {
 		opt(bts)
@@ -213,8 +213,8 @@ func (b *BackendTransportService) Init(config *flux.Configuration) error {
 	b.traceEnable = config.GetBool(ConfigKeyTraceEnable)
 	logger.Infow("Dubbo backend transport request trace", "enable", b.traceEnable)
 	// Set default impl if not present
-	if nil == b.dubboOptionsFunc {
-		b.dubboOptionsFunc = make([]DubboGenericOptionsFunc, 0)
+	if nil == b.optionsFunc {
+		b.optionsFunc = make([]GenericOptionsFunc, 0)
 	}
 	if pkg.IsNil(b.argAssembleFunc) {
 		b.argAssembleFunc = DefaultArgAssembleFunc
@@ -311,7 +311,7 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 	}
 	generic := b.LoadGenericService(&service)
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
-	resultW := b.dubboInvokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
+	resultW := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
 	if cause := resultW.Error(); cause != nil {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
@@ -345,13 +345,13 @@ func (b *BackendTransportService) LoadGenericService(backend *flux.BackendServic
 	newRef := NewReference(backend.Interface, backend, b.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
-	for _, optsFunc := range b.dubboOptionsFunc {
+	for _, optsFunc := range b.optionsFunc {
 		if nil != optsFunc {
 			newRef = pkg.RequireNotNil(optsFunc(backend, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", backend.Interface)
-	srv := b.dubboServiceFunc(backend)
+	srv := b.serviceFunc(backend)
 	dubgo.SetConsumerService(srv)
 	newRef.Refer(srv)
 	newRef.Implement(srv)
