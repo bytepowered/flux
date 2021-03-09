@@ -119,6 +119,8 @@ type Context interface {
 	// Response 返回响应数据接口
 	Response() Response
 
+	Application() string
+
 	// Endpoint 返回请求路由定义的元数据
 	Endpoint() Endpoint
 

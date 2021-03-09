@@ -59,7 +59,11 @@ func (c *AttachedContext) Response() flux.Response {
 }
 
 func (c *AttachedContext) Endpoint() flux.Endpoint {
-	return *(c.context.Value(internal.ContextKeyRouteEndpoint).(*flux.Endpoint))
+	return *c.endpoint()
+}
+
+func (c *AttachedContext) Application() string {
+	return c.endpoint().Application
 }
 
 func (c *AttachedContext) BackendService() flux.BackendService {

@@ -80,3 +80,28 @@ backend_transports:
         timeout: "10s"
         # 日志开关；如果开启则打印Dubbo调用细节
         trace_enable: false
+
+# CircuitFilter 服务限流熔断配置
+circuit_filter:
+    # Command请求执行超时时间；单位：毫秒
+    timeout: 10_000
+    # Command最大并发量
+    request_max: 200
+    # 并发量达到此阈值才开始检查熔断；
+    request_threshold: 10
+    # 错误百分比，到达此阈值自动熔断
+    error_threshold: 20
+    # 熔断器后，重新尝试服务可用性的窗口时间；单位：毫秒
+    sleep_window: 3000
+
+    # 用于自定义特定ServiceId的熔断配置；可选配置项目与默认一致；
+    services:
+        your_service_id:
+            timeout: 30_000
+            request_max: 500
+
+    # 用于自定义特定Application的熔断配置；可选配置项目与默认一致；
+    application:
+        your_app_id:
+            timeout: 30_000
+            request_max: 500
