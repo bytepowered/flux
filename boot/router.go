@@ -26,7 +26,7 @@ func NewRouter() *Router {
 
 func (r *Router) Prepare() error {
 	logger.Info("Router preparing")
-	for _, hook := range append(ext.GetPrepareHooks(), r.hooks...) {
+	for _, hook := range append(ext.PrepareHooks(), r.hooks...) {
 		if err := hook(); nil != err {
 			return err
 		}
@@ -37,7 +37,7 @@ func (r *Router) Prepare() error {
 func (r *Router) Initial() error {
 	logger.Info("Router initialing")
 	// Backends
-	for proto, backend := range ext.GetBackendTransports() {
+	for proto, backend := range ext.BackendTransports() {
 		ns := flux.NamespaceBackendTransports + "." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
 		if err := r.AddInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
@@ -45,7 +45,7 @@ func (r *Router) Initial() error {
 		}
 	}
 	// 手动注册的单实例Filters
-	for _, filter := range append(ext.GetGlobalFilters(), ext.GetSelectiveFilters()...) {
+	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
 		ns := filter.TypeId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
 		config := flux.NewConfigurationOfNS(ns)
@@ -90,7 +90,7 @@ func (r *Router) AddInitHook(ref interface{}, config *flux.Configuration) error 
 }
 
 func (r *Router) Startup() error {
-	for _, startup := range sortedStartup(ext.GetStartupHooks()) {
+	for _, startup := range sortedStartup(ext.StartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
 		}
@@ -99,7 +99,7 @@ func (r *Router) Startup() error {
 }
 
 func (r *Router) Shutdown(ctx context.Context) error {
-	for _, shutdown := range sortedShutdown(ext.GetShutdownHooks()) {
+	for _, shutdown := range sortedShutdown(ext.ShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
 		}
@@ -126,7 +126,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	}()
 	// Select filters
 	selective := make([]flux.Filter, 0, 16)
-	for _, selector := range ext.ActiveFilterSelectors() {
+	for _, selector := range ext.FilterSelectors() {
 		if selector.Activate(ctx) {
 			selective = append(selective, selector.DoSelect(ctx)...)
 		}
@@ -147,7 +147,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 			ctx.AddMetric("backend", time.Since(ctx.StartAt()))
 		}()
 		protoName := ctx.BackendService().AttrRpcProto()
-		if backend, ok := ext.GetBackendTransport(protoName); !ok {
+		if backend, ok := ext.BackendTransportByProto(protoName); !ok {
 			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", protoName, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
@@ -164,7 +164,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 		}
 	}
 	// Walk filters
-	filters := append(ext.GetGlobalFilters(), selective...)
+	filters := append(ext.GlobalFilters(), selective...)
 	return doMetricEndpointFunc(r.walk(transport, filters)(ctx))
 }
 

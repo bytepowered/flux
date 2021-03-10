@@ -128,7 +128,7 @@ func TestToStringMap_Empty(t *testing.T) {
 }
 
 func TestCastToStringMap_TextEmpty(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.WrapStringMTValue(""))
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -136,7 +136,7 @@ func TestCastToStringMap_TextEmpty(t *testing.T) {
 }
 
 func TestCastToStringMap_TextEmptyJSON(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.WrapStringMTValue("{}"))
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -144,7 +144,7 @@ func TestCastToStringMap_TextEmptyJSON(t *testing.T) {
 }
 
 func TestCastToStringMap_Text(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.WrapStringMTValue(`{"k":1,"e":"a"}`))
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -153,7 +153,7 @@ func TestCastToStringMap_Text(t *testing.T) {
 }
 
 func TestCastToStringMap_JSONText(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.MTValue{Value: `{"k":1,"e":"a"}`, MediaType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -162,7 +162,7 @@ func TestCastToStringMap_JSONText(t *testing.T) {
 }
 
 func TestCastToStringMap_JSONBytes(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.MTValue{Value: []byte(`{"k":1,"e":"a"}`), MediaType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -171,7 +171,7 @@ func TestCastToStringMap_JSONBytes(t *testing.T) {
 }
 
 func TestCastToStringMap_JSONReader(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.MTValue{Value: ioutil.NopCloser(strings.NewReader(`{"k":1,"e":"a"}`)), MediaType: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -180,7 +180,7 @@ func TestCastToStringMap_JSONReader(t *testing.T) {
 }
 
 func TestCastToStringMap_QueryText(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.MTValue{Value: `k=1&e=a`, MediaType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -189,7 +189,7 @@ func TestCastToStringMap_QueryText(t *testing.T) {
 }
 
 func TestCastToStringMap_QueryBytes(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.MTValue{Value: []byte(`k=1&e=a`), MediaType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
@@ -198,7 +198,7 @@ func TestCastToStringMap_QueryBytes(t *testing.T) {
 }
 
 func TestCastToStringMap_QueryReader(t *testing.T) {
-	ext.SetSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
 	sm, err := ToStringMapE(flux.MTValue{Value: ioutil.NopCloser(strings.NewReader(`k=1&e=a`)), MediaType: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)

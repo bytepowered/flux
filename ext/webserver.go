@@ -6,18 +6,16 @@ import (
 )
 
 var (
-	webServerFactory  WebServerFactory
-	endpointSelectors = make([]flux.EndpointSelector, 0, 8)
+	listenServerFactory flux.ListenServerFactory
+	endpointSelectors   = make([]flux.EndpointSelector, 0, 8)
 )
 
-type WebServerFactory func(*flux.Configuration) flux.ListenServer
-
-func SetWebServerFactory(f WebServerFactory) {
-	webServerFactory = f
+func SetListenServerFactory(f flux.ListenServerFactory) {
+	listenServerFactory = f
 }
 
-func GetWebServerFactory() WebServerFactory {
-	return webServerFactory
+func ListenServerFactory() flux.ListenServerFactory {
+	return listenServerFactory
 }
 
 func AddEndpointSelector(s flux.EndpointSelector) {
@@ -25,7 +23,7 @@ func AddEndpointSelector(s flux.EndpointSelector) {
 	endpointSelectors = append(endpointSelectors, s)
 }
 
-func ActiveEndpointSelectors() []flux.EndpointSelector {
+func EndpointSelectors() []flux.EndpointSelector {
 	out := make([]flux.EndpointSelector, len(endpointSelectors))
 	copy(out, endpointSelectors)
 	return out

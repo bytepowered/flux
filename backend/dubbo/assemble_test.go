@@ -13,8 +13,8 @@ import (
 func TestDefaultAssembleFunc(t *testing.T) {
 	ext.SetArgumentLookupFunc(backend.DefaultArgumentLookupFunc)
 	serializer := flux.NewJsonSerializer()
-	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
-	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
+	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)
 	cases := []struct {
 		arguments      []flux.Argument
 		expectedTypes  []string

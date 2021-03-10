@@ -9,12 +9,12 @@ var (
 	typedFactories = make(map[string]flux.Factory, 16)
 )
 
-func SetFactory(typeName string, factory flux.Factory) {
+func RegisterFactory(typeName string, factory flux.Factory) {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
 	typedFactories[typeName] = pkg.RequireNotNil(factory, "Factory is nil").(flux.Factory)
 }
 
-func GetFactory(typeName string) (flux.Factory, bool) {
+func FactoryByType(typeName string) (flux.Factory, bool) {
 	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
 	f, o := typedFactories[typeName]
 	return f, o

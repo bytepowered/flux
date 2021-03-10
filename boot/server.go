@@ -136,7 +136,7 @@ func (s *BootstrapServer) Initial() error {
 		}
 	}
 	// Discovery
-	for _, dis := range ext.GetEndpointDiscoveries() {
+	for _, dis := range ext.EndpointDiscoveries() {
 		if err := s.router.AddInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
 			return err
 		}
@@ -179,7 +179,7 @@ func (s *BootstrapServer) start() error {
 }
 
 func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, services chan flux.BackendServiceEvent) error {
-	for _, discovery := range ext.GetEndpointDiscoveries() {
+	for _, discovery := range ext.EndpointDiscoveries() {
 		if err := discovery.WatchEndpoints(endpoints); nil != err {
 			return err
 		}
@@ -212,7 +212,7 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, endpoints *flux.MultiEndpoint) error {
 	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webc))
 	// 实现动态Endpoint版本选择
-	for _, selector := range ext.ActiveEndpointSelectors() {
+	for _, selector := range ext.EndpointSelectors() {
 		if selector.Active(webc, server.ServerId()) {
 			endpoint, found = selector.DoSelect(webc, server.ServerId(), endpoints)
 			if found {
@@ -269,16 +269,16 @@ func (s *BootstrapServer) onBackendServiceEvent(event flux.BackendServiceEvent) 
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:META:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.SetBackendService(service)
+		ext.RegisterBackendService(service)
 		if "" != service.AliasId {
-			ext.SetBackendServiceById(service.AliasId, service)
+			ext.RegisterBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:META:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.SetBackendService(service)
+		ext.RegisterBackendService(service)
 		if "" != service.AliasId {
-			ext.SetBackendServiceById(service.AliasId, service)
+			ext.RegisterBackendServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:META:SERVICE:REMOVE",
@@ -409,7 +409,7 @@ func (s *BootstrapServer) newEndpointHandler(server flux.ListenServer, endpoint 
 }
 
 func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*flux.MultiEndpoint, bool) {
-	if mve, ok := ext.SelectEndpoint(routeKey); ok {
+	if mve, ok := ext.EndpointByKey(routeKey); ok {
 		return mve, false
 	} else {
 		return ext.RegisterEndpoint(routeKey, endpoint), true
@@ -456,8 +456,8 @@ func isAllowedHttpMethod(method string) bool {
 
 func initArguments(args []flux.Argument) {
 	for i := range args {
-		args[i].ValueResolver = ext.GetMTValueResolver(args[i].Class)
-		args[i].LookupFunc = ext.GetArgumentLookupFunc()
+		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
+		args[i].LookupFunc = ext.ArgumentLookupFunc()
 		initArguments(args[i].Fields)
 	}
 }

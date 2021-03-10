@@ -225,6 +225,8 @@ type WebContext interface {
 	WebResponse() interface{}
 }
 
+type ListenServerFactory func(*Configuration) ListenServer
+
 // ListenServer 定义Web框架服务器的接口；
 // 通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。
 // 例如默认Web框架为 labstack.echo；

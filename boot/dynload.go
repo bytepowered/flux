@@ -35,7 +35,7 @@ func dynamicFilters() ([]AwareConfig, error) {
 			logger.Infow("Filter is DISABLED", "typeId", typeId, "id", id)
 			continue
 		}
-		factory, ok := ext.GetFactory(typeId)
+		factory, ok := ext.FactoryByType(typeId)
 		if !ok {
 			return nil, fmt.Errorf("FilterFactory not found, typeId: %s, name: %s", typeId, id)
 		}

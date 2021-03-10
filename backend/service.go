@@ -41,7 +41,7 @@ func DoExchangeTransport(ctx flux.Context, transport flux.BackendTransport) *flu
 // DoInvokeCodec 执行后端服务，获取响应结果；
 func DoInvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
 	proto := service.AttrRpcProto()
-	transport, ok := ext.GetBackendTransport(proto)
+	transport, ok := ext.BackendTransportByProto(proto)
 	if !ok {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,

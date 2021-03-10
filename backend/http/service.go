@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	ext.SetBackendTransport(flux.ProtoHttp, NewBackendTransportService())
+	ext.RegisterBackendTransport(flux.ProtoHttp, NewBackendTransportService())
 }
 
 var _ flux.BackendTransport = new(BackendTransportService)

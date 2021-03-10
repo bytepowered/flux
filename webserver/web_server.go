@@ -31,7 +31,7 @@ const (
 var _ flux.ListenServer = new(AdaptWebServer)
 
 func init() {
-	ext.SetWebServerFactory(NewAdaptWebServer)
+	ext.SetListenServerFactory(NewAdaptWebServer)
 }
 
 func NewAdaptWebServer(config *flux.Configuration) flux.ListenServer {

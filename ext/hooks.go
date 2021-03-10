@@ -22,24 +22,24 @@ func AddHookFunc(hook interface{}) {
 	}
 }
 
-// SetPrepareHook 添加预备阶段钩子函数
-func SetPrepareHook(pf flux.PrepareHookFunc) {
+// AddPrepareHook 添加预备阶段钩子函数
+func AddPrepareHook(pf flux.PrepareHookFunc) {
 	hooksPrepare = append(hooksPrepare, pkg.RequireNotNil(pf, "PrepareHookFunc is nil").(flux.PrepareHookFunc))
 }
 
-func GetPrepareHooks() []flux.PrepareHookFunc {
+func PrepareHooks() []flux.PrepareHookFunc {
 	dst := make([]flux.PrepareHookFunc, len(hooksPrepare))
 	copy(dst, hooksPrepare)
 	return dst
 }
 
-func GetStartupHooks() []flux.Startuper {
+func StartupHooks() []flux.Startuper {
 	dst := make([]flux.Startuper, len(hooksStartup))
 	copy(dst, hooksStartup)
 	return dst
 }
 
-func GetShutdownHooks() []flux.Shutdowner {
+func ShutdownHooks() []flux.Shutdowner {
 	dst := make([]flux.Shutdowner, len(hooksShutdown))
 	copy(dst, hooksShutdown)
 	return dst

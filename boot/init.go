@@ -16,9 +16,9 @@ func init() {
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()
-	ext.SetSerializer(ext.TypeNameSerializerDefault, serializer)
-	ext.SetSerializer(ext.TypeNameSerializerJson, serializer)
+	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
+	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint discovery
-	ext.SetEndpointDiscovery(discovery.NewZookeeperServiceWith(discovery.ZookeeperId))
-	ext.SetEndpointDiscovery(discovery.NewResourceServiceWith(discovery.ResourceId))
+	ext.RegisterEndpointDiscovery(discovery.NewZookeeperServiceWith(discovery.ZookeeperId))
+	ext.RegisterEndpointDiscovery(discovery.NewResourceServiceWith(discovery.ResourceId))
 }

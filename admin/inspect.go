@@ -69,13 +69,13 @@ func InspectEndpointsHandler(ctx flux.WebContext) error {
 	}
 	if len(filters) == 0 {
 		m := make(map[string]map[string]*flux.Endpoint, 16)
-		for k, v := range ext.LoadEndpoints() {
+		for k, v := range ext.Endpoints() {
 			m[k] = v.ToSerializable()
 		}
 		return ctx.Send(ctx, http.Header{}, flux.StatusOK, m)
 	} else {
 		return ctx.Send(ctx, http.Header{}, flux.StatusOK,
-			queryWithEndpointFilters(ext.LoadEndpoints(), filters...))
+			queryWithEndpointFilters(ext.Endpoints(), filters...))
 	}
 }
 
@@ -83,7 +83,7 @@ func InspectServicesHandler(ctx flux.WebContext) error {
 	noheader := http.Header{}
 	for _, key := range serviceQueryKeys {
 		if id := ctx.QueryVar(key); "" != id {
-			service, ok := ext.GetBackendService(id)
+			service, ok := ext.BackendServiceById(id)
 			if ok {
 				return ctx.Send(ctx, noheader, flux.StatusOK, service)
 			} else {

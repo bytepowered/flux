@@ -40,13 +40,13 @@ func _checkedAppendFilter(v interface{}, in []filterWrapper) (out []filterWrappe
 	return append(in, filterWrapper{filter: f, order: orderOf(v)})
 }
 
-// GetSelectiveFilters 获取已排序的Filter列表
-func GetSelectiveFilters() []flux.Filter {
+// SelectiveFilters 获取已排序的Filter列表
+func SelectiveFilters() []flux.Filter {
 	return getFilters(selectiveFilter)
 }
 
-// GetGlobalFilters 获取已排序的全局Filter列表
-func GetGlobalFilters() []flux.Filter {
+// GlobalFilters 获取已排序的全局Filter列表
+func GlobalFilters() []flux.Filter {
 	return getFilters(globalFilter)
 }
 
@@ -55,10 +55,21 @@ func AddFilterSelector(s flux.FilterSelector) {
 	filterSelectors = append(filterSelectors, s)
 }
 
-func ActiveFilterSelectors() []flux.FilterSelector {
+func FilterSelectors() []flux.FilterSelector {
 	out := make([]flux.FilterSelector, len(filterSelectors))
 	copy(out, filterSelectors)
 	return out
+}
+
+// SelectiveFilterById 获取已排序的可选Filter列表
+func SelectiveFilterById(filterId string) (flux.Filter, bool) {
+	filterId = pkg.RequireNotEmpty(filterId, "filterId is empty")
+	for _, f := range selectiveFilter {
+		if filterId == f.filter.TypeId() {
+			return f.filter, true
+		}
+	}
+	return nil, false
 }
 
 func getFilters(in []filterWrapper) []flux.Filter {
@@ -67,17 +78,6 @@ func getFilters(in []filterWrapper) []flux.Filter {
 		out[i] = v.filter
 	}
 	return out
-}
-
-// GetSelectiveFilter 获取已排序的可选Filter列表
-func GetSelectiveFilter(filterId string) (flux.Filter, bool) {
-	filterId = pkg.RequireNotEmpty(filterId, "filterId is empty")
-	for _, f := range selectiveFilter {
-		if filterId == f.filter.TypeId() {
-			return f.filter, true
-		}
-	}
-	return nil, false
 }
 
 func orderOf(v interface{}) int {

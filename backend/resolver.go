@@ -72,36 +72,36 @@ var (
 )
 
 func init() {
-	ext.SetMTValueResolver("string", stringResolver)
-	ext.SetMTValueResolver(flux.JavaLangStringClassName, stringResolver)
+	ext.RegisterMTValueResolver("string", stringResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangStringClassName, stringResolver)
 
-	ext.SetMTValueResolver("int", integerResolver)
-	ext.SetMTValueResolver(flux.JavaLangIntegerClassName, integerResolver)
+	ext.RegisterMTValueResolver("int", integerResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangIntegerClassName, integerResolver)
 
-	ext.SetMTValueResolver("int64", longResolver)
-	ext.SetMTValueResolver("long", longResolver)
-	ext.SetMTValueResolver(flux.JavaLangLongClassName, longResolver)
+	ext.RegisterMTValueResolver("int64", longResolver)
+	ext.RegisterMTValueResolver("long", longResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangLongClassName, longResolver)
 
-	ext.SetMTValueResolver("float", float32Resolver)
-	ext.SetMTValueResolver("float32", float32Resolver)
-	ext.SetMTValueResolver(flux.JavaLangFloatClassName, float32Resolver)
+	ext.RegisterMTValueResolver("float", float32Resolver)
+	ext.RegisterMTValueResolver("float32", float32Resolver)
+	ext.RegisterMTValueResolver(flux.JavaLangFloatClassName, float32Resolver)
 
-	ext.SetMTValueResolver("float64", float64Resolver)
-	ext.SetMTValueResolver("double", float64Resolver)
-	ext.SetMTValueResolver(flux.JavaLangDoubleClassName, float64Resolver)
+	ext.RegisterMTValueResolver("float64", float64Resolver)
+	ext.RegisterMTValueResolver("double", float64Resolver)
+	ext.RegisterMTValueResolver(flux.JavaLangDoubleClassName, float64Resolver)
 
-	ext.SetMTValueResolver("bool", booleanResolver)
-	ext.SetMTValueResolver("boolean", booleanResolver)
-	ext.SetMTValueResolver(flux.JavaLangBooleanClassName, booleanResolver)
+	ext.RegisterMTValueResolver("bool", booleanResolver)
+	ext.RegisterMTValueResolver("boolean", booleanResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangBooleanClassName, booleanResolver)
 
-	ext.SetMTValueResolver("map", mapResolver)
-	ext.SetMTValueResolver(flux.JavaUtilMapClassName, mapResolver)
+	ext.RegisterMTValueResolver("map", mapResolver)
+	ext.RegisterMTValueResolver(flux.JavaUtilMapClassName, mapResolver)
 
-	ext.SetMTValueResolver("slice", listResolver)
-	ext.SetMTValueResolver("list", listResolver)
-	ext.SetMTValueResolver(flux.JavaUtilListClassName, listResolver)
+	ext.RegisterMTValueResolver("slice", listResolver)
+	ext.RegisterMTValueResolver("list", listResolver)
+	ext.RegisterMTValueResolver(flux.JavaUtilListClassName, listResolver)
 
-	ext.SetMTValueResolver(ext.DefaultMTValueResolverName, complexObjectResolver)
+	ext.RegisterMTValueResolver(ext.DefaultMTValueResolverName, complexObjectResolver)
 }
 
 // CastDecodeToString 最大努力地将值转换成String类型。
@@ -191,7 +191,7 @@ func ToGenericListE(generics []string, mtValue flux.MTValue) (interface{}, error
 	}
 	// 进行特定泛型类型转换
 	generic := generics[0]
-	resolver := ext.GetMTValueResolver(generic)
+	resolver := ext.MTValueResolverByType(generic)
 	kind := vType.Kind()
 	if kind == reflect.Slice {
 		vValue := reflect.ValueOf(mtValue.Value)

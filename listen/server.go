@@ -25,7 +25,7 @@ func NewServerWith(config *flux.Configuration, opts ...Option) flux.ListenServer
 	if config == nil {
 		config = flux.NewConfigurationOfViper(viper.New())
 	}
-	server := ext.GetWebServerFactory()(config)
+	server := ext.ListenServerFactory()(config)
 	for _, opt := range opts {
 		opt(server)
 	}
