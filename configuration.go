@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	NamespaceListenServer              = "listen_servers"
+	NamespaceWebListener               = "listen_servers"
 	NamespaceBackendTransports         = "backend_transports"
 	NamespaceEndpointDiscoveryServices = "endpoint_discovery_services"
 )
@@ -73,8 +73,8 @@ func (c *Configuration) Get(key string) interface{} {
 
 // GetOrDefault 查找指定Key的配置值。
 // 从当前NS查询不到配置时，
-// 2. 如果Value为动态Key，则根据动态Key读取全局配置；
-// 1. 如果配置globalAlias映射，则根据AliasKey读取全局配置。
+// 1. 如果Value为动态Key，则根据动态Key读取全局配置；
+// 2. 如果配置globalAlias映射，则根据AliasKey读取全局配置。
 // 与Viper的Alias不同的是，Configuration的GlobalAlias是作用于局部命名空间下的别名映射。
 // 当然，这不影响原有Viper的Alias功能。
 func (c *Configuration) GetOrDefault(key string, def interface{}) interface{} {

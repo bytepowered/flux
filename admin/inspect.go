@@ -58,10 +58,10 @@ func init() {
 	}
 }
 
-func InspectEndpointsHandler(ctx flux.WebContext) error {
+func InspectEndpointsHandler(webc flux.WebExchange) error {
 	filters := make([]EndpointFilter, 0)
 	for _, key := range endpointQueryKeys {
-		if query := ctx.QueryVar(key); "" != query {
+		if query := webc.QueryVar(key); "" != query {
 			if f, ok := endpointFilterFactories[key]; ok {
 				filters = append(filters, f(query))
 			}
@@ -72,14 +72,14 @@ func InspectEndpointsHandler(ctx flux.WebContext) error {
 		for k, v := range ext.Endpoints() {
 			m[k] = v.ToSerializable()
 		}
-		return ctx.Send(ctx, http.Header{}, flux.StatusOK, m)
+		return webc.Send(webc, http.Header{}, flux.StatusOK, m)
 	} else {
-		return ctx.Send(ctx, http.Header{}, flux.StatusOK,
+		return webc.Send(webc, http.Header{}, flux.StatusOK,
 			queryWithEndpointFilters(ext.Endpoints(), filters...))
 	}
 }
 
-func InspectServicesHandler(ctx flux.WebContext) error {
+func InspectServicesHandler(ctx flux.WebExchange) error {
 	noheader := http.Header{}
 	for _, key := range serviceQueryKeys {
 		if id := ctx.QueryVar(key); "" != id {

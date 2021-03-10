@@ -96,24 +96,24 @@ type (
 	WebInterceptor func(WebHandler) WebHandler
 
 	// WebHandler 定义处理Web请求的处理函数
-	WebHandler func(WebContext) error
+	WebHandler func(WebExchange) error
 
 	// WebSkipper 用于部分WebInterceptor逻辑，实现忽略部分请求的功能；
-	WebSkipper func(WebContext) bool
+	WebSkipper func(WebExchange) bool
 
 	// WebRequestResolver 解析请求体数据
-	WebRequestResolver func(WebContext) url.Values
+	WebRequestResolver func(WebExchange) url.Values
 
-	// WebServerErrorHandler 定义Web服务处理异常错误的处理函数
-	WebServerErrorHandler func(WebContext, error)
+	// WebErrorHandler 定义Web服务处理异常错误的处理函数
+	WebErrorHandler func(WebExchange, error)
 
 	// WebResponseWriter 用于写入Body响应数据到WebServer
-	WebResponseWriter func(webc WebContext, header http.Header, status int, body interface{}, error *ServeError) error
+	WebResponseWriter func(webc WebExchange, header http.Header, status int, body interface{}, error *ServeError) error
 )
 
-// WebContext 定义封装Web框架的RequestContext的接口；
+// WebExchange 定义封装Web框架的RequestContext的接口；
 // 用于 WebHandler，WebInterceptor 实现Web请求处理；
-type WebContext interface {
+type WebExchange interface {
 
 	// Context 返回请求的Context对象
 	Context() context.Context
@@ -177,7 +177,7 @@ type WebContext interface {
 	Rewrite(method string, path string)
 
 	// Send 写入响应体数据；
-	Send(webc WebContext, header http.Header, status int, data interface{}) error
+	Send(webc WebExchange, header http.Header, status int, data interface{}) error
 
 	// SendError 写入错误状态数据
 	SendError(error *ServeError)
@@ -215,7 +215,7 @@ type WebContext interface {
 	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
 	HttpRequest() (*http.Request, error)
 
-	// WebContext 返回具体Web框架实现的WebContext对象
+	// WebExchange 返回具体Web框架实现的WebContext对象
 	WebContext() interface{}
 
 	// WebRequest 返回具体Web框架实现的Request对象
@@ -225,16 +225,16 @@ type WebContext interface {
 	WebResponse() interface{}
 }
 
-type ListenServerFactory func(*Configuration) ListenServer
+type WebListenerFactory func(*Configuration) WebListener
 
-// ListenServer 定义Web框架服务器的接口；
+// WebListener 定义Web框架服务器的接口；
 // 通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。
 // 例如默认Web框架为 labstack.echo；
 // 可以支持git, fasthttp等框架。
-type ListenServer interface {
+type WebListener interface {
 
-	// ServerId 返回服务器的ID
-	ServerId() string
+	// Id 返回服务器的ID
+	ListenerId() string
 
 	// Init 初始化服务
 	Init(opts *Configuration) error
@@ -246,7 +246,7 @@ type ListenServer interface {
 	Close(ctx context.Context) error
 
 	// SetErrorHandler 设置Web请求错误处理函数
-	SetServerErrorHandler(h WebServerErrorHandler)
+	SetErrorHandler(h WebErrorHandler)
 
 	// SetNotfoundHandler 设置Web路由不存在处理函数
 	SetNotfoundHandler(h WebHandler)
@@ -267,13 +267,13 @@ type ListenServer interface {
 	AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 
 	// Write 处理并写入业务响应数据；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
-	Write(webc WebContext, header http.Header, status int, data interface{}) error
+	Write(webc WebExchange, header http.Header, status int, data interface{}) error
 
 	// WriteError 处理并写入错误响应数据
-	WriteError(webc WebContext, err *ServeError)
+	WriteError(webc WebExchange, err *ServeError)
 
 	// WriteNotfound 处理Web无法处理路由的请求；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
-	WriteNotfound(webc WebContext) error
+	WriteNotfound(webc WebExchange) error
 
 	// Server 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
 	Server() interface{}
@@ -285,15 +285,15 @@ type ListenServer interface {
 // EndpointSelector 用于请求处理前的动态选择Endpoint
 type EndpointSelector interface {
 	// Active 判定选择器是否激活
-	Active(ctx WebContext, serverId string) bool
+	Active(ctx WebExchange, serverId string) bool
 	// DoSelect 根据请求返回Endpoint，以及是否有效标识
-	DoSelect(ctx WebContext, serverId string, multi *MultiEndpoint) (*Endpoint, bool)
+	DoSelect(ctx WebExchange, serverId string, multi *MultiEndpoint) (*Endpoint, bool)
 }
 
 // Wrapper functions
 
 func WrapHttpHandler(h http.Handler) WebHandler {
-	return func(webc WebContext) error {
+	return func(webc WebExchange) error {
 		// 注意：部分Web框架不支持返回标准Request/Response
 		writer, err := webc.HttpResponseWriter()
 		if nil != err {

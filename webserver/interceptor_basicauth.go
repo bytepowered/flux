@@ -42,15 +42,15 @@ type BasicAuthConfig struct {
 	// Skipper 用于跳过某些请求
 	Skipper flux.WebSkipper
 	// Validator 用于检查请求BasicAuth密钥的函数
-	Validator func(string, string, flux.WebContext) (bool, error)
+	Validator func(string, string, flux.WebExchange) (bool, error)
 	// Default value "Restricted".
 	Realm string
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件。
-func NewBasicAuthMiddleware(validator func(string, string, flux.WebContext) (bool, error)) flux.WebInterceptor {
+func NewBasicAuthMiddleware(validator func(string, string, flux.WebExchange) (bool, error)) flux.WebInterceptor {
 	return NewBasicAuthMiddlewareWith(BasicAuthConfig{
-		Skipper:   func(flux.WebContext) bool { return false },
+		Skipper:   func(flux.WebExchange) bool { return false },
 		Validator: validator,
 		Realm:     defaultRealm,
 	})
@@ -67,7 +67,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 		config.Realm = defaultRealm
 	}
 	return func(next flux.WebHandler) flux.WebHandler {
-		return func(webc flux.WebContext) error {
+		return func(webc flux.WebExchange) error {
 			// Skip
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)

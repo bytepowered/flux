@@ -8,141 +8,141 @@ import (
 )
 
 var (
-	_ flux.Request = new(DefaultRequest)
+	_ flux.Request = new(AttacheRequest)
 )
 
-// DefaultRequest Request请求读取接口的实现
-type DefaultRequest struct {
-	flux.WebContext
+// AttacheRequest Request请求读取接口的实现
+type AttacheRequest struct {
+	flux.WebExchange
 }
 
-func (r *DefaultRequest) Method() string {
-	return r.WebContext.Method()
+func (r *AttacheRequest) Method() string {
+	return r.WebExchange.Method()
 }
 
-func (r *DefaultRequest) Host() string {
-	return r.WebContext.Host()
+func (r *AttacheRequest) Host() string {
+	return r.WebExchange.Host()
 }
 
-func (r *DefaultRequest) UserAgent() string {
-	return r.WebContext.UserAgent()
+func (r *AttacheRequest) UserAgent() string {
+	return r.WebExchange.UserAgent()
 }
 
-func (r *DefaultRequest) URI() string {
-	return r.WebContext.URI()
+func (r *AttacheRequest) URI() string {
+	return r.WebExchange.URI()
 }
 
-func (r *DefaultRequest) URL() *url.URL {
-	return r.WebContext.URL()
+func (r *AttacheRequest) URL() *url.URL {
+	return r.WebExchange.URL()
 }
 
-func (r *DefaultRequest) BodyReader() (io.ReadCloser, error) {
-	return r.WebContext.BodyReader()
+func (r *AttacheRequest) BodyReader() (io.ReadCloser, error) {
+	return r.WebExchange.BodyReader()
 }
 
-func (r *DefaultRequest) Rewrite(method string, path string) {
-	r.WebContext.Rewrite(method, path)
+func (r *AttacheRequest) Rewrite(method string, path string) {
+	r.WebExchange.Rewrite(method, path)
 }
 
-func (r *DefaultRequest) HeaderVars() http.Header {
-	return r.WebContext.HeaderVars()
+func (r *AttacheRequest) HeaderVars() http.Header {
+	return r.WebExchange.HeaderVars()
 }
 
-func (r *DefaultRequest) QueryVars() url.Values {
-	return r.WebContext.QueryVars()
+func (r *AttacheRequest) QueryVars() url.Values {
+	return r.WebExchange.QueryVars()
 }
 
-func (r *DefaultRequest) PathVars() url.Values {
-	return r.WebContext.PathVars()
+func (r *AttacheRequest) PathVars() url.Values {
+	return r.WebExchange.PathVars()
 }
 
-func (r *DefaultRequest) FormVars() url.Values {
-	return r.WebContext.FormVars()
+func (r *AttacheRequest) FormVars() url.Values {
+	return r.WebExchange.FormVars()
 }
 
-func (r *DefaultRequest) CookieVars() []*http.Cookie {
-	return r.WebContext.CookieVars()
+func (r *AttacheRequest) CookieVars() []*http.Cookie {
+	return r.WebExchange.CookieVars()
 }
 
-func (r *DefaultRequest) CookieVar(name string) *http.Cookie {
-	return r.WebContext.CookieVar(name)
+func (r *AttacheRequest) CookieVar(name string) *http.Cookie {
+	return r.WebExchange.CookieVar(name)
 }
 
-func (r *DefaultRequest) QueryVar(name string) string {
-	return r.WebContext.QueryVar(name)
+func (r *AttacheRequest) QueryVar(name string) string {
+	return r.WebExchange.QueryVar(name)
 }
 
-func (r *DefaultRequest) PathVar(name string) string {
-	return r.WebContext.PathVar(name)
+func (r *AttacheRequest) PathVar(name string) string {
+	return r.WebExchange.PathVar(name)
 }
 
-func (r *DefaultRequest) FormVar(name string) string {
-	return r.WebContext.FormVar(name)
+func (r *AttacheRequest) FormVar(name string) string {
+	return r.WebExchange.FormVar(name)
 }
 
-func (r *DefaultRequest) HeaderVar(name string) string {
-	return r.WebContext.HeaderVar(name)
+func (r *AttacheRequest) HeaderVar(name string) string {
+	return r.WebExchange.HeaderVar(name)
 }
 
-func (r *DefaultRequest) reset(webex flux.WebContext) {
-	r.WebContext = webex
+func (r *AttacheRequest) reset(webex flux.WebExchange) {
+	r.WebExchange = webex
 }
 
-func (r *DefaultRequest) release() {
-	r.WebContext = nil
+func (r *AttacheRequest) release() {
+	r.WebExchange = nil
 }
 
-func NewDefaultRequest() *DefaultRequest {
-	return &DefaultRequest{}
+func NewAttacheRequest() *AttacheRequest {
+	return &AttacheRequest{}
 }
 
 ////
 
-var _ flux.Response = new(DefaultResponse)
+var _ flux.Response = new(AttacheResponse)
 
-// DefaultResponse 定义响应数据
-type DefaultResponse struct {
+// AttacheResponse 定义响应数据
+type AttacheResponse struct {
 	status  int
 	headers http.Header
 	payload interface{}
 }
 
-func (r *DefaultResponse) StatusCode() int {
+func (r *AttacheResponse) StatusCode() int {
 	return r.status
 }
 
-func (r *DefaultResponse) HeaderVars() http.Header {
+func (r *AttacheResponse) HeaderVars() http.Header {
 	return r.headers
 }
 
-func (r *DefaultResponse) SetStatusCode(status int) {
+func (r *AttacheResponse) SetStatusCode(status int) {
 	r.status = status
 }
 
-func (r *DefaultResponse) AddHeader(name, value string) {
+func (r *AttacheResponse) AddHeader(name, value string) {
 	r.headers.Add(name, value)
 }
 
-func (r *DefaultResponse) SetHeader(name, value string) {
+func (r *AttacheResponse) SetHeader(name, value string) {
 	r.headers.Set(name, value)
 }
 
-func (r *DefaultResponse) SetPayload(payload interface{}) {
+func (r *AttacheResponse) SetPayload(payload interface{}) {
 	r.payload = payload
 }
 
-func (r *DefaultResponse) Payload() interface{} {
+func (r *AttacheResponse) Payload() interface{} {
 	return r.payload
 }
 
-func (r *DefaultResponse) reset() {
+func (r *AttacheResponse) reset() {
 	r.status = flux.StatusOK
 	r.payload = nil
 	r.headers = http.Header{}
 }
 
-func NewDefaultResponse() *DefaultResponse {
-	dr := new(DefaultResponse)
+func NewAttacheResponse() *AttacheResponse {
+	dr := new(AttacheResponse)
 	dr.reset()
 	return dr
 }

@@ -1,4 +1,4 @@
-package listen
+package listener
 
 import (
 	"github.com/bytepowered/flux"
@@ -8,44 +8,44 @@ import (
 )
 
 type (
-	Option func(server flux.ListenServer)
+	Option func(server flux.WebListener)
 )
 
-func NewServer(config *flux.Configuration, wis []flux.WebInterceptor, opts ...Option) flux.ListenServer {
+func New(config *flux.Configuration, wis []flux.WebInterceptor, opts ...Option) flux.WebListener {
 	opts = append([]Option{
-		WithServerErrorHandler(DefaultServerErrorHandler),
+		WithErrorHandler(DefaultServerErrorHandler),
 		WithNotfoundHandler(DefaultNotfoundHandler),
 		WithResponseWriter(DefaultResponseWriter),
 		WithInterceptors(wis),
 	}, opts...)
-	return NewServerWith(config, opts...)
+	return NewWebListenerWith(config, opts...)
 }
 
-func NewServerWith(config *flux.Configuration, opts ...Option) flux.ListenServer {
+func NewWebListenerWith(config *flux.Configuration, opts ...Option) flux.WebListener {
 	if config == nil {
 		config = flux.NewConfigurationOfViper(viper.New())
 	}
-	server := ext.ListenServerFactory()(config)
+	listener := ext.WebListenerFactory()(config)
 	for _, opt := range opts {
-		opt(server)
+		opt(listener)
 	}
-	return server
+	return listener
 }
 
 func WithResponseWriter(writer flux.WebResponseWriter) Option {
-	return func(server flux.ListenServer) {
+	return func(server flux.WebListener) {
 		server.SetResponseWriter(writer)
 	}
 }
 
-func WithServerErrorHandler(handler flux.WebServerErrorHandler) Option {
-	return func(server flux.ListenServer) {
-		server.SetServerErrorHandler(handler)
+func WithErrorHandler(handler flux.WebErrorHandler) Option {
+	return func(server flux.WebListener) {
+		server.SetErrorHandler(handler)
 	}
 }
 
 func WithNotfoundHandler(f flux.WebHandler) Option {
-	return func(server flux.ListenServer) {
+	return func(server flux.WebListener) {
 		server.SetNotfoundHandler(f)
 	}
 }
@@ -55,7 +55,7 @@ func WithInterceptors(array []flux.WebInterceptor) Option {
 }
 
 func WithInterceptor(array ...flux.WebInterceptor) Option {
-	return func(server flux.ListenServer) {
+	return func(server flux.WebListener) {
 		for _, wi := range array {
 			server.AddInterceptor(wi)
 		}
@@ -67,7 +67,7 @@ func WithWebHandlers(tuples []WebHandlerTuple) Option {
 }
 
 func WithWebHandler(tuples ...WebHandlerTuple) Option {
-	return func(server flux.ListenServer) {
+	return func(server flux.WebListener) {
 		for _, h := range tuples {
 			server.AddHandler(h.Method, h.Pattern, h.Handler)
 		}
@@ -85,7 +85,7 @@ func WithHttpHandlers(tuples []HttpHandlerTuple) Option {
 }
 
 func WithHttpHandler(tuples ...HttpHandlerTuple) Option {
-	return func(server flux.ListenServer) {
+	return func(server flux.WebListener) {
 		for _, h := range tuples {
 			server.AddHttpHandler(h.Method, h.Pattern, http.HandlerFunc(h.Handler))
 		}

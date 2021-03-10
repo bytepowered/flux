@@ -19,9 +19,9 @@ const (
 	ContextKeyWebResolver   = ContextKeyWebPrefix + ".adapted.body.resolver"
 )
 
-var _ flux.WebContext = new(AdaptWebContext)
+var _ flux.WebExchange = new(AdaptWebContext)
 
-func NewAdaptWebContext(requestId string, echoc echo.Context, server flux.ListenServer, resolver flux.WebRequestResolver) *AdaptWebContext {
+func NewAdaptWebContext(requestId string, echoc echo.Context, server flux.WebListener, resolver flux.WebRequestResolver) *AdaptWebContext {
 	return &AdaptWebContext{
 		context:         context.WithValue(echoc.Request().Context(), internal.ContextKeyRequestId, requestId),
 		echoc:           echoc,
@@ -35,7 +35,7 @@ func NewAdaptWebContext(requestId string, echoc echo.Context, server flux.Listen
 type AdaptWebContext struct {
 	context         context.Context
 	echoc           echo.Context
-	server          flux.ListenServer
+	server          flux.WebListener
 	requestResolver flux.WebRequestResolver
 	responseWriter  flux.WebResponseWriter
 	pathValues      url.Values
@@ -152,7 +152,7 @@ func (c *AdaptWebContext) WriteStream(statusCode int, contentType string, reader
 	return c.echoc.Stream(statusCode, contentType, reader)
 }
 
-func (c *AdaptWebContext) Send(webc flux.WebContext, header http.Header, status int, data interface{}) error {
+func (c *AdaptWebContext) Send(webc flux.WebExchange, header http.Header, status int, data interface{}) error {
 	return c.server.Write(webc, header, status, data)
 }
 
@@ -205,7 +205,7 @@ func (c *AdaptWebContext) WebResponse() interface{} {
 	return c.echoc.Response()
 }
 
-func toAdaptWebContext(echoc echo.Context) flux.WebContext {
+func toAdaptWebContext(echoc echo.Context) flux.WebExchange {
 	if webc, ok := echoc.Get(ContextKeyWebContext).(*AdaptWebContext); ok {
 		return webc
 	}
@@ -213,7 +213,7 @@ func toAdaptWebContext(echoc echo.Context) flux.WebContext {
 	if !ok {
 		panic(fmt.Sprintf("invalid <request-resolver> in echo.context, was: %+v", echoc.Get(ContextKeyWebResolver)))
 	}
-	server, ok := echoc.Get(ContextKeyWebBindServer).(flux.ListenServer)
+	server, ok := echoc.Get(ContextKeyWebBindServer).(flux.WebListener)
 	if !ok {
 		panic(fmt.Sprintf("invalid <listen-server> in echo.context, was: %+v", echoc.Get(ContextKeyWebBindServer)))
 	}

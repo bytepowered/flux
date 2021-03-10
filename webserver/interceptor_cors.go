@@ -53,7 +53,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
 	maxAge := strconv.Itoa(config.MaxAge)
 	return func(next flux.WebHandler) flux.WebHandler {
-		return func(webc flux.WebContext) error {
+		return func(webc flux.WebExchange) error {
 			if config.Skipper != nil && config.Skipper(webc) {
 				return next(webc)
 			}

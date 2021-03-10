@@ -16,7 +16,7 @@ func (f AdaptWebRouteHandler) AdaptFunc(ctx echo.Context) error {
 type AdaptWebInterceptor flux.WebInterceptor
 
 func (intfun AdaptWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc {
-	handler := intfun(func(webc flux.WebContext) error {
+	handler := intfun(func(webc flux.WebExchange) error {
 		return next(webc.(*AdaptWebContext).echoc)
 	})
 	return func(echoc echo.Context) error {

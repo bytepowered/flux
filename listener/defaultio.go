@@ -1,4 +1,4 @@
-package listen
+package listener
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 // DefaultNotfoundHandler 生成NotFound错误，由ErrorHandler处理
-func DefaultNotfoundHandler(_ flux.WebContext) error {
+func DefaultNotfoundHandler(_ flux.WebExchange) error {
 	return &flux.ServeError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeRequestNotFound,
@@ -19,7 +19,7 @@ func DefaultNotfoundHandler(_ flux.WebContext) error {
 	}
 }
 
-func DefaultServerErrorHandler(webc flux.WebContext, err error) {
+func DefaultServerErrorHandler(webc flux.WebExchange, err error) {
 	if nil == err {
 		return
 	}
@@ -36,7 +36,7 @@ func DefaultServerErrorHandler(webc flux.WebContext, err error) {
 	}
 }
 
-func DefaultResponseWriter(webc flux.WebContext, header http.Header, status int, body interface{}, serr *flux.ServeError) error {
+func DefaultResponseWriter(webc flux.WebExchange, header http.Header, status int, body interface{}, serr *flux.ServeError) error {
 	SetupResponseDefaults(webc, header)
 	var payload interface{}
 	if nil != serr {
@@ -82,7 +82,7 @@ func DefaultResponseWriter(webc flux.WebContext, header http.Header, status int,
 	return nil
 }
 
-func WriteHttpResponse(webc flux.WebContext, statusCode int, contentType string, bytes []byte) error {
+func WriteHttpResponse(webc flux.WebExchange, statusCode int, contentType string, bytes []byte) error {
 	err := webc.Write(statusCode, contentType, bytes)
 	if nil != err {
 		return fmt.Errorf("write http responseWriter: %w", err)
@@ -90,7 +90,7 @@ func WriteHttpResponse(webc flux.WebContext, statusCode int, contentType string,
 	return err
 }
 
-func SetupResponseDefaults(webc flux.WebContext, header http.Header) {
+func SetupResponseDefaults(webc flux.WebExchange, header http.Header) {
 	webc.SetResponseHeader(flux.HeaderServer, "Flux/Gateway")
 	webc.SetResponseHeader(flux.HeaderContentType, flux.MIMEApplicationJSON)
 	// 允许Override默认Header
