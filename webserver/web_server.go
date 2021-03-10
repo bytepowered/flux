@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	ConfigKeyServerName        = "name"
+	ConfigKeyServerId          = "server_id"
 	ConfigKeyAddress           = "address"
 	ConfigKeyBindPort          = "bind_port"
 	ConfigKeyTLSCertFile       = "tls_cert_file"
@@ -43,7 +43,7 @@ func NewAdaptWebServerWith(options *flux.Configuration, mws *AdaptMiddleware) fl
 	server.HideBanner = true
 	server.HidePort = true
 	aws := &AdaptWebServer{
-		name:            options.GetString(ConfigKeyServerName),
+		serverId:        options.GetString(ConfigKeyServerId),
 		server:          server,
 		requestResolver: DefaultRequestResolver,
 	}
@@ -65,22 +65,22 @@ func NewAdaptWebServerWith(options *flux.Configuration, mws *AdaptMiddleware) fl
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
-		logger.Infof("WebServer(echo/%s), feature BODY-LIMIT: enabled, size= %s", aws.name, limit)
+		logger.Infof("WebServer(echo/id:%s), feature BODY-LIMIT: enabled, size= %s", aws.serverId, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
 	// CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
-		logger.Infof("WebServer(echo/%s), feature CORS: enabled", aws.name)
+		logger.Infof("WebServer(echo/id:%s), feature CORS: enabled", aws.serverId)
 		server.Pre(middleware.CORS())
 	}
 	// CSRF
 	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
-		logger.Infof("WebServer(echo/%s), feature CSRF: enabled", aws.name)
+		logger.Infof("WebServer(echo/id:%s), feature CSRF: enabled", aws.serverId)
 		server.Pre(middleware.CSRF())
 	}
 	// RequestId；默认开启
 	if disabled := features.GetBool(ConfigKeyRequestIdDisabled); !disabled {
-		logger.Infof("WebServer(echo/%s), feature RequestID: enabled", aws.name)
+		logger.Infof("WebServer(echo/id:%s), feature RequestID: enabled", aws.serverId)
 		server.Pre(RequestID())
 	}
 	// After features
@@ -93,13 +93,17 @@ func NewAdaptWebServerWith(options *flux.Configuration, mws *AdaptMiddleware) fl
 // AdaptWebServer 默认实现的基于echo框架的WebServer
 // 注意：保持AdaptWebServer的公共访问性
 type AdaptWebServer struct {
-	name            string
+	serverId        string
 	server          *echo.Echo
 	writer          flux.WebResponseWriter
 	requestResolver flux.WebRequestResolver
 	tlsCertFile     string
 	tlsKeyFile      string
 	address         string
+}
+
+func (s *AdaptWebServer) ServerId() string {
+	return s.serverId
 }
 
 func (s *AdaptWebServer) Init(opts *flux.Configuration) error {
@@ -112,13 +116,13 @@ func (s *AdaptWebServer) Init(opts *flux.Configuration) error {
 		s.address = addr + ":" + port
 	}
 	if s.address == ":" {
-		return errors.New("web server config.address is required, was empty, server: " + s.name)
+		return errors.New("web server config.address is required, was empty, server-id: " + s.serverId)
 	}
 	return nil
 }
 
 func (s *AdaptWebServer) Listen() error {
-	logger.Infof("WebServer(echo/%s) start listen: %s", s.name, s.address)
+	logger.Infof("WebServer(echo/%s) start listen: %s", s.serverId, s.address)
 	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
 		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 	} else {
@@ -132,7 +136,7 @@ func (s *AdaptWebServer) Write(webc flux.WebContext, header http.Header, status 
 
 func (s *AdaptWebServer) WriteError(webc flux.WebContext, err *flux.ServeError) {
 	if err := s.writer(webc, err.Header, err.StatusCode, nil, err); nil != err {
-		logger.Errorw("WebServer write error failed", "error", err, "server-name", s.name)
+		logger.Errorw("WebServer write error failed", "error", err, "server-id", s.serverId)
 	}
 }
 
@@ -141,7 +145,7 @@ func (s *AdaptWebServer) WriteNotfound(webc flux.WebContext) error {
 }
 
 func (s *AdaptWebServer) SetResponseWriter(f flux.WebResponseWriter) {
-	s.writer = pkg.RequireNotNil(f, "WebResponseWriter is nil, server: "+s.name).(flux.WebResponseWriter)
+	s.writer = pkg.RequireNotNil(f, "WebResponseWriter is nil, server-id: "+s.serverId).(flux.WebResponseWriter)
 }
 
 func (s *AdaptWebServer) SetRequestResolver(resolver flux.WebRequestResolver) {

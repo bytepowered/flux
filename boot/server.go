@@ -211,6 +211,15 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 
 func (s *BootstrapServer) route(webc flux.WebContext, server flux.ListenServer, endpoints *flux.MultiEndpoint) error {
 	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webc))
+	// 实现动态Endpoint版本选择
+	for _, selector := range ext.ActiveEndpointSelectors() {
+		if selector.Active(webc, server.ServerId()) {
+			endpoint, found = selector.DoSelect(webc, server.ServerId(), endpoints)
+			if found {
+				break
+			}
+		}
+	}
 	defer func(id string) {
 		if r := recover(); r != nil {
 			trace := logger.Trace(id)

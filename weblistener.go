@@ -231,6 +231,9 @@ type WebContext interface {
 // 可以支持git, fasthttp等框架。
 type ListenServer interface {
 
+	// ServerId 返回服务器的ID
+	ServerId() string
+
 	// Init 初始化服务
 	Init(opts *Configuration) error
 
@@ -275,6 +278,14 @@ type ListenServer interface {
 
 	// Router 返回具体实现的WebRouter路由处理对象，如echo,fasthttp的Router
 	Router() interface{}
+}
+
+// EndpointSelector 用于请求处理前的动态选择Endpoint
+type EndpointSelector interface {
+	// Active 判定选择器是否激活
+	Active(ctx WebContext, serverId string) bool
+	// DoSelect 根据请求返回Endpoint，以及是否有效标识
+	DoSelect(ctx WebContext, serverId string, multi *MultiEndpoint) (*Endpoint, bool)
 }
 
 // Wrapper functions

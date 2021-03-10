@@ -20,6 +20,7 @@ func (s filterArray) Less(i, j int) bool { return s[i].order < s[j].order }
 var (
 	globalFilter    = make([]filterWrapper, 0, 16)
 	selectiveFilter = make([]filterWrapper, 0, 16)
+	filterSelectors = make([]flux.FilterSelector, 0, 8)
 )
 
 // AddGlobalFilter 注册全局Filter；
@@ -47,6 +48,17 @@ func GetSelectiveFilters() []flux.Filter {
 // GetGlobalFilters 获取已排序的全局Filter列表
 func GetGlobalFilters() []flux.Filter {
 	return getFilters(globalFilter)
+}
+
+func AddFilterSelector(s flux.FilterSelector) {
+	pkg.RequireNotNil(s, "FilterSelector is nil")
+	filterSelectors = append(filterSelectors, s)
+}
+
+func ActiveFilterSelectors() []flux.FilterSelector {
+	out := make([]flux.FilterSelector, len(filterSelectors))
+	copy(out, filterSelectors)
+	return out
 }
 
 func getFilters(in []filterWrapper) []flux.Filter {
