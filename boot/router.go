@@ -126,7 +126,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	}()
 	// Select filters
 	selective := make([]flux.Filter, 0, 16)
-	for _, selector := range ext.GetSelectors() {
+	for _, selector := range ext.GetFilterSelectors() {
 		if selector.Activate(ctx) {
 			selective = append(selective, selector.DoSelect(ctx)...)
 		}

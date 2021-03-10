@@ -6,16 +6,16 @@ import (
 )
 
 var (
-	selectors = make([]flux.Selector, 0, 8)
+	filterSelectors = make([]flux.FilterSelector, 0, 8)
 )
 
-func AddSelector(s flux.Selector) {
-	pkg.RequireNotNil(s, "Selector is nil")
-	selectors = append(selectors, s)
+func AddFilterSelector(s flux.FilterSelector) {
+	pkg.RequireNotNil(s, "FilterSelector is nil")
+	filterSelectors = append(filterSelectors, s)
 }
 
-func GetSelectors() []flux.Selector {
-	out := make([]flux.Selector, len(selectors))
-	copy(out, selectors)
+func GetFilterSelectors() []flux.FilterSelector {
+	out := make([]flux.FilterSelector, len(filterSelectors))
+	copy(out, filterSelectors)
 	return out
 }
