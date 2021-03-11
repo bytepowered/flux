@@ -223,7 +223,7 @@ type WebExchange interface {
 }
 
 // WebListenerFactory 构建 WebListener 的工厂函数
-type WebListenerFactory func(*Configuration) WebListener
+type WebListenerFactory func(string, *Configuration) WebListener
 
 // WebListener 定义Web框架服务器的接口；
 // 通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。

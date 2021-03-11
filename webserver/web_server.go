@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	ConfigKeyListenerId        = "server_id"
 	ConfigKeyAddress           = "address"
 	ConfigKeyBindPort          = "bind_port"
 	ConfigKeyTLSCertFile       = "tls_cert_file"
@@ -34,19 +33,20 @@ func init() {
 	ext.SetWebListenerFactory(NewWebListener)
 }
 
-func NewWebListener(config *flux.Configuration) flux.WebListener {
-	return NewWebListenerWith(config, nil)
+func NewWebListener(id string, config *flux.Configuration) flux.WebListener {
+	return NewWebListenerWith(id, config, nil)
 }
 
-func NewWebListenerWith(options *flux.Configuration, mws *AdaptMiddleware) flux.WebListener {
+func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddleware) flux.WebListener {
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
 	aws := &AdaptWebListener{
-		listenerId:      options.GetString(ConfigKeyListenerId),
+		listenerId:      id,
 		server:          server,
 		requestResolver: DefaultRequestResolver,
 	}
+	pkg.Assert("" != aws.listenerId, "empty <listener-id> in web listener configuration")
 	// Init context
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoc echo.Context) error {
@@ -65,22 +65,22 @@ func NewWebListenerWith(options *flux.Configuration, mws *AdaptMiddleware) flux.
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
-		logger.Infof("WebServer(echo/id:%s), feature BODY-LIMIT: enabled, size= %s", aws.listenerId, limit)
+		logger.Infof("WebServer(id:%s), feature BODY-LIMIT: enabled, size= %s", aws.listenerId, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
 	// CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
-		logger.Infof("WebServer(echo/id:%s), feature CORS: enabled", aws.listenerId)
+		logger.Infof("WebServer(id:%s), feature CORS: enabled", aws.listenerId)
 		server.Pre(middleware.CORS())
 	}
 	// CSRF
 	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
-		logger.Infof("WebServer(echo/id:%s), feature CSRF: enabled", aws.listenerId)
+		logger.Infof("WebServer(id:%s), feature CSRF: enabled", aws.listenerId)
 		server.Pre(middleware.CSRF())
 	}
 	// RequestId；默认开启
 	if disabled := features.GetBool(ConfigKeyRequestIdDisabled); !disabled {
-		logger.Infof("WebServer(echo/id:%s), feature RequestID: enabled", aws.listenerId)
+		logger.Infof("WebServer(id:%s), feature RequestID: enabled", aws.listenerId)
 		server.Pre(RequestID())
 	}
 	// After features
@@ -122,7 +122,7 @@ func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
 }
 
 func (s *AdaptWebListener) Listen() error {
-	logger.Infof("WebServer(echo/%s) start listen: %s", s.listenerId, s.address)
+	logger.Infof("WebServer(id:%s) start listen: %s", s.listenerId, s.address)
 	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
 		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 	} else {

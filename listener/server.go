@@ -11,21 +11,21 @@ type (
 	Option func(server flux.WebListener)
 )
 
-func New(config *flux.Configuration, wis []flux.WebInterceptor, opts ...Option) flux.WebListener {
+func New(id string, config *flux.Configuration, wis []flux.WebInterceptor, opts ...Option) flux.WebListener {
 	opts = append([]Option{
 		WithErrorHandler(DefaultServerErrorHandler),
 		WithNotfoundHandler(DefaultNotfoundHandler),
 		WithResponseWriter(DefaultResponseWriter),
 		WithInterceptors(wis),
 	}, opts...)
-	return NewWebListenerWith(config, opts...)
+	return NewWebListenerWith(id, config, opts...)
 }
 
-func NewWebListenerWith(config *flux.Configuration, opts ...Option) flux.WebListener {
+func NewWebListenerWith(id string, config *flux.Configuration, opts ...Option) flux.WebListener {
 	if config == nil {
 		config = flux.NewConfigurationOfViper(viper.New())
 	}
-	listener := ext.WebListenerFactory()(config)
+	listener := ext.WebListenerFactory()(id, config)
 	for _, opt := range opts {
 		opt(listener)
 	}

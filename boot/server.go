@@ -92,9 +92,9 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
-		WithWebListener(listener.New(LoadWebListenerConfig(ListenerIdDefault), nil)),
+		WithWebListener(listener.New(ListenerIdDefault, LoadWebListenerConfig(ListenerIdDefault), nil)),
 		// Admin WebListener
-		WithWebListener(listener.New(LoadWebListenerConfig(ListenServerIdAdmin), nil,
+		WithWebListener(listener.New(ListenServerIdAdmin, LoadWebListenerConfig(ListenServerIdAdmin), nil,
 			// 内部元数据查询
 			listener.WithWebHandlers([]listener.WebHandlerTuple{
 				{Method: "GET", Pattern: "/inspect/endpoints", Handler: admin.InspectEndpointsHandler},
@@ -432,7 +432,7 @@ func (s *BootstrapServer) defaultListener() flux.WebListener {
 }
 
 func LoadWebListenerConfig(id string) *flux.Configuration {
-	return flux.NewConfigurationOfNS(flux.NamespaceWebListener + "." + id)
+	return flux.NewConfigurationOfNS(flux.NamespaceWebListeners + "." + id)
 }
 
 func LoadEndpointDiscoveryConfig(id string) *flux.Configuration {

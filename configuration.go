@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	NamespaceWebListener               = "listen_servers"
+	NamespaceWebListeners              = "web_listeners"
 	NamespaceBackendTransports         = "backend_transports"
 	NamespaceEndpointDiscoveryServices = "endpoint_discovery_services"
 )

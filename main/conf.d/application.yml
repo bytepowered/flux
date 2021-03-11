@@ -1,8 +1,7 @@
-# 网关Http服务器配置
-listen_servers:
+# 网关Http监听服务器配置
+web_listeners:
     # 默认Web服务
     default:
-        name: "web-server"
         # 服务器绑定地址
         address: "0.0.0.0"
         bind_port: 8080
@@ -13,8 +12,6 @@ listen_servers:
         features:
             # 设置限制请求Body大小，默认为 1M
             body_limit: "100K"
-            # 设置请求压缩级别，可选 [NoCompression, BestSpeed, BestCompression, DefaultCompression, HuffmanOnly]；默认为 DefaultCompression
-            gzip_level: "DefaultCompression"
             # 设置是否开启支持跨域访问特性，默认关闭
             cors_enable: true
             # 设置是否开启检查跨站请求伪造特性，默认关闭
@@ -22,7 +19,6 @@ listen_servers:
 
     # 网关内部管理服务
     admin:
-        name: "manager-server"
         address: "0.0.0.0"
         bind_port: 9527
 
