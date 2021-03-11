@@ -38,6 +38,7 @@ func NewWebListener(id string, config *flux.Configuration) flux.WebListener {
 }
 
 func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddleware) flux.WebListener {
+	pkg.Assert("" != id, "empty <listener-id> in web listener configuration")
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
@@ -46,7 +47,6 @@ func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddle
 		server:          server,
 		requestResolver: DefaultRequestResolver,
 	}
-	pkg.Assert("" != aws.listenerId, "empty <listener-id> in web listener configuration")
 	// Init context
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoc echo.Context) error {
@@ -65,22 +65,22 @@ func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddle
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
-		logger.Infof("WebServer(id:%s), feature BODY-LIMIT: enabled, size= %s", aws.listenerId, limit)
+		logger.Infof("WebListener(id:%s), feature BODY-LIMIT: enabled, size= %s", aws.listenerId, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
 	// CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
-		logger.Infof("WebServer(id:%s), feature CORS: enabled", aws.listenerId)
+		logger.Infof("WebListener(id:%s), feature CORS: enabled", aws.listenerId)
 		server.Pre(middleware.CORS())
 	}
 	// CSRF
 	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
-		logger.Infof("WebServer(id:%s), feature CSRF: enabled", aws.listenerId)
+		logger.Infof("WebListener(id:%s), feature CSRF: enabled", aws.listenerId)
 		server.Pre(middleware.CSRF())
 	}
 	// RequestId；默认开启
 	if disabled := features.GetBool(ConfigKeyRequestIdDisabled); !disabled {
-		logger.Infof("WebServer(id:%s), feature RequestID: enabled", aws.listenerId)
+		logger.Infof("WebListener(id:%s), feature RequestID: enabled", aws.listenerId)
 		server.Pre(RequestID())
 	}
 	// After features
@@ -122,7 +122,7 @@ func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
 }
 
 func (s *AdaptWebListener) Listen() error {
-	logger.Infof("WebServer(id:%s) start listen: %s", s.listenerId, s.address)
+	logger.Infof("WebListener(id:%s) start listen: %s", s.listenerId, s.address)
 	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
 		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 	} else {
@@ -136,7 +136,7 @@ func (s *AdaptWebListener) Write(webex flux.WebExchange, header http.Header, sta
 
 func (s *AdaptWebListener) WriteError(webex flux.WebExchange, err *flux.ServeError) {
 	if err := s.writer(webex, err.Header, err.StatusCode, nil, err); nil != err {
-		logger.Errorw("WebServer write error failed", "error", err, "server-id", s.listenerId)
+		logger.Errorw("WebListener write error failed", "error", err, "server-id", s.listenerId)
 	}
 }
 

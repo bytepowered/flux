@@ -11,6 +11,7 @@ import (
 	"github.com/bytepowered/flux/listener"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/pkg"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -99,6 +100,7 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 			listener.WithWebHandlers([]listener.WebHandlerTuple{
 				{Method: "GET", Pattern: "/inspect/endpoints", Handler: admin.InspectEndpointsHandler},
 				{Method: "GET", Pattern: "/inspect/services", Handler: admin.InspectServicesHandler},
+				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),
 		)),
 	}
