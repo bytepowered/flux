@@ -10,12 +10,12 @@ var (
 )
 
 func RegisterBackendTransport(protoName string, backend flux.BackendTransport) {
-	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
-	protoBackendTransports[protoName] = pkg.RequireNotNil(backend, "BackendTransport is nil").(flux.BackendTransport)
+	protoName = pkg.MustNotEmpty(protoName, "protoName is empty")
+	protoBackendTransports[protoName] = pkg.MustNotNil(backend, "BackendTransport is nil").(flux.BackendTransport)
 }
 
 func BackendTransportByProto(protoName string) (flux.BackendTransport, bool) {
-	protoName = pkg.RequireNotEmpty(protoName, "protoName is empty")
+	protoName = pkg.MustNotEmpty(protoName, "protoName is empty")
 	backend, ok := protoBackendTransports[protoName]
 	return backend, ok
 }

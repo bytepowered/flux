@@ -13,7 +13,7 @@ var (
 
 // AddHookFunc 添加生命周期启动与停止的钩子接口
 func AddHookFunc(hook interface{}) {
-	pkg.RequireNotNil(hook, "Hook is nil")
+	pkg.MustNotNil(hook, "Hook is nil")
 	if startup, ok := hook.(flux.Startuper); ok {
 		hooksStartup = append(hooksStartup, startup)
 	}
@@ -24,7 +24,7 @@ func AddHookFunc(hook interface{}) {
 
 // AddPrepareHook 添加预备阶段钩子函数
 func AddPrepareHook(pf flux.PrepareHookFunc) {
-	hooksPrepare = append(hooksPrepare, pkg.RequireNotNil(pf, "PrepareHookFunc is nil").(flux.PrepareHookFunc))
+	hooksPrepare = append(hooksPrepare, pkg.MustNotNil(pf, "PrepareHookFunc is nil").(flux.PrepareHookFunc))
 }
 
 func PrepareHooks() []flux.PrepareHookFunc {

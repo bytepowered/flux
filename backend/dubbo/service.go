@@ -347,7 +347,7 @@ func (b *BackendTransportService) LoadGenericService(backend *flux.BackendServic
 	const msg = "Dubbo option-func return nil reference"
 	for _, optsFunc := range b.optionsFunc {
 		if nil != optsFunc {
-			newRef = pkg.RequireNotNil(optsFunc(backend, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
+			newRef = pkg.MustNotNil(optsFunc(backend, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", backend.Interface)

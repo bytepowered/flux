@@ -36,7 +36,7 @@ func AddSelectiveFilter(v interface{}) {
 }
 
 func _checkedAppendFilter(v interface{}, in []filterWrapper) (out []filterWrapper) {
-	f := pkg.RequireNotNil(v, "Not a valid Filter").(flux.Filter)
+	f := pkg.MustNotNil(v, "Not a valid Filter").(flux.Filter)
 	return append(in, filterWrapper{filter: f, order: orderOf(v)})
 }
 
@@ -51,7 +51,7 @@ func GlobalFilters() []flux.Filter {
 }
 
 func AddFilterSelector(s flux.FilterSelector) {
-	pkg.RequireNotNil(s, "FilterSelector is nil")
+	pkg.MustNotNil(s, "FilterSelector is nil")
 	filterSelectors = append(filterSelectors, s)
 }
 
@@ -63,7 +63,7 @@ func FilterSelectors() []flux.FilterSelector {
 
 // SelectiveFilterById 获取已排序的可选Filter列表
 func SelectiveFilterById(filterId string) (flux.Filter, bool) {
-	filterId = pkg.RequireNotEmpty(filterId, "filterId is empty")
+	filterId = pkg.MustNotEmpty(filterId, "filterId is empty")
 	for _, f := range selectiveFilter {
 		if filterId == f.filter.TypeId() {
 			return f.filter, true

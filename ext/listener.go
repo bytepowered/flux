@@ -19,7 +19,7 @@ func WebListenerFactory() flux.WebListenerFactory {
 }
 
 func AddEndpointSelector(s flux.EndpointSelector) {
-	pkg.RequireNotNil(s, "FilterSelector is nil")
+	pkg.MustNotNil(s, "FilterSelector is nil")
 	endpointSelectors = append(endpointSelectors, s)
 }
 

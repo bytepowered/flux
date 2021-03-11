@@ -19,7 +19,7 @@ func DefaultNotfoundHandler(_ flux.WebExchange) error {
 	}
 }
 
-func DefaultServerErrorHandler(webex flux.WebExchange, err error) {
+func DefaultErrorHandler(webex flux.WebExchange, err error) {
 	if nil == err {
 		return
 	}

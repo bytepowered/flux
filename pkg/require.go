@@ -3,18 +3,14 @@ package pkg
 import "reflect"
 
 // 检查非Nil值。当为Nil时，Panic报错
-func RequireNotNil(v interface{}, msg string) interface{} {
-	if IsNil(v) {
-		panic(msg)
-	}
+func MustNotNil(v interface{}, msg string) interface{} {
+	Assert(v != nil, msg)
 	return v
 }
 
-// RequireNotEmpty 检查并返回非空字符串。Panic报错
-func RequireNotEmpty(str string, msg string) string {
-	if "" == str {
-		panic(msg)
-	}
+// MustNotEmpty 检查并返回非空字符串。Panic报错
+func MustNotEmpty(str string, msg string) string {
+	Assert("" != str, msg)
 	return str
 }
 

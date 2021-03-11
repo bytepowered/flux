@@ -12,7 +12,7 @@ var (
 )
 
 func SetArgumentLookupFunc(f flux.ArgumentLookupFunc) {
-	argumentLookupFunc = pkg.RequireNotNil(f, "ArgumentLookupFunc is nil").(flux.ArgumentLookupFunc)
+	argumentLookupFunc = pkg.MustNotNil(f, "ArgumentLookupFunc is nil").(flux.ArgumentLookupFunc)
 }
 
 func ArgumentLookupFunc() flux.ArgumentLookupFunc {
@@ -26,9 +26,9 @@ func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
 }
 
 func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() flux.MTValue) flux.Argument {
-	name := pkg.RequireNotEmpty(argName, "argName is empty")
+	name := pkg.MustNotEmpty(argName, "argName is empty")
 	return flux.Argument{
-		Class:         pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
+		Class:         pkg.MustNotEmpty(typeClass, "typeClass is empty"),
 		Type:          flux.ArgumentTypePrimitive,
 		Name:          name,
 		HttpName:      name,
@@ -40,9 +40,9 @@ func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() 
 }
 
 func NewComplexArgument(typeClass, argName string) flux.Argument {
-	name := pkg.RequireNotEmpty(argName, "argName is empty")
+	name := pkg.MustNotEmpty(argName, "argName is empty")
 	return flux.Argument{
-		Class:         pkg.RequireNotEmpty(typeClass, "typeClass is empty"),
+		Class:         pkg.MustNotEmpty(typeClass, "typeClass is empty"),
 		Type:          flux.ArgumentTypeComplex,
 		Name:          name,
 		HttpName:      name,

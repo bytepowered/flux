@@ -19,12 +19,12 @@ var (
 ////
 
 func RegisterSerializer(typeName string, serializer flux.Serializer) {
-	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
-	typedSerializers[typeName] = pkg.RequireNotNil(serializer, "Serializer is nil").(flux.Serializer)
+	typeName = pkg.MustNotEmpty(typeName, "typeName is empty")
+	typedSerializers[typeName] = pkg.MustNotNil(serializer, "Serializer is nil").(flux.Serializer)
 }
 
 func SerializerByType(typeName string) flux.Serializer {
-	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
+	typeName = pkg.MustNotEmpty(typeName, "typeName is empty")
 	return typedSerializers[typeName]
 }
 

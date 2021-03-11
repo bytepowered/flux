@@ -10,12 +10,12 @@ var (
 )
 
 func RegisterFactory(typeName string, factory flux.Factory) {
-	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
-	typedFactories[typeName] = pkg.RequireNotNil(factory, "Factory is nil").(flux.Factory)
+	typeName = pkg.MustNotEmpty(typeName, "typeName is empty")
+	typedFactories[typeName] = pkg.MustNotNil(factory, "Factory is nil").(flux.Factory)
 }
 
 func FactoryByType(typeName string) (flux.Factory, bool) {
-	typeName = pkg.RequireNotEmpty(typeName, "typeName is empty")
+	typeName = pkg.MustNotEmpty(typeName, "typeName is empty")
 	f, o := typedFactories[typeName]
 	return f, o
 }

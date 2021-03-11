@@ -13,7 +13,7 @@ type (
 
 func New(id string, config *flux.Configuration, wis []flux.WebInterceptor, opts ...Option) flux.WebListener {
 	opts = append([]Option{
-		WithErrorHandler(DefaultServerErrorHandler),
+		WithErrorHandler(DefaultErrorHandler),
 		WithNotfoundHandler(DefaultNotfoundHandler),
 		WithResponseWriter(DefaultResponseWriter),
 		WithInterceptors(wis),

@@ -145,7 +145,7 @@ func (s *AdaptWebListener) WriteNotfound(webex flux.WebExchange) error {
 }
 
 func (s *AdaptWebListener) SetResponseWriter(f flux.WebResponseWriter) {
-	s.writer = pkg.RequireNotNil(f, "WebResponseWriter is nil, server-id: "+s.listenerId).(flux.WebResponseWriter)
+	s.writer = pkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.listenerId).(flux.WebResponseWriter)
 }
 
 func (s *AdaptWebListener) SetRequestResolver(resolver flux.WebRequestResolver) {

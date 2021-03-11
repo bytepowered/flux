@@ -387,7 +387,7 @@ func (s *BootstrapServer) SetWebNotfoundHandler(nfh flux.WebHandler) {
 
 // AddListenServer 添加指定ID
 func (s *BootstrapServer) AddListenServer(id string, server flux.WebListener) {
-	s.listener[id] = pkg.RequireNotNil(server, "WebListener is nil").(flux.WebListener)
+	s.listener[id] = pkg.MustNotNil(server, "WebListener is nil").(flux.WebListener)
 }
 
 // WebListenerById 返回ListenServer实例

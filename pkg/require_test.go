@@ -5,17 +5,17 @@ import (
 	"testing"
 )
 
-func TestRequireNotNil(t *testing.T) {
+func TestMustNotNil(t *testing.T) {
 	asserter := assert.New(t)
 	asserter.Panics(func() {
-		RequireNotNil(nil, "should nil, panic")
+		MustNotNil(nil, "should nil, panic")
 	})
 }
 
-func TestRequireNotNilFunc(t *testing.T) {
+func TestMustNotNilFunc(t *testing.T) {
 	asserter := assert.New(t)
 	var nilFunc func() = nil
 	asserter.Panics(func() {
-		RequireNotNil(nilFunc, "should nil, panic")
+		MustNotNil(nilFunc, "should nil, panic")
 	})
 }
