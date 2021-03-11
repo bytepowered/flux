@@ -36,7 +36,7 @@ type (
 	// Option 配置HttpServeEngine函数
 	Option func(bs *BootstrapServer)
 	// VersionLookupFunc Http请求版本查找函数
-	VersionLookupFunc func(webc flux.WebExchange) (version string)
+	VersionLookupFunc func(webex flux.WebExchange) (version string)
 )
 
 // BootstrapServer
@@ -88,8 +88,8 @@ func WithWebListener(server flux.WebListener) Option {
 func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 	opts := []Option{
 		WithServerBanner(defaultBanner),
-		WithVersionLookupFunc(func(webc flux.WebExchange) string {
-			return webc.HeaderVar(DefaultHttpHeaderVersion)
+		WithVersionLookupFunc(func(webex flux.WebExchange) string {
+			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
 		WithWebListener(listener.New(LoadWebListenerConfig(ListenerIdDefault), nil)),
@@ -208,12 +208,12 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 	return nil
 }
 
-func (s *BootstrapServer) route(webc flux.WebExchange, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
-	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webc))
+func (s *BootstrapServer) route(webex flux.WebExchange, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
+	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webex))
 	// 实现动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
-		if selector.Active(webc, server.ListenerId()) {
-			endpoint, found = selector.DoSelect(webc, server.ListenerId(), endpoints)
+		if selector.Active(webex, server.ListenerId()) {
+			endpoint, found = selector.DoSelect(webex, server.ListenerId(), endpoints)
 			if found {
 				break
 			}
@@ -229,21 +229,21 @@ func (s *BootstrapServer) route(webc flux.WebExchange, server flux.WebListener, 
 			}
 			trace.Error(string(debug.Stack()))
 		}
-	}(webc.RequestId())
+	}(webex.RequestId())
 	if !found {
 		if s.routeTraceEnabled {
-			logger.Trace(webc.RequestId()).Infow("SERVER:ROUTE:NOT_FOUND",
-				"http-pattern", []string{webc.Method(), webc.URI(), webc.URL().Path},
+			logger.Trace(webex.RequestId()).Infow("SERVER:ROUTE:NOT_FOUND",
+				"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 			)
 		}
 		return flux.ErrRouteNotFound
 	}
-	ctxw := context.New(webc, endpoint)
+	ctxw := context.New(webex, endpoint)
 	defer context.ReleaseContext(ctxw)
 	logger.TraceContext(ctxw).Infow("SERVER:ROUTE:START")
 	// hook
 	for _, hook := range s.hooks {
-		hook(webc, ctxw)
+		hook(webex, ctxw)
 	}
 	endfunc := func(start time.Time) {
 		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:END",
@@ -253,7 +253,7 @@ func (s *BootstrapServer) route(webc flux.WebExchange, server flux.WebListener, 
 		r := ctxw.Response()
 		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:RESPONSE/DATA", "statusCode", r.StatusCode())
 		defer endfunc(ctxw.StartAt())
-		return server.Write(webc, r.HeaderVars(), r.StatusCode(), r.Payload())
+		return server.Write(webex, r.HeaderVars(), r.StatusCode(), r.Payload())
 	} else {
 		logger.TraceContext(ctxw).Errorw("SERVER:ROUTE:RESPONSE/ERROR", "statusCode", err.StatusCode, "error", err)
 		defer endfunc(ctxw.StartAt())
@@ -402,8 +402,8 @@ func (s *BootstrapServer) AddWebExchangeHook(f flux.WebExchangeHook) {
 }
 
 func (s *BootstrapServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MultiEndpoint) flux.WebHandler {
-	return func(webc flux.WebExchange) error {
-		return s.route(webc, server, endpoint)
+	return func(webex flux.WebExchange) error {
+		return s.route(webex, server, endpoint)
 	}
 }
 

@@ -108,7 +108,7 @@ type (
 	WebErrorHandler func(WebExchange, error)
 
 	// WebResponseWriter 用于写入Body响应数据到WebServer
-	WebResponseWriter func(webc WebExchange, header http.Header, status int, body interface{}, error *ServeError) error
+	WebResponseWriter func(webex WebExchange, header http.Header, status int, body interface{}, error *ServeError) error
 )
 
 // WebExchange 定义封装Web框架的RequestContext的接口；
@@ -136,9 +136,6 @@ type WebExchange interface {
 
 	// Address 返回请求对象的地址
 	Address() string
-
-	// OnHeaderVars 访问请求Headers
-	OnHeaderVars(access func(header http.Header))
 
 	// HeaderVars 返回请求对象的Header；只读；
 	HeaderVars() http.Header
@@ -177,7 +174,7 @@ type WebExchange interface {
 	Rewrite(method string, path string)
 
 	// Send 写入响应体数据；
-	Send(webc WebExchange, header http.Header, status int, data interface{}) error
+	Send(webex WebExchange, header http.Header, status int, data interface{}) error
 
 	// SendError 写入错误状态数据
 	SendError(error *ServeError)
@@ -202,7 +199,7 @@ type WebExchange interface {
 	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
 	HttpResponseWriter() (http.ResponseWriter, error)
 
-	// ScopeValue 获取Context域键值；作用域与请求生命周期相同；
+	// Variable 获取WebValue域键值；作用域与请求生命周期相同；
 	Variable(key string) interface{}
 
 	// SetVariable 设置Context域键值；作用域与请求生命周期相同；
@@ -215,16 +212,17 @@ type WebExchange interface {
 	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
 	HttpRequest() (*http.Request, error)
 
-	// WebExchange 返回具体Web框架实现的WebContext对象
-	WebContext() interface{}
+	// ShadowContext 返回具体Web框架实现的WebContext对象
+	ShadowContext() interface{}
 
-	// WebRequest 返回具体Web框架实现的Request对象
-	WebRequest() interface{}
+	// ShadowRequest 返回具体Web框架实现的Request对象
+	ShadowRequest() interface{}
 
-	// WebResponse 返回具体Web框架实现的Response对象
-	WebResponse() interface{}
+	// ShadowResponse 返回具体Web框架实现的Response对象
+	ShadowResponse() interface{}
 }
 
+// WebListenerFactory 构建 WebListener 的工厂函数
 type WebListenerFactory func(*Configuration) WebListener
 
 // WebListener 定义Web框架服务器的接口；
@@ -267,39 +265,39 @@ type WebListener interface {
 	AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 
 	// Write 处理并写入业务响应数据；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
-	Write(webc WebExchange, header http.Header, status int, data interface{}) error
+	Write(webex WebExchange, header http.Header, status int, data interface{}) error
 
 	// WriteError 处理并写入错误响应数据
-	WriteError(webc WebExchange, err *ServeError)
+	WriteError(webex WebExchange, err *ServeError)
 
 	// WriteNotfound 处理Web无法处理路由的请求；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
-	WriteNotfound(webc WebExchange) error
+	WriteNotfound(webex WebExchange) error
 
 	// Server 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
-	Server() interface{}
+	ShadowServer() interface{}
 
-	// Router 返回具体实现的WebRouter路由处理对象，如echo,fasthttp的Router
-	Router() interface{}
+	// ShadowRouter 返回具体实现的Router路由处理对象，如echo,fasthttp的Router
+	ShadowRouter() interface{}
 }
 
 // EndpointSelector 用于请求处理前的动态选择Endpoint
 type EndpointSelector interface {
 	// Active 判定选择器是否激活
-	Active(ctx WebExchange, serverId string) bool
+	Active(ctx WebExchange, listenerId string) bool
 	// DoSelect 根据请求返回Endpoint，以及是否有效标识
-	DoSelect(ctx WebExchange, serverId string, multi *MultiEndpoint) (*Endpoint, bool)
+	DoSelect(ctx WebExchange, listenerId string, multi *MultiEndpoint) (*Endpoint, bool)
 }
 
 // Wrapper functions
 
 func WrapHttpHandler(h http.Handler) WebHandler {
-	return func(webc WebExchange) error {
+	return func(webex WebExchange) error {
 		// 注意：部分Web框架不支持返回标准Request/Response
-		writer, err := webc.HttpResponseWriter()
+		writer, err := webex.HttpResponseWriter()
 		if nil != err {
 			return err
 		}
-		req, err := webc.HttpRequest()
+		req, err := webex.HttpRequest()
 		if nil != err {
 			return err
 		}

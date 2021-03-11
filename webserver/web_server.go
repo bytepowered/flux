@@ -130,18 +130,18 @@ func (s *AdaptWebListener) Listen() error {
 	}
 }
 
-func (s *AdaptWebListener) Write(webc flux.WebExchange, header http.Header, status int, data interface{}) error {
-	return s.writer(webc, header, status, data, nil)
+func (s *AdaptWebListener) Write(webex flux.WebExchange, header http.Header, status int, data interface{}) error {
+	return s.writer(webex, header, status, data, nil)
 }
 
-func (s *AdaptWebListener) WriteError(webc flux.WebExchange, err *flux.ServeError) {
-	if err := s.writer(webc, err.Header, err.StatusCode, nil, err); nil != err {
+func (s *AdaptWebListener) WriteError(webex flux.WebExchange, err *flux.ServeError) {
+	if err := s.writer(webex, err.Header, err.StatusCode, nil, err); nil != err {
 		logger.Errorw("WebServer write error failed", "error", err, "server-id", s.listenerId)
 	}
 }
 
-func (s *AdaptWebListener) WriteNotfound(webc flux.WebExchange) error {
-	return echo.NotFoundHandler(webc.WebContext().(echo.Context))
+func (s *AdaptWebListener) WriteNotfound(webex flux.WebExchange) error {
+	return echo.NotFoundHandler(webex.ShadowContext().(echo.Context))
 }
 
 func (s *AdaptWebListener) SetResponseWriter(f flux.WebResponseWriter) {
@@ -153,15 +153,15 @@ func (s *AdaptWebListener) SetRequestResolver(resolver flux.WebRequestResolver) 
 }
 
 func (s *AdaptWebListener) SetNotfoundHandler(fun flux.WebHandler) {
-	echo.NotFoundHandler = AdaptWebRouteHandler(fun).AdaptFunc
+	echo.NotFoundHandler = AdaptWebHandler(fun).AdaptFunc
 }
 
 func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
 	s.server.HTTPErrorHandler = func(err error, c echo.Context) {
-		webc, ok := c.Get(ContextKeyWebContext).(*AdaptWebContext)
+		webex, ok := c.Get(ContextKeyWebContext).(*AdaptWebExchange)
 		pkg.Assert(ok, "<web-context> is invalid in http-error-handler")
-		handler(webc, err)
+		handler(webex, err)
 	}
 }
 
@@ -178,7 +178,7 @@ func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandler,
 	for i, mi := range m {
 		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
 	}
-	s.server.Add(method, toRoutePattern(pattern), AdaptWebRouteHandler(h).AdaptFunc, wms...)
+	s.server.Add(method, toRoutePattern(pattern), AdaptWebHandler(h).AdaptFunc, wms...)
 }
 
 func (s *AdaptWebListener) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
@@ -189,11 +189,11 @@ func (s *AdaptWebListener) AddHttpHandler(method, pattern string, h http.Handler
 	s.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wms...)
 }
 
-func (s *AdaptWebListener) Router() interface{} {
+func (s *AdaptWebListener) ShadowRouter() interface{} {
 	return s.server
 }
 
-func (s *AdaptWebListener) Server() interface{} {
+func (s *AdaptWebListener) ShadowServer() interface{} {
 	return s.server
 }
 
@@ -212,8 +212,8 @@ func toRoutePattern(uri string) string {
 }
 
 // 默认对RequestBody的表单数据进行解析
-func DefaultRequestResolver(webc flux.WebExchange) url.Values {
-	form, err := webc.(*AdaptWebContext).echoc.FormParams()
+func DefaultRequestResolver(webex flux.WebExchange) url.Values {
+	form, err := webex.(*AdaptWebExchange).echoc.FormParams()
 	if nil != err {
 		panic(fmt.Errorf("parse form params failed, err: %w", err))
 	}

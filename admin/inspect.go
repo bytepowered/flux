@@ -58,10 +58,10 @@ func init() {
 	}
 }
 
-func InspectEndpointsHandler(webc flux.WebExchange) error {
+func InspectEndpointsHandler(webex flux.WebExchange) error {
 	filters := make([]EndpointFilter, 0)
 	for _, key := range endpointQueryKeys {
-		if query := webc.QueryVar(key); "" != query {
+		if query := webex.QueryVar(key); "" != query {
 			if f, ok := endpointFilterFactories[key]; ok {
 				filters = append(filters, f(query))
 			}
@@ -72,9 +72,9 @@ func InspectEndpointsHandler(webc flux.WebExchange) error {
 		for k, v := range ext.Endpoints() {
 			m[k] = v.ToSerializable()
 		}
-		return webc.Send(webc, http.Header{}, flux.StatusOK, m)
+		return webex.Send(webex, http.Header{}, flux.StatusOK, m)
 	} else {
-		return webc.Send(webc, http.Header{}, flux.StatusOK,
+		return webex.Send(webex, http.Header{}, flux.StatusOK,
 			queryWithEndpointFilters(ext.Endpoints(), filters...))
 	}
 }

@@ -40,9 +40,6 @@ type Request interface {
 	// Address 返回请求对象的地址
 	Address() string
 
-	// OnHeaderVars 访问请求Headers
-	OnHeaderVars(access func(header http.Header))
-
 	// HeaderVars 返回请求对象的Header只读；
 	HeaderVars() http.Header
 

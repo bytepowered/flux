@@ -44,9 +44,9 @@ func ReleaseContext(c *AttacheContext) {
 	pool.Put(c)
 }
 
-func New(webc flux.WebExchange, endpoint *flux.Endpoint) *AttacheContext {
+func New(webex flux.WebExchange, endpoint *flux.Endpoint) *AttacheContext {
 	ctx := AcquireContext()
-	ctx.attach(webc, endpoint)
+	ctx.attach(webex, endpoint)
 	return ctx
 }
 
@@ -185,19 +185,19 @@ func (c *AttacheContext) endpoint() *flux.Endpoint {
 	return c.context.Value(internal.ContextKeyRouteEndpoint).(*flux.Endpoint)
 }
 
-func (c *AttacheContext) attach(webc flux.WebExchange, endpoint *flux.Endpoint) *AttacheContext {
-	c.context = context.WithValue(webc.Context(), internal.ContextKeyRouteEndpoint, endpoint)
-	c.exchange = webc
+func (c *AttacheContext) attach(webex flux.WebExchange, endpoint *flux.Endpoint) *AttacheContext {
+	c.context = context.WithValue(webex.Context(), internal.ContextKeyRouteEndpoint, endpoint)
+	c.exchange = webex
 	c.attributes = nil
 	c.variables = nil
 	c.metrics = nil
 	c.ctxLogger = logger.SimpleLogger()
 	c.startTime = time.Now()
-	c.request.reset(webc)
+	c.request.reset(webex)
 	c.response.reset()
 	c.SetAttribute(flux.XRequestTime, c.startTime.Unix())
-	c.SetAttribute(flux.XRequestId, webc.RequestId())
-	c.SetAttribute(flux.XRequestHost, webc.Host())
+	c.SetAttribute(flux.XRequestId, webex.RequestId())
+	c.SetAttribute(flux.XRequestHost, webex.Host())
 	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 	return c
 }

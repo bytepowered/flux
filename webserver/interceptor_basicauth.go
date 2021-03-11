@@ -67,12 +67,12 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 		config.Realm = defaultRealm
 	}
 	return func(next flux.WebHandler) flux.WebHandler {
-		return func(webc flux.WebExchange) error {
+		return func(webex flux.WebExchange) error {
 			// Skip
-			if config.Skipper != nil && config.Skipper(webc) {
-				return next(webc)
+			if config.Skipper != nil && config.Skipper(webex) {
+				return next(webex)
 			}
-			auth := webc.HeaderVar(HeaderAuthorization)
+			auth := webex.HeaderVar(HeaderAuthorization)
 			l := len(basic)
 			if len(auth) > l+1 && strings.ToLower(auth[:l]) == basic {
 				b, err := base64.StdEncoding.DecodeString(auth[l+1:])
@@ -83,11 +83,11 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 				for i := 0; i < len(cred); i++ {
 					if cred[i] == ':' {
 						// Verify credentials
-						valid, err := config.Validator(cred[:i], cred[i+1:], webc)
+						valid, err := config.Validator(cred[:i], cred[i+1:], webex)
 						if err != nil {
 							return err
 						} else if valid {
-							return next(webc)
+							return next(webex)
 						}
 						break
 					}
@@ -99,7 +99,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 				realm = strconv.Quote(config.Realm)
 			}
 			// Need to return `401` for browsers to pop-up login box.
-			webc.SetResponseHeader(HeaderWWWAuthenticate, basic+" realm="+realm)
+			webex.SetResponseHeader(HeaderWWWAuthenticate, basic+" realm="+realm)
 			return &flux.ServeError{
 				StatusCode: http.StatusUnauthorized,
 				ErrorCode:  "UNAUTHORIZED",

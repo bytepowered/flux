@@ -19,14 +19,14 @@ func DefaultNotfoundHandler(_ flux.WebExchange) error {
 	}
 }
 
-func DefaultServerErrorHandler(webc flux.WebExchange, err error) {
+func DefaultServerErrorHandler(webex flux.WebExchange, err error) {
 	if nil == err {
 		return
 	}
 	if serr, ok := err.(*flux.ServeError); ok {
-		webc.SendError(serr)
+		webex.SendError(serr)
 	} else {
-		webc.SendError(&flux.ServeError{
+		webex.SendError(&flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    err.Error(),
@@ -36,8 +36,8 @@ func DefaultServerErrorHandler(webc flux.WebExchange, err error) {
 	}
 }
 
-func DefaultResponseWriter(webc flux.WebExchange, header http.Header, status int, body interface{}, serr *flux.ServeError) error {
-	SetupResponseDefaults(webc, header)
+func DefaultResponseWriter(webex flux.WebExchange, header http.Header, status int, body interface{}, serr *flux.ServeError) error {
+	SetupResponseDefaults(webex, header)
 	var payload interface{}
 	if nil != serr {
 		emap := map[string]interface{}{
@@ -51,7 +51,7 @@ func DefaultResponseWriter(webc flux.WebExchange, header http.Header, status int
 	} else {
 		payload = body
 	}
-	id := webc.RequestId()
+	id := webex.RequestId()
 	// 序列化payload
 	var data []byte
 	if r, ok := payload.(io.Reader); ok {
@@ -76,27 +76,27 @@ func DefaultResponseWriter(webc flux.WebExchange, header http.Header, status int
 	}
 	logger.Trace(id).Infow("Http-ResponseWriter, logging", "data", string(data))
 	// 写入Http响应发生的错误，没必要向上抛出Error错误处理。因为已无法通过WriteError写到客户端
-	if err := WriteHttpResponse(webc, status, flux.MIMEApplicationJSON, data); nil != err {
+	if err := WriteHttpResponse(webex, status, flux.MIMEApplicationJSON, data); nil != err {
 		logger.Trace(id).Errorw("Http-ResponseWriter, write channel", "data", string(data), "error", err)
 	}
 	return nil
 }
 
-func WriteHttpResponse(webc flux.WebExchange, statusCode int, contentType string, bytes []byte) error {
-	err := webc.Write(statusCode, contentType, bytes)
+func WriteHttpResponse(webex flux.WebExchange, statusCode int, contentType string, bytes []byte) error {
+	err := webex.Write(statusCode, contentType, bytes)
 	if nil != err {
 		return fmt.Errorf("write http responseWriter: %w", err)
 	}
 	return err
 }
 
-func SetupResponseDefaults(webc flux.WebExchange, header http.Header) {
-	webc.SetResponseHeader(flux.HeaderServer, "Flux/Gateway")
-	webc.SetResponseHeader(flux.HeaderContentType, flux.MIMEApplicationJSON)
+func SetupResponseDefaults(webex flux.WebExchange, header http.Header) {
+	webex.SetResponseHeader(flux.HeaderServer, "Flux/Gateway")
+	webex.SetResponseHeader(flux.HeaderContentType, flux.MIMEApplicationJSON)
 	// 允许Override默认Header
 	for k, v := range header {
 		for _, iv := range v {
-			webc.AddResponseHeader(k, iv)
+			webex.AddResponseHeader(k, iv)
 		}
 	}
 }
