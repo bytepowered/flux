@@ -97,7 +97,7 @@ func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := context.NewMock("@rid", map[string]interface{}{
+	ctx := context.NewMockWith("@rid", map[string]interface{}{
 		"str":       "value:str",
 		"int":       12345,
 		"long":      int64(1234567890),
@@ -186,7 +186,7 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := context.NewMock("@rid", map[string]interface{}{
+	ctx := context.NewMockWith("@rid", map[string]interface{}{
 		"stringmap": map[string]interface{}{
 			"key": "value",
 			"int": 123,

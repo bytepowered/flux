@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/logger"
+	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
@@ -134,7 +135,12 @@ func (r *MockRequest) CookieVar(name string) *http.Cookie {
 
 var _ flux.Context = new(MockContext)
 
-func NewMock(id string, values map[string]interface{}) flux.Context {
+func NewMock(id string) flux.Context {
+	return NewMockWith(id, map[string]interface{}{})
+}
+
+func NewMockWith(id string, values map[string]interface{}) flux.Context {
+	fluxpkg.AssertNotNil(values, "<mock-values> must not nil")
 	return &MockContext{
 		requestId: id,
 		time:      time.Now(),
@@ -144,7 +150,7 @@ func NewMock(id string, values map[string]interface{}) flux.Context {
 }
 
 func NewEmpty() flux.Context {
-	return NewMock("@empty.mock", map[string]interface{}{})
+	return NewMockWith("@empty.mock", map[string]interface{}{})
 }
 
 type MockContext struct {

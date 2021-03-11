@@ -34,7 +34,7 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 		"auto":          "auto",
 		"value":         "value",
 	}
-	valctx := context.NewMock("@rid", values)
+	valctx := context.NewMockWith("@rid", values)
 	cases := []struct {
 		scope  string
 		key    string
