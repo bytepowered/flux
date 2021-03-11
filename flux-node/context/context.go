@@ -2,14 +2,14 @@ package context
 
 import (
 	"context"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/internal"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"sync"
 	"time"
 )
 
-var _ flux2.Context = new(AttacheContext)
+var _ flux.Context = new(AttacheContext)
 
 var (
 	pool = sync.Pool{
@@ -26,14 +26,14 @@ var (
 // Context接口实现
 type AttacheContext struct {
 	context    context.Context
-	exchange   flux2.WebExchange
+	exchange   flux.WebExchange
 	attributes map[string]interface{}
 	variables  map[string]interface{}
-	metrics    []flux2.Metric
+	metrics    []flux.Metric
 	startTime  time.Time
 	request    *AttacheRequest
 	response   *AttacheResponse
-	ctxLogger  flux2.Logger
+	ctxLogger  flux.Logger
 }
 
 func AcquireContext() *AttacheContext {
@@ -44,21 +44,21 @@ func ReleaseContext(c *AttacheContext) {
 	pool.Put(c)
 }
 
-func New(webex flux2.WebExchange, endpoint *flux2.Endpoint) *AttacheContext {
+func New(webex flux.WebExchange, endpoint *flux.Endpoint) *AttacheContext {
 	ctx := AcquireContext()
 	ctx.attach(webex, endpoint)
 	return ctx
 }
 
-func (c *AttacheContext) Request() flux2.Request {
+func (c *AttacheContext) Request() flux.Request {
 	return c.request
 }
 
-func (c *AttacheContext) Response() flux2.Response {
+func (c *AttacheContext) Response() flux.Response {
 	return c.response
 }
 
-func (c *AttacheContext) Endpoint() flux2.Endpoint {
+func (c *AttacheContext) Endpoint() flux.Endpoint {
 	return *c.endpoint()
 }
 
@@ -66,7 +66,7 @@ func (c *AttacheContext) Application() string {
 	return c.endpoint().Application
 }
 
-func (c *AttacheContext) BackendService() flux2.BackendService {
+func (c *AttacheContext) BackendService() flux.BackendService {
 	return c.endpoint().Service
 }
 
@@ -161,31 +161,31 @@ func (c *AttacheContext) StartAt() time.Time {
 	return c.startTime
 }
 
-func (c *AttacheContext) Metrics() []flux2.Metric {
-	dist := make([]flux2.Metric, len(c.metrics))
+func (c *AttacheContext) Metrics() []flux.Metric {
+	dist := make([]flux.Metric, len(c.metrics))
 	copy(dist, c.metrics)
 	return dist
 }
 
 func (c *AttacheContext) AddMetric(name string, elapsed time.Duration) {
-	c.metrics = append(c.metrics, flux2.Metric{
+	c.metrics = append(c.metrics, flux.Metric{
 		Name: name, Elapsed: elapsed, Elapses: elapsed.String(),
 	})
 }
 
-func (c *AttacheContext) SetLogger(logger flux2.Logger) {
+func (c *AttacheContext) SetLogger(logger flux.Logger) {
 	c.ctxLogger = logger
 }
 
-func (c *AttacheContext) Logger() flux2.Logger {
+func (c *AttacheContext) Logger() flux.Logger {
 	return c.ctxLogger
 }
 
-func (c *AttacheContext) endpoint() *flux2.Endpoint {
-	return c.context.Value(internal.ContextKeyRouteEndpoint).(*flux2.Endpoint)
+func (c *AttacheContext) endpoint() *flux.Endpoint {
+	return c.context.Value(internal.ContextKeyRouteEndpoint).(*flux.Endpoint)
 }
 
-func (c *AttacheContext) attach(webex flux2.WebExchange, endpoint *flux2.Endpoint) *AttacheContext {
+func (c *AttacheContext) attach(webex flux.WebExchange, endpoint *flux.Endpoint) *AttacheContext {
 	c.context = context.WithValue(webex.Context(), internal.ContextKeyRouteEndpoint, endpoint)
 	c.exchange = webex
 	c.attributes = nil
@@ -195,9 +195,9 @@ func (c *AttacheContext) attach(webex flux2.WebExchange, endpoint *flux2.Endpoin
 	c.startTime = time.Now()
 	c.request.reset(webex)
 	c.response.reset()
-	c.SetAttribute(flux2.XRequestTime, c.startTime.Unix())
-	c.SetAttribute(flux2.XRequestId, webex.RequestId())
-	c.SetAttribute(flux2.XRequestHost, webex.Host())
-	c.SetAttribute(flux2.XRequestAgent, "flux/gateway")
+	c.SetAttribute(flux.XRequestTime, c.startTime.Unix())
+	c.SetAttribute(flux.XRequestId, webex.RequestId())
+	c.SetAttribute(flux.XRequestHost, webex.Host())
+	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 	return c
 }

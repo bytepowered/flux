@@ -2,7 +2,7 @@ package ext
 
 import (
 	"errors"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-pkg"
 )
 
@@ -13,17 +13,17 @@ const (
 )
 
 var (
-	typedSerializers = make(map[string]flux2.Serializer, 2)
+	typedSerializers = make(map[string]flux.Serializer, 2)
 )
 
 ////
 
-func RegisterSerializer(typeName string, serializer flux2.Serializer) {
+func RegisterSerializer(typeName string, serializer flux.Serializer) {
 	typeName = fluxpkg.MustNotEmpty(typeName, "typeName is empty")
-	typedSerializers[typeName] = fluxpkg.MustNotNil(serializer, "Serializer is nil").(flux2.Serializer)
+	typedSerializers[typeName] = fluxpkg.MustNotNil(serializer, "Serializer is nil").(flux.Serializer)
 }
 
-func SerializerByType(typeName string) flux2.Serializer {
+func SerializerByType(typeName string) flux.Serializer {
 	typeName = fluxpkg.MustNotEmpty(typeName, "typeName is empty")
 	return typedSerializers[typeName]
 }

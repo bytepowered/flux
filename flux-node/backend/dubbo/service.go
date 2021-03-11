@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
 	"sync"
@@ -32,17 +32,17 @@ const (
 )
 
 func init() {
-	ext.RegisterBackendTransport(flux2.ProtoDubbo, NewBackendTransportService())
+	ext.RegisterBackendTransport(flux.ProtoDubbo, NewBackendTransportService())
 }
 
 var (
-	ErrDecodeInvalidHeaders = errors.New(flux2.ErrorMessageDubboDecodeInvalidHeader)
-	ErrDecodeInvalidStatus  = errors.New(flux2.ErrorMessageDubboDecodeInvalidStatus)
+	ErrDecodeInvalidHeaders = errors.New(flux.ErrorMessageDubboDecodeInvalidHeader)
+	ErrDecodeInvalidStatus  = errors.New(flux.ErrorMessageDubboDecodeInvalidStatus)
 )
 
 var (
-	_     flux2.BackendTransport = new(BackendTransportService)
-	_json                        = jsoniter.ConfigCompatibleWithStandardLibrary
+	_     flux.BackendTransport = new(BackendTransportService)
+	_json                       = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 type (
@@ -52,16 +52,16 @@ type (
 
 type (
 	// ArgumentsAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
-	ArgumentsAssembleFunc func(arguments []flux2.Argument, context flux2.Context) (types []string, values interface{}, err error)
+	ArgumentsAssembleFunc func(arguments []flux.Argument, context flux.Context) (types []string, values interface{}, err error)
 	// AttachmentAssembleFun 封装Attachment附件的函数
-	AttachmentAssembleFun func(context flux2.Context) (interface{}, error)
+	AttachmentAssembleFun func(context flux.Context) (interface{}, error)
 )
 
 type (
 	// GenericOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
-	GenericOptionsFunc func(*flux2.BackendService, *flux2.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+	GenericOptionsFunc func(*flux.BackendService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 	// GenericServiceFunc 用于构建DubboGo泛型调用Service实例
-	GenericServiceFunc func(*flux2.BackendService) common.RPCService
+	GenericServiceFunc func(*flux.BackendService) common.RPCService
 	// GenericInvokeFunc 用于执行Dubbo泛调用方法，返回统一Result数据结构
 	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result
 )
@@ -69,17 +69,17 @@ type (
 // BackendTransportService 集成DubboRPC框架的BackendService
 type BackendTransportService struct {
 	// 可外部配置
-	defaults          map[string]interface{}         // 配置默认值
-	registryAlias     map[string]string              // Registry的别名
-	optionsFunc       []GenericOptionsFunc           // Dubbo Reference 配置函数
-	serviceFunc       GenericServiceFunc             // Dubbo Service 构建函数
-	invokeFunc        GenericInvokeFunc              // 执行Dubbo泛调用的函数
-	argAssembleFunc   ArgumentsAssembleFunc          // Dubbo参数封装函数
-	attAssembleFunc   AttachmentAssembleFun          // Attachment封装函数
-	responseCodecFunc flux2.BackendResponseCodecFunc // 解析响应结果的函数
+	defaults          map[string]interface{}        // 配置默认值
+	registryAlias     map[string]string             // Registry的别名
+	optionsFunc       []GenericOptionsFunc          // Dubbo Reference 配置函数
+	serviceFunc       GenericServiceFunc            // Dubbo Service 构建函数
+	invokeFunc        GenericInvokeFunc             // 执行Dubbo泛调用的函数
+	argAssembleFunc   ArgumentsAssembleFunc         // Dubbo参数封装函数
+	attAssembleFunc   AttachmentAssembleFun         // Attachment封装函数
+	responseCodecFunc flux.BackendResponseCodecFunc // 解析响应结果的函数
 	// 内部私有
 	traceEnable   bool
-	configuration *flux2.Configuration
+	configuration *flux.Configuration
 	serviceMutex  sync.RWMutex
 }
 
@@ -98,7 +98,7 @@ func WithAttachmentAssembleFunc(fun AttachmentAssembleFun) Option {
 }
 
 // WithResponseCodecFunc 用于配置响应数据解析实现函数
-func WithResponseCodecFunc(fun flux2.BackendResponseCodecFunc) Option {
+func WithResponseCodecFunc(fun flux.BackendResponseCodecFunc) Option {
 	return func(service *BackendTransportService) {
 		service.responseCodecFunc = fun
 	}
@@ -140,7 +140,7 @@ func WithDefaults(defaults map[string]interface{}) Option {
 }
 
 // NewBackendTransportServiceWith New dubbo backend service with options
-func NewBackendTransportServiceWith(opts ...Option) flux2.BackendTransport {
+func NewBackendTransportServiceWith(opts ...Option) flux.BackendTransport {
 	bts := &BackendTransportService{
 		optionsFunc: make([]GenericOptionsFunc, 0),
 	}
@@ -151,12 +151,12 @@ func NewBackendTransportServiceWith(opts ...Option) flux2.BackendTransport {
 }
 
 // NewBackendTransportService New dubbo backend instance
-func NewBackendTransportService() flux2.BackendTransport {
+func NewBackendTransportService() flux.BackendTransport {
 	return NewBackendTransportServiceOverrides()
 }
 
 // NewBackendTransportServiceOverrides New dubbo backend instance
-func NewBackendTransportServiceOverrides(overrides ...Option) flux2.BackendTransport {
+func NewBackendTransportServiceOverrides(overrides ...Option) flux.BackendTransport {
 	opts := []Option{
 		WithArgumentAssembleFunc(DefaultArgAssembleFunc),
 		WithAttachmentAssembleFunc(DefaultAttAssembleFun),
@@ -179,7 +179,7 @@ func NewBackendTransportServiceOverrides(overrides ...Option) flux2.BackendTrans
 			"load_balance":          "random",
 			"protocol":              dubbo.DUBBO,
 		}),
-		WithGenericServiceFunc(func(backend *flux2.BackendService) common.RPCService {
+		WithGenericServiceFunc(func(backend *flux.BackendService) common.RPCService {
 			return dubgo.NewGenericService(backend.Interface)
 		}),
 		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result {
@@ -196,17 +196,17 @@ func NewBackendTransportServiceOverrides(overrides ...Option) flux2.BackendTrans
 }
 
 // Configuration get config instance
-func (b *BackendTransportService) Configuration() *flux2.Configuration {
+func (b *BackendTransportService) Configuration() *flux.Configuration {
 	return b.configuration
 }
 
 // GetResultDecodeFunc returns result decode func
-func (b *BackendTransportService) GetResponseCodecFunc() flux2.BackendResponseCodecFunc {
+func (b *BackendTransportService) GetResponseCodecFunc() flux.BackendResponseCodecFunc {
 	return b.responseCodecFunc
 }
 
 // Init init backend
-func (b *BackendTransportService) Init(config *flux2.Configuration) error {
+func (b *BackendTransportService) Init(config *flux.Configuration) error {
 	logger.Info("Dubbo backend transport initializing")
 	config.SetDefaults(b.defaults)
 	b.configuration = config
@@ -244,18 +244,18 @@ func (b *BackendTransportService) Shutdown(_ context.Context) error {
 }
 
 // Exchange do exchange with context
-func (b *BackendTransportService) Exchange(ctx flux2.Context) *flux2.ServeError {
+func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
 	return backend.DoExchangeTransport(ctx, b)
 }
 
 // Invoke invoke backend service with context
-func (b *BackendTransportService) Invoke(ctx flux2.Context, service flux2.BackendService) (interface{}, *flux2.ServeError) {
+func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendService) (interface{}, *flux.ServeError) {
 	types, values, err := b.argAssembleFunc(service.Arguments, ctx)
 	if nil != err {
-		return nil, &flux2.ServeError{
-			StatusCode: flux2.StatusServerError,
-			ErrorCode:  flux2.ErrorCodeGatewayInternal,
-			Message:    flux2.ErrorMessageDubboAssembleFailed,
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageDubboAssembleFailed,
 			CauseError: err,
 		}
 	} else {
@@ -263,7 +263,7 @@ func (b *BackendTransportService) Invoke(ctx flux2.Context, service flux2.Backen
 	}
 }
 
-func (b *BackendTransportService) InvokeCodec(ctx flux2.Context, service flux2.BackendService) (*flux2.BackendResponse, *flux2.ServeError) {
+func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
 	raw, serr := b.Invoke(ctx, service)
 	select {
 	case <-ctx.Context().Done():
@@ -281,10 +281,10 @@ func (b *BackendTransportService) InvokeCodec(ctx flux2.Context, service flux2.B
 	// decode response
 	result, err := b.GetResponseCodecFunc()(ctx, raw)
 	if nil != err {
-		return nil, &flux2.ServeError{
-			StatusCode: flux2.StatusServerError,
-			ErrorCode:  flux2.ErrorCodeGatewayInternal,
-			Message:    flux2.ErrorMessageBackendDecodeResponse,
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageBackendDecodeResponse,
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
 		}
 	}
@@ -293,7 +293,7 @@ func (b *BackendTransportService) InvokeCodec(ctx flux2.Context, service flux2.B
 }
 
 // DoInvoke execute backend service with arguments
-func (b *BackendTransportService) DoInvoke(types []string, values interface{}, service flux2.BackendService, ctx flux2.Context) (interface{}, *flux2.ServeError) {
+func (b *BackendTransportService) DoInvoke(types []string, values interface{}, service flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
 	if b.traceEnable {
 		logger.TraceContext(ctx).Infow("BACKEND:DUBBO:INVOKE",
 			"backend-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
@@ -302,10 +302,10 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:ATTACHMENT",
 			"backend-service", service.ServiceID(), "error", err)
-		return nil, &flux2.ServeError{
-			StatusCode: flux2.StatusServerError,
-			ErrorCode:  flux2.ErrorCodeGatewayInternal,
-			Message:    flux2.ErrorMessageDubboAssembleFailed,
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageDubboAssembleFailed,
 			CauseError: err,
 		}
 	}
@@ -313,10 +313,10 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
 	resultW := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
 	if cause := resultW.Error(); cause != nil {
-		return nil, &flux2.ServeError{
-			StatusCode: flux2.StatusBadGateway,
-			ErrorCode:  flux2.ErrorCodeGatewayBackend,
-			Message:    flux2.ErrorMessageDubboInvokeFailed,
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusBadGateway,
+			ErrorCode:  flux.ErrorCodeGatewayBackend,
+			Message:    flux.ErrorMessageDubboInvokeFailed,
 			CauseError: cause,
 		}
 	} else {
@@ -336,7 +336,7 @@ func (b *BackendTransportService) DoInvoke(types []string, values interface{}, s
 }
 
 // LoadGenericService create and cache dubbo generic service
-func (b *BackendTransportService) LoadGenericService(backend *flux2.BackendService) common.RPCService {
+func (b *BackendTransportService) LoadGenericService(backend *flux.BackendService) common.RPCService {
 	b.serviceMutex.Lock()
 	defer b.serviceMutex.Unlock()
 	if srv := dubgo.GetConsumerService(backend.Interface); nil != srv {
@@ -364,7 +364,7 @@ func (b *BackendTransportService) LoadGenericService(backend *flux2.BackendServi
 	return srv
 }
 
-func newConsumerRegistry(config *flux2.Configuration) (string, *dubgo.RegistryConfig) {
+func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryConfig) {
 	if !config.IsSet("id", "protocol") {
 		return "", nil
 	}
@@ -384,7 +384,7 @@ func newConsumerRegistry(config *flux2.Configuration) (string, *dubgo.RegistryCo
 	}
 }
 
-func NewReference(refid string, service *flux2.BackendService, config *flux2.Configuration) *dubgo.ReferenceConfig {
+func NewReference(refid string, service *flux.BackendService, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("Create dubbo reference-config",
 		"service", service.Interface, "remote-host", service.RemoteHost,
 		"rpc-group", service.AttrRpcGroup(), "rpc-version", service.AttrRpcVersion())

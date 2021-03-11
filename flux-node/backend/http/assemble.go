@@ -3,7 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/spf13/cast"
 	"io"
@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func DefaultArgumentAssemble(service *flux2.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux2.Context) (*http.Request, error) {
+func DefaultArgumentAssemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
@@ -72,7 +72,7 @@ func DefaultArgumentAssemble(service *flux2.BackendService, inURL *url.URL, body
 	return newRequest, err
 }
 
-func AssembleHttpValues(arguments []flux2.Argument, ctx flux2.Context) (url.Values, error) {
+func AssembleHttpValues(arguments []flux.Argument, ctx flux.Context) (url.Values, error) {
 	values := make(url.Values, len(arguments))
 	for _, arg := range arguments {
 		if val, err := arg.Resolve(ctx); nil != err {

@@ -2,12 +2,12 @@ package backend
 
 import (
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-pkg"
 )
 
-func DoExchangeTransport(ctx flux2.Context, transport flux2.BackendTransport) *flux2.ServeError {
+func DoExchangeTransport(ctx flux.Context, transport flux.BackendTransport) *flux.ServeError {
 	response, err := transport.InvokeCodec(ctx, ctx.BackendService())
 	if err != nil {
 		return err
@@ -39,14 +39,14 @@ func DoExchangeTransport(ctx flux2.Context, transport flux2.BackendTransport) *f
 }
 
 // DoInvokeCodec 执行后端服务，获取响应结果；
-func DoInvokeCodec(ctx flux2.Context, service flux2.BackendService) (*flux2.BackendResponse, *flux2.ServeError) {
+func DoInvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
 	proto := service.AttrRpcProto()
 	transport, ok := ext.BackendTransportByProto(proto)
 	if !ok {
-		return nil, &flux2.ServeError{
-			StatusCode: flux2.StatusServerError,
-			ErrorCode:  flux2.ErrorCodeGatewayInternal,
-			Message:    flux2.ErrorMessageProtocolUnknown,
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageProtocolUnknown,
 			CauseError: fmt.Errorf("unknown rpc protocol:%s", proto),
 		}
 	}

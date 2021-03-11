@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-node/remoting"
 	"github.com/bytepowered/flux/flux-node/remoting/zk"
@@ -26,7 +26,7 @@ const (
 	zkConfigRegistrySelector = "registry_selector"
 )
 
-var _ flux2.EndpointDiscovery = new(ZookeeperDiscoveryService)
+var _ flux.EndpointDiscovery = new(ZookeeperDiscoveryService)
 
 type (
 	// ZookeeperOption 配置函数
@@ -65,7 +65,7 @@ func (r *ZookeeperDiscoveryService) Id() string {
 }
 
 // Init init discovery
-func (r *ZookeeperDiscoveryService) Init(config *flux2.Configuration) error {
+func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		zkConfigRootpathEndpoint: zkDiscoveryHttpEndpointPath,
 		zkConfigRootpathService:  zkDiscoveryBackendServicePath,
@@ -103,7 +103,7 @@ func (r *ZookeeperDiscoveryService) Init(config *flux2.Configuration) error {
 }
 
 // OnEndpointChanged Listen http endpoints events
-func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux2.HttpEndpointEvent) error {
+func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpointEvent) error {
 	const msg = "DISCOVERY:ZOOKEEPER:ENDPOINT:LISTEN_NODE"
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
@@ -125,7 +125,7 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux2.HttpEndpo
 }
 
 // OnServiceChanged Listen gateway services events
-func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux2.BackendServiceEvent) error {
+func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux.BackendServiceEvent) error {
 	const msg = "DISCOVERY:ZOOKEEPER:SERVICE:LISTEN_NODE"
 	listener := func(event remoting.NodeEvent) {
 		defer func() {

@@ -4,7 +4,7 @@ import (
 	goctx "context"
 	"fmt"
 	dubgo "github.com/apache/dubbo-go/config"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/context"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/inspect"
@@ -37,13 +37,13 @@ type (
 	// Option 配置HttpServeEngine函数
 	Option func(bs *BootstrapServer)
 	// VersionLookupFunc Http请求版本查找函数
-	VersionLookupFunc func(webex flux2.WebExchange) (version string)
+	VersionLookupFunc func(webex flux.WebExchange) (version string)
 )
 
 // BootstrapServer
 type BootstrapServer struct {
-	listener          map[string]flux2.WebListener
-	hooks             []flux2.WebExchangeHook
+	listener          map[string]flux.WebListener
+	hooks             []flux.WebExchangeHook
 	versionLookupFunc VersionLookupFunc
 	router            *Router
 	started           chan struct{}
@@ -53,7 +53,7 @@ type BootstrapServer struct {
 }
 
 // WithWebExchangeHooks 配置请求Hook函数列表
-func WithWebExchangeHooks(hooks ...flux2.WebExchangeHook) Option {
+func WithWebExchangeHooks(hooks ...flux.WebExchangeHook) Option {
 	return func(bs *BootstrapServer) {
 		bs.hooks = append(bs.hooks, hooks...)
 	}
@@ -74,13 +74,13 @@ func WithServerBanner(banner string) Option {
 }
 
 // WithPrepareHooks 配置服务启动预备阶段Hook函数列表
-func WithPrepareHooks(hooks ...flux2.PrepareHookFunc) Option {
+func WithPrepareHooks(hooks ...flux.PrepareHookFunc) Option {
 	return func(bs *BootstrapServer) {
 		bs.router.hooks = append(bs.router.hooks, hooks...)
 	}
 }
 
-func WithWebListener(server flux2.WebListener) Option {
+func WithWebListener(server flux.WebListener) Option {
 	return func(bs *BootstrapServer) {
 		bs.AddListenServer(server.ListenerId(), server)
 	}
@@ -89,7 +89,7 @@ func WithWebListener(server flux2.WebListener) Option {
 func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 	opts := []Option{
 		WithServerBanner(defaultBanner),
-		WithVersionLookupFunc(func(webex flux2.WebExchange) string {
+		WithVersionLookupFunc(func(webex flux.WebExchange) string {
 			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
@@ -98,9 +98,9 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 		WithWebListener(listener.New(ListenServerIdAdmin, LoadWebListenerConfig(ListenServerIdAdmin), nil,
 			// 内部元数据查询
 			listener.WithWebHandlers([]listener.WebHandlerTuple{
-				{Method: "GET", Pattern: "/inspect/endpoints", Handler: inspect.InspectEndpointsHandler},
-				{Method: "GET", Pattern: "/inspect/services", Handler: inspect.InspectServicesHandler},
-				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux2.WrapHttpHandler(promhttp.Handler())},
+				{Method: "GET", Pattern: "/inspect/endpoints", Handler: inspect.EndpointsHandler},
+				{Method: "GET", Pattern: "/inspect/services", Handler: inspect.ServicesHandler},
+				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),
 		)),
 	}
@@ -110,8 +110,8 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 	srv := &BootstrapServer{
 		router:   NewRouter(),
-		listener: make(map[string]flux2.WebListener, 2),
-		hooks:    make([]flux2.WebExchangeHook, 0, 4),
+		listener: make(map[string]flux.WebListener, 2),
+		hooks:    make([]flux.WebExchangeHook, 0, 4),
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),
 		banner:   defaultBanner,
@@ -144,7 +144,7 @@ func (s *BootstrapServer) Initial() error {
 	return s.router.Initial()
 }
 
-func (s *BootstrapServer) Startup(build flux2.Build) error {
+func (s *BootstrapServer) Startup(build flux.Build) error {
 	logger.Infof(VersionFormat, build.CommitId, build.Version, build.Date)
 	if "" != s.banner {
 		logger.Info(s.banner)
@@ -158,8 +158,8 @@ func (s *BootstrapServer) start() error {
 	if err := s.router.Startup(); nil != err {
 		return err
 	}
-	endpoints := make(chan flux2.HttpEndpointEvent, 2)
-	services := make(chan flux2.BackendServiceEvent, 2)
+	endpoints := make(chan flux.HttpEndpointEvent, 2)
+	services := make(chan flux.BackendServiceEvent, 2)
 	defer func() {
 		close(endpoints)
 		close(services)
@@ -170,7 +170,7 @@ func (s *BootstrapServer) start() error {
 	// Start Servers
 	var errch chan error
 	for lid, wl := range s.listener {
-		go func(id string, server flux2.WebListener) {
+		go func(id string, server flux.WebListener) {
 			logger.Infow("WebListener starting, server-id: " + id)
 			errch <- server.Listen()
 		}(lid, wl)
@@ -179,7 +179,7 @@ func (s *BootstrapServer) start() error {
 	return <-errch
 }
 
-func (s *BootstrapServer) startDiscovery(endpoints chan flux2.HttpEndpointEvent, services chan flux2.BackendServiceEvent) error {
+func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, services chan flux.BackendServiceEvent) error {
 	for _, discovery := range ext.EndpointDiscoveries() {
 		if err := discovery.WatchEndpoints(endpoints); nil != err {
 			return err
@@ -210,7 +210,7 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux2.HttpEndpointEvent,
 	return nil
 }
 
-func (s *BootstrapServer) route(webex flux2.WebExchange, server flux2.WebListener, endpoints *flux2.MultiEndpoint) error {
+func (s *BootstrapServer) route(webex flux.WebExchange, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
 	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webex))
 	// 实现动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
@@ -238,7 +238,7 @@ func (s *BootstrapServer) route(webex flux2.WebExchange, server flux2.WebListene
 				"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 			)
 		}
-		return flux2.ErrRouteNotFound
+		return flux.ErrRouteNotFound
 	}
 	ctxw := context.New(webex, endpoint)
 	defer context.ReleaseContext(ctxw)
@@ -263,25 +263,25 @@ func (s *BootstrapServer) route(webex flux2.WebExchange, server flux2.WebListene
 	}
 }
 
-func (s *BootstrapServer) onBackendServiceEvent(event flux2.BackendServiceEvent) {
+func (s *BootstrapServer) onBackendServiceEvent(event flux.BackendServiceEvent) {
 	service := event.Service
 	initArguments(service.Arguments)
 	switch event.EventType {
-	case flux2.EventTypeAdded:
+	case flux.EventTypeAdded:
 		logger.Infow("SERVER:META:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RegisterBackendService(service)
 		if "" != service.AliasId {
 			ext.RegisterBackendServiceById(service.AliasId, service)
 		}
-	case flux2.EventTypeUpdated:
+	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:META:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RegisterBackendService(service)
 		if "" != service.AliasId {
 			ext.RegisterBackendServiceById(service.AliasId, service)
 		}
-	case flux2.EventTypeRemoved:
+	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:META:SERVICE:REMOVE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RemoveBackendService(service.ServiceId)
@@ -291,7 +291,7 @@ func (s *BootstrapServer) onBackendServiceEvent(event flux2.BackendServiceEvent)
 	}
 }
 
-func (s *BootstrapServer) onHttpEndpointEvent(event flux2.HttpEndpointEvent) {
+func (s *BootstrapServer) onHttpEndpointEvent(event flux.HttpEndpointEvent) {
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	// Check http method
 	if !isAllowedHttpMethod(method) {
@@ -306,12 +306,12 @@ func (s *BootstrapServer) onHttpEndpointEvent(event flux2.HttpEndpointEvent) {
 	initArguments(endpoint.Permission.Arguments)
 	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
-	case flux2.EventTypeAdded:
+	case flux.EventTypeAdded:
 		logger.Infow("SERVER:META:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
 		bind.Update(endpoint.Version, &endpoint)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if isreg {
-			id := endpoint.GetAttr(flux2.EndpointAttrTagServerId).GetString()
+			id := endpoint.GetAttr(flux.EndpointAttrTagServerId).GetString()
 			if id == "" {
 				id = ListenerIdDefault
 			}
@@ -323,10 +323,10 @@ func (s *BootstrapServer) onHttpEndpointEvent(event flux2.HttpEndpointEvent) {
 				logger.Errorw("SERVER:META:ENDPOINT:LISTENER_MISSED/"+id, "method", method, "pattern", pattern)
 			}
 		}
-	case flux2.EventTypeUpdated:
+	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:META:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
 		bind.Update(endpoint.Version, &endpoint)
-	case flux2.EventTypeRemoved:
+	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:META:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
 		bind.Delete(endpoint.Version)
 	}
@@ -368,12 +368,12 @@ func (s *BootstrapServer) StateStopped() <-chan struct{} {
 }
 
 // AddWebInterceptor 添加Http前拦截器到默认ListenerServer。将在Http被路由到对应Handler之前执行
-func (s *BootstrapServer) AddWebInterceptor(m flux2.WebInterceptor) {
+func (s *BootstrapServer) AddWebInterceptor(m flux.WebInterceptor) {
 	s.defaultListener().AddInterceptor(m)
 }
 
 // AddWebHandler 添加Http处理接口到默认ListenerServer。
-func (s *BootstrapServer) AddWebHandler(method, pattern string, h flux2.WebHandler, m ...flux2.WebInterceptor) {
+func (s *BootstrapServer) AddWebHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
 	s.defaultListener().AddHandler(method, pattern, h, m...)
 }
 
@@ -383,33 +383,33 @@ func (s *BootstrapServer) AddWebHttpHandler(method, pattern string, h http.Handl
 }
 
 // SetWebNotfoundHandler 设置Http路由失败的处理接口到默认ListenerServer
-func (s *BootstrapServer) SetWebNotfoundHandler(nfh flux2.WebHandler) {
+func (s *BootstrapServer) SetWebNotfoundHandler(nfh flux.WebHandler) {
 	s.defaultListener().SetNotfoundHandler(nfh)
 }
 
 // AddListenServer 添加指定ID
-func (s *BootstrapServer) AddListenServer(id string, server flux2.WebListener) {
-	s.listener[id] = fluxpkg.MustNotNil(server, "WebListener is nil").(flux2.WebListener)
+func (s *BootstrapServer) AddListenServer(id string, server flux.WebListener) {
+	s.listener[id] = fluxpkg.MustNotNil(server, "WebListener is nil").(flux.WebListener)
 }
 
 // WebListenerById 返回ListenServer实例
-func (s *BootstrapServer) WebListenerById(listenerId string) (flux2.WebListener, bool) {
+func (s *BootstrapServer) WebListenerById(listenerId string) (flux.WebListener, bool) {
 	ls, ok := s.listener[listenerId]
 	return ls, ok
 }
 
 // AddWebExchangeHook 添加Http与Flux的Context桥接函数
-func (s *BootstrapServer) AddWebExchangeHook(f flux2.WebExchangeHook) {
+func (s *BootstrapServer) AddWebExchangeHook(f flux.WebExchangeHook) {
 	s.hooks = append(s.hooks, f)
 }
 
-func (s *BootstrapServer) newEndpointHandler(server flux2.WebListener, endpoint *flux2.MultiEndpoint) flux2.WebHandler {
-	return func(webex flux2.WebExchange) error {
+func (s *BootstrapServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MultiEndpoint) flux.WebHandler {
+	return func(webex flux.WebExchange) error {
 		return s.route(webex, server, endpoint)
 	}
 }
 
-func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux2.Endpoint) (*flux2.MultiEndpoint, bool) {
+func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*flux.MultiEndpoint, bool) {
 	if mve, ok := ext.EndpointByKey(routeKey); ok {
 		return mve, false
 	} else {
@@ -417,7 +417,7 @@ func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux2.E
 	}
 }
 
-func (s *BootstrapServer) defaultListener() flux2.WebListener {
+func (s *BootstrapServer) defaultListener() flux.WebListener {
 	count := len(s.listener)
 	if count == 0 {
 		return nil
@@ -433,12 +433,12 @@ func (s *BootstrapServer) defaultListener() flux2.WebListener {
 	return nil
 }
 
-func LoadWebListenerConfig(id string) *flux2.Configuration {
-	return flux2.NewConfigurationOfNS(flux2.NamespaceWebListeners + "." + id)
+func LoadWebListenerConfig(id string) *flux.Configuration {
+	return flux.NewConfigurationOfNS(flux.NamespaceWebListeners + "." + id)
 }
 
-func LoadEndpointDiscoveryConfig(id string) *flux2.Configuration {
-	return flux2.NewConfigurationOfNS(flux2.NamespaceEndpointDiscoveryServices + "." + id)
+func LoadEndpointDiscoveryConfig(id string) *flux.Configuration {
+	return flux.NewConfigurationOfNS(flux.NamespaceEndpointDiscoveryServices + "." + id)
 }
 
 func isAllowedHttpMethod(method string) bool {
@@ -454,7 +454,7 @@ func isAllowedHttpMethod(method string) bool {
 	}
 }
 
-func initArguments(args []flux2.Argument) {
+func initArguments(args []flux.Argument) {
 	for i := range args {
 		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
 		args[i].LookupFunc = ext.ArgumentLookupFunc()

@@ -1,7 +1,7 @@
 package main
 
 import (
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	_ "github.com/bytepowered/flux/flux-node/backend/dubbo"
 	_ "github.com/bytepowered/flux/flux-node/backend/echo"
 	_ "github.com/bytepowered/flux/flux-node/backend/http"
@@ -27,5 +27,5 @@ var (
 // 或者导入 _ "github.com/bytepowered/flux/webecho" 自动注册WebServer；
 func main() {
 	boot.InitDefaultLogger()
-	boot.Run(flux2.Build{CommitId: GitCommit, Version: Version, Date: BuildDate})
+	boot.Run(flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate})
 }

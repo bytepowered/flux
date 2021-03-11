@@ -2,13 +2,13 @@ package context
 
 import (
 	"errors"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/backend"
 	"github.com/bytepowered/flux/flux-pkg"
 )
 
 // LookupExpr 搜索LookupExpr表达式指定域的值。
-func LookupExpr(expr string, ctx flux2.Context) (interface{}, error) {
+func LookupExpr(expr string, ctx flux.Context) (interface{}, error) {
 	if "" == expr || nil == ctx {
 		return nil, errors.New("empty lookup expr, or context is nil")
 	}

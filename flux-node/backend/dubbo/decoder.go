@@ -2,7 +2,7 @@ package dubbo
 
 import (
 	"github.com/apache/dubbo-go/protocol"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/spf13/cast"
 	"net/http"
 )
@@ -12,13 +12,13 @@ const (
 	ResponseKeyHeaders    = "@net.bytepowered.flux.http-headers"
 )
 
-func NewBackendResponseCodecFuncWith(codeKey, headerKey string) flux2.BackendResponseCodecFunc {
-	return func(ctx flux2.Context, raw interface{}) (*flux2.BackendResponse, error) {
+func NewBackendResponseCodecFuncWith(codeKey, headerKey string) flux.BackendResponseCodecFunc {
+	return func(ctx flux.Context, raw interface{}) (*flux.BackendResponse, error) {
 		// 支持Dubbo返回Result类型
 		rpcr, ok := raw.(protocol.Result)
 		if !ok {
-			return &flux2.BackendResponse{
-				StatusCode: flux2.StatusOK, Headers: make(http.Header, 0), Body: raw,
+			return &flux.BackendResponse{
+				StatusCode: flux.StatusOK, Headers: make(http.Header, 0), Body: raw,
 			}, nil
 		}
 		attrs := make(map[string]interface{}, 8)
@@ -26,7 +26,7 @@ func NewBackendResponseCodecFuncWith(codeKey, headerKey string) flux2.BackendRes
 			return nil, err
 		}
 		data := rpcr.Result()
-		status := flux2.StatusOK
+		status := flux.StatusOK
 		for k, v := range rpcr.Attachments() {
 			if k == codeKey {
 				status = cast.ToInt(v)
@@ -36,12 +36,12 @@ func NewBackendResponseCodecFuncWith(codeKey, headerKey string) flux2.BackendRes
 				attrs[k] = v
 			}
 		}
-		return &flux2.BackendResponse{
+		return &flux.BackendResponse{
 			StatusCode: status, Headers: make(http.Header, 0), Attachments: attrs, Body: data,
 		}, nil
 	}
 }
 
-func NewBackendResponseCodecFunc() flux2.BackendResponseCodecFunc {
+func NewBackendResponseCodecFunc() flux.BackendResponseCodecFunc {
 	return NewBackendResponseCodecFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders)
 }

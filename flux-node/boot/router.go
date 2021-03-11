@@ -3,7 +3,7 @@ package boot
 import (
 	"context"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,13 +14,13 @@ import (
 
 type Router struct {
 	metrics *Metrics
-	hooks   []flux2.PrepareHookFunc
+	hooks   []flux.PrepareHookFunc
 }
 
 func NewRouter() *Router {
 	return &Router{
 		metrics: NewMetrics(),
-		hooks:   make([]flux2.PrepareHookFunc, 0, 4),
+		hooks:   make([]flux.PrepareHookFunc, 0, 4),
 	}
 }
 
@@ -38,9 +38,9 @@ func (r *Router) Initial() error {
 	logger.Info("Router initialing")
 	// Backends
 	for proto, backend := range ext.BackendTransports() {
-		ns := flux2.NamespaceBackendTransports + "." + proto
+		ns := flux.NamespaceBackendTransports + "." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
-		if err := r.AddInitHook(backend, flux2.NewConfigurationOfNS(ns)); nil != err {
+		if err := r.AddInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}
 	}
@@ -48,7 +48,7 @@ func (r *Router) Initial() error {
 	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
 		ns := filter.TypeId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
-		config := flux2.NewConfigurationOfNS(ns)
+		config := flux.NewConfigurationOfNS(ns)
 		if isDisabled(config) {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
 			continue
@@ -72,15 +72,15 @@ func (r *Router) Initial() error {
 		if err := r.AddInitHook(filter, item.Config); nil != err {
 			return err
 		}
-		if filter, ok := filter.(flux2.Filter); ok {
+		if filter, ok := filter.(flux.Filter); ok {
 			ext.AddSelectiveFilter(filter)
 		}
 	}
 	return nil
 }
 
-func (r *Router) AddInitHook(ref interface{}, config *flux2.Configuration) error {
-	if init, ok := ref.(flux2.Initializer); ok {
+func (r *Router) AddInitHook(ref interface{}, config *flux.Configuration) error {
+	if init, ok := ref.(flux.Initializer); ok {
 		if err := init.Init(config); nil != err {
 			return err
 		}
@@ -107,9 +107,9 @@ func (r *Router) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Router) Route(ctx flux2.Context) *flux2.ServeError {
+func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	// 统计异常
-	doMetricEndpointFunc := func(err *flux2.ServeError) *flux2.ServeError {
+	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
 		backend := ctx.BackendService()
 		proto, uri, method := backend.AttrRpcProto(), backend.Interface, backend.Method
@@ -125,18 +125,18 @@ func (r *Router) Route(ctx flux2.Context) *flux2.ServeError {
 		ctx.AddMetric("route", time.Since(ctx.StartAt()))
 	}()
 	// Select filters
-	selective := make([]flux2.Filter, 0, 16)
+	selective := make([]flux.Filter, 0, 16)
 	for _, selector := range ext.FilterSelectors() {
 		if selector.Activate(ctx) {
 			selective = append(selective, selector.DoSelect(ctx)...)
 		}
 	}
 	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
-	transport := func(ctx flux2.Context) *flux2.ServeError {
+	transport := func(ctx flux.Context) *flux.ServeError {
 		select {
 		case <-ctx.Context().Done():
-			return &flux2.ServeError{
-				StatusCode: flux2.StatusOK,
+			return &flux.ServeError{
+				StatusCode: flux.StatusOK,
 				ErrorCode:  "ROUTE:TRANSPORT/B:CANCELED",
 				CauseError: ctx.Context().Err(),
 			}
@@ -150,9 +150,9 @@ func (r *Router) Route(ctx flux2.Context) *flux2.ServeError {
 		if backend, ok := ext.BackendTransportByProto(protoName); !ok {
 			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", protoName, "service", ctx.Endpoint().Service)
-			return &flux2.ServeError{
-				StatusCode: flux2.StatusNotFound,
-				ErrorCode:  flux2.ErrorCodeRequestNotFound,
+			return &flux.ServeError{
+				StatusCode: flux.StatusNotFound,
+				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName),
 			}
 		} else {
@@ -168,18 +168,18 @@ func (r *Router) Route(ctx flux2.Context) *flux2.ServeError {
 	return doMetricEndpointFunc(r.walk(transport, filters)(ctx))
 }
 
-func (r *Router) walk(next flux2.FilterHandler, filters []flux2.Filter) flux2.FilterHandler {
+func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}
 	return next
 }
 
-func isDisabled(config *flux2.Configuration) bool {
+func isDisabled(config *flux.Configuration) bool {
 	return config.GetBool("disable") || config.GetBool("disabled")
 }
 
-func sortedStartup(items []flux2.Startuper) []flux2.Startuper {
+func sortedStartup(items []flux.Startuper) []flux.Startuper {
 	out := make(StartupArray, len(items))
 	for i, v := range items {
 		out[i] = v
@@ -188,7 +188,7 @@ func sortedStartup(items []flux2.Startuper) []flux2.Startuper {
 	return out
 }
 
-func sortedShutdown(items []flux2.Shutdowner) []flux2.Shutdowner {
+func sortedShutdown(items []flux.Shutdowner) []flux.Shutdowner {
 	out := make(ShutdownArray, len(items))
 	for i, v := range items {
 		out[i] = v

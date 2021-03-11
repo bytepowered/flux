@@ -2,7 +2,7 @@ package context
 
 import (
 	"context"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/spf13/cast"
 	"io"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var _ flux2.Request = new(MockRequest)
+var _ flux.Request = new(MockRequest)
 
 func NewMockRequest(values map[string]interface{}) *MockRequest {
 	return &MockRequest{values: values}
@@ -132,9 +132,9 @@ func (r *MockRequest) CookieVar(name string) *http.Cookie {
 
 ////
 
-var _ flux2.Context = new(MockContext)
+var _ flux.Context = new(MockContext)
 
-func NewMockContext(values map[string]interface{}) flux2.Context {
+func NewMockContext(values map[string]interface{}) flux.Context {
 	return &MockContext{
 		time:      time.Now(),
 		request:   NewMockRequest(values),
@@ -142,14 +142,14 @@ func NewMockContext(values map[string]interface{}) flux2.Context {
 	}
 }
 
-func NewEmptyContext() flux2.Context {
+func NewEmptyContext() flux.Context {
 	return NewMockContext(map[string]interface{}{})
 }
 
 type MockContext struct {
 	time      time.Time
 	request   *MockRequest
-	ctxLogger flux2.Logger
+	ctxLogger flux.Logger
 }
 
 func (mc *MockContext) StartAt() time.Time {
@@ -160,7 +160,7 @@ func (mc *MockContext) AddMetric(name string, elapsed time.Duration) {
 	// nop
 }
 
-func (mc *MockContext) Metrics() []flux2.Metric {
+func (mc *MockContext) Metrics() []flux.Metric {
 	return nil
 }
 
@@ -176,28 +176,28 @@ func (mc *MockContext) RequestId() string {
 	return cast.ToString(mc.request.values["request-id"])
 }
 
-func (mc *MockContext) Request() flux2.Request {
+func (mc *MockContext) Request() flux.Request {
 	return mc.request
 }
 
-func (mc *MockContext) Response() flux2.Response {
+func (mc *MockContext) Response() flux.Response {
 	return nil
 }
 
-func (mc *MockContext) Endpoint() flux2.Endpoint {
-	return flux2.Endpoint{}
+func (mc *MockContext) Endpoint() flux.Endpoint {
+	return flux.Endpoint{}
 }
 
 func (mc *MockContext) Application() string {
 	return "mock"
 }
 
-func (mc *MockContext) BackendService() flux2.BackendService {
+func (mc *MockContext) BackendService() flux.BackendService {
 	s, ok := mc.request.values["service"]
 	if ok {
-		return s.(flux2.BackendService)
+		return s.(flux.BackendService)
 	} else {
-		return flux2.BackendService{}
+		return flux.BackendService{}
 	}
 }
 
@@ -251,10 +251,10 @@ func (mc *MockContext) Context() context.Context {
 	return context.Background()
 }
 
-func (mc *MockContext) SetLogger(logger flux2.Logger) {
+func (mc *MockContext) SetLogger(logger flux.Logger) {
 	mc.ctxLogger = logger
 }
 
-func (mc *MockContext) Logger() flux2.Logger {
+func (mc *MockContext) Logger() flux.Logger {
 	return mc.ctxLogger
 }

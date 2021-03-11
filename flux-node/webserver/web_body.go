@@ -3,7 +3,7 @@ package webserver
 import (
 	"bytes"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/labstack/echo/v4"
 	"io"
 	"io/ioutil"
@@ -16,10 +16,10 @@ func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
 		request := echo.Request()
 		data, err := ioutil.ReadAll(request.Body)
 		if nil != err {
-			return &flux2.ServeError{
-				StatusCode: flux2.StatusBadRequest,
-				ErrorCode:  flux2.ErrorCodeGatewayInternal,
-				Message:    flux2.ErrorMessageRequestPrepare,
+			return &flux.ServeError{
+				StatusCode: flux.StatusBadRequest,
+				ErrorCode:  flux.ErrorCodeGatewayInternal,
+				Message:    flux.ErrorMessageRequestPrepare,
 				CauseError: fmt.Errorf("read request body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
 			}
 		}

@@ -2,7 +2,7 @@ package discovery
 
 import (
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"gopkg.in/yaml.v2"
@@ -13,7 +13,7 @@ const (
 	ResourceId = "resource"
 )
 
-var _ flux2.EndpointDiscovery = new(ResourceDiscoveryService)
+var _ flux.EndpointDiscovery = new(ResourceDiscoveryService)
 
 type (
 	// ZookeeperOption 配置函数
@@ -21,8 +21,8 @@ type (
 )
 
 type Resources struct {
-	Endpoints []flux2.Endpoint       `yaml:"endpoints"`
-	Services  []flux2.BackendService `yaml:"services"`
+	Endpoints []flux.Endpoint       `yaml:"endpoints"`
+	Services  []flux.BackendService `yaml:"services"`
 }
 
 // NewResourceServiceWith returns new a resource based discovery service
@@ -46,7 +46,7 @@ func (r *ResourceDiscoveryService) Id() string {
 	return r.id
 }
 
-func (r *ResourceDiscoveryService) Init(config *flux2.Configuration) error {
+func (r *ResourceDiscoveryService) Init(config *flux.Configuration) error {
 	// 加载指定路径的配置
 	files := config.GetStringSlice("includes")
 	logger.Infow("Resource discovery, load resources", "includes", files)
@@ -71,24 +71,24 @@ func (r *ResourceDiscoveryService) Init(config *flux2.Configuration) error {
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchEndpoints(events chan<- flux2.HttpEndpointEvent) error {
+func (r *ResourceDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpointEvent) error {
 	for _, res := range r.resources {
 		for _, ep := range res.Endpoints {
 			if ep.IsValid() {
 				EnsureServiceAttrs(&ep.Service)
-				events <- flux2.HttpEndpointEvent{EventType: flux2.EventTypeAdded, Endpoint: ep}
+				events <- flux.HttpEndpointEvent{EventType: flux.EventTypeAdded, Endpoint: ep}
 			}
 		}
 	}
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchServices(events chan<- flux2.BackendServiceEvent) error {
+func (r *ResourceDiscoveryService) WatchServices(events chan<- flux.BackendServiceEvent) error {
 	for _, res := range r.resources {
 		for _, srv := range res.Services {
 			if srv.IsValid() {
 				EnsureServiceAttrs(&srv)
-				events <- flux2.BackendServiceEvent{EventType: flux2.EventTypeAdded, Service: srv}
+				events <- flux.BackendServiceEvent{EventType: flux.EventTypeAdded, Service: srv}
 			}
 		}
 	}

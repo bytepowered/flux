@@ -3,7 +3,7 @@ package webserver
 import (
 	"context"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/internal"
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/labstack/echo/v4"
@@ -19,9 +19,9 @@ const (
 	ContextKeyWebResolver   = ContextKeyWebPrefix + ".adapted.body.resolver"
 )
 
-var _ flux2.WebExchange = new(AdaptWebExchange)
+var _ flux.WebExchange = new(AdaptWebExchange)
 
-func NewAdaptWebExchange(id string, echoc echo.Context, server flux2.WebListener, resolver flux2.WebRequestResolver) *AdaptWebExchange {
+func NewAdaptWebExchange(id string, echoc echo.Context, server flux.WebListener, resolver flux.WebRequestResolver) *AdaptWebExchange {
 	return &AdaptWebExchange{
 		context:         context.WithValue(echoc.Request().Context(), internal.ContextKeyRequestId, id),
 		echoc:           echoc,
@@ -35,9 +35,9 @@ func NewAdaptWebExchange(id string, echoc echo.Context, server flux2.WebListener
 type AdaptWebExchange struct {
 	context         context.Context
 	echoc           echo.Context
-	server          flux2.WebListener
-	requestResolver flux2.WebRequestResolver
-	responseWriter  flux2.WebResponseWriter
+	server          flux.WebListener
+	requestResolver flux.WebRequestResolver
+	responseWriter  flux.WebResponseWriter
 	pathValues      url.Values
 	bodyValues      url.Values
 }
@@ -152,11 +152,11 @@ func (c *AdaptWebExchange) WriteStream(statusCode int, contentType string, reade
 	return c.echoc.Stream(statusCode, contentType, reader)
 }
 
-func (c *AdaptWebExchange) Send(webex flux2.WebExchange, header http.Header, status int, data interface{}) error {
+func (c *AdaptWebExchange) Send(webex flux.WebExchange, header http.Header, status int, data interface{}) error {
 	return c.server.Write(webex, header, status, data)
 }
 
-func (c *AdaptWebExchange) SendError(error *flux2.ServeError) {
+func (c *AdaptWebExchange) SendError(error *flux.ServeError) {
 	c.server.WriteError(c, error)
 }
 
@@ -205,13 +205,13 @@ func (c *AdaptWebExchange) ShadowResponse() interface{} {
 	return c.echoc.Response()
 }
 
-func toAdaptWebExchange(echoc echo.Context) flux2.WebExchange {
+func toAdaptWebExchange(echoc echo.Context) flux.WebExchange {
 	if webex, ok := echoc.Get(ContextKeyWebContext).(*AdaptWebExchange); ok {
 		return webex
 	}
-	resolver, ok := echoc.Get(ContextKeyWebResolver).(flux2.WebRequestResolver)
+	resolver, ok := echoc.Get(ContextKeyWebResolver).(flux.WebRequestResolver)
 	fluxpkg.Assert(ok, fmt.Sprintf("invalid <request-resolver> in echo.context, was: %+v", echoc.Get(ContextKeyWebResolver)))
-	server, ok := echoc.Get(ContextKeyWebBindServer).(flux2.WebListener)
+	server, ok := echoc.Get(ContextKeyWebBindServer).(flux.WebListener)
 	fluxpkg.Assert(ok, fmt.Sprintf("invalid <listen-server> in echo.context, was: %+v", echoc.Get(ContextKeyWebBindServer)))
 	// 从Header中读取RequestId
 	id := echoc.Request().Header.Get(echo.HeaderXRequestID)

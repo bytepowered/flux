@@ -2,7 +2,7 @@ package boot
 
 import (
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/spf13/viper"
@@ -16,8 +16,8 @@ const (
 type AwareConfig struct {
 	Id      string
 	TypeId  string
-	Config  *flux2.Configuration
-	Factory flux2.Factory
+	Config  *flux.Configuration
+	Factory flux.Factory
 }
 
 // 动态加载Filter
@@ -29,7 +29,7 @@ func dynamicFilters() ([]AwareConfig, error) {
 			logger.Infow("Filter configuration is empty or without typeId", "typeId", id)
 			continue
 		}
-		config := flux2.NewConfigurationOfViper(v)
+		config := flux.NewConfigurationOfViper(v)
 		typeId := config.GetString(dynConfigKeyTypeId)
 		if config.GetBool(dynConfigKeyDisable) {
 			logger.Infow("Filter is DISABLED", "typeId", typeId, "id", id)

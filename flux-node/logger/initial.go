@@ -3,7 +3,7 @@ package logger
 import (
 	"context"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
@@ -24,12 +24,12 @@ var (
 	defaultZapLogger = NewZapLogger(defaultZapConfig)
 )
 
-func DefaultFactory(values context.Context) flux2.Logger {
+func DefaultFactory(values context.Context) flux.Logger {
 	return SugaredFactory(defaultZapLogger)(values)
 }
 
-func SugaredFactory(sugar *zap.SugaredLogger) flux2.LoggerFactory {
-	return func(values context.Context) flux2.Logger {
+func SugaredFactory(sugar *zap.SugaredLogger) flux.LoggerFactory {
+	return func(values context.Context) flux.Logger {
 		if values == nil {
 			return sugar
 		}

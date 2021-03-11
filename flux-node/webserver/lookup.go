@@ -1,7 +1,7 @@
 package webserver
 
 import (
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/spf13/cast"
 	"net/url"
@@ -9,7 +9,7 @@ import (
 )
 
 // LookupValueByExpr 搜索LookupExpr表达式指定域的值。
-func LookupValueByExpr(lookupExpr string, webex flux2.WebExchange) string {
+func LookupValueByExpr(lookupExpr string, webex flux.WebExchange) string {
 	if "" == lookupExpr || nil == webex {
 		return ""
 	}
@@ -20,17 +20,17 @@ func LookupValueByExpr(lookupExpr string, webex flux2.WebExchange) string {
 	return LookupValue(scope, key, webex)
 }
 
-func LookupValue(scope, key string, webex flux2.WebExchange) string {
+func LookupValue(scope, key string, webex flux.WebExchange) string {
 	switch strings.ToUpper(scope) {
-	case flux2.ScopePath:
+	case flux.ScopePath:
 		return webex.PathVar(key)
-	case flux2.ScopeQuery:
+	case flux.ScopeQuery:
 		return webex.QueryVar(key)
-	case flux2.ScopeForm:
+	case flux.ScopeForm:
 		return webex.FormVar(key)
-	case flux2.ScopeHeader:
+	case flux.ScopeHeader:
 		return webex.HeaderVar(key)
-	case flux2.ScopeRequest:
+	case flux.ScopeRequest:
 		switch strings.ToLower(key) {
 		case "method":
 			return webex.Method()
@@ -38,10 +38,10 @@ func LookupValue(scope, key string, webex flux2.WebExchange) string {
 			return webex.URI()
 		}
 		return webex.Method()
-	case flux2.ScopeParam:
+	case flux.ScopeParam:
 		v, _ := fluxpkg.LookupByProviders(key, webex.QueryVars, webex.FormVars)
 		return v
-	case flux2.ScopeAuto:
+	case flux.ScopeAuto:
 		if v, ok := fluxpkg.LookupByProviders(key, webex.PathVars, webex.QueryVars, webex.FormVars, func() url.Values {
 			return url.Values(webex.HeaderVars())
 		}); ok {

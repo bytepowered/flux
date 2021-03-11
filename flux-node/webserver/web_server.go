@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-pkg"
@@ -27,17 +27,17 @@ const (
 	ConfigKeyRequestIdDisabled = "request_id_disabled"
 )
 
-var _ flux2.WebListener = new(AdaptWebListener)
+var _ flux.WebListener = new(AdaptWebListener)
 
 func init() {
 	ext.SetWebListenerFactory(NewWebListener)
 }
 
-func NewWebListener(id string, config *flux2.Configuration) flux2.WebListener {
+func NewWebListener(id string, config *flux.Configuration) flux.WebListener {
 	return NewWebListenerWith(id, config, nil)
 }
 
-func NewWebListenerWith(id string, options *flux2.Configuration, mws *AdaptMiddleware) flux2.WebListener {
+func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddleware) flux.WebListener {
 	fluxpkg.Assert("" != id, "empty <listener-id> in web listener configuration")
 	server := echo.New()
 	server.HideBanner = true
@@ -95,8 +95,8 @@ func NewWebListenerWith(id string, options *flux2.Configuration, mws *AdaptMiddl
 type AdaptWebListener struct {
 	listenerId      string
 	server          *echo.Echo
-	writer          flux2.WebResponseWriter
-	requestResolver flux2.WebRequestResolver
+	writer          flux.WebResponseWriter
+	requestResolver flux.WebRequestResolver
 	tlsCertFile     string
 	tlsKeyFile      string
 	address         string
@@ -106,7 +106,7 @@ func (s *AdaptWebListener) ListenerId() string {
 	return s.listenerId
 }
 
-func (s *AdaptWebListener) Init(opts *flux2.Configuration) error {
+func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
 	s.tlsCertFile = opts.GetString(ConfigKeyTLSCertFile)
 	s.tlsKeyFile = opts.GetString(ConfigKeyTLSKeyFile)
 	addr, port := opts.GetString(ConfigKeyAddress), opts.GetString(ConfigKeyBindPort)
@@ -130,33 +130,33 @@ func (s *AdaptWebListener) Listen() error {
 	}
 }
 
-func (s *AdaptWebListener) Write(webex flux2.WebExchange, header http.Header, status int, data interface{}) error {
+func (s *AdaptWebListener) Write(webex flux.WebExchange, header http.Header, status int, data interface{}) error {
 	return s.writer(webex, header, status, data, nil)
 }
 
-func (s *AdaptWebListener) WriteError(webex flux2.WebExchange, err *flux2.ServeError) {
+func (s *AdaptWebListener) WriteError(webex flux.WebExchange, err *flux.ServeError) {
 	if err := s.writer(webex, err.Header, err.StatusCode, nil, err); nil != err {
 		logger.Errorw("WebListener write error failed", "error", err, "server-id", s.listenerId)
 	}
 }
 
-func (s *AdaptWebListener) WriteNotfound(webex flux2.WebExchange) error {
+func (s *AdaptWebListener) WriteNotfound(webex flux.WebExchange) error {
 	return echo.NotFoundHandler(webex.ShadowContext().(echo.Context))
 }
 
-func (s *AdaptWebListener) SetResponseWriter(f flux2.WebResponseWriter) {
-	s.writer = fluxpkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.listenerId).(flux2.WebResponseWriter)
+func (s *AdaptWebListener) SetResponseWriter(f flux.WebResponseWriter) {
+	s.writer = fluxpkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.listenerId).(flux.WebResponseWriter)
 }
 
-func (s *AdaptWebListener) SetRequestResolver(resolver flux2.WebRequestResolver) {
+func (s *AdaptWebListener) SetRequestResolver(resolver flux.WebRequestResolver) {
 	s.requestResolver = resolver
 }
 
-func (s *AdaptWebListener) SetNotfoundHandler(fun flux2.WebHandler) {
+func (s *AdaptWebListener) SetNotfoundHandler(fun flux.WebHandler) {
 	echo.NotFoundHandler = AdaptWebHandler(fun).AdaptFunc
 }
 
-func (s *AdaptWebListener) SetErrorHandler(handler flux2.WebErrorHandler) {
+func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
 	s.server.HTTPErrorHandler = func(err error, c echo.Context) {
 		webex, ok := c.Get(ContextKeyWebContext).(*AdaptWebExchange)
@@ -165,15 +165,15 @@ func (s *AdaptWebListener) SetErrorHandler(handler flux2.WebErrorHandler) {
 	}
 }
 
-func (s *AdaptWebListener) AddInterceptor(m flux2.WebInterceptor) {
+func (s *AdaptWebListener) AddInterceptor(m flux.WebInterceptor) {
 	s.server.Pre(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (s *AdaptWebListener) AddWebMiddleware(m flux2.WebInterceptor) {
+func (s *AdaptWebListener) AddWebMiddleware(m flux.WebInterceptor) {
 	s.server.Use(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (s *AdaptWebListener) AddHandler(method, pattern string, h flux2.WebHandler, m ...flux2.WebInterceptor) {
+func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mi := range m {
 		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
@@ -212,7 +212,7 @@ func toRoutePattern(uri string) string {
 }
 
 // 默认对RequestBody的表单数据进行解析
-func DefaultRequestResolver(webex flux2.WebExchange) url.Values {
+func DefaultRequestResolver(webex flux.WebExchange) url.Values {
 	form, err := webex.(*AdaptWebExchange).echoc.FormParams()
 	if nil != err {
 		panic(fmt.Errorf("parse form params failed, err: %w", err))

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/spf13/cast"
 	"io"
@@ -19,46 +19,46 @@ var (
 )
 
 var (
-	stringResolver = flux2.MTValueResolver(func(mtValue flux2.MTValue, _ string, genericTypes []string) (interface{}, error) {
+	stringResolver = flux.MTValueResolver(func(mtValue flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
 		return CastDecodeMTValueToString(mtValue)
 	})
-	integerResolver = flux2.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+	integerResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return int(0), nil
 		}
 		return cast.ToIntE(value)
 	}).ResolveMT
-	longResolver = flux2.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+	longResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return int64(0), nil
 		}
 		return cast.ToInt64E(value)
 	}).ResolveMT
-	float32Resolver = flux2.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+	float32Resolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return float32(0), nil
 		}
 		return cast.ToFloat32E(value)
 	}).ResolveMT
-	float64Resolver = flux2.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+	float64Resolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return float64(0), nil
 		}
 		return cast.ToFloat64E(value)
 	}).ResolveMT
-	booleanResolver = flux2.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
+	booleanResolver = flux.WrapMTValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return false, nil
 		}
 		return cast.ToBoolE(value)
 	}).ResolveMT
-	mapResolver = flux2.MTValueResolver(func(value flux2.MTValue, _ string, genericTypes []string) (interface{}, error) {
+	mapResolver = flux.MTValueResolver(func(value flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
 		return ToStringMapE(value)
 	})
-	listResolver = flux2.MTValueResolver(func(value flux2.MTValue, _ string, genericTypes []string) (interface{}, error) {
+	listResolver = flux.MTValueResolver(func(value flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
 		return ToGenericListE(genericTypes, value)
 	})
-	complexObjectResolver = flux2.MTValueResolver(func(mtValue flux2.MTValue, class string, generic []string) (interface{}, error) {
+	complexObjectResolver = flux.MTValueResolver(func(mtValue flux.MTValue, class string, generic []string) (interface{}, error) {
 		if isEmptyOrNil(mtValue.Value) {
 			return map[string]interface{}{"class": class}, nil
 		}
@@ -73,40 +73,40 @@ var (
 
 func init() {
 	ext.RegisterMTValueResolver("string", stringResolver)
-	ext.RegisterMTValueResolver(flux2.JavaLangStringClassName, stringResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangStringClassName, stringResolver)
 
 	ext.RegisterMTValueResolver("int", integerResolver)
-	ext.RegisterMTValueResolver(flux2.JavaLangIntegerClassName, integerResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangIntegerClassName, integerResolver)
 
 	ext.RegisterMTValueResolver("int64", longResolver)
 	ext.RegisterMTValueResolver("long", longResolver)
-	ext.RegisterMTValueResolver(flux2.JavaLangLongClassName, longResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangLongClassName, longResolver)
 
 	ext.RegisterMTValueResolver("float", float32Resolver)
 	ext.RegisterMTValueResolver("float32", float32Resolver)
-	ext.RegisterMTValueResolver(flux2.JavaLangFloatClassName, float32Resolver)
+	ext.RegisterMTValueResolver(flux.JavaLangFloatClassName, float32Resolver)
 
 	ext.RegisterMTValueResolver("float64", float64Resolver)
 	ext.RegisterMTValueResolver("double", float64Resolver)
-	ext.RegisterMTValueResolver(flux2.JavaLangDoubleClassName, float64Resolver)
+	ext.RegisterMTValueResolver(flux.JavaLangDoubleClassName, float64Resolver)
 
 	ext.RegisterMTValueResolver("bool", booleanResolver)
 	ext.RegisterMTValueResolver("boolean", booleanResolver)
-	ext.RegisterMTValueResolver(flux2.JavaLangBooleanClassName, booleanResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangBooleanClassName, booleanResolver)
 
 	ext.RegisterMTValueResolver("map", mapResolver)
-	ext.RegisterMTValueResolver(flux2.JavaUtilMapClassName, mapResolver)
+	ext.RegisterMTValueResolver(flux.JavaUtilMapClassName, mapResolver)
 
 	ext.RegisterMTValueResolver("slice", listResolver)
 	ext.RegisterMTValueResolver("list", listResolver)
-	ext.RegisterMTValueResolver(flux2.JavaUtilListClassName, listResolver)
+	ext.RegisterMTValueResolver(flux.JavaUtilListClassName, listResolver)
 
 	ext.RegisterMTValueResolver(ext.DefaultMTValueResolverName, complexObjectResolver)
 }
 
 // CastDecodeToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
-func CastDecodeMTValueToString(mtValue flux2.MTValue) (string, error) {
+func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
 	if isEmptyOrNil(mtValue.Value) {
 		return "", nil
 	}
@@ -128,21 +128,21 @@ func CastDecodeMTValueToString(mtValue flux2.MTValue) (string, error) {
 
 // ToStringMapE 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
-func ToStringMapE(mtValue flux2.MTValue) (map[string]interface{}, error) {
+func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 	if isEmptyOrNil(mtValue.Value) {
 		return make(map[string]interface{}, 0), nil
 	}
 	switch mtValue.MediaType {
-	case flux2.ValueMediaTypeGoStringMap:
+	case flux.ValueMediaTypeGoStringMap:
 		return cast.ToStringMap(mtValue.Value), nil
-	case flux2.ValueMediaTypeGoString:
+	case flux.ValueMediaTypeGoString:
 		var hashmap = map[string]interface{}{}
 		if err := ext.JSONUnmarshal([]byte(mtValue.Value.(string)), &hashmap); nil != err {
 			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mtValue.Value, err)
 		} else {
 			return hashmap, nil
 		}
-	case flux2.ValueMediaTypeGoObject:
+	case flux.ValueMediaTypeGoObject:
 		if sm, err := cast.ToStringMapE(mtValue.Value); nil != err {
 			return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", mtValue.Value, mtValue.Value)
 		} else {
@@ -180,7 +180,7 @@ func ToStringMapE(mtValue flux2.MTValue) (map[string]interface{}, error) {
 
 // ToGenericListE 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
-func ToGenericListE(generics []string, mtValue flux2.MTValue) (interface{}, error) {
+func ToGenericListE(generics []string, mtValue flux.MTValue) (interface{}, error) {
 	if isEmptyOrNil(mtValue.Value) {
 		return make([]interface{}, 0), nil
 	}
@@ -197,7 +197,7 @@ func ToGenericListE(generics []string, mtValue flux2.MTValue) (interface{}, erro
 		vValue := reflect.ValueOf(mtValue.Value)
 		out := make([]interface{}, vValue.Len())
 		for i := 0; i < vValue.Len(); i++ {
-			if v, err := resolver(flux2.WrapObjectMTValue(vValue.Index(i).Interface()), generic, []string{}); nil != err {
+			if v, err := resolver(flux.WrapObjectMTValue(vValue.Index(i).Interface()), generic, []string{}); nil != err {
 				return nil, err
 			} else {
 				out[i] = v

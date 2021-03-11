@@ -2,7 +2,7 @@ package boot
 
 import (
 	"context"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/spf13/cast"
@@ -25,7 +25,7 @@ func InitDefaultLogger() {
 	sugar := logger.NewZapLogger(config)
 	logger.SetSimpleLogger(sugar)
 	zap.ReplaceGlobals(sugar.Desugar())
-	ext.SetLoggerFactory(func(values context.Context) flux2.Logger {
+	ext.SetLoggerFactory(func(values context.Context) flux.Logger {
 		if nil == values {
 			return sugar
 		}
@@ -51,7 +51,7 @@ func InitAppConfig(envKey string) {
 	}
 }
 
-func Run(build flux2.Build) {
+func Run(build flux.Build) {
 	InitAppConfig(EnvKeyDeployEnv)
 	server := NewDefaultBootstrapServer()
 	if err := server.Prepare(); nil != err {

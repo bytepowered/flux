@@ -1,7 +1,7 @@
 package testable
 
 import (
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/backend"
 	"github.com/bytepowered/flux/flux-node/context"
 	"github.com/bytepowered/flux/flux-node/ext"
@@ -12,7 +12,7 @@ import (
 func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 	ext.SetArgumentLookupFunc(backend.DefaultArgumentLookupFunc)
 	cases := []struct {
-		definition flux2.Argument
+		definition flux.Argument
 		class      string
 		argType    string
 		name       string
@@ -20,78 +20,78 @@ func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 	}{
 		{
 			definition: ext.NewStringArgument("str"),
-			class:      flux2.JavaLangStringClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangStringClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "str",
 			expected:   "value:str",
 		},
 		{
 			definition: ext.NewIntegerArgument("int"),
-			class:      flux2.JavaLangIntegerClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangIntegerClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "int",
 			expected:   int(12345),
 		},
 		{
 			definition: ext.NewLongArgument("long"),
-			class:      flux2.JavaLangLongClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangLongClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "long",
 			expected:   int64(1234567890),
 		},
 		{
 			definition: ext.NewBooleanArgument("boolean"),
-			class:      flux2.JavaLangBooleanClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangBooleanClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "boolean",
 			expected:   true,
 		},
 		{
 			definition: ext.NewFloatArgument("float32"),
-			class:      flux2.JavaLangFloatClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangFloatClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "float32",
 			expected:   float32(12345.678),
 		},
 		{
 			definition: ext.NewFloatArgument("float"),
-			class:      flux2.JavaLangFloatClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangFloatClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "float",
 			expected:   float32(87654.321),
 		},
 		{
 			definition: ext.NewDoubleArgument("float64"),
-			class:      flux2.JavaLangDoubleClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangDoubleClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "float64",
 			expected:   12345.678,
 		},
 		{
 			definition: ext.NewDoubleArgument("double"),
-			class:      flux2.JavaLangDoubleClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			class:      flux.JavaLangDoubleClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "double",
 			expected:   98765.4321,
 		},
 		{
-			definition: ext.NewSliceArrayArgument("list", flux2.JavaLangStringClassName),
-			class:      flux2.JavaUtilListClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			definition: ext.NewSliceArrayArgument("list", flux.JavaLangStringClassName),
+			class:      flux.JavaUtilListClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "list",
 			expected:   []interface{}{"abc", "def"},
 		},
 		{
-			definition: ext.NewSliceArrayArgument("tostrlist", flux2.JavaLangStringClassName),
-			class:      flux2.JavaUtilListClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			definition: ext.NewSliceArrayArgument("tostrlist", flux.JavaLangStringClassName),
+			class:      flux.JavaUtilListClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "tostrlist",
 			expected:   []interface{}{"123", "456"},
 		},
 		{
-			definition: ext.NewSliceArrayArgument("intlist", flux2.JavaLangIntegerClassName),
-			class:      flux2.JavaUtilListClassName,
-			argType:    flux2.ArgumentTypePrimitive,
+			definition: ext.NewSliceArrayArgument("intlist", flux.JavaLangIntegerClassName),
+			class:      flux.JavaUtilListClassName,
+			argType:    flux.ArgumentTypePrimitive,
 			name:       "intlist",
 			expected:   []interface{}{12345, 56789},
 		},
@@ -124,7 +124,7 @@ func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 func TestComplexArgumentLookupResolve(t *testing.T) {
 	ext.SetArgumentLookupFunc(backend.DefaultArgumentLookupFunc)
 	cases := []struct {
-		definition flux2.Argument
+		definition flux.Argument
 		class      string
 		argType    string
 		name       string
@@ -132,8 +132,8 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 	}{
 		{
 			definition: ext.NewStringMapArgument("stringmap"),
-			class:      flux2.JavaUtilMapClassName,
-			argType:    flux2.ArgumentTypeComplex,
+			class:      flux.JavaUtilMapClassName,
+			argType:    flux.ArgumentTypeComplex,
 			name:       "stringmap",
 			expected: map[string]interface{}{
 				"key": "value",
@@ -142,8 +142,8 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 		},
 		{
 			definition: ext.NewHashMapArgument("hashmap"),
-			class:      flux2.JavaUtilMapClassName,
-			argType:    flux2.ArgumentTypeComplex,
+			class:      flux.JavaUtilMapClassName,
+			argType:    flux.ArgumentTypeComplex,
 			name:       "hashmap",
 			expected: map[string]interface{}{
 				"key": "value",
@@ -153,7 +153,7 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 		{
 			definition: ext.NewComplexArgument("net.bytepowreed.test.UserVO", "user"),
 			class:      "net.bytepowreed.test.UserVO",
-			argType:    flux2.ArgumentTypeComplex,
+			argType:    flux.ArgumentTypeComplex,
 			name:       "user",
 			expected: map[string]interface{}{
 				"class":    "net.bytepowreed.test.UserVO",
@@ -162,9 +162,9 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 			},
 		},
 		{
-			definition: func() flux2.Argument {
+			definition: func() flux.Argument {
 				arg := ext.NewComplexArgument("net.bytepowreed.test.POJO", "pojo")
-				arg.Fields = []flux2.Argument{
+				arg.Fields = []flux.Argument{
 					ext.NewStringArgument("username"),
 					ext.NewIntegerArgument("year"),
 					ext.NewHashMapArgument("hashmap"),
@@ -172,7 +172,7 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 				return arg
 			}(),
 			class:   "net.bytepowreed.test.POJO",
-			argType: flux2.ArgumentTypeComplex,
+			argType: flux.ArgumentTypeComplex,
 			name:    "pojo",
 			expected: map[string]interface{}{
 				"class":    "net.bytepowreed.test.POJO",
@@ -215,7 +215,7 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 
 func TestComplexArgumentValueLoader(t *testing.T) {
 	cases := []struct {
-		definition flux2.Argument
+		definition flux.Argument
 		name       string
 		expected   interface{}
 	}{

@@ -1,7 +1,7 @@
 package dubbo
 
 import (
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/spf13/cast"
 	"net/http"
@@ -44,7 +44,7 @@ func (b BodyValues) ReadStatusValue(statusKey string) (int, error) {
 			return code, nil
 		}
 	} else {
-		return flux2.StatusOK, nil
+		return flux.StatusOK, nil
 	}
 }
 

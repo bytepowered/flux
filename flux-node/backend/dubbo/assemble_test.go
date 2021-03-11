@@ -2,7 +2,7 @@ package dubbo
 
 import (
 	hessian "github.com/apache/dubbo-go-hessian2"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/backend"
 	"github.com/bytepowered/flux/flux-node/context"
 	"github.com/bytepowered/flux/flux-node/ext"
@@ -12,22 +12,22 @@ import (
 
 func TestDefaultAssembleFunc(t *testing.T) {
 	ext.SetArgumentLookupFunc(backend.DefaultArgumentLookupFunc)
-	serializer := flux2.NewJsonSerializer()
+	serializer := flux.NewJsonSerializer()
 	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)
 	cases := []struct {
-		arguments      []flux2.Argument
+		arguments      []flux.Argument
 		expectedTypes  []string
 		expectedValues []hessian.Object
 	}{
 		{
-			arguments: []flux2.Argument{
+			arguments: []flux.Argument{
 				ext.NewStringArgument("username"),
 				ext.NewIntegerArgument("year"),
 				ext.NewStringArgument("stringmap"),
-				func() flux2.Argument {
+				func() flux.Argument {
 					arg := ext.NewComplexArgument("net.bytepowreed.test.POJO", "pojo")
-					arg.Fields = []flux2.Argument{
+					arg.Fields = []flux.Argument{
 						ext.NewStringArgument("username"),
 						ext.NewIntegerArgument("year"),
 						ext.NewHashMapArgument("hashmap"),

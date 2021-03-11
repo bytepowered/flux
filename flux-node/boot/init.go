@@ -1,7 +1,7 @@
 package boot
 
 import (
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/backend"
 	"github.com/bytepowered/flux/flux-node/discovery"
 	"github.com/bytepowered/flux/flux-node/ext"
@@ -15,7 +15,7 @@ func init() {
 	ext.SetArgumentLookupFunc(backend.DefaultArgumentLookupFunc)
 	// Serializer
 	// Default: JSON
-	serializer := flux2.NewJsonSerializer()
+	serializer := flux.NewJsonSerializer()
 	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint discovery

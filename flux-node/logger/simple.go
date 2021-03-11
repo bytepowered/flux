@@ -1,7 +1,7 @@
 package logger
 
 import (
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +19,7 @@ func SetSimpleLogger(logger *zap.SugaredLogger) {
 }
 
 // SimpleLogger get a simple logger instance
-func SimpleLogger() flux2.Logger {
+func SimpleLogger() flux.Logger {
 	return simLogger
 }
 

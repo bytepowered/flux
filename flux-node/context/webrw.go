@@ -1,19 +1,19 @@
 package context
 
 import (
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"io"
 	"net/http"
 	"net/url"
 )
 
 var (
-	_ flux2.Request = new(AttacheRequest)
+	_ flux.Request = new(AttacheRequest)
 )
 
 // AttacheRequest Request请求读取接口的实现
 type AttacheRequest struct {
-	flux2.WebExchange
+	flux.WebExchange
 }
 
 func (r *AttacheRequest) Method() string {
@@ -84,7 +84,7 @@ func (r *AttacheRequest) HeaderVar(name string) string {
 	return r.WebExchange.HeaderVar(name)
 }
 
-func (r *AttacheRequest) reset(webex flux2.WebExchange) {
+func (r *AttacheRequest) reset(webex flux.WebExchange) {
 	r.WebExchange = webex
 }
 
@@ -98,7 +98,7 @@ func NewAttacheRequest() *AttacheRequest {
 
 ////
 
-var _ flux2.Response = new(AttacheResponse)
+var _ flux.Response = new(AttacheResponse)
 
 // AttacheResponse 定义响应数据
 type AttacheResponse struct {
@@ -136,7 +136,7 @@ func (r *AttacheResponse) Payload() interface{} {
 }
 
 func (r *AttacheResponse) reset() {
-	r.status = flux2.StatusOK
+	r.status = flux.StatusOK
 	r.payload = nil
 	r.headers = http.Header{}
 }

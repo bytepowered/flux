@@ -25,7 +25,7 @@ package webserver
 
 import (
 	"encoding/base64"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,24 +40,24 @@ const (
 
 type BasicAuthConfig struct {
 	// Skipper 用于跳过某些请求
-	Skipper flux2.WebSkipper
+	Skipper flux.WebSkipper
 	// Validator 用于检查请求BasicAuth密钥的函数
-	Validator func(string, string, flux2.WebExchange) (bool, error)
+	Validator func(string, string, flux.WebExchange) (bool, error)
 	// Default value "Restricted".
 	Realm string
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件。
-func NewBasicAuthMiddleware(validator func(string, string, flux2.WebExchange) (bool, error)) flux2.WebInterceptor {
+func NewBasicAuthMiddleware(validator func(string, string, flux.WebExchange) (bool, error)) flux.WebInterceptor {
 	return NewBasicAuthMiddlewareWith(BasicAuthConfig{
-		Skipper:   func(flux2.WebExchange) bool { return false },
+		Skipper:   func(flux.WebExchange) bool { return false },
 		Validator: validator,
 		Realm:     defaultRealm,
 	})
 }
 
 // NewBasicAuthMiddleware 返回BaseAuth中间件
-func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux2.WebInterceptor {
+func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux.WebInterceptor {
 	// 参考Echo.BasicAut的实现。
 	// Defaults
 	if config.Validator == nil {
@@ -66,8 +66,8 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux2.WebInterceptor {
 	if config.Realm == "" {
 		config.Realm = defaultRealm
 	}
-	return func(next flux2.WebHandler) flux2.WebHandler {
-		return func(webex flux2.WebExchange) error {
+	return func(next flux.WebHandler) flux.WebHandler {
+		return func(webex flux.WebExchange) error {
 			// Skip
 			if config.Skipper != nil && config.Skipper(webex) {
 				return next(webex)
@@ -100,7 +100,7 @@ func NewBasicAuthMiddlewareWith(config BasicAuthConfig) flux2.WebInterceptor {
 			}
 			// Need to return `401` for browsers to pop-up login box.
 			webex.SetResponseHeader(HeaderWWWAuthenticate, basic+" realm="+realm)
-			return &flux2.ServeError{
+			return &flux.ServeError{
 				StatusCode: http.StatusUnauthorized,
 				ErrorCode:  "UNAUTHORIZED",
 				Message:    "BASIC_AUTH:UNAUTHORIZED",

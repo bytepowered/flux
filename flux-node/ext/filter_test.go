@@ -2,15 +2,15 @@ package ext
 
 import (
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node"
 	assert2 "github.com/stretchr/testify/assert"
 	"testing"
 )
 
 var (
-	_ flux2.Filter  = new(TestOrderedFilter)
-	_ flux2.Filter  = new(TestFilter)
-	_ flux2.Orderer = new(TestOrderedFilter)
+	_ flux.Filter  = new(TestOrderedFilter)
+	_ flux.Filter  = new(TestFilter)
+	_ flux.Orderer = new(TestOrderedFilter)
 )
 
 type TestOrderedFilter struct {
@@ -21,8 +21,8 @@ func (f *TestOrderedFilter) TypeId() string {
 	return fmt.Sprintf("%d", f.order)
 }
 
-func (f *TestOrderedFilter) DoFilter(_ flux2.FilterHandler) flux2.FilterHandler {
-	return func(context flux2.Context) *flux2.ServeError {
+func (f *TestOrderedFilter) DoFilter(_ flux.FilterHandler) flux.FilterHandler {
+	return func(context flux.Context) *flux.ServeError {
 		return nil
 	}
 }
@@ -39,8 +39,8 @@ func (f *TestFilter) TypeId() string {
 	return f.id
 }
 
-func (f *TestFilter) DoFilter(_ flux2.FilterHandler) flux2.FilterHandler {
-	return func(context flux2.Context) *flux2.ServeError {
+func (f *TestFilter) DoFilter(_ flux.FilterHandler) flux.FilterHandler {
+	return func(context flux.Context) *flux.ServeError {
 		return nil
 	}
 }
