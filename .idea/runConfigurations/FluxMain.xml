@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="FluxMain" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="flux" />
-    <working_directory value="$PROJECT_DIR$/main" />
+    <working_directory value="$PROJECT_DIR$/flux-node/main" />
     <envs>
       <env name="APP_LOG_CONF_FILE" value="./conf.d/log.yml" />
       <env name="CONF_CONSUMER_FILE_PATH" value="./conf.d/dubbo.yml" />
@@ -9,7 +9,7 @@
     </envs>
     <kind value="PACKAGE" />
     <filePath value="$PROJECT_DIR$/main/main.go" />
-    <package value="github.com/bytepowered/flux/main" />
+    <package value="github.com/bytepowered/flux/flux-node/main" />
     <directory value="$PROJECT_DIR$/" />
     <method v="2" />
   </configuration>
