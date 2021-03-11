@@ -12,7 +12,7 @@ import (
 func TestNilContext(t *testing.T) {
 	assert := assert2.New(t)
 	// Scope & key
-	_, err0 := DefaultArgumentLookupFunc("", "", context.NewEmptyContext())
+	_, err0 := DefaultArgumentLookupFunc("", "", context.NewEmpty())
 	assert.Error(err0, "must error")
 	// Nil context
 	_, err1 := DefaultArgumentLookupFunc("a", "b", nil)
@@ -34,7 +34,7 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 		"auto":          "auto",
 		"value":         "value",
 	}
-	valctx := context.NewMockContext(values)
+	valctx := context.NewMock("@rid", values)
 	cases := []struct {
 		scope  string
 		key    string

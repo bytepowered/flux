@@ -134,19 +134,21 @@ func (r *MockRequest) CookieVar(name string) *http.Cookie {
 
 var _ flux.Context = new(MockContext)
 
-func NewMockContext(values map[string]interface{}) flux.Context {
+func NewMock(id string, values map[string]interface{}) flux.Context {
 	return &MockContext{
+		requestId: id,
 		time:      time.Now(),
 		request:   NewMockRequest(values),
 		ctxLogger: logger.SimpleLogger(),
 	}
 }
 
-func NewEmptyContext() flux.Context {
-	return NewMockContext(map[string]interface{}{})
+func NewEmpty() flux.Context {
+	return NewMock("@empty.mock", map[string]interface{}{})
 }
 
 type MockContext struct {
+	requestId string
 	time      time.Time
 	request   *MockRequest
 	ctxLogger flux.Logger
@@ -173,7 +175,7 @@ func (mc *MockContext) URI() string {
 }
 
 func (mc *MockContext) RequestId() string {
-	return cast.ToString(mc.request.values["request-id"])
+	return mc.requestId
 }
 
 func (mc *MockContext) Request() flux.Request {

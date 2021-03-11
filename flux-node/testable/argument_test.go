@@ -97,7 +97,7 @@ func TestPrimitiveArgumentLookupResolve(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := context.NewMockContext(map[string]interface{}{
+	ctx := context.NewMock("@rid", map[string]interface{}{
 		"str":       "value:str",
 		"int":       12345,
 		"long":      int64(1234567890),
@@ -186,7 +186,7 @@ func TestComplexArgumentLookupResolve(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := context.NewMockContext(map[string]interface{}{
+	ctx := context.NewMock("@rid", map[string]interface{}{
 		"stringmap": map[string]interface{}{
 			"key": "value",
 			"int": 123,
@@ -231,7 +231,7 @@ func TestComplexArgumentValueLoader(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := context.NewEmptyContext()
+	ctx := context.NewEmpty()
 	for _, tcase := range cases {
 		// check resolve
 		v, err := tcase.definition.Resolve(ctx)

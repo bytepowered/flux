@@ -50,7 +50,7 @@ func TestDefaultAssembleFunc(t *testing.T) {
 		},
 	}
 	assert := assert2.New(t)
-	ctx := context.NewMockContext(map[string]interface{}{
+	ctx := context.NewMock("@rid", map[string]interface{}{
 		"stringmap": map[string]interface{}{
 			"key": "value",
 			"int": 123,
