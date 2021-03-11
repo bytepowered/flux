@@ -1,9 +1,8 @@
-package permission
+package extension
 
 import (
 	"errors"
 	"fmt"
-	"github.com/bytepowered/flux/flux-extension"
 	flux "github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/backend"
 	"github.com/bytepowered/flux/flux-node/ext"
@@ -18,27 +17,27 @@ const (
 )
 
 type (
-	// VerifyReport 权限验证结果报告
-	VerifyReport struct {
+	// PermissionReport 权限验证结果报告
+	PermissionReport struct {
 		StatusCode int    `json:"statusCode"`
 		Success    bool   `json:"success"`
 		ErrorCode  string `json:"errorCode"`
 		Message    string `json:"message"`
 	}
-	// VerifyFunc 权限验证
+	// PermissionVerifyFunc 权限验证
 	// @return pass 对当前请求的权限验证是否通过；
 	// @return err 如果验证过程发生错误，返回error；
-	VerifyFunc func(services []flux.BackendService, ctx flux.Context) (report VerifyReport, err error)
+	PermissionVerifyFunc func(services []flux.BackendService, ctx flux.Context) (report PermissionReport, err error)
 )
 
 // PermissionConfig 权限配置
 type PermissionConfig struct {
 	SkipFunc   flux.FilterSkipper
-	VerifyFunc VerifyFunc
+	VerifyFunc PermissionVerifyFunc
 }
 
-func NewPermissionVerifyReport(success bool, errorCode, message string) VerifyReport {
-	return VerifyReport{
+func NewPermissionVerifyReport(success bool, errorCode, message string) PermissionReport {
+	return PermissionReport{
 		StatusCode: flux.StatusUnauthorized,
 		Success:    success,
 		ErrorCode:  errorCode,
@@ -60,9 +59,9 @@ type PermissionFilter struct {
 
 func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		extension.ConfigKeyDisabled: false,
+		ConfigKeyDisabled: false,
 	})
-	p.Disabled = config.GetBool(extension.ConfigKeyDisabled)
+	p.Disabled = config.GetBool(ConfigKeyDisabled)
 	if p.Disabled {
 		logger.Info("Endpoint PermissionFilter was DISABLED!!")
 		return nil
@@ -73,7 +72,7 @@ func (p *PermissionFilter) Init(config *flux.Configuration) error {
 		}
 	}
 	if fluxpkg.IsNil(p.Configs.VerifyFunc) {
-		return fmt.Errorf("PermissionFilter.VerifyFunc is nil")
+		return fmt.Errorf("PermissionFilter.PermissionVerifyFunc is nil")
 	}
 	return nil
 }

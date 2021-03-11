@@ -1,4 +1,4 @@
-package hystrix
+package extension
 
 import (
 	"context"
@@ -35,17 +35,18 @@ func NewHystrixFilter(c HystrixConfig) *HystrixFilter {
 }
 
 type (
-	// ServiceNameFunc 用于构建服务标识的函数
-	ServiceNameFunc func(ctx flux.Context) (serviceName string)
-	// DowngradeFunc 熔断降级处理函数
-	DowngradeFunc func(ctx flux.Context) *flux.ServeError
+	// HystrixServiceNameFunc 用于构建服务标识的函数
+	HystrixServiceNameFunc func(ctx flux.Context) (serviceName string)
+	// HystrixDowngradeFunc 熔断降级处理函数
+	HystrixDowngradeFunc func(ctx flux.Context) *flux.ServeError
 )
 
 // HystrixConfig 熔断器配置
 type HystrixConfig struct {
-	ServiceSkipFunc        flux.FilterSkipper
-	ServiceNameFunc        ServiceNameFunc
-	ServiceDowngradeFunc   DowngradeFunc
+	ServiceSkipFunc      flux.FilterSkipper
+	ServiceNameFunc      HystrixServiceNameFunc
+	ServiceDowngradeFunc HystrixDowngradeFunc
+	// globals
 	timeout                int
 	maxConcurrentRequests  int
 	requestVolumeThreshold int
@@ -68,9 +69,9 @@ func (r *HystrixFilter) Init(c *flux.Configuration) error {
 	c.SetDefaults(map[string]interface{}{
 		ConfigKeyRequestThreshold:      20,
 		ConfigKeyErrorPercentThreshold: 50,
-		ConfigKeySleepWindow:           1000,
-		ConfigKeyRequestMax:            200,
-		ConfigKeyTimeout:               10000,
+		ConfigKeySleepWindow:           10 * 1000,
+		ConfigKeyRequestMax:            5 * 100,
+		ConfigKeyTimeout:               10 * 1000,
 	})
 	r.HystrixConfig.timeout = int(c.GetInt64(ConfigKeyTimeout))
 	r.HystrixConfig.maxConcurrentRequests = int(c.GetInt64(ConfigKeyRequestMax))
