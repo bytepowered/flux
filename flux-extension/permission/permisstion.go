@@ -1,9 +1,10 @@
-package filter
+package permission
 
 import (
 	"errors"
 	"fmt"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-extension"
+	flux "github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/backend"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
@@ -17,28 +18,28 @@ const (
 )
 
 type (
-	// PermissionVerifyReport 权限验证结果报告
-	PermissionVerifyReport struct {
+	// VerifyReport 权限验证结果报告
+	VerifyReport struct {
 		StatusCode int    `json:"statusCode"`
 		Success    bool   `json:"success"`
 		ErrorCode  string `json:"errorCode"`
 		Message    string `json:"message"`
 	}
-	// PermissionVerifyFunc 权限验证
+	// VerifyFunc 权限验证
 	// @return pass 对当前请求的权限验证是否通过；
 	// @return err 如果验证过程发生错误，返回error；
-	PermissionVerifyFunc func(services []flux2.BackendService, ctx flux2.Context) (report PermissionVerifyReport, err error)
+	VerifyFunc func(services []flux.BackendService, ctx flux.Context) (report VerifyReport, err error)
 )
 
 // PermissionConfig 权限配置
 type PermissionConfig struct {
-	SkipFunc   flux2.FilterSkipper
-	VerifyFunc PermissionVerifyFunc
+	SkipFunc   flux.FilterSkipper
+	VerifyFunc VerifyFunc
 }
 
-func NewPermissionVerifyReport(success bool, errorCode, message string) PermissionVerifyReport {
-	return PermissionVerifyReport{
-		StatusCode: flux2.StatusUnauthorized,
+func NewPermissionVerifyReport(success bool, errorCode, message string) VerifyReport {
+	return VerifyReport{
+		StatusCode: flux.StatusUnauthorized,
 		Success:    success,
 		ErrorCode:  errorCode,
 		Message:    message,
@@ -57,17 +58,17 @@ type PermissionFilter struct {
 	Configs  PermissionConfig
 }
 
-func (p *PermissionFilter) Init(config *flux2.Configuration) error {
+func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		ConfigKeyDisabled: false,
+		extension.ConfigKeyDisabled: false,
 	})
-	p.Disabled = config.GetBool(ConfigKeyDisabled)
+	p.Disabled = config.GetBool(extension.ConfigKeyDisabled)
 	if p.Disabled {
 		logger.Info("Endpoint PermissionFilter was DISABLED!!")
 		return nil
 	}
 	if fluxpkg.IsNil(p.Configs.SkipFunc) {
-		p.Configs.SkipFunc = func(_ flux2.Context) bool {
+		p.Configs.SkipFunc = func(_ flux.Context) bool {
 			return false
 		}
 	}
@@ -81,11 +82,11 @@ func (*PermissionFilter) TypeId() string {
 	return TypeIdPermissionV2Filter
 }
 
-func (p *PermissionFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandler {
+func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	if p.Disabled {
 		return next
 	}
-	return func(ctx flux2.Context) *flux2.ServeError {
+	return func(ctx flux.Context) *flux.ServeError {
 		if p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
@@ -95,7 +96,7 @@ func (p *PermissionFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandle
 		if size == 0 && !endpoint.Permission.IsValid() {
 			return next(ctx)
 		}
-		services := make([]flux2.BackendService, 0, 1+size)
+		services := make([]flux.BackendService, 0, 1+size)
 		// Define permission first
 		if endpoint.Permission.IsValid() {
 			services = append(services, endpoint.Permission)
@@ -104,10 +105,10 @@ func (p *PermissionFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandle
 			if srv, ok := ext.BackendServiceById(id); ok {
 				services = append(services, srv)
 			} else {
-				return &flux2.ServeError{
-					StatusCode: flux2.StatusServerError,
-					ErrorCode:  flux2.ErrorCodeGatewayInternal,
-					Message:    flux2.ErrorMessagePermissionServiceNotFound,
+				return &flux.ServeError{
+					StatusCode: flux.StatusServerError,
+					ErrorCode:  flux.ErrorCodeGatewayInternal,
+					Message:    flux.ErrorMessagePermissionServiceNotFound,
 					CauseError: errors.New("permission.service not found, id: " + id),
 				}
 			}
@@ -115,18 +116,18 @@ func (p *PermissionFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandle
 		report, err := p.Configs.VerifyFunc(services, ctx)
 		ctx.AddMetric(p.TypeId(), time.Since(ctx.StartAt()))
 		if nil != err {
-			if serr, ok := err.(*flux2.ServeError); ok {
+			if serr, ok := err.(*flux.ServeError); ok {
 				return serr
 			}
-			return &flux2.ServeError{
+			return &flux.ServeError{
 				StatusCode: http.StatusForbidden,
-				ErrorCode:  flux2.ErrorCodeGatewayInternal,
-				Message:    flux2.ErrorMessagePermissionVerifyError,
+				ErrorCode:  flux.ErrorCodeGatewayInternal,
+				Message:    flux.ErrorMessagePermissionVerifyError,
 				CauseError: err,
 			}
 		}
 		if !report.Success {
-			return &flux2.ServeError{
+			return &flux.ServeError{
 				StatusCode: EnsurePermissionStatusCode(report.StatusCode),
 				ErrorCode:  EnsurePermissionErrorCode(report.ErrorCode),
 				Message:    EnsurePermissionMessage(report.Message),
@@ -137,7 +138,7 @@ func (p *PermissionFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandle
 }
 
 // InvokeCodec 执行权限验证的后端服务，获取响应结果；
-func (p *PermissionFilter) InvokeCodec(ctx flux2.Context, service flux2.BackendService) (*flux2.BackendResponse, *flux2.ServeError) {
+func (p *PermissionFilter) InvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
 	return backend.DoInvokeCodec(ctx, service)
 }
 
@@ -150,14 +151,14 @@ func EnsurePermissionStatusCode(status int) int {
 
 func EnsurePermissionErrorCode(code string) string {
 	if "" == code {
-		return flux2.ErrorCodePermissionDenied
+		return flux.ErrorCodePermissionDenied
 	}
 	return code
 }
 
 func EnsurePermissionMessage(message string) string {
 	if "" == message {
-		return flux2.ErrorMessagePermissionAccessDenied
+		return flux.ErrorMessagePermissionAccessDenied
 	}
 	return message
 }

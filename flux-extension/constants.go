@@ -1,4 +1,4 @@
-package filter
+package extension
 
 const (
 	ConfigKeyCacheExpiration   = "cache_expiration"

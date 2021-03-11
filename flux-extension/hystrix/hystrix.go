@@ -1,9 +1,9 @@
-package filter
+package hystrix
 
 import (
 	"context"
 	"github.com/afex/hystrix-go/hystrix"
-	flux2 "github.com/bytepowered/flux/flux-node"
+	flux "github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/spf13/cast"
@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	HystrixConfigKeyTimeout               = "timeout"
-	HystrixConfigKeyRequestMax            = "request_max"
-	HystrixConfigKeyRequestThreshold      = "request_threshold"
-	HystrixConfigKeyErrorPercentThreshold = "error_threshold"
-	HystrixConfigKeySleepWindow           = "sleep_window"
-	HystrixConfigApplication              = "applications"
-	HystrixConfigService                  = "service"
+	ConfigKeyTimeout               = "timeout"
+	ConfigKeyRequestMax            = "request_max"
+	ConfigKeyRequestThreshold      = "request_threshold"
+	ConfigKeyErrorPercentThreshold = "error_threshold"
+	ConfigKeySleepWindow           = "sleep_window"
+	ConfigApplication              = "applications"
+	ConfigService                  = "service"
 )
 
 const (
@@ -35,17 +35,17 @@ func NewHystrixFilter(c HystrixConfig) *HystrixFilter {
 }
 
 type (
-	// HystrixServiceNameFunc 用于构建服务标识的函数
-	HystrixServiceNameFunc func(ctx flux2.Context) (serviceName string)
-	// HystrixDowngradeFunc 熔断降级处理函数
-	HystrixDowngradeFunc func(ctx flux2.Context) *flux2.ServeError
+	// ServiceNameFunc 用于构建服务标识的函数
+	ServiceNameFunc func(ctx flux.Context) (serviceName string)
+	// DowngradeFunc 熔断降级处理函数
+	DowngradeFunc func(ctx flux.Context) *flux.ServeError
 )
 
 // HystrixConfig 熔断器配置
 type HystrixConfig struct {
-	ServiceSkipFunc        flux2.FilterSkipper
-	ServiceNameFunc        HystrixServiceNameFunc
-	ServiceDowngradeFunc   HystrixDowngradeFunc
+	ServiceSkipFunc        flux.FilterSkipper
+	ServiceNameFunc        ServiceNameFunc
+	ServiceDowngradeFunc   DowngradeFunc
 	timeout                int
 	maxConcurrentRequests  int
 	requestVolumeThreshold int
@@ -57,34 +57,34 @@ type HystrixConfig struct {
 type HystrixFilter struct {
 	HystrixConfig
 	commands     sync.Map
-	services     *flux2.Configuration
-	applications *flux2.Configuration
+	services     *flux.Configuration
+	applications *flux.Configuration
 }
 
-func (r *HystrixFilter) Init(c *flux2.Configuration) error {
+func (r *HystrixFilter) Init(c *flux.Configuration) error {
 	logger.Info("Hystrix filter initializing")
-	r.applications = c.Sub(HystrixConfigApplication)
-	r.services = c.Sub(HystrixConfigService)
+	r.applications = c.Sub(ConfigApplication)
+	r.services = c.Sub(ConfigService)
 	c.SetDefaults(map[string]interface{}{
-		HystrixConfigKeyRequestThreshold:      20,
-		HystrixConfigKeyErrorPercentThreshold: 50,
-		HystrixConfigKeySleepWindow:           1000,
-		HystrixConfigKeyRequestMax:            200,
-		HystrixConfigKeyTimeout:               10000,
+		ConfigKeyRequestThreshold:      20,
+		ConfigKeyErrorPercentThreshold: 50,
+		ConfigKeySleepWindow:           1000,
+		ConfigKeyRequestMax:            200,
+		ConfigKeyTimeout:               10000,
 	})
-	r.HystrixConfig.timeout = int(c.GetInt64(HystrixConfigKeyTimeout))
-	r.HystrixConfig.maxConcurrentRequests = int(c.GetInt64(HystrixConfigKeyRequestMax))
-	r.HystrixConfig.requestVolumeThreshold = int(c.GetInt64(HystrixConfigKeyRequestThreshold))
-	r.HystrixConfig.sleepWindow = int(c.GetInt64(HystrixConfigKeySleepWindow))
-	r.HystrixConfig.errorPercentThreshold = int(c.GetInt64(HystrixConfigKeyErrorPercentThreshold))
+	r.HystrixConfig.timeout = int(c.GetInt64(ConfigKeyTimeout))
+	r.HystrixConfig.maxConcurrentRequests = int(c.GetInt64(ConfigKeyRequestMax))
+	r.HystrixConfig.requestVolumeThreshold = int(c.GetInt64(ConfigKeyRequestThreshold))
+	r.HystrixConfig.sleepWindow = int(c.GetInt64(ConfigKeySleepWindow))
+	r.HystrixConfig.errorPercentThreshold = int(c.GetInt64(ConfigKeyErrorPercentThreshold))
 	// 默认实现
 	if fluxpkg.IsNil(r.HystrixConfig.ServiceNameFunc) {
-		r.HystrixConfig.ServiceNameFunc = func(ctx flux2.Context) (name string) {
+		r.HystrixConfig.ServiceNameFunc = func(ctx flux.Context) (name string) {
 			return ctx.BackendServiceId()
 		}
 	}
 	if r.HystrixConfig.ServiceSkipFunc == nil {
-		r.HystrixConfig.ServiceSkipFunc = func(c flux2.Context) bool {
+		r.HystrixConfig.ServiceSkipFunc = func(c flux.Context) bool {
 			return false
 		}
 	}
@@ -101,8 +101,8 @@ func (r *HystrixFilter) Init(c *flux2.Configuration) error {
 	return nil
 }
 
-func (r *HystrixFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandler {
-	return func(ctx flux2.Context) *flux2.ServeError {
+func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
+	return func(ctx flux.Context) *flux.ServeError {
 		if r.HystrixConfig.ServiceSkipFunc(ctx) {
 			return next(ctx)
 		}
@@ -113,28 +113,28 @@ func (r *HystrixFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandler {
 			ctx.AddMetric(r.TypeId(), time.Since(ctx.StartAt()))
 			return next(ctx)
 		}
-		var reterr *flux2.ServeError
+		var reterr *flux.ServeError
 		fallback := func(c context.Context, err error) error {
 			// 返回两种类型Error：
 			// 1. 执行 next() 返回 *ServeError；
 			// 2. 熔断返回 hystrix.CircuitError;
-			if serr, ok := err.(*flux2.ServeError); ok {
+			if serr, ok := err.(*flux.ServeError); ok {
 				reterr = serr
 			} else if cerr, ok := err.(hystrix.CircuitError); ok {
 				logger.Infow("HYSTRIX:CIRCUITED/DOWNGRADE",
 					"is-circuited", ok, "service-name", serviceName, "circuit-error", cerr)
 				reterr = r.HystrixConfig.ServiceDowngradeFunc(ctx)
 			} else if strings.Contains(err.Error(), context.Canceled.Error()) {
-				reterr = &flux2.ServeError{
-					StatusCode: flux2.StatusOK,
-					ErrorCode:  flux2.ErrorCodeGatewayCanceled,
+				reterr = &flux.ServeError{
+					StatusCode: flux.StatusOK,
+					ErrorCode:  flux.ErrorCodeGatewayCanceled,
 					Message:    "CIRCUITED:CANCELED:BYCLIENT",
 					CauseError: err,
 				}
 			} else {
-				reterr = &flux2.ServeError{
-					StatusCode: flux2.StatusServerError,
-					ErrorCode:  flux2.ErrorCodeGatewayInternal,
+				reterr = &flux.ServeError{
+					StatusCode: flux.StatusServerError,
+					ErrorCode:  flux.ErrorCodeGatewayInternal,
 					Message:    "CIRCUITED:INTERNAL:UNEXPERR",
 					CauseError: err,
 				}
@@ -146,15 +146,15 @@ func (r *HystrixFilter) DoFilter(next flux2.FilterHandler) flux2.FilterHandler {
 	}
 }
 
-func DefaultDowngradeFunc(ctx flux2.Context) *flux2.ServeError {
-	return &flux2.ServeError{
+func DefaultDowngradeFunc(ctx flux.Context) *flux.ServeError {
+	return &flux.ServeError{
 		StatusCode: http.StatusServiceUnavailable,
-		ErrorCode:  flux2.ErrorCodeGatewayCircuited,
+		ErrorCode:  flux.ErrorCodeGatewayCircuited,
 		Message:    "CIRCUITED:SERVER_BUSY:DOWNGRADE",
 	}
 }
 
-func (r *HystrixFilter) initCommand(serviceName string, ctx flux2.Context) {
+func (r *HystrixFilter) initCommand(serviceName string, ctx flux.Context) {
 	if _, exist := r.commands.LoadOrStore(serviceName, true); !exist {
 		logger.Infow("HYSTRIX:COMMAND:INIT", "service-name", serviceName)
 		// 支持两种定制配置：
@@ -165,11 +165,11 @@ func (r *HystrixFilter) initCommand(serviceName string, ctx flux2.Context) {
 			conf = r.services.Sub(serviceName)
 		}
 		hystrix.ConfigureCommand(serviceName, r.readConfig(conf, map[string]interface{}{
-			HystrixConfigKeyTimeout:               r.HystrixConfig.timeout,
-			HystrixConfigKeyRequestThreshold:      r.HystrixConfig.requestVolumeThreshold,
-			HystrixConfigKeyRequestMax:            r.HystrixConfig.maxConcurrentRequests,
-			HystrixConfigKeyErrorPercentThreshold: r.HystrixConfig.errorPercentThreshold,
-			HystrixConfigKeySleepWindow:           r.HystrixConfig.sleepWindow,
+			ConfigKeyTimeout:               r.HystrixConfig.timeout,
+			ConfigKeyRequestThreshold:      r.HystrixConfig.requestVolumeThreshold,
+			ConfigKeyRequestMax:            r.HystrixConfig.maxConcurrentRequests,
+			ConfigKeyErrorPercentThreshold: r.HystrixConfig.errorPercentThreshold,
+			ConfigKeySleepWindow:           r.HystrixConfig.sleepWindow,
 		}))
 	}
 }
@@ -178,7 +178,7 @@ func (*HystrixFilter) TypeId() string {
 	return TypeIdHystrixFilter
 }
 
-func (*HystrixFilter) readConfig(conf *flux2.Configuration, defaults map[string]interface{}) hystrix.CommandConfig {
+func (*HystrixFilter) readConfig(conf *flux.Configuration, defaults map[string]interface{}) hystrix.CommandConfig {
 	getIntOr := func(k string) int {
 		if conf.IsSet(k) {
 			return int(conf.GetInt64(k))
@@ -186,10 +186,10 @@ func (*HystrixFilter) readConfig(conf *flux2.Configuration, defaults map[string]
 		return cast.ToInt(defaults[k])
 	}
 	return hystrix.CommandConfig{
-		Timeout:                getIntOr(HystrixConfigKeyTimeout),
-		MaxConcurrentRequests:  getIntOr(HystrixConfigKeyRequestMax),
-		SleepWindow:            getIntOr(HystrixConfigKeyRequestThreshold),
-		ErrorPercentThreshold:  getIntOr(HystrixConfigKeySleepWindow),
-		RequestVolumeThreshold: getIntOr(HystrixConfigKeyErrorPercentThreshold),
+		Timeout:                getIntOr(ConfigKeyTimeout),
+		MaxConcurrentRequests:  getIntOr(ConfigKeyRequestMax),
+		SleepWindow:            getIntOr(ConfigKeyRequestThreshold),
+		ErrorPercentThreshold:  getIntOr(ConfigKeySleepWindow),
+		RequestVolumeThreshold: getIntOr(ConfigKeyErrorPercentThreshold),
 	}
 }
