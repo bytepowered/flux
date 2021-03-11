@@ -5,7 +5,6 @@ import (
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/spf13/cast"
-	"go.uber.org/zap"
 	"strings"
 )
 
@@ -18,11 +17,6 @@ func Trace(traceId string) flux.Logger {
 	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, traceId))
 }
 
-func TraceExtras(traceId string, extras map[string]string) flux.Logger {
-	p := context.WithValue(context.Background(), TraceId, traceId)
-	return ext.NewLoggerWith(context.WithValue(p, Extras, extras))
-}
-
 func TraceContext(ctx flux.Context) flux.Logger {
 	return TraceContextExtras(ctx, nil)
 }
@@ -31,12 +25,7 @@ func TraceContextExtras(ctx flux.Context, extras map[string]string) flux.Logger 
 	if nil == ctx {
 		return Trace("no-trace-id")
 	}
-	logger := ctx.Logger()
-	if logger == nil {
-		logger = zap.S()
-	}
 	fields := map[string]string{
-		"request-id":     ctx.RequestId(),
 		"request-method": ctx.Method(),
 		"request-uri":    ctx.URI(),
 	}
@@ -52,8 +41,11 @@ func TraceContextExtras(ctx flux.Context, extras map[string]string) flux.Logger 
 		fields["backend-authorize"] = cast.ToString(endpoint.AttrAuthorize())
 		fields["endpoint-version"] = endpoint.Version
 		fields["endpoint-pattern"] = endpoint.HttpPattern
-		return TraceExtras(ctx.RequestId(), fields)
-	} else {
-		return Trace(ctx.RequestId())
 	}
+	return TraceExtras(ctx.RequestId(), fields)
+}
+
+func TraceExtras(traceId string, extras map[string]string) flux.Logger {
+	p := context.WithValue(context.Background(), TraceId, traceId)
+	return ext.NewLoggerWith(context.WithValue(p, Extras, extras))
 }

@@ -15,8 +15,8 @@ func SetLoggerFactory(f flux.LoggerFactory) {
 }
 
 // NewLoggerWith
-func NewLoggerWith(values context.Context) flux.Logger {
-	return loggerFactory(values)
+func NewLoggerWith(ctx context.Context) flux.Logger {
+	return loggerFactory(ctx)
 }
 
 // NewLogger ...
