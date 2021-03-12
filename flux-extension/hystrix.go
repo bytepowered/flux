@@ -111,7 +111,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 		r.initCommand(serviceName, ctx)
 		// check circuit
 		work := func(_ context.Context) error {
-			ctx.AddMetric(r.TypeId(), time.Since(ctx.StartAt()))
+			ctx.AddMetric(r.FilterId(), time.Since(ctx.StartAt()))
 			return next(ctx)
 		}
 		var reterr *flux.ServeError
@@ -175,7 +175,7 @@ func (r *HystrixFilter) initCommand(serviceName string, ctx flux.Context) {
 	}
 }
 
-func (*HystrixFilter) TypeId() string {
+func (*HystrixFilter) FilterId() string {
 	return TypeIdHystrixFilter
 }
 

@@ -77,7 +77,7 @@ func (p *PermissionFilter) Init(config *flux.Configuration) error {
 	return nil
 }
 
-func (*PermissionFilter) TypeId() string {
+func (*PermissionFilter) FilterId() string {
 	return TypeIdPermissionV2Filter
 }
 
@@ -113,7 +113,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 			}
 		}
 		report, err := p.Configs.VerifyFunc(services, ctx)
-		ctx.AddMetric(p.TypeId(), time.Since(ctx.StartAt()))
+		ctx.AddMetric(p.FilterId(), time.Since(ctx.StartAt()))
 		if nil != err {
 			if serr, ok := err.(*flux.ServeError); ok {
 				return serr

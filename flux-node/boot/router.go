@@ -46,11 +46,11 @@ func (r *Router) Initial() error {
 	}
 	// 手动注册的单实例Filters
 	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
-		ns := filter.TypeId()
+		ns := filter.FilterId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
 		config := flux.NewConfigurationOfNS(ns)
 		if isDisabled(config) {
-			logger.Infow("Set static-filter DISABLED", "filter-id", filter.TypeId())
+			logger.Infow("Set static-filter DISABLED", "filter-id", filter.FilterId())
 			continue
 		}
 		if err := r.AddInitHook(filter, config); nil != err {

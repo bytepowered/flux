@@ -259,7 +259,7 @@ func (s *BootstrapServer) route(webex flux.WebExchange, server flux.WebListener,
 	} else {
 		logger.TraceContext(ctxw).Errorw("SERVER:ROUTE:RESPONSE/ERROR", "statusCode", err.StatusCode, "error", err)
 		defer endfunc(ctxw.StartAt())
-		return err.MergeHeader(ctxw.Response().HeaderVars())
+		return err.Merge(ctxw.Response().HeaderVars())
 	}
 }
 

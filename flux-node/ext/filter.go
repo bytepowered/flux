@@ -65,7 +65,7 @@ func FilterSelectors() []flux.FilterSelector {
 func SelectiveFilterById(filterId string) (flux.Filter, bool) {
 	filterId = fluxpkg.MustNotEmpty(filterId, "filterId is empty")
 	for _, f := range selectiveFilter {
-		if filterId == f.filter.TypeId() {
+		if filterId == f.filter.FilterId() {
 			return f.filter, true
 		}
 	}

@@ -55,4 +55,5 @@ type Logger interface {
 	Panicw(msg string, keyAndValues ...interface{})
 }
 
+// LoggerFactory 构建Logger实例
 type LoggerFactory func(values context.Context) Logger

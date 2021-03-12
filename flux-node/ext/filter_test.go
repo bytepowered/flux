@@ -17,7 +17,7 @@ type TestOrderedFilter struct {
 	order int
 }
 
-func (f *TestOrderedFilter) TypeId() string {
+func (f *TestOrderedFilter) FilterId() string {
 	return fmt.Sprintf("%d", f.order)
 }
 
@@ -35,7 +35,7 @@ type TestFilter struct {
 	id string
 }
 
-func (f *TestFilter) TypeId() string {
+func (f *TestFilter) FilterId() string {
 	return f.id
 }
 
@@ -90,9 +90,9 @@ func TestFilterArrayMixedOrder(t *testing.T) {
 	assert := assert2.New(t)
 	f0 := GlobalFilters()[0]
 	f1 := SelectiveFilters()[1]
-	assert.Equal("TF001", f0.TypeId())
-	assert.Equal("TF002", f1.TypeId())
+	assert.Equal("TF001", f0.FilterId())
+	assert.Equal("TF002", f1.FilterId())
 	s0, ok := SelectiveFilterById("TF002")
 	assert.Equal(true, ok)
-	assert.Equal("TF002", s0.TypeId())
+	assert.Equal("TF002", s0.FilterId())
 }
