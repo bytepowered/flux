@@ -40,6 +40,7 @@ func NewWebListener(listenerId string, config *flux.Configuration) flux.WebListe
 func NewWebListenerWith(listenerId string, options *flux.Configuration, LookupIdFunc flux.WebLookupIdFunc, mws *AdaptMiddleware) flux.WebListener {
 	fluxpkg.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
+	server.Pre(RepeatableBodyReader)
 	server.HideBanner = true
 	server.HidePort = true
 	aws := &AdaptWebListener{
@@ -58,7 +59,6 @@ func NewWebListenerWith(listenerId string, options *flux.Configuration, LookupId
 		}
 	})
 	// Before feature
-	server.Pre(RepeatableBodyReader)
 	if mws != nil && len(mws.BeforeFeature) > 0 {
 		server.Pre(mws.BeforeFeature...)
 	}
