@@ -224,6 +224,7 @@ func DefaultIdLookup(ctx interface{}) string {
 	if "" != id {
 		return id
 	}
+	echoc.Request().Header.Set("X-RequestId-By", "flux")
 	return "fxid_" + random.String(32)
 }
 
