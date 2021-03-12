@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
+	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"github.com/spf13/cast"
 	"strings"
 )
@@ -13,8 +14,8 @@ const (
 	Extras  = "extras"
 )
 
-func Trace(traceId string) flux.Logger {
-	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, traceId))
+func Trace(id string) flux.Logger {
+	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, id))
 }
 
 func TraceContext(ctx flux.Context) flux.Logger {
@@ -22,9 +23,7 @@ func TraceContext(ctx flux.Context) flux.Logger {
 }
 
 func TraceContextExtras(ctx flux.Context, extras map[string]string) flux.Logger {
-	if nil == ctx {
-		return Trace("no-trace-id")
-	}
+	fluxpkg.AssertNotNil(ctx, "<flux.context> must not nil in log trace")
 	fields := map[string]string{
 		"request-method": ctx.Method(),
 		"request-uri":    ctx.URI(),

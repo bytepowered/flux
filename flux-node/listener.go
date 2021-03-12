@@ -261,8 +261,8 @@ type WebListener interface {
 	// SetResponseWriter 设置Web响应写入函数
 	SetResponseWriter(WebResponseWriter)
 
-	// SetRequestBodyDecoder 设置Body体解析接口
-	SetRequestResolver(decoder WebRequestBodyResolver)
+	// SetRequestBodyResolver 设置Body体解析接口
+	SetRequestBodyResolver(decoder WebRequestBodyResolver)
 
 	// AddInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddInterceptor(m WebInterceptor)

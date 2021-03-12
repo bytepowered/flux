@@ -17,7 +17,7 @@ const (
 	EnvKeyDeployEnv = "DEPLOY_ENV"
 )
 
-func InitDefaultLogger() {
+func InitLogger() {
 	config, err := logger.LoadConfig("")
 	if nil != err {
 		panic(err)
@@ -51,7 +51,7 @@ func InitAppConfig(envKey string) {
 	}
 }
 
-func Run(build flux.Build) {
+func Bootstrap(build flux.Build) {
 	InitAppConfig(EnvKeyDeployEnv)
 	server := NewDefaultBootstrapServer()
 	if err := server.Prepare(); nil != err {
@@ -67,4 +67,8 @@ func Run(build flux.Build) {
 	}()
 	quit := make(chan os.Signal, 1)
 	server.OnSignalShutdown(quit, 10*time.Second)
+}
+
+func IsDisabled(config *flux.Configuration) bool {
+	return config.GetBool("disable") || config.GetBool("disabled")
 }

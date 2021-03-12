@@ -11,7 +11,8 @@ var (
 )
 
 func SetLoggerFactory(f flux.LoggerFactory) {
-	loggerFactory = fluxpkg.MustNotNil(f, "LoggerFactory is nil").(flux.LoggerFactory)
+	fluxpkg.AssertNotNil(f, "LoggerFactory must not nil")
+	loggerFactory = f
 }
 
 // NewLoggerWith

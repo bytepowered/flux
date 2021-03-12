@@ -21,10 +21,8 @@ const (
 
 // MTValue 包含指示值的媒体类型和Value结构
 type MTValue struct {
-	// 原始值类型
-	Value interface{}
-	// 媒体类型
-	MediaType string
+	Value     interface{} // 原始值类型
+	MediaType string      // 媒体类型
 }
 
 func WrapStringMTValue(value string) MTValue {

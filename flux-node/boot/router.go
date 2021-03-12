@@ -49,7 +49,7 @@ func (r *Router) Initial() error {
 		ns := filter.FilterId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
 		config := flux.NewConfigurationOfNS(ns)
-		if isDisabled(config) {
+		if IsDisabled(config) {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.FilterId())
 			continue
 		}
@@ -65,7 +65,7 @@ func (r *Router) Initial() error {
 	for _, item := range dynFilters {
 		filter := item.Factory()
 		logger.Infow("Load dynamic-filter", "filter-id", item.Id, "type-id", item.TypeId, "type", reflect.TypeOf(filter))
-		if isDisabled(item.Config) {
+		if IsDisabled(item.Config) {
 			logger.Infow("Set dynamic-filter DISABLED", "filter-id", item.Id, "type-id", item.TypeId)
 			continue
 		}
@@ -175,10 +175,6 @@ func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.Filte
 	return next
 }
 
-func isDisabled(config *flux.Configuration) bool {
-	return config.GetBool("disable") || config.GetBool("disabled")
-}
-
 func sortedStartup(items []flux.Startuper) []flux.Startuper {
 	out := make(StartupArray, len(items))
 	for i, v := range items {
@@ -195,4 +191,24 @@ func sortedShutdown(items []flux.Shutdowner) []flux.Shutdowner {
 	}
 	sort.Sort(out)
 	return out
+}
+
+type StartupArray []flux.Startuper
+
+func (s StartupArray) Len() int           { return len(s) }
+func (s StartupArray) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s StartupArray) Less(i, j int) bool { return orderOf(s[i]) < orderOf(s[j]) }
+
+type ShutdownArray []flux.Shutdowner
+
+func (s ShutdownArray) Len() int           { return len(s) }
+func (s ShutdownArray) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s ShutdownArray) Less(i, j int) bool { return orderOf(s[i]) < orderOf(s[j]) }
+
+func orderOf(v interface{}) int {
+	if v, ok := v.(flux.Orderer); ok {
+		return v.Order()
+	} else {
+		return 0
+	}
 }

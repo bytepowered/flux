@@ -43,13 +43,13 @@ func NewWebListener(listenerId string, config *flux.Configuration) flux.WebListe
 func NewWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentifier, mws *AdaptMiddleware) flux.WebListener {
 	fluxpkg.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
-	server.Pre(RepeatableBodyReader)
+	server.Pre(RepeatableReader)
 	server.HideBanner = true
 	server.HidePort = true
 	aws := &AdaptWebListener{
 		id:              listenerId,
 		server:          server,
-		requestResolver: DefaultRequestResolver,
+		requestResolver: DefaultRequestBodyResolver,
 	}
 	// Init context
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -141,23 +141,28 @@ func (s *AdaptWebListener) WriteError(webex flux.WebExchange, err *flux.ServeErr
 }
 
 func (s *AdaptWebListener) WriteNotfound(webex flux.WebExchange) error {
+	// Call not found handler
 	return echo.NotFoundHandler(webex.ShadowContext().(echo.Context))
 }
 
 func (s *AdaptWebListener) SetResponseWriter(f flux.WebResponseWriter) {
-	s.responseWriter = fluxpkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.id).(flux.WebResponseWriter)
+	fluxpkg.AssertNotNil(f, "WebResponseWriter must not nil, server-id: "+s.id)
+	s.responseWriter = f
 }
 
-func (s *AdaptWebListener) SetRequestResolver(resolver flux.WebRequestBodyResolver) {
-	s.requestResolver = resolver
+func (s *AdaptWebListener) SetRequestBodyResolver(r flux.WebRequestBodyResolver) {
+	fluxpkg.AssertNotNil(r, "WebRequestBodyResolver must not nil, server-id: "+s.id)
+	s.requestResolver = r
 }
 
-func (s *AdaptWebListener) SetNotfoundHandler(fun flux.WebHandler) {
-	echo.NotFoundHandler = AdaptWebHandler(fun).AdaptFunc
+func (s *AdaptWebListener) SetNotfoundHandler(f flux.WebHandler) {
+	fluxpkg.AssertNotNil(f, "NotfoundHandler must not nil, server-id: "+s.id)
+	echo.NotFoundHandler = AdaptWebHandler(f).AdaptFunc
 }
 
 func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
+	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, server-id: "+s.id)
 	s.server.HTTPErrorHandler = func(err error, c echo.Context) {
 		webex, ok := c.Get(ContextKeyWebContext).(*AdaptWebExchange)
 		fluxpkg.Assert(ok, "<web-context> is invalid in http-error-handler")
@@ -165,23 +170,31 @@ func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	}
 }
 
-func (s *AdaptWebListener) AddInterceptor(m flux.WebInterceptor) {
-	s.server.Pre(AdaptWebInterceptor(m).AdaptFunc)
+func (s *AdaptWebListener) AddInterceptor(i flux.WebInterceptor) {
+	fluxpkg.AssertNotNil(i, "Interceptor must not nil, server-id: "+s.id)
+	s.server.Pre(AdaptWebInterceptor(i).AdaptFunc)
 }
 
-func (s *AdaptWebListener) AddWebMiddleware(m flux.WebInterceptor) {
+func (s *AdaptWebListener) AddMiddleware(m flux.WebInterceptor) {
+	fluxpkg.AssertNotNil(m, "Middleware must not nil, server-id: "+s.id)
 	s.server.Use(AdaptWebInterceptor(m).AdaptFunc)
 }
 
-func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandler, m ...flux.WebInterceptor) {
-	wms := make([]echo.MiddlewareFunc, len(m))
-	for i, mi := range m {
+func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandler, is ...flux.WebInterceptor) {
+	fluxpkg.AssertNotNil(h, "Handler must not nil, server-id: "+s.id)
+	fluxpkg.Assert("" != method, "Method must not empty")
+	fluxpkg.Assert("" != pattern, "Pattern must not empty")
+	wms := make([]echo.MiddlewareFunc, len(is))
+	for i, mi := range is {
 		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
 	}
 	s.server.Add(method, toRoutePattern(pattern), AdaptWebHandler(h).AdaptFunc, wms...)
 }
 
 func (s *AdaptWebListener) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+	fluxpkg.AssertNotNil(h, "Handler must not nil, server-id: "+s.id)
+	fluxpkg.Assert("" != method, "Method must not empty")
+	fluxpkg.Assert("" != pattern, "Pattern must not empty")
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mf := range m {
 		wms[i] = echo.WrapMiddleware(mf)
@@ -212,7 +225,7 @@ func toRoutePattern(uri string) string {
 }
 
 // 默认对RequestBody的表单数据进行解析
-func DefaultRequestResolver(webex flux.WebExchange) url.Values {
+func DefaultRequestBodyResolver(webex flux.WebExchange) url.Values {
 	form, err := webex.(*AdaptWebExchange).echoc.FormParams()
 	if nil != err {
 		panic(fmt.Errorf("parse form params failed, err: %w", err))
@@ -232,7 +245,7 @@ func DefaultIdentifier(ctx interface{}) string {
 }
 
 // Body缓存，允许通过 GetBody 多次读取Body
-func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
+func RepeatableReader(next echo.HandlerFunc) echo.HandlerFunc {
 	// 包装Http处理错误，统一由HttpErrorHandler处理
 	return func(echo echo.Context) error {
 		request := echo.Request()

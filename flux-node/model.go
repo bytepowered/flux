@@ -252,7 +252,7 @@ type Endpoint struct {
 	Version            string         `json:"version" yaml:"version"`         // 端点版本号
 	HttpPattern        string         `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
 	HttpMethod         string         `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
-	Service            BackendService `json:"service" yaml:"service"`         // 上游服务
+	Service            BackendService `json:"service" yaml:"service"`         // 上游/后端服务
 	Permission         BackendService `json:"permission" yaml:"permission"`   // Deprecated 权限验证定义
 	Permissions        []string       `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
 	EmbeddedAttributes `yaml:",inline"`
@@ -316,7 +316,7 @@ func (m *MultiEndpoint) Delete(version string) {
 	m.Unlock()
 }
 
-func (m *MultiEndpoint) RandomVersion() *Endpoint {
+func (m *MultiEndpoint) Random() *Endpoint {
 	m.RLock()
 	rv := m.random()
 	m.RUnlock()

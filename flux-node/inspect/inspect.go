@@ -34,18 +34,18 @@ var (
 func init() {
 	endpointFilterFactories[queryKeyApplication] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			return queryMatch(query, ep.RandomVersion().Application)
+			return queryMatch(query, ep.Random().Application)
 		}
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			proto := ep.RandomVersion().Service.AttrRpcProto()
+			proto := ep.Random().Service.AttrRpcProto()
 			return queryMatch(query, proto)
 		}
 	}
 	httpPatternFilter := func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			return queryMatch(query, ep.RandomVersion().HttpPattern)
+			return queryMatch(query, ep.Random().HttpPattern)
 		}
 	}
 	endpointFilterFactories[queryKeyHttpPattern] = httpPatternFilter
@@ -53,7 +53,7 @@ func init() {
 
 	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			return queryMatch(query, ep.RandomVersion().Service.Interface)
+			return queryMatch(query, ep.Random().Service.Interface)
 		}
 	}
 }
