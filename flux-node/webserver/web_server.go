@@ -10,21 +10,21 @@ import (
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/random"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
 const (
-	ConfigKeyAddress           = "address"
-	ConfigKeyBindPort          = "bind_port"
-	ConfigKeyTLSCertFile       = "tls_cert_file"
-	ConfigKeyTLSKeyFile        = "tls_key_file"
-	ConfigKeyBodyLimit         = "body_limit"
-	ConfigKeyCORSEnable        = "cors_enable"
-	ConfigKeyCSRFEnable        = "csrf_enable"
-	ConfigKeyFeatures          = "features"
-	ConfigKeyRequestIdDisabled = "request_id_disabled"
+	ConfigKeyAddress     = "address"
+	ConfigKeyBindPort    = "bind_port"
+	ConfigKeyTLSCertFile = "tls_cert_file"
+	ConfigKeyTLSKeyFile  = "tls_key_file"
+	ConfigKeyBodyLimit   = "body_limit"
+	ConfigKeyCORSEnable  = "cors_enable"
+	ConfigKeyCSRFEnable  = "csrf_enable"
+	ConfigKeyFeatures    = "features"
 )
 
 var _ flux.WebListener = new(AdaptWebListener)
@@ -33,25 +33,27 @@ func init() {
 	ext.SetWebListenerFactory(NewWebListener)
 }
 
-func NewWebListener(id string, config *flux.Configuration) flux.WebListener {
-	return NewWebListenerWith(id, config, nil)
+func NewWebListener(listenerId string, config *flux.Configuration) flux.WebListener {
+	return NewWebListenerWith(listenerId, config, DefaultIdLookup, nil)
 }
 
-func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddleware) flux.WebListener {
-	fluxpkg.Assert("" != id, "empty <listener-id> in web listener configuration")
+func NewWebListenerWith(listenerId string, options *flux.Configuration, LookupIdFunc flux.WebLookupIdFunc, mws *AdaptMiddleware) flux.WebListener {
+	fluxpkg.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
 	server.HideBanner = true
 	server.HidePort = true
 	aws := &AdaptWebListener{
-		listenerId:      id,
+		id:              listenerId,
 		server:          server,
 		requestResolver: DefaultRequestResolver,
 	}
 	// Init context
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoc echo.Context) error {
-			echoc.Set(ContextKeyWebResolver, aws.requestResolver)
-			echoc.Set(ContextKeyWebBindServer, aws)
+			id := LookupIdFunc(echoc)
+			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
+			webex := NewAdaptWebExchange(id, echoc, aws, aws.requestResolver)
+			echoc.Set(ContextKeyWebContext, webex)
 			return next(echoc)
 		}
 	})
@@ -65,23 +67,18 @@ func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddle
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
-		logger.Infof("WebListener(id:%s), feature BODY-LIMIT: enabled, size= %s", aws.listenerId, limit)
+		logger.Infof("WebListener(id:%s), feature BODY-LIMIT: enabled, size= %s", aws.id, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
 	// CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
-		logger.Infof("WebListener(id:%s), feature CORS: enabled", aws.listenerId)
+		logger.Infof("WebListener(id:%s), feature CORS: enabled", aws.id)
 		server.Pre(middleware.CORS())
 	}
 	// CSRF
 	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
-		logger.Infof("WebListener(id:%s), feature CSRF: enabled", aws.listenerId)
+		logger.Infof("WebListener(id:%s), feature CSRF: enabled", aws.id)
 		server.Pre(middleware.CSRF())
-	}
-	// RequestId；默认开启
-	if disabled := features.GetBool(ConfigKeyRequestIdDisabled); !disabled {
-		logger.Infof("WebListener(id:%s), feature RequestID: enabled", aws.listenerId)
-		server.Pre(RequestID())
 	}
 	// After features
 	if mws != nil && len(mws.AfterFeature) > 0 {
@@ -93,7 +90,7 @@ func NewWebListenerWith(id string, options *flux.Configuration, mws *AdaptMiddle
 // AdaptWebListener 默认实现的基于echo框架的WebServer
 // 注意：保持AdaptWebServer的公共访问性
 type AdaptWebListener struct {
-	listenerId      string
+	id              string
 	server          *echo.Echo
 	writer          flux.WebResponseWriter
 	requestResolver flux.WebRequestResolver
@@ -103,7 +100,7 @@ type AdaptWebListener struct {
 }
 
 func (s *AdaptWebListener) ListenerId() string {
-	return s.listenerId
+	return s.id
 }
 
 func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
@@ -116,13 +113,13 @@ func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
 		s.address = addr + ":" + port
 	}
 	if s.address == ":" {
-		return errors.New("web server config.address is required, was empty, server-id: " + s.listenerId)
+		return errors.New("web server config.address is required, was empty, server-id: " + s.id)
 	}
 	return nil
 }
 
 func (s *AdaptWebListener) Listen() error {
-	logger.Infof("WebListener(id:%s) start listen: %s", s.listenerId, s.address)
+	logger.Infof("WebListener(id:%s) start listen: %s", s.id, s.address)
 	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
 		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 	} else {
@@ -136,7 +133,7 @@ func (s *AdaptWebListener) Write(webex flux.WebExchange, header http.Header, sta
 
 func (s *AdaptWebListener) WriteError(webex flux.WebExchange, err *flux.ServeError) {
 	if err := s.writer(webex, err.Header, err.StatusCode, nil, err); nil != err {
-		logger.Errorw("WebListener write error failed", "error", err, "server-id", s.listenerId)
+		logger.Errorw("WebListener write error failed", "error", err, "server-id", s.id)
 	}
 }
 
@@ -145,7 +142,7 @@ func (s *AdaptWebListener) WriteNotfound(webex flux.WebExchange) error {
 }
 
 func (s *AdaptWebListener) SetResponseWriter(f flux.WebResponseWriter) {
-	s.writer = fluxpkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.listenerId).(flux.WebResponseWriter)
+	s.writer = fluxpkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.id).(flux.WebResponseWriter)
 }
 
 func (s *AdaptWebListener) SetRequestResolver(resolver flux.WebRequestResolver) {
@@ -218,6 +215,16 @@ func DefaultRequestResolver(webex flux.WebExchange) url.Values {
 		panic(fmt.Errorf("parse form params failed, err: %w", err))
 	}
 	return form
+}
+
+func DefaultIdLookup(ctx interface{}) string {
+	echoc, ok := ctx.(echo.Context)
+	fluxpkg.Assert(ok, "<context> must be echo.context")
+	id := echoc.Request().Header.Get(flux.XRequestId)
+	if "" != id {
+		return id
+	}
+	return "fxid_" + random.String(32)
 }
 
 type AdaptMiddleware struct {

@@ -2,10 +2,8 @@ package webserver
 
 import (
 	"context"
-	"fmt"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/internal"
-	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
@@ -13,10 +11,8 @@ import (
 )
 
 const (
-	ContextKeyWebPrefix     = "__webserver_core__"
-	ContextKeyWebBindServer = ContextKeyWebPrefix + ".adapted.server"
-	ContextKeyWebContext    = ContextKeyWebPrefix + ".adapted.context"
-	ContextKeyWebResolver   = ContextKeyWebPrefix + ".adapted.body.resolver"
+	ContextKeyWebPrefix  = "__webserver_core__"
+	ContextKeyWebContext = ContextKeyWebPrefix + ".adapted.context"
 )
 
 var _ flux.WebExchange = new(AdaptWebExchange)
@@ -203,20 +199,4 @@ func (c *AdaptWebExchange) ShadowRequest() interface{} {
 
 func (c *AdaptWebExchange) ShadowResponse() interface{} {
 	return c.echoc.Response()
-}
-
-func toAdaptWebExchange(echoc echo.Context) flux.WebExchange {
-	if webex, ok := echoc.Get(ContextKeyWebContext).(*AdaptWebExchange); ok {
-		return webex
-	}
-	resolver, ok := echoc.Get(ContextKeyWebResolver).(flux.WebRequestResolver)
-	fluxpkg.Assert(ok, fmt.Sprintf("invalid <request-resolver> in echo.context, was: %+v", echoc.Get(ContextKeyWebResolver)))
-	server, ok := echoc.Get(ContextKeyWebBindServer).(flux.WebListener)
-	fluxpkg.Assert(ok, fmt.Sprintf("invalid <listen-server> in echo.context, was: %+v", echoc.Get(ContextKeyWebBindServer)))
-	// 从Header中读取RequestId
-	id := echoc.Request().Header.Get(echo.HeaderXRequestID)
-	fluxpkg.Assert("" != id, "invalid <request-id> in echo.context.header")
-	webex := NewAdaptWebExchange(id, echoc, server, resolver)
-	echoc.Set(ContextKeyWebContext, webex)
-	return webex
 }
