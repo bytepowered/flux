@@ -1,6 +1,7 @@
 package webserver
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/random"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -34,10 +37,10 @@ func init() {
 }
 
 func NewWebListener(listenerId string, config *flux.Configuration) flux.WebListener {
-	return NewWebListenerWith(listenerId, config, DefaultIdLookup, nil)
+	return NewWebListenerWith(listenerId, config, DefaultIdentifier, nil)
 }
 
-func NewWebListenerWith(listenerId string, options *flux.Configuration, LookupIdFunc flux.WebLookupIdFunc, mws *AdaptMiddleware) flux.WebListener {
+func NewWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentifier, mws *AdaptMiddleware) flux.WebListener {
 	fluxpkg.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
 	server.Pre(RepeatableBodyReader)
@@ -51,7 +54,7 @@ func NewWebListenerWith(listenerId string, options *flux.Configuration, LookupId
 	// Init context
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoc echo.Context) error {
-			id := LookupIdFunc(echoc)
+			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
 			webex := NewAdaptWebExchange(id, echoc, aws, aws.requestResolver)
 			echoc.Set(ContextKeyWebContext, webex)
@@ -92,8 +95,8 @@ func NewWebListenerWith(listenerId string, options *flux.Configuration, LookupId
 type AdaptWebListener struct {
 	id              string
 	server          *echo.Echo
-	writer          flux.WebResponseWriter
-	requestResolver flux.WebRequestResolver
+	responseWriter  flux.WebResponseWriter
+	requestResolver flux.WebRequestBodyResolver
 	tlsCertFile     string
 	tlsKeyFile      string
 	address         string
@@ -128,11 +131,11 @@ func (s *AdaptWebListener) Listen() error {
 }
 
 func (s *AdaptWebListener) Write(webex flux.WebExchange, header http.Header, status int, data interface{}) error {
-	return s.writer(webex, header, status, data, nil)
+	return s.responseWriter.Write(webex, header, status, data)
 }
 
 func (s *AdaptWebListener) WriteError(webex flux.WebExchange, err *flux.ServeError) {
-	if err := s.writer(webex, err.Header, err.StatusCode, nil, err); nil != err {
+	if err := s.responseWriter.Write(webex, err.Header, err.StatusCode, err); nil != err {
 		logger.Errorw("WebListener write error failed", "error", err, "server-id", s.id)
 	}
 }
@@ -142,10 +145,10 @@ func (s *AdaptWebListener) WriteNotfound(webex flux.WebExchange) error {
 }
 
 func (s *AdaptWebListener) SetResponseWriter(f flux.WebResponseWriter) {
-	s.writer = fluxpkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.id).(flux.WebResponseWriter)
+	s.responseWriter = fluxpkg.MustNotNil(f, "WebResponseWriter is nil, server-id: "+s.id).(flux.WebResponseWriter)
 }
 
-func (s *AdaptWebListener) SetRequestResolver(resolver flux.WebRequestResolver) {
+func (s *AdaptWebListener) SetRequestResolver(resolver flux.WebRequestBodyResolver) {
 	s.requestResolver = resolver
 }
 
@@ -217,7 +220,7 @@ func DefaultRequestResolver(webex flux.WebExchange) url.Values {
 	return form
 }
 
-func DefaultIdLookup(ctx interface{}) string {
+func DefaultIdentifier(ctx interface{}) string {
 	echoc, ok := ctx.(echo.Context)
 	fluxpkg.Assert(ok, "<context> must be echo.context")
 	id := echoc.Request().Header.Get(flux.XRequestId)
@@ -226,6 +229,29 @@ func DefaultIdLookup(ctx interface{}) string {
 	}
 	echoc.Request().Header.Set("X-RequestId-By", "flux")
 	return "fxid_" + random.String(32)
+}
+
+// Body缓存，允许通过 GetBody 多次读取Body
+func RepeatableBodyReader(next echo.HandlerFunc) echo.HandlerFunc {
+	// 包装Http处理错误，统一由HttpErrorHandler处理
+	return func(echo echo.Context) error {
+		request := echo.Request()
+		data, err := ioutil.ReadAll(request.Body)
+		if nil != err {
+			return &flux.ServeError{
+				StatusCode: flux.StatusBadRequest,
+				ErrorCode:  flux.ErrorCodeGatewayInternal,
+				Message:    flux.ErrorMessageRequestPrepare,
+				CauseError: fmt.Errorf("read request body, method: %s, uri:%s, err: %w", request.Method, request.RequestURI, err),
+			}
+		}
+		request.GetBody = func() (io.ReadCloser, error) {
+			return ioutil.NopCloser(bytes.NewBuffer(data)), nil
+		}
+		// 恢复Body，但ParseForm解析后，request.Body无法重读，需要通过GetBody
+		request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		return next(echo)
+	}
 }
 
 type AdaptMiddleware struct {

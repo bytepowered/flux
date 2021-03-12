@@ -17,7 +17,7 @@ const (
 
 var _ flux.WebExchange = new(AdaptWebExchange)
 
-func NewAdaptWebExchange(id string, echoc echo.Context, server flux.WebListener, resolver flux.WebRequestResolver) *AdaptWebExchange {
+func NewAdaptWebExchange(id string, echoc echo.Context, server flux.WebListener, resolver flux.WebRequestBodyResolver) *AdaptWebExchange {
 	return &AdaptWebExchange{
 		context:         context.WithValue(echoc.Request().Context(), internal.ContextKeyRequestId, id),
 		echoc:           echoc,
@@ -32,7 +32,7 @@ type AdaptWebExchange struct {
 	context         context.Context
 	echoc           echo.Context
 	server          flux.WebListener
-	requestResolver flux.WebRequestResolver
+	requestResolver flux.WebRequestBodyResolver
 	responseWriter  flux.WebResponseWriter
 	pathValues      url.Values
 	bodyValues      url.Values
@@ -64,12 +64,6 @@ func (c *AdaptWebExchange) URL() *url.URL {
 
 func (c *AdaptWebExchange) Address() string {
 	return c.echoc.RealIP()
-}
-
-func (c *AdaptWebExchange) OnHeaderVars(access func(header http.Header)) {
-	if nil != access {
-		access(c.echoc.Request().Header)
-	}
 }
 
 func (c *AdaptWebExchange) HeaderVars() http.Header {

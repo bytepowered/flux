@@ -92,23 +92,33 @@ const (
 
 // Web interfaces defines
 type (
-	// WebInterceptor 定义处理Web请求的中间件函数
-	WebInterceptor func(WebHandler) WebHandler
-
 	// WebHandler 定义处理Web请求的处理函数
 	WebHandler func(WebExchange) error
-
-	// WebSkipper 用于部分WebInterceptor逻辑，实现忽略部分请求的功能；
-	WebSkipper func(WebExchange) bool
-
-	// WebRequestResolver 解析请求体数据
-	WebRequestResolver func(WebExchange) url.Values
+	// WebInterceptor 定义处理Web请求的中间件函数
+	WebInterceptor func(WebHandler) WebHandler
 
 	// WebErrorHandler 定义Web服务处理异常错误的处理函数
 	WebErrorHandler func(WebExchange, error)
 
+	// WebListenerFactory 构建 WebListener 的工厂函数
+	WebListenerFactory func(string, *Configuration) WebListener
+
+	// WebRequestIdentifier 查找请求ID的函数
+	WebRequestIdentifier func(shadowContext interface{}) string
+
+	// WebRequestBodyResolver 解析请求体数据
+	WebRequestBodyResolver func(WebExchange) url.Values
+
 	// WebResponseWriter 用于写入Body响应数据到WebServer
-	WebResponseWriter func(webex WebExchange, header http.Header, status int, body interface{}, error *ServeError) error
+	WebResponseWriter interface {
+		// Write 序列化并写入数据响应
+		Write(webex WebExchange, header http.Header, status int, body interface{}) error
+		// WriteError 序列化并写入错误响应
+		WriteError(webex WebExchange, header http.Header, status int, error *ServeError) error
+	}
+
+	// WebSkipper 用于部分WebInterceptor逻辑，实现忽略部分请求的功能；
+	WebSkipper func(WebExchange) bool
 )
 
 // WebExchange 定义封装Web框架的RequestContext的接口；
@@ -173,16 +183,18 @@ type WebExchange interface {
 	// Rewrite 修改请求方法和路径；
 	Rewrite(method string, path string)
 
-	// Send 写入响应体数据；
+	// Send 发送响应体数据；
+	// 由内部序列化接口处理数据体；
 	Send(webex WebExchange, header http.Header, status int, data interface{}) error
 
-	// SendError 写入错误状态数据
+	// SendError 写入错误状态数据；
+	// 由内部序列化接口处理错误数据；
 	SendError(error *ServeError)
 
-	// SendBytes 直接写入并返回响应状态码和响应数据到客户端
+	// Write 直接写入并返回响应状态码和响应数据到客户端
 	Write(statusCode int, contentType string, bytes []byte) error
 
-	// SendStream 直接写入并返回响应状态码和流数据到客户端
+	// WriteStream 直接写入并返回响应状态码和流数据到客户端
 	WriteStream(statusCode int, contentType string, reader io.Reader) error
 
 	// SetResponseHeader 设置响应Response的Header键值
@@ -222,13 +234,6 @@ type WebExchange interface {
 	ShadowResponse() interface{}
 }
 
-type (
-	// WebListenerFactory 构建 WebListener 的工厂函数
-	WebListenerFactory func(string, *Configuration) WebListener
-	// WebIdLookupFunc 查找请求ID的函数
-	WebLookupIdFunc func(shadowContext interface{}) string
-)
-
 // WebListener 定义Web框架服务器的接口；
 // 通过实现此接口来自定义支持不同的Web框架，用于支持不同的Web服务实现。
 // 例如默认Web框架为 labstack.echo；
@@ -257,7 +262,7 @@ type WebListener interface {
 	SetResponseWriter(WebResponseWriter)
 
 	// SetRequestBodyDecoder 设置Body体解析接口
-	SetRequestResolver(decoder WebRequestResolver)
+	SetRequestResolver(decoder WebRequestBodyResolver)
 
 	// AddInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddInterceptor(m WebInterceptor)

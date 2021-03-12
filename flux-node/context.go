@@ -141,6 +141,7 @@ type Response interface {
 	SetHeader(name, value string)
 
 	// SetPayload 设置数据响应体
+	// 默认支持Reader/ReadCloser/String/Bytes类型，其它类型则序列化为JSON格式；
 	SetPayload(payload interface{})
 
 	// Body 响应数据体

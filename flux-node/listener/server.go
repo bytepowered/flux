@@ -15,7 +15,7 @@ func New(id string, config *flux.Configuration, wis []flux.WebInterceptor, opts 
 	opts = append([]Option{
 		WithErrorHandler(DefaultErrorHandler),
 		WithNotfoundHandler(DefaultNotfoundHandler),
-		WithResponseWriter(DefaultResponseWriter),
+		WithResponseWriter(new(DefaultResponseWriter)),
 		WithInterceptors(wis),
 	}, opts...)
 	return NewWebListenerWith(id, config, opts...)
