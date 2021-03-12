@@ -165,9 +165,10 @@ type Context interface {
 	// Response 返回响应数据接口
 	Response() Response
 
+	// Application 返回当前Endpoint对应的应用名
 	Application() string
 
-	// Endpoint 返回请求路由定义的元数据
+	// Endpoint 返回当前请求路由定义的Endpoint元数据
 	Endpoint() Endpoint
 
 	// BackendService 返回BackendService信息
