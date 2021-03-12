@@ -15,8 +15,8 @@ var (
 	pool = sync.Pool{
 		New: func() interface{} {
 			return &AttacheContext{
-				request:   NewAttacheRequest(),
-				response:  NewAttacheResponse(),
+				request:   NewWebRequest(),
+				response:  NewWebResponse(),
 				ctxLogger: logger.SimpleLogger(),
 			}
 		},
@@ -31,8 +31,8 @@ type AttacheContext struct {
 	variables  map[string]interface{}
 	metrics    []flux.Metric
 	startTime  time.Time
-	request    *AttacheRequest
-	response   *AttacheResponse
+	request    *WebRequest
+	response   *WebResponse
 	ctxLogger  flux.Logger
 }
 
@@ -195,9 +195,5 @@ func (c *AttacheContext) attach(webex flux.WebExchange, endpoint *flux.Endpoint)
 	c.startTime = time.Now()
 	c.request.reset(webex)
 	c.response.reset()
-	c.SetAttribute(flux.XRequestTime, c.startTime.Unix())
-	c.SetAttribute(flux.XRequestId, webex.RequestId())
-	c.SetAttribute(flux.XRequestHost, webex.Host())
-	c.SetAttribute(flux.XRequestAgent, "flux/gateway")
 	return c
 }

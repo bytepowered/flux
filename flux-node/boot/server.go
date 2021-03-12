@@ -241,6 +241,10 @@ func (s *BootstrapServer) route(webex flux.WebExchange, server flux.WebListener,
 		return flux.ErrRouteNotFound
 	}
 	ctxw := context.New(webex, endpoint)
+	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
+	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
+	ctxw.SetAttribute(flux.XRequestHost, webex.Host())
+	ctxw.SetAttribute(flux.XRequestAgent, "flux/gateway")
 	defer context.ReleaseContext(ctxw)
 	logger.TraceContext(ctxw).Infow("SERVER:ROUTE:START")
 	// hook
