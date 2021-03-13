@@ -1,4 +1,4 @@
-package backend
+package common
 
 import (
 	"errors"
@@ -8,8 +8,24 @@ import (
 	"strings"
 )
 
-// 默认实现：查找Argument的值函数
-func DefaultArgumentLookupFunc(scope, key string, ctx flux.Context) (value flux.MTValue, err error) {
+// LookupExpr 搜索LookupExpr表达式指定域的值。
+func LookupMTValueByExpr(expr string, ctx flux.Context) (interface{}, error) {
+	if "" == expr || nil == ctx {
+		return nil, errors.New("empty lookup expr, or context is nil")
+	}
+	scope, key, ok := fluxpkg.LookupParseExpr(expr)
+	if !ok {
+		return "", errors.New("illegal lookup expr: " + expr)
+	}
+	mtv, err := LookupMTValue(scope, key, ctx)
+	if nil != err {
+		return "", err
+	}
+	return mtv.Value, nil
+}
+
+// 默认实现查找MTValue
+func LookupMTValue(scope, key string, ctx flux.Context) (value flux.MTValue, err error) {
 	if "" == scope || "" == key {
 		return flux.WrapObjectMTValue(nil), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
 	}

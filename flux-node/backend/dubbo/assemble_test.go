@@ -3,7 +3,7 @@ package dubbo
 import (
 	hessian "github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/backend"
+	"github.com/bytepowered/flux/flux-node/common"
 	"github.com/bytepowered/flux/flux-node/context"
 	"github.com/bytepowered/flux/flux-node/ext"
 	assert2 "github.com/stretchr/testify/assert"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestDefaultAssembleFunc(t *testing.T) {
-	ext.SetArgumentLookupFunc(backend.DefaultArgumentLookupFunc)
+	ext.SetArgumentLookupFunc(common.LookupMTValue)
 	serializer := flux.NewJsonSerializer()
 	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)

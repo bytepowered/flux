@@ -1,4 +1,4 @@
-package backend
+package common
 
 import (
 	"github.com/bytepowered/flux/flux-node"
@@ -12,14 +12,14 @@ import (
 func TestNilContext(t *testing.T) {
 	assert := assert2.New(t)
 	// Scope & key
-	_, err0 := DefaultArgumentLookupFunc("", "", context.NewEmpty())
+	_, err0 := LookupMTValue("", "", context.NewEmpty())
 	assert.Error(err0, "must error")
 	// Nil context
-	_, err1 := DefaultArgumentLookupFunc("a", "b", nil)
+	_, err1 := LookupMTValue("a", "b", nil)
 	assert.Error(err1, "must error")
 }
 
-func TestDefaultArgumentValueLookupFunc(t *testing.T) {
+func TestLookupMTValue(t *testing.T) {
 	values := map[string]interface{}{
 		"path":          "hahaha",
 		"path-values":   url.Values{},
@@ -54,7 +54,7 @@ func TestDefaultArgumentValueLookupFunc(t *testing.T) {
 	}
 	assert := assert2.New(t)
 	for _, c := range cases {
-		mtv, err := DefaultArgumentLookupFunc(c.scope, c.key, valctx)
+		mtv, err := LookupMTValue(c.scope, c.key, valctx)
 		assert.NoError(err, "must no error")
 		assert.Equal(c.expect, mtv)
 	}
