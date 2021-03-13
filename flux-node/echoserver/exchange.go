@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	ContextKeyWebPrefix  = "__webserver_core__"
-	ContextKeyWebContext = ContextKeyWebPrefix + ".adapted.context"
+	__interContextKeyWebContext = "__server.core.adapted.context#890b1fa9-93ad-4b44-af24-85bcbfe646b4"
 )
 
 var _ flux.WebExchange = new(EchoWebExchange)

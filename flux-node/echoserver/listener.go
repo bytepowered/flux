@@ -57,7 +57,7 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
 			webex := NewAdaptWebExchange(id, echoc, aws, aws.requestResolver)
-			echoc.Set(ContextKeyWebContext, webex)
+			echoc.Set(__interContextKeyWebContext, webex)
 			return next(echoc)
 		}
 	})
@@ -172,7 +172,7 @@ func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, server-id: "+s.id)
 	s.state()
 	s.server.HTTPErrorHandler = func(err error, c echo.Context) {
-		webex, ok := c.Get(ContextKeyWebContext).(*EchoWebExchange)
+		webex, ok := c.Get(__interContextKeyWebContext).(*EchoWebExchange)
 		fluxpkg.Assert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webex, err)
 	}

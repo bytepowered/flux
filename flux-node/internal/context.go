@@ -1,7 +1,10 @@
 package internal
 
-const (
-	ContextKeyPrefix        = "__flux.core__"
-	ContextKeyRequestId     = ContextKeyPrefix + "request.id"
-	ContextKeyRouteEndpoint = ContextKeyPrefix + "route.endpoint"
+type ContextKey struct {
+	descriptor string
+}
+
+var (
+	ContextKeyRequestId     = ContextKey{descriptor: "__internal.context.request.id"}
+	ContextKeyRouteEndpoint = ContextKey{descriptor: "__internal.context.route.endpoint"}
 )

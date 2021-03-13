@@ -25,7 +25,7 @@ func (call EchoWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc
 }
 
 func toWebExchange(echoc echo.Context) flux.WebExchange {
-	webex, ok := echoc.Get(ContextKeyWebContext).(*EchoWebExchange)
+	webex, ok := echoc.Get(__interContextKeyWebContext).(*EchoWebExchange)
 	fluxpkg.Assert(ok == true, "<web-context> not found in echo.context")
 	return webex
 }
