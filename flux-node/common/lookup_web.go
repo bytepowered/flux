@@ -1,4 +1,4 @@
-package webserver
+package common
 
 import (
 	"github.com/bytepowered/flux/flux-node"
@@ -8,19 +8,19 @@ import (
 	"strings"
 )
 
-// LookupValueByExpr 搜索LookupExpr表达式指定域的值。
-func LookupValueByExpr(lookupExpr string, webex flux.WebExchange) string {
-	if "" == lookupExpr || nil == webex {
+// LookupWebValueByExpr 搜索LookupExpr表达式指定域的值。
+func LookupWebValueByExpr(webex flux.WebExchange, expr string) string {
+	if "" == expr || nil == webex {
 		return ""
 	}
-	scope, key, ok := fluxpkg.LookupParseExpr(lookupExpr)
+	scope, key, ok := fluxpkg.LookupParseExpr(expr)
 	if !ok {
 		return ""
 	}
-	return LookupValue(scope, key, webex)
+	return LookupWebValue(webex, scope, key)
 }
 
-func LookupValue(scope, key string, webex flux.WebExchange) string {
+func LookupWebValue(webex flux.WebExchange, scope, key string) string {
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
 		return webex.PathVar(key)

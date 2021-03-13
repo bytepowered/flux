@@ -1,4 +1,4 @@
-package webserver
+package common
 
 import (
 	"github.com/bytepowered/flux/flux-pkg"

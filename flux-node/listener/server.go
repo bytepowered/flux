@@ -3,7 +3,7 @@ package listener
 import (
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
-	"github.com/spf13/viper"
+	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"net/http"
 )
 
@@ -18,18 +18,18 @@ func New(id string, config *flux.Configuration, wis []flux.WebInterceptor, opts 
 		WithResponseWriter(new(DefaultResponseWriter)),
 		WithInterceptors(wis),
 	}, opts...)
-	return NewWebListenerWith(id, config, opts...)
+	return NewWith(id, config, opts...)
 }
 
-func NewWebListenerWith(id string, config *flux.Configuration, opts ...Option) flux.WebListener {
-	if config == nil {
-		config = flux.NewConfigurationOfViper(viper.New())
-	}
-	listener := ext.WebListenerFactory()(id, config)
+func NewWith(id string, config *flux.Configuration, opts ...Option) flux.WebListener {
+	fluxpkg.AssertNotNil(config, "<configuration> of web listener must not nil")
+	// 通过Factory创建特定Web框架的Listener
+	// 默认为labstack.echo框架：github.com/labstack/echo
+	webListener := ext.WebListenerFactory()(id, config)
 	for _, opt := range opts {
-		opt(listener)
+		opt(webListener)
 	}
-	return listener
+	return webListener
 }
 
 func WithResponseWriter(writer flux.WebResponseWriter) Option {

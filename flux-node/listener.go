@@ -100,7 +100,7 @@ type (
 	// WebErrorHandler 定义Web服务处理异常错误的处理函数
 	WebErrorHandler func(WebExchange, error)
 
-	// WebListenerFactory 构建 WebListener 的工厂函数
+	// WebListenerFactory 构建 WebListener 的工厂函数，可通过Factory实现对不同Web框架的支持；
 	WebListenerFactory func(string, *Configuration) WebListener
 
 	// WebRequestIdentifier 查找请求ID的函数

@@ -6,7 +6,7 @@ import (
 	_ "github.com/bytepowered/flux/flux-node/backend/echo"
 	_ "github.com/bytepowered/flux/flux-node/backend/http"
 	"github.com/bytepowered/flux/flux-node/boot"
-	_ "github.com/bytepowered/flux/flux-node/webserver"
+	_ "github.com/bytepowered/flux/flux-node/echoserver"
 )
 
 import (
