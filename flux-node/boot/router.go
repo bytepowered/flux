@@ -37,7 +37,7 @@ func (r *Router) Prepare() error {
 func (r *Router) Initial() error {
 	logger.Info("Router initialing")
 	// Backends
-	for proto, backend := range ext.BackendTransports() {
+	for proto, backend := range ext.BackendTransporters() {
 		ns := flux.NamespaceBackendTransports + "." + proto
 		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
 		if err := r.AddInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
@@ -107,12 +107,12 @@ func (r *Router) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Router) Route(ctx flux.Context) *flux.ServeError {
+func (r *Router) Route(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
-		backend := ctx.BackendService()
-		proto, uri, method := backend.AttrRpcProto(), backend.Interface, backend.Method
+		backend := ctx.Transporter()
+		proto, uri, method := backend.RpcProto(), backend.Interface, backend.Method
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
@@ -132,7 +132,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 		}
 	}
 	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
-	transport := func(ctx flux.Context) *flux.ServeError {
+	transport := func(ctx *flux.Context) *flux.ServeError {
 		select {
 		case <-ctx.Context().Done():
 			return &flux.ServeError{
@@ -146,19 +146,19 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 		defer func() {
 			ctx.AddMetric("backend", time.Since(ctx.StartAt()))
 		}()
-		protoName := ctx.BackendService().AttrRpcProto()
-		if backend, ok := ext.BackendTransportByProto(protoName); !ok {
+		proto := ctx.Transporter().RpcProto()
+		if backend, ok := ext.BackendTransporterBy(proto); !ok {
 			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
-				"proto", protoName, "service", ctx.Endpoint().Service)
+				"proto", proto, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
-				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", protoName),
+				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", proto),
 			}
 		} else {
-			// Backend exchange
-			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("BackendTransport", protoName))
-			err := backend.Exchange(ctx)
+			// Transporter exchange
+			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("BackendTransporter", proto))
+			err := backend.Transport(ctx)
 			timer.ObserveDuration()
 			return err
 		}
@@ -168,7 +168,7 @@ func (r *Router) Route(ctx flux.Context) *flux.ServeError {
 	return doMetricEndpointFunc(r.walk(transport, filters)(ctx))
 }
 
-func (r *Router) walk(next flux.FilterHandler, filters []flux.Filter) flux.FilterHandler {
+func (r *Router) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}

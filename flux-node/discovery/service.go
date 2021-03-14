@@ -11,16 +11,6 @@ var (
 	invalidBackendServiceEvent = flux.BackendServiceEvent{}
 )
 
-//
-//type BackendService struct {
-//	flux.BackendService
-//	RpcProto   string `json:"rpcProto"`   // Service侧的协议
-//	RpcGroup   string `json:"rpcGroup"`   // Service侧的接口分组
-//	RpcVersion string `json:"rpcVersion"` // Service侧的接口版本
-//	RpcTimeout string `json:"rpcTimeout"` // Service侧的调用超时
-//	RpcRetries string `json:"rpcRetries"` // Service侧的调用重试
-//}
-
 func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.BackendServiceEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
@@ -28,7 +18,7 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string)
 		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONSIZE", "data", string(bytes), "node", node)
 		return invalidBackendServiceEvent, false
 	}
-	service := flux.BackendService{}
+	service := flux.TransporterService{}
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
 		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONFORMAT",
 			"event-type", etype, "data", string(bytes), "error", err, "node", node)
@@ -57,14 +47,14 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string)
 }
 
 // EnsureServiceAttrs 兼容旧协议数据格式
-func EnsureServiceAttrs(service *flux.BackendService) *flux.BackendService {
+func EnsureServiceAttrs(service *flux.TransporterService) *flux.TransporterService {
 	if len(service.Attributes) == 0 {
 		service.Attributes = []flux.Attribute{
-			{Name: flux.ServiceAttrTagRpcProto, Value: service.RpcProto},
-			{Name: flux.ServiceAttrTagRpcGroup, Value: service.RpcGroup},
-			{Name: flux.ServiceAttrTagRpcVersion, Value: service.RpcVersion},
-			{Name: flux.ServiceAttrTagRpcRetries, Value: service.RpcRetries},
-			{Name: flux.ServiceAttrTagRpcTimeout, Value: service.RpcTimeout},
+			{Name: flux.ServiceAttrTagRpcProto, Value: service.AttrRpcProto},
+			{Name: flux.ServiceAttrTagRpcGroup, Value: service.AttrRpcGroup},
+			{Name: flux.ServiceAttrTagRpcVersion, Value: service.AttrRpcVersion},
+			{Name: flux.ServiceAttrTagRpcRetries, Value: service.AttrRpcRetries},
+			{Name: flux.ServiceAttrTagRpcTimeout, Value: service.AttrRpcTimeout},
 		}
 	}
 	return service

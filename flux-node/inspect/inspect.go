@@ -2,8 +2,8 @@ package inspect
 
 import (
 	"github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node/common"
 	"github.com/bytepowered/flux/flux-node/ext"
-	"net/http"
 	"strings"
 )
 
@@ -39,7 +39,7 @@ func init() {
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			proto := ep.Random().Service.AttrRpcProto()
+			proto := ep.Random().Service.RpcProto()
 			return queryMatch(query, proto)
 		}
 	}
@@ -58,7 +58,7 @@ func init() {
 	}
 }
 
-func EndpointsHandler(webex flux.WebExchange) error {
+func EndpointsHandler(webex *flux.WebExchange) error {
 	filters := make([]EndpointFilter, 0)
 	for _, key := range endpointQueryKeys {
 		if query := webex.QueryVar(key); "" != query {
@@ -72,22 +72,21 @@ func EndpointsHandler(webex flux.WebExchange) error {
 		for k, v := range ext.Endpoints() {
 			m[k] = v.ToSerializable()
 		}
-		return webex.Send(webex, http.Header{}, flux.StatusOK, m)
+		return send(webex, flux.StatusOK, m)
 	} else {
-		return webex.Send(webex, http.Header{}, flux.StatusOK,
+		return send(webex, flux.StatusOK,
 			queryWithEndpointFilters(ext.Endpoints(), filters...))
 	}
 }
 
-func ServicesHandler(ctx flux.WebExchange) error {
-	noheader := http.Header{}
+func ServicesHandler(ctx *flux.WebExchange) error {
 	for _, key := range serviceQueryKeys {
 		if id := ctx.QueryVar(key); "" != id {
 			service, ok := ext.BackendServiceById(id)
 			if ok {
-				return ctx.Send(ctx, noheader, flux.StatusOK, service)
+				return send(ctx, flux.StatusOK, service)
 			} else {
-				return ctx.Send(ctx, noheader, flux.StatusNotFound, map[string]string{
+				return send(ctx, flux.StatusNotFound, map[string]string{
 					"status":     "failed",
 					"message":    "service not found",
 					"service-id": id,
@@ -95,7 +94,7 @@ func ServicesHandler(ctx flux.WebExchange) error {
 			}
 		}
 	}
-	return ctx.Send(ctx, noheader, flux.StatusBadRequest, map[string]string{
+	return send(ctx, flux.StatusBadRequest, map[string]string{
 		"status":  "failed",
 		"message": "param is required: serviceId",
 	})
@@ -119,4 +118,12 @@ DataLoop:
 func queryMatch(input, expected string) bool {
 	input, expected = strings.ToLower(input), strings.ToLower(expected)
 	return strings.Contains(expected, input)
+}
+
+func send(webex *flux.WebExchange, status int, payload interface{}) error {
+	bytes, err := common.SerializeObject(payload)
+	if nil != err {
+		return err
+	}
+	return webex.Write(status, flux.MIMEApplicationJSONCharsetUTF8, bytes)
 }

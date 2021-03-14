@@ -7,25 +7,25 @@ import (
 )
 
 var (
-	serviceNotFound flux.BackendService
+	serviceNotFound flux.TransporterService
 	servicesMap     *sync.Map = new(sync.Map)
 )
 
-func RegisterBackendServiceById(id string, service flux.BackendService) {
+func RegisterBackendServiceById(id string, service flux.TransporterService) {
 	servicesMap.Store(id, service)
 }
 
 // RegisterBackendService store backend service
-func RegisterBackendService(service flux.BackendService) {
+func RegisterBackendService(service flux.TransporterService) {
 	id := _ensureServiceID(&service)
 	RegisterBackendServiceById(id, service)
 }
 
 // BackendServiceById load backend service by serviceId
-func BackendServiceById(serviceID string) (flux.BackendService, bool) {
+func BackendServiceById(serviceID string) (flux.TransporterService, bool) {
 	v, ok := servicesMap.Load(serviceID)
 	if ok {
-		return v.(flux.BackendService), true
+		return v.(flux.TransporterService), true
 	}
 	return serviceNotFound, false
 }
@@ -41,13 +41,13 @@ func HasBackendService(serviceID string) bool {
 	return ok
 }
 
-func _ensureServiceID(service *flux.BackendService) string {
+func _ensureServiceID(service *flux.TransporterService) string {
 	id := service.ServiceId
 	if "" == id {
 		id = service.Interface + ":" + service.Method
 	}
 	if len(id) < len("a:b") {
-		panic(fmt.Sprintf("BackendService must has an Id, service: %+v", service))
+		panic(fmt.Sprintf("Transporter must has an Id, service: %+v", service))
 	}
 	return id
 }

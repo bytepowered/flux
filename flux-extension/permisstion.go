@@ -27,7 +27,7 @@ type (
 	// PermissionVerifyFunc 权限验证
 	// @return pass 对当前请求的权限验证是否通过；
 	// @return err 如果验证过程发生错误，返回error；
-	PermissionVerifyFunc func(services []flux.BackendService, ctx flux.Context) (report PermissionReport, err error)
+	PermissionVerifyFunc func(services []flux.TransporterService, ctx *flux.Context) (report PermissionReport, err error)
 )
 
 // PermissionConfig 权限配置
@@ -67,7 +67,7 @@ func (p *PermissionFilter) Init(config *flux.Configuration) error {
 		return nil
 	}
 	if fluxpkg.IsNil(p.Configs.SkipFunc) {
-		p.Configs.SkipFunc = func(_ flux.Context) bool {
+		p.Configs.SkipFunc = func(_ *flux.Context) bool {
 			return false
 		}
 	}
@@ -81,11 +81,11 @@ func (*PermissionFilter) FilterId() string {
 	return TypeIdPermissionV2Filter
 }
 
-func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
+func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 	if p.Disabled {
 		return next
 	}
-	return func(ctx flux.Context) *flux.ServeError {
+	return func(ctx *flux.Context) *flux.ServeError {
 		if p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
@@ -95,7 +95,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 		if size == 0 && !endpoint.Permission.IsValid() {
 			return next(ctx)
 		}
-		services := make([]flux.BackendService, 0, 1+size)
+		services := make([]flux.TransporterService, 0, 1+size)
 		// Define permission first
 		if endpoint.Permission.IsValid() {
 			services = append(services, endpoint.Permission)
@@ -137,7 +137,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler 
 }
 
 // InvokeCodec 执行权限验证的后端服务，获取响应结果；
-func (p *PermissionFilter) InvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
+func (p *PermissionFilter) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.BackendResponse, *flux.ServeError) {
 	return backend.DoInvokeCodec(ctx, service)
 }
 

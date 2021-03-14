@@ -18,11 +18,11 @@ func Trace(id string) flux.Logger {
 	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, id))
 }
 
-func TraceContext(ctx flux.Context) flux.Logger {
+func TraceContext(ctx *flux.Context) flux.Logger {
 	return TraceContextExtras(ctx, nil)
 }
 
-func TraceContextExtras(ctx flux.Context, extras map[string]string) flux.Logger {
+func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger {
 	fluxpkg.AssertNotNil(ctx, "<flux.context> must not nil in log trace")
 	fields := map[string]string{
 		"request-method": ctx.Method(),

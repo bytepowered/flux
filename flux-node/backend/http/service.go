@@ -13,39 +13,39 @@ import (
 )
 
 func init() {
-	ext.RegisterBackendTransport(flux.ProtoHttp, NewBackendTransportService())
+	ext.RegisterBackendTransporter(flux.ProtoHttp, NewBackendTransporterService())
 }
 
-var _ flux.BackendTransport = new(BackendTransportService)
+var _ flux.BackendTransporter = new(TransporterService)
 
 type (
 	// Option 配置函数
-	Option func(service *BackendTransportService)
+	Option func(service *TransporterService)
 	// ArgumentsAssembleFunc Http调用参数封装函数，可外部化配置为其它协议的值对象
-	ArgumentsAssembleFunc func(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error)
+	ArgumentsAssembleFunc func(service *flux.TransporterService, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error)
 )
 
-type BackendTransportService struct {
+type TransporterService struct {
 	httpClient        *http.Client
-	responseCodecFunc flux.BackendResponseCodecFunc
+	responseCodecFunc flux.BackendCodecFunc
 	argAssembleFunc   ArgumentsAssembleFunc
 }
 
-func NewBackendTransportService() *BackendTransportService {
-	return &BackendTransportService{
+func NewBackendTransporterService() *TransporterService {
+	return &TransporterService{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		responseCodecFunc: NewBackendResponseCodecFunc(),
+		responseCodecFunc: NewResponseCodecFunc(),
 	}
 }
 
-func NewBackendTransportServiceWith(opts ...Option) *BackendTransportService {
-	bts := &BackendTransportService{
+func NewBackendTransporterServiceWith(opts ...Option) *TransporterService {
+	bts := &TransporterService{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		responseCodecFunc: NewBackendResponseCodecFunc(),
+		responseCodecFunc: NewResponseCodecFunc(),
 	}
 	for _, opt := range opts {
 		opt(bts)
@@ -55,41 +55,41 @@ func NewBackendTransportServiceWith(opts ...Option) *BackendTransportService {
 
 // WithHttpClient 用于配置HttpClient客户端
 func WithHttpClient(client *http.Client) Option {
-	return func(s *BackendTransportService) {
+	return func(s *TransporterService) {
 		s.httpClient = client
 	}
 }
 
 // WithResponseCodecFunc 用于配置响应数据解析实现函数
-func WithResponseCodecFunc(fun flux.BackendResponseCodecFunc) Option {
-	return func(service *BackendTransportService) {
+func WithResponseCodecFunc(fun flux.BackendCodecFunc) Option {
+	return func(service *TransporterService) {
 		service.responseCodecFunc = fun
 	}
 }
 
 // WithArgumentAssembleFunc 用于配置转发Http请求参数封装实现函数
 func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
-	return func(service *BackendTransportService) {
+	return func(service *TransporterService) {
 		service.argAssembleFunc = fun
 	}
 }
 
-func (b *BackendTransportService) GetResponseCodecFunc() flux.BackendResponseCodecFunc {
+func (b *TransporterService) GetBackendCodecFunc() flux.BackendCodecFunc {
 	return b.responseCodecFunc
 }
 
-func (b *BackendTransportService) Exchange(ctx flux.Context) *flux.ServeError {
-	return backend.DoExchangeTransport(ctx, b)
+func (b *TransporterService) Transport(ctx *flux.Context) *flux.ServeError {
+	return backend.DoTransport(ctx, b)
 }
 
-func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.BackendService) (*flux.BackendResponse, *flux.ServeError) {
+func (b *TransporterService) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.BackendResponse, *flux.ServeError) {
 	// panic("implement me")
 	raw, serr := b.Invoke(ctx, service)
 	if nil != serr {
 		return nil, serr
 	}
 	// decode response
-	result, err := b.GetResponseCodecFunc()(ctx, raw)
+	result, err := b.GetBackendCodecFunc()(ctx, raw)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -101,9 +101,9 @@ func (b *BackendTransportService) InvokeCodec(ctx flux.Context, service flux.Bac
 	return result, nil
 }
 
-func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendService) (interface{}, *flux.ServeError) {
-	body, _ := ctx.Request().BodyReader()
-	newRequest, err := b.argAssembleFunc(&service, ctx.Request().URL(), body, ctx)
+func (b *TransporterService) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
+	body, _ := ctx.BodyReader()
+	newRequest, err := b.argAssembleFunc(&service, ctx.URL(), body, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -115,9 +115,9 @@ func (b *BackendTransportService) Invoke(ctx flux.Context, service flux.BackendS
 	return b.ExecuteRequest(newRequest, service, ctx)
 }
 
-func (b *BackendTransportService) ExecuteRequest(newRequest *http.Request, _ flux.BackendService, ctx flux.Context) (interface{}, *flux.ServeError) {
+func (b *TransporterService) ExecuteRequest(newRequest *http.Request, _ flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
 	// Header透传以及传递AttrValues
-	newRequest.Header = ctx.Request().HeaderVars()
+	newRequest.Header = ctx.HeaderVars()
 	for k, v := range ctx.Attributes() {
 		newRequest.Header.Set(k, cast.ToString(v))
 	}

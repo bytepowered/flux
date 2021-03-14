@@ -18,14 +18,14 @@ type EchoWebInterceptor flux.WebInterceptor
 
 func (call EchoWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(echoc echo.Context) error {
-		return call(func(webex flux.WebExchange) error {
-			return next(webex.(*EchoWebExchange).echoc)
+		return call(func(webex *flux.WebExchange) error {
+			return next(echoc)
 		})(toWebExchange(echoc))
 	}
 }
 
-func toWebExchange(echoc echo.Context) flux.WebExchange {
-	webex, ok := echoc.Get(__interContextKeyWebContext).(*EchoWebExchange)
-	fluxpkg.Assert(ok == true, "<web-context> not found in echo.context")
+func toWebExchange(echoc echo.Context) *flux.WebExchange {
+	webex, ok := echoc.Get(__interContextKeyWebContext).(*flux.WebExchange)
+	fluxpkg.Assert(ok == true && webex != nil, "<web-exchange> not found in echo.context")
 	return webex
 }

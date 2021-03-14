@@ -53,7 +53,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
 	maxAge := strconv.Itoa(config.MaxAge)
 	return func(next flux.WebHandler) flux.WebHandler {
-		return func(webex flux.WebExchange) error {
+		return func(webex *flux.WebExchange) error {
 			if config.Skipper != nil && config.Skipper(webex) {
 				return next(webex)
 			}
@@ -76,39 +76,39 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 					break
 				}
 			}
-
+			rwHeader := webex.ResponseWriter().Header()
 			// Simple request
 			if webex.Method() != http.MethodOptions {
-				webex.AddResponseHeader(flux.HeaderVary, flux.HeaderOrigin)
-				webex.SetResponseHeader(flux.HeaderAccessControlAllowOrigin, allowOrigin)
+				rwHeader.Add(flux.HeaderVary, flux.HeaderOrigin)
+				rwHeader.Set(flux.HeaderAccessControlAllowOrigin, allowOrigin)
 				if config.AllowCredentials {
-					webex.SetResponseHeader(flux.HeaderAccessControlAllowCredentials, "true")
+					rwHeader.Set(flux.HeaderAccessControlAllowCredentials, "true")
 				}
 				if exposeHeaders != "" {
-					webex.SetResponseHeader(flux.HeaderAccessControlExposeHeaders, exposeHeaders)
+					rwHeader.Set(flux.HeaderAccessControlExposeHeaders, exposeHeaders)
 				}
 				return next(webex)
 			}
 
 			// Preflight request
-			webex.AddResponseHeader(flux.HeaderVary, flux.HeaderOrigin)
-			webex.AddResponseHeader(flux.HeaderVary, flux.HeaderAccessControlRequestMethod)
-			webex.AddResponseHeader(flux.HeaderVary, flux.HeaderAccessControlRequestHeaders)
-			webex.SetResponseHeader(flux.HeaderAccessControlAllowOrigin, allowOrigin)
-			webex.SetResponseHeader(flux.HeaderAccessControlAllowMethods, allowMethods)
+			rwHeader.Add(flux.HeaderVary, flux.HeaderOrigin)
+			rwHeader.Add(flux.HeaderVary, flux.HeaderAccessControlRequestMethod)
+			rwHeader.Add(flux.HeaderVary, flux.HeaderAccessControlRequestHeaders)
+			rwHeader.Set(flux.HeaderAccessControlAllowOrigin, allowOrigin)
+			rwHeader.Set(flux.HeaderAccessControlAllowMethods, allowMethods)
 			if config.AllowCredentials {
-				webex.SetResponseHeader(flux.HeaderAccessControlAllowCredentials, "true")
+				rwHeader.Set(flux.HeaderAccessControlAllowCredentials, "true")
 			}
 			if allowHeaders != "" {
-				webex.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, allowHeaders)
+				rwHeader.Set(flux.HeaderAccessControlAllowHeaders, allowHeaders)
 			} else {
 				h := webex.HeaderVar(flux.HeaderAccessControlRequestHeaders)
 				if h != "" {
-					webex.SetResponseHeader(flux.HeaderAccessControlAllowHeaders, h)
+					rwHeader.Set(flux.HeaderAccessControlAllowHeaders, h)
 				}
 			}
 			if config.MaxAge > 0 {
-				webex.SetResponseHeader(flux.HeaderAccessControlMaxAge, maxAge)
+				rwHeader.Set(flux.HeaderAccessControlMaxAge, maxAge)
 			}
 			return &flux.ServeError{
 				StatusCode: http.StatusNoContent,

@@ -13,13 +13,11 @@ import (
 	"time"
 )
 
-func DefaultArgumentAssemble(service *flux.BackendService, inURL *url.URL, bodyReader io.ReadCloser, ctx flux.Context) (*http.Request, error) {
+func DefaultArgumentAssemble(service *flux.TransporterService, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
-	defer func() {
-		_ = bodyReader.Close()
-	}()
+	defer bodyReader.Close()
 	var newBodyReader io.Reader = bodyReader
 	if len(inParams) > 0 {
 		// 如果Endpoint定义了参数，即表示限定参数传递
@@ -53,7 +51,7 @@ func DefaultArgumentAssemble(service *flux.BackendService, inURL *url.URL, bodyR
 		RawQuery:   newQuery,
 		Fragment:   inURL.Fragment,
 	}
-	to := service.AttrRpcTimeout()
+	to := service.RpcTimeout()
 	timeout, err := time.ParseDuration(to)
 	if err != nil {
 		logger.Warnf("Illegal endpoint rpc-timeout: ", to)
@@ -68,11 +66,11 @@ func DefaultArgumentAssemble(service *flux.BackendService, inURL *url.URL, bodyR
 	if http.MethodGet != service.Method {
 		newRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	newRequest.Header.Set("User-Agent", "FluxGo/Backend/v1")
+	newRequest.Header.Set("User-Agent", "FluxGo/Transporter/v1")
 	return newRequest, err
 }
 
-func AssembleHttpValues(arguments []flux.Argument, ctx flux.Context) (url.Values, error) {
+func AssembleHttpValues(arguments []flux.Argument, ctx *flux.Context) (url.Values, error) {
 	values := make(url.Values, len(arguments))
 	for _, arg := range arguments {
 		if val, err := arg.Resolve(ctx); nil != err {

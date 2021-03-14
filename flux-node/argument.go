@@ -3,7 +3,7 @@ package flux
 import "fmt"
 
 // Resolve 解析Argument参数值
-func (a Argument) Resolve(ctx Context) (interface{}, error) {
+func (a Argument) Resolve(ctx *Context) (interface{}, error) {
 	if nil == a.ValueResolver {
 		return nil, fmt.Errorf("ValueResolver is nil, name: %s", a.Name)
 	}

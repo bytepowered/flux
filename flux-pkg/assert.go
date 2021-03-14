@@ -6,8 +6,8 @@ const (
 	assertMessagePrefix = "FXSERVER:CRITICAL:ASSERT:"
 )
 
-func AssertT(assert func() bool, message string) {
-	if !assert() {
+func AssertT(tester func() bool, message string) {
+	if !tester() {
 		panic(assertMessagePrefix + message)
 	}
 }

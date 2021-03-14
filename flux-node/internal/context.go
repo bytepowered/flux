@@ -1,10 +1,10 @@
 package internal
 
 type ContextKey struct {
-	descriptor string
+	key string
 }
 
 var (
-	ContextKeyRequestId     = ContextKey{descriptor: "__internal.context.request.id"}
-	ContextKeyRouteEndpoint = ContextKey{descriptor: "__internal.context.route.endpoint"}
+	ContextKeyRequestId     = ContextKey{key: "__internal.context.request.id"}
+	ContextKeyRouteEndpoint = ContextKey{key: "__internal.context.route.endpoint"}
 )

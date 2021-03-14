@@ -36,9 +36,9 @@ func NewHystrixFilter(c HystrixConfig) *HystrixFilter {
 
 type (
 	// HystrixServiceNameFunc 用于构建服务标识的函数
-	HystrixServiceNameFunc func(ctx flux.Context) (serviceName string)
+	HystrixServiceNameFunc func(ctx *flux.Context) (serviceName string)
 	// HystrixDowngradeFunc 熔断降级处理函数
-	HystrixDowngradeFunc func(ctx flux.Context) *flux.ServeError
+	HystrixDowngradeFunc func(ctx *flux.Context) *flux.ServeError
 )
 
 // HystrixConfig 熔断器配置
@@ -80,12 +80,12 @@ func (r *HystrixFilter) Init(c *flux.Configuration) error {
 	r.HystrixConfig.errorPercentThreshold = int(c.GetInt64(ConfigKeyErrorPercentThreshold))
 	// 默认实现
 	if fluxpkg.IsNil(r.HystrixConfig.ServiceNameFunc) {
-		r.HystrixConfig.ServiceNameFunc = func(ctx flux.Context) (name string) {
-			return ctx.BackendServiceId()
+		r.HystrixConfig.ServiceNameFunc = func(ctx *flux.Context) (name string) {
+			return ctx.TransportId()
 		}
 	}
 	if r.HystrixConfig.ServiceSkipFunc == nil {
-		r.HystrixConfig.ServiceSkipFunc = func(c flux.Context) bool {
+		r.HystrixConfig.ServiceSkipFunc = func(c *flux.Context) bool {
 			return false
 		}
 	}
@@ -102,8 +102,8 @@ func (r *HystrixFilter) Init(c *flux.Configuration) error {
 	return nil
 }
 
-func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
-	return func(ctx flux.Context) *flux.ServeError {
+func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
+	return func(ctx *flux.Context) *flux.ServeError {
 		if r.HystrixConfig.ServiceSkipFunc(ctx) {
 			return next(ctx)
 		}
@@ -147,7 +147,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterHandler) flux.FilterHandler {
 	}
 }
 
-func DefaultDowngradeFunc(ctx flux.Context) *flux.ServeError {
+func DefaultDowngradeFunc(ctx *flux.Context) *flux.ServeError {
 	return &flux.ServeError{
 		StatusCode: http.StatusServiceUnavailable,
 		ErrorCode:  flux.ErrorCodeGatewayCircuited,
@@ -155,7 +155,7 @@ func DefaultDowngradeFunc(ctx flux.Context) *flux.ServeError {
 	}
 }
 
-func (r *HystrixFilter) initCommand(serviceName string, ctx flux.Context) {
+func (r *HystrixFilter) initCommand(serviceName string, ctx *flux.Context) {
 	if _, exist := r.commands.LoadOrStore(serviceName, true); !exist {
 		logger.Infow("HYSTRIX:COMMAND:INIT", "service-name", serviceName)
 		// 支持两种定制配置：

@@ -6,11 +6,11 @@ import (
 )
 
 // LookupParseExpr 解析Lookup键值对
-func LookupParseExpr(lookupExpr string) (scope, key string, ok bool) {
-	if "" == lookupExpr {
+func LookupParseExpr(expr string) (scope, key string, ok bool) {
+	if "" == expr {
 		return
 	}
-	kv := strings.Split(lookupExpr, ":")
+	kv := strings.Split(expr, ":")
 	if len(kv) < 2 || ("" == kv[0] || "" == kv[1]) {
 		return
 	}

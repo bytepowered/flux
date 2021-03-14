@@ -15,7 +15,6 @@ func New(id string, config *flux.Configuration, wis []flux.WebInterceptor, opts 
 	opts = append([]Option{
 		WithErrorHandler(DefaultErrorHandler),
 		WithNotfoundHandler(DefaultNotfoundHandler),
-		WithResponseWriter(new(DefaultResponseWriter)),
 		WithInterceptors(wis),
 	}, opts...)
 	return NewWith(id, config, opts...)
@@ -30,12 +29,6 @@ func NewWith(id string, config *flux.Configuration, opts ...Option) flux.WebList
 		opt(webListener)
 	}
 	return webListener
-}
-
-func WithResponseWriter(writer flux.WebResponseWriter) Option {
-	return func(server flux.WebListener) {
-		server.SetResponseWriter(writer)
-	}
 }
 
 func WithErrorHandler(handler flux.WebErrorHandler) Option {

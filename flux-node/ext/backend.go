@@ -6,23 +6,23 @@ import (
 )
 
 var (
-	protoBackendTransports = make(map[string]flux.BackendTransport, 4)
+	protoBackendTransporters = make(map[string]flux.BackendTransporter, 4)
 )
 
-func RegisterBackendTransport(protoName string, backend flux.BackendTransport) {
+func RegisterBackendTransporter(protoName string, backend flux.BackendTransporter) {
 	protoName = fluxpkg.MustNotEmpty(protoName, "protoName is empty")
-	protoBackendTransports[protoName] = fluxpkg.MustNotNil(backend, "BackendTransport is nil").(flux.BackendTransport)
+	protoBackendTransporters[protoName] = fluxpkg.MustNotNil(backend, "BackendTransporter is nil").(flux.BackendTransporter)
 }
 
-func BackendTransportByProto(protoName string) (flux.BackendTransport, bool) {
+func BackendTransporterBy(protoName string) (flux.BackendTransporter, bool) {
 	protoName = fluxpkg.MustNotEmpty(protoName, "protoName is empty")
-	backend, ok := protoBackendTransports[protoName]
+	backend, ok := protoBackendTransporters[protoName]
 	return backend, ok
 }
 
-func BackendTransports() map[string]flux.BackendTransport {
-	m := make(map[string]flux.BackendTransport, len(protoBackendTransports))
-	for p, e := range protoBackendTransports {
+func BackendTransporters() map[string]flux.BackendTransporter {
+	m := make(map[string]flux.BackendTransporter, len(protoBackendTransporters))
+	for p, e := range protoBackendTransporters {
 		m[p] = e
 	}
 	return m

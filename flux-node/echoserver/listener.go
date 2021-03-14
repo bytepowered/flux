@@ -30,6 +30,11 @@ const (
 	ConfigKeyFeatures    = "features"
 )
 
+const (
+	__interContextKeyWebContext = "__server.core.adapted.context#890b1fa9-93ad-4b44-af24-85bcbfe646b4"
+	__interContextKeyPathVars   = "__server.core.path.vars#890b1fa9-93ad-4b44-af24-85bcbfe646b4"
+)
+
 var _ flux.WebListener = new(EchoWebListener)
 
 func init() {
@@ -47,16 +52,29 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 	server.HideBanner = true
 	server.HidePort = true
 	aws := &EchoWebListener{
-		id:              listenerId,
-		server:          server,
-		requestResolver: DefaultRequestBodyResolver,
+		id:           listenerId,
+		server:       server,
+		bodyResolver: DefaultRequestBodyResolver,
 	}
 	// Init context
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoc echo.Context) error {
 			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
-			webex := NewAdaptWebExchange(id, echoc, aws, aws.requestResolver)
+			webex := flux.NewWebExchange(id, echoc.Request(), echoc.Response(), func() url.Values {
+				vars, ok := echoc.Get(__interContextKeyPathVars).(url.Values)
+				if ok {
+					return vars
+				}
+				vars = make(url.Values, len(echoc.ParamNames()))
+				echoc.Set(__interContextKeyPathVars, vars)
+				return vars
+			}, func() url.Values {
+				vars, _ := echoc.FormParams()
+				return vars
+			}, func() url.Values {
+				return echoc.QueryParams()
+			})
 			echoc.Set(__interContextKeyWebContext, webex)
 			return next(echoc)
 		}
@@ -93,14 +111,13 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 // EchoWebListener 默认实现的基于echo框架的WebServer
 // 注意：保持AdaptWebServer的公共访问性
 type EchoWebListener struct {
-	id              string
-	server          *echo.Echo
-	responseWriter  flux.WebResponseWriter
-	requestResolver flux.WebRequestBodyResolver
-	tlsCertFile     string
-	tlsKeyFile      string
-	address         string
-	started         bool
+	id           string
+	server       *echo.Echo
+	bodyResolver flux.WebBodyResolver
+	tlsCertFile  string
+	tlsKeyFile   string
+	address      string
+	isstarted    bool
 }
 
 func (s *EchoWebListener) ListenerId() string {
@@ -119,14 +136,13 @@ func (s *EchoWebListener) Init(opts *flux.Configuration) error {
 	if s.address == ":" {
 		return errors.New("web server config.address is required, was empty, server-id: " + s.id)
 	}
-	fluxpkg.AssertNotNil(s.requestResolver, "<request-resolver> is required, server-id: "+s.id)
-	fluxpkg.AssertNotNil(s.responseWriter, "<response-writer> is required, server-id: "+s.id)
+	fluxpkg.AssertNotNil(s.bodyResolver, "<body-resolver> is required, server-id: "+s.id)
 	return nil
 }
 
 func (s *EchoWebListener) Listen() error {
 	logger.Infof("WebListener(id:%s) start listen: %s", s.id, s.address)
-	s.started = true
+	s.isstarted = true
 	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
 		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 	} else {
@@ -134,45 +150,22 @@ func (s *EchoWebListener) Listen() error {
 	}
 }
 
-func (s *EchoWebListener) Write(webex flux.WebExchange, header http.Header, status int, data interface{}) error {
-	return s.responseWriter.Write(webex, header, status, data)
-}
-
-func (s *EchoWebListener) WriteError(webex flux.WebExchange, err *flux.ServeError) {
-	if err := s.responseWriter.Write(webex, err.Header, err.StatusCode, err); nil != err {
-		logger.Errorw("WebListener write error failed", "error", err, "server-id", s.id)
-	}
-}
-
-func (s *EchoWebListener) WriteNotfound(webex flux.WebExchange) error {
-	// Call not found handler
-	return echo.NotFoundHandler(webex.ShadowContext().(echo.Context))
-}
-
-func (s *EchoWebListener) SetResponseWriter(f flux.WebResponseWriter) {
-	fluxpkg.AssertNotNil(f, "WebResponseWriter must not nil, server-id: "+s.id)
-	s.state()
-	s.responseWriter = f
-}
-
-func (s *EchoWebListener) SetRequestBodyResolver(r flux.WebRequestBodyResolver) {
-	fluxpkg.AssertNotNil(r, "WebRequestBodyResolver must not nil, server-id: "+s.id)
-	s.state()
-	s.requestResolver = r
+func (s *EchoWebListener) SetRequestBodyResolver(r flux.WebBodyResolver) {
+	fluxpkg.AssertNotNil(r, "WebBodyResolver must not nil, server-id: "+s.id)
+	s.started().bodyResolver = r
 }
 
 func (s *EchoWebListener) SetNotfoundHandler(f flux.WebHandler) {
 	fluxpkg.AssertNotNil(f, "NotfoundHandler must not nil, server-id: "+s.id)
-	s.state()
+	s.started()
 	echo.NotFoundHandler = EchoWebHandler(f).AdaptFunc
 }
 
 func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
 	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, server-id: "+s.id)
-	s.state()
-	s.server.HTTPErrorHandler = func(err error, c echo.Context) {
-		webex, ok := c.Get(__interContextKeyWebContext).(*EchoWebExchange)
+	s.started().server.HTTPErrorHandler = func(err error, c echo.Context) {
+		webex, ok := c.Get(__interContextKeyWebContext).(*flux.WebExchange)
 		fluxpkg.Assert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webex, err)
 	}
@@ -219,12 +212,13 @@ func (s *EchoWebListener) ShadowServer() interface{} {
 }
 
 func (s *EchoWebListener) Close(ctx context.Context) error {
-	s.started = false
+	s.isstarted = false
 	return s.server.Shutdown(ctx)
 }
 
-func (s *EchoWebListener) state() {
-	fluxpkg.Assert(!s.started, "illegal state: web listener is started")
+func (s *EchoWebListener) started() *EchoWebListener {
+	fluxpkg.Assert(!s.isstarted, "illegal started: web listener is started")
+	return s
 }
 
 func toRoutePattern(uri string) string {
@@ -238,12 +232,8 @@ func toRoutePattern(uri string) string {
 }
 
 // 默认对RequestBody的表单数据进行解析
-func DefaultRequestBodyResolver(webex flux.WebExchange) url.Values {
-	form, err := webex.(*EchoWebExchange).echoc.FormParams()
-	if nil != err {
-		panic(fmt.Errorf("parse form params failed, err: %w", err))
-	}
-	return form
+func DefaultRequestBodyResolver(webex *flux.WebExchange) url.Values {
+	return webex.FormVars()
 }
 
 func DefaultIdentifier(ctx interface{}) string {

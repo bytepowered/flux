@@ -2,23 +2,16 @@ package flux
 
 import (
 	"context"
-	"errors"
+	"github.com/bytepowered/flux/flux-node/internal"
+	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"io"
 	"net/http"
 	"net/url"
 )
 
-var (
-	ErrHttpRequestNotSupported  = errors.New("webserver: http.request not supported")
-	ErrHttpResponseNotSupported = errors.New("webserver: http.response-writer not supported")
-)
-
-const (
-	charsetUTF8 = "charset=UTF-8"
-)
-
 // MIME types
 const (
+	charsetUTF8                    = "charset=UTF-8"
 	MIMEApplicationJSON            = "application/json"
 	MIMEApplicationJSONCharsetUTF8 = MIMEApplicationJSON + "; " + charsetUTF8
 	MIMEApplicationForm            = "application/x-www-form-urlencoded"
@@ -93,12 +86,13 @@ const (
 // Web interfaces defines
 type (
 	// WebHandler 定义处理Web请求的处理函数
-	WebHandler func(WebExchange) error
+	WebHandler func(*WebExchange) error
+
 	// WebInterceptor 定义处理Web请求的中间件函数
 	WebInterceptor func(WebHandler) WebHandler
 
 	// WebErrorHandler 定义Web服务处理异常错误的处理函数
-	WebErrorHandler func(WebExchange, error)
+	WebErrorHandler func(*WebExchange, error)
 
 	// WebListenerFactory 构建 WebListener 的工厂函数，可通过Factory实现对不同Web框架的支持；
 	WebListenerFactory func(string, *Configuration) WebListener
@@ -106,132 +100,177 @@ type (
 	// WebRequestIdentifier 查找请求ID的函数
 	WebRequestIdentifier func(shadowContext interface{}) string
 
-	// WebRequestBodyResolver 解析请求体数据
-	WebRequestBodyResolver func(WebExchange) url.Values
-
-	// WebResponseWriter 用于写入Body响应数据到WebServer
-	WebResponseWriter interface {
-		// Write 序列化并写入数据响应
-		Write(webex WebExchange, header http.Header, status int, body interface{}) error
-		// WriteError 序列化并写入错误响应
-		WriteError(webex WebExchange, header http.Header, status int, error *ServeError) error
-	}
+	// WebBodyResolver 解析请求体数据
+	WebBodyResolver func(*WebExchange) url.Values
 
 	// WebSkipper 用于部分WebInterceptor逻辑，实现忽略部分请求的功能；
-	WebSkipper func(WebExchange) bool
+	WebSkipper func(*WebExchange) bool
 )
 
-// WebExchange 定义封装Web框架的RequestContext的接口；
-// 用于 WebHandler，WebInterceptor 实现Web请求处理；
-type WebExchange interface {
+func NewWebExchange(id string, request *http.Request, response http.ResponseWriter,
+	pathVarsLoader, formVarsLoader, queryVarsLoader func() url.Values) *WebExchange {
+	return &WebExchange{
+		ctx:             context.WithValue(request.Context(), internal.ContextKeyRequestId, id),
+		request:         request,
+		response:        response,
+		pathVars:        make(url.Values, 4),
+		variables:       make(map[string]interface{}, 8),
+		pathVarsLoader:  pathVarsLoader,
+		formVarsLoader:  formVarsLoader,
+		queryVarsLoader: queryVarsLoader,
+	}
+}
 
-	// Context 返回请求的Context对象
-	Context() context.Context
+type WebExchange struct {
+	ctx             context.Context
+	request         *http.Request
+	response        http.ResponseWriter
+	pathVars        url.Values
+	variables       map[string]interface{}
+	pathVarsLoader  func() url.Values
+	formVarsLoader  func() url.Values
+	queryVarsLoader func() url.Values
+}
 
-	// Method 返回请求的HttpMethod
-	Method() string
+func (w *WebExchange) RequestId() string {
+	return w.ctx.Value(internal.ContextKeyRequestId).(string)
+}
 
-	// Host 返回请求的Host
-	Host() string
+func (w *WebExchange) Context() context.Context {
+	return w.ctx
+}
 
-	// UserAgent 返回请求的UserAgent
-	UserAgent() string
+func (w *WebExchange) Request() *http.Request {
+	return w.request
+}
 
-	// URI 返回请求的URI
-	URI() string
+func (w *WebExchange) URI() string {
+	return w.request.RequestURI
+}
 
-	// URL 返回请求对象的URL
-	// 注意：部分Web框架返回只读url.URL
-	URL() *url.URL
+func (w *WebExchange) URL() *url.URL {
+	return w.request.URL
+}
 
-	// Address 返回请求对象的地址
-	Address() string
+func (w *WebExchange) Method() string {
+	return w.request.Method
+}
 
-	// HeaderVars 返回请求对象的Header；只读；
-	HeaderVars() http.Header
+func (w *WebExchange) Host() string {
+	return w.request.Host
+}
 
-	// QueryVars 返回Query查询参数键值对；只读；
-	QueryVars() url.Values
+func (w *WebExchange) RemoteAddr() string {
+	return w.request.RemoteAddr
+}
 
-	// PathVars 返回动态路径参数的键值对；只读；
-	PathVars() url.Values
+// HeaderVars 返回请求对象的Header；只读；
+func (w *WebExchange) HeaderVars() http.Header {
+	return w.request.Header
+}
 
-	// FormVars 返回Form表单参数键值对；只读；
-	FormVars() url.Values
+// QueryVars 返回Query查询参数键值对；只读；
+func (w *WebExchange) QueryVars() url.Values {
+	return w.request.Form
+}
 
-	// CookieVars 返回Cookie列表；只读；
-	CookieVars() []*http.Cookie
+// PathVars 返回动态路径参数的键值对；只读；
+func (w *WebExchange) PathVars() url.Values {
+	return w.pathVarsLoader()
+}
 
-	// HeaderVar 读取请求的Header参数值
-	HeaderVar(name string) string
+// FormVars 返回Form表单参数键值对；只读；
+func (w *WebExchange) FormVars() url.Values {
+	return w.formVarsLoader()
+}
 
-	// QueryVar 查询指定Name的Query参数值
-	QueryVar(name string) string
+// CookieVars 返回Cookie列表；只读；
+func (w *WebExchange) CookieVars() []*http.Cookie {
+	return w.request.Cookies()
+}
 
-	// PathValue 查询指定Name的动态路径参数值
-	PathVar(name string) string
+// HeaderVar 读取请求的Header参数值
+func (w *WebExchange) HeaderVar(name string) string {
+	return w.request.Header.Get(name)
+}
 
-	// FormValue 查询指定Name的表单参数值
-	FormVar(name string) string
+// QueryVar 查询指定Name的Query参数值
+func (w *WebExchange) QueryVar(name string) string {
+	return w.queryVarsLoader().Get(name)
+}
 
-	// CookieValue 查询指定Name的Cookie对象，并返回是否存在标识
-	CookieVar(name string) *http.Cookie
+// PathValue 查询指定Name的动态路径参数值
+func (w *WebExchange) PathVar(name string) string {
+	return w.pathVarsLoader().Get(name)
+}
 
-	// BodyReader 返回可重复读取的Reader接口；
-	BodyReader() (io.ReadCloser, error)
+// FormValue 查询指定Name的表单参数值
+func (w *WebExchange) FormVar(name string) string {
+	return w.formVarsLoader().Get(name)
+}
 
-	// Rewrite 修改请求方法和路径；
-	Rewrite(method string, path string)
+// CookieValue 查询指定Name的Cookie对象，并返回是否存在标识
+func (w *WebExchange) CookieVar(name string) (*http.Cookie, error) {
+	return w.request.Cookie(name)
+}
 
-	// Send 发送响应体数据；
-	// 由内部序列化接口处理数据体；
-	Send(webex WebExchange, header http.Header, status int, data interface{}) error
+// BodyReader 返回可重复读取的Reader接口；
+func (w *WebExchange) BodyReader() (io.ReadCloser, error) {
+	return w.request.GetBody()
+}
 
-	// SendError 写入错误状态数据；
-	// 由内部序列化接口处理错误数据；
-	SendError(error *ServeError)
+// Rewrite 修改请求方法和路径；
+func (w *WebExchange) Rewrite(method string, path string) {
+	if "" != method {
+		w.request.Method = method
+	}
+	if "" != path {
+		w.request.URL.Path = path
+	}
+}
 
-	// Write 直接写入并返回响应状态码和响应数据到客户端
-	Write(statusCode int, contentType string, bytes []byte) error
+// Write 直接写入并返回响应状态码和响应数据到客户端
+func (w *WebExchange) Write(statusCode int, contentType string, bytes []byte) error {
+	w.setContentType(contentType)
+	w.response.WriteHeader(statusCode)
+	_, err := w.response.Write(bytes)
+	return err
+}
 
-	// WriteStream 直接写入并返回响应状态码和流数据到客户端
-	WriteStream(statusCode int, contentType string, reader io.Reader) error
+// WriteStream 直接写入并返回响应状态码和流数据到客户端
+func (w *WebExchange) WriteStream(statusCode int, contentType string, reader io.Reader) error {
+	w.setContentType(contentType)
+	w.response.WriteHeader(statusCode)
+	_, err := io.Copy(w.response, reader)
+	return err
+}
 
-	// SetResponseHeader 设置响应Response的Header键值
-	SetResponseHeader(key, value string)
+// SetResponseWriter 设置HttpWeb服务器的ResponseWriter
+func (w *WebExchange) SetResponseWriter(rw http.ResponseWriter) {
+	fluxpkg.AssertNotNil(rw, "<http.ResponseWriter> must not nil")
+	w.response = rw
+}
 
-	// AddResponseHeader 添加响应Response指定Name的Header键值
-	AddResponseHeader(key, values string)
+// ResponseWriter 返回HttpWeb服务器的ResponseWriter对象。
+func (w *WebExchange) ResponseWriter() http.ResponseWriter {
+	return w.response
+}
 
-	// SetHttpResponseWriter 设置HttpWeb服务器的ResponseWriter
-	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
-	SetHttpResponseWriter(w http.ResponseWriter) error
+// Variable 获取WebValue域键值；作用域与请求生命周期相同；
+func (w *WebExchange) Variable(key string) interface{} {
+	return w.variables[key]
+}
 
-	// HttpResponseWriter 返回HttpWeb服务器的ResponseWriter对象。
-	// 如果Web框架不支持标准ResponseWriter（如fasthttp），返回 ErrHttpResponseNotSupported
-	HttpResponseWriter() (http.ResponseWriter, error)
+// SetVariable 设置Context域键值；作用域与请求生命周期相同；
+func (w *WebExchange) SetVariable(key string, value interface{}) {
+	w.variables[key] = value
+}
 
-	// Variable 获取WebValue域键值；作用域与请求生命周期相同；
-	Variable(key string) interface{}
-
-	// SetVariable 设置Context域键值；作用域与请求生命周期相同；
-	SetVariable(key string, value interface{})
-
-	// RequestId 获取请求RequestId
-	RequestId() string
-
-	// HttpRequest 返回Http标准Request对象。
-	// 如果Web框架不支持标准Request（如fasthttp），返回 ErrHttpRequestNotSupported
-	HttpRequest() (*http.Request, error)
-
-	// ShadowContext 返回具体Web框架实现的WebContext对象
-	ShadowContext() interface{}
-
-	// ShadowRequest 返回具体Web框架实现的Request对象
-	ShadowRequest() interface{}
-
-	// ShadowResponse 返回具体Web框架实现的Response对象
-	ShadowResponse() interface{}
+func (w *WebExchange) setContentType(ct string) {
+	header := w.response.Header()
+	if header.Get(HeaderContentType) == "" {
+		header.Set(HeaderContentType, ct)
+	}
 }
 
 // WebListener 定义Web框架服务器的接口；
@@ -258,11 +297,8 @@ type WebListener interface {
 	// SetNotfoundHandler 设置Web路由不存在处理函数
 	SetNotfoundHandler(h WebHandler)
 
-	// SetResponseWriter 设置Web响应写入函数
-	SetResponseWriter(WebResponseWriter)
-
 	// SetRequestBodyResolver 设置Body体解析接口
-	SetRequestBodyResolver(decoder WebRequestBodyResolver)
+	SetRequestBodyResolver(decoder WebBodyResolver)
 
 	// AddInterceptor 添加全局请求拦截器，作用于路由请求前
 	AddInterceptor(m WebInterceptor)
@@ -273,16 +309,7 @@ type WebListener interface {
 	// AddHttpHandler 添加http标准请求路由处理函数及其中间件
 	AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 
-	// Write 处理并写入业务响应数据；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
-	Write(webex WebExchange, header http.Header, status int, data interface{}) error
-
-	// WriteError 处理并写入错误响应数据
-	WriteError(webex WebExchange, err *ServeError)
-
-	// WriteNotfound 处理Web无法处理路由的请求；如果发生错误，将尝试通过 WriteError 再次写入错误响应数据；
-	WriteNotfound(webex WebExchange) error
-
-	// Server 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
+	// ShadowServer 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
 	ShadowServer() interface{}
 
 	// ShadowRouter 返回具体实现的Router路由处理对象，如echo,fasthttp的Router
@@ -292,25 +319,15 @@ type WebListener interface {
 // EndpointSelector 用于请求处理前的动态选择Endpoint
 type EndpointSelector interface {
 	// Active 判定选择器是否激活
-	Active(ctx WebExchange, listenerId string) bool
+	Active(ctx *WebExchange, listenerId string) bool
 	// DoSelect 根据请求返回Endpoint，以及是否有效标识
-	DoSelect(ctx WebExchange, listenerId string, multi *MultiEndpoint) (*Endpoint, bool)
+	DoSelect(ctx *WebExchange, listenerId string, multi *MultiEndpoint) (*Endpoint, bool)
 }
 
-// Wrapper functions
-
+// WrapHttpHandler Wrapper http.Handler to WebHandler
 func WrapHttpHandler(h http.Handler) WebHandler {
-	return func(webex WebExchange) error {
-		// 注意：部分Web框架不支持返回标准Request/Response
-		writer, err := webex.HttpResponseWriter()
-		if nil != err {
-			return err
-		}
-		req, err := webex.HttpRequest()
-		if nil != err {
-			return err
-		}
-		h.ServeHTTP(writer, req)
+	return func(webex *WebExchange) error {
+		h.ServeHTTP(webex.ResponseWriter(), webex.Request())
 		return nil
 	}
 }

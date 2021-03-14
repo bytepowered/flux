@@ -85,11 +85,11 @@ const (
 
 type (
 	// ArgumentLookupFunc 参数值查找函数
-	ArgumentLookupFunc func(scope, key string, ctx Context) (MTValue, error)
+	ArgumentLookupFunc func(scope, key string, ctx *Context) (MTValue, error)
 
 	// WebExchangeHook 用于WebContext与Context的交互勾子；
 	// 在每个请求被路由执行时，在创建Context后被调用。
-	WebExchangeHook func(WebExchange, Context)
+	WebExchangeHook func(*WebExchange, *Context)
 )
 
 // Argument 定义Endpoint的参数结构元数据
@@ -186,8 +186,8 @@ func (e EmbeddedExtensions) GetInt(name string) int {
 	}
 }
 
-// BackendService 定义连接上游目标服务的信息
-type BackendService struct {
+// TransporterService 定义连接上游目标服务的信息
+type TransporterService struct {
 	AliasId    string     `json:"aliasId" yaml:"aliasId"`       // Service别名
 	ServiceId  string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
 	Scheme     string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
@@ -200,61 +200,61 @@ type BackendService struct {
 	EmbeddedExtensions `yaml:",inline"`
 
 	// Deprecated
-	RpcProto string `json:"rpcProto" yaml:"rpcProto"`
+	AttrRpcProto string `json:"rpcProto" yaml:"rpcProto"`
 	// Deprecated
-	RpcGroup string `json:"rpcGroup" yaml:"rpcGroup"`
+	AttrRpcGroup string `json:"rpcGroup" yaml:"rpcGroup"`
 	// Deprecated
-	RpcVersion string `json:"rpcVersion" yaml:"rpcVersion"`
+	AttrRpcVersion string `json:"rpcVersion" yaml:"rpcVersion"`
 	// Deprecated
-	RpcTimeout string `json:"rpcTimeout" yaml:"rpcTimeout"`
+	AttrRpcTimeout string `json:"rpcTimeout" yaml:"rpcTimeout"`
 	// Deprecated
-	RpcRetries string `json:"rpcRetries" yaml:"rpcRetries"`
+	AttrRpcRetries string `json:"rpcRetries" yaml:"rpcRetries"`
 }
 
-func (b BackendService) AttrRpcProto() string {
+func (b TransporterService) RpcProto() string {
 	return b.GetAttr(ServiceAttrTagRpcProto).GetString()
 }
 
-func (b BackendService) AttrRpcTimeout() string {
+func (b TransporterService) RpcTimeout() string {
 	return b.GetAttr(ServiceAttrTagRpcTimeout).GetString()
 }
 
-func (b BackendService) AttrRpcGroup() string {
+func (b TransporterService) RpcGroup() string {
 	return b.GetAttr(ServiceAttrTagRpcGroup).GetString()
 }
 
-func (b BackendService) AttrRpcVersion() string {
+func (b TransporterService) RpcVersion() string {
 	return b.GetAttr(ServiceAttrTagRpcVersion).GetString()
 }
 
-func (b BackendService) AttrRpcRetries() string {
+func (b TransporterService) RpcRetries() string {
 	return b.GetAttr(ServiceAttrTagRpcRetries).GetString()
 }
 
 // IsValid 判断服务配置是否有效；Interface+Method不能为空；
-func (b BackendService) IsValid() bool {
+func (b TransporterService) IsValid() bool {
 	return "" != b.Interface && "" != b.Method
 }
 
 // HasArgs 判定是否有参数
-func (b BackendService) HasArgs() bool {
+func (b TransporterService) HasArgs() bool {
 	return len(b.Arguments) > 0
 }
 
 // ServiceID 构建标识当前服务的ID
-func (b BackendService) ServiceID() string {
+func (b TransporterService) ServiceID() string {
 	return b.Interface + ":" + b.Method
 }
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
-	Application        string         `json:"application" yaml:"application"` // 所属应用名
-	Version            string         `json:"version" yaml:"version"`         // 端点版本号
-	HttpPattern        string         `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
-	HttpMethod         string         `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
-	Service            BackendService `json:"service" yaml:"service"`         // 上游/后端服务
-	Permission         BackendService `json:"permission" yaml:"permission"`   // Deprecated 权限验证定义
-	Permissions        []string       `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
+	Application        string             `json:"application" yaml:"application"` // 所属应用名
+	Version            string             `json:"version" yaml:"version"`         // 端点版本号
+	HttpPattern        string             `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
+	HttpMethod         string             `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
+	Service            TransporterService `json:"service" yaml:"service"`         // 上游/后端服务
+	Permission         TransporterService `json:"permission" yaml:"permission"`   // Deprecated 权限验证定义
+	Permissions        []string           `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
 	EmbeddedAttributes `yaml:",inline"`
 	EmbeddedExtensions `yaml:",inline"`
 }
@@ -349,5 +349,5 @@ type HttpEndpointEvent struct {
 // BackendServiceEvent  定义从注册中心接收到的Service定义数据变更
 type BackendServiceEvent struct {
 	EventType EventType
-	Service   BackendService
+	Service   TransporterService
 }

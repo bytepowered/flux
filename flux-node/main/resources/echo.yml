@@ -36,4 +36,4 @@ endpoints:
                     value: false
 
 # Service 配置服务列表
-services: []
+services: [ ]

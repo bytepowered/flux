@@ -5,7 +5,6 @@ import (
 	"fmt"
 	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/context"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/inspect"
 	"github.com/bytepowered/flux/flux-node/listener"
@@ -37,7 +36,7 @@ type (
 	// Option 配置HttpServeEngine函数
 	Option func(bs *BootstrapServer)
 	// VersionLookupFunc Http请求版本查找函数
-	VersionLookupFunc func(webex flux.WebExchange) (version string)
+	VersionLookupFunc func(webex *flux.WebExchange) (version string)
 )
 
 // BootstrapServer
@@ -89,7 +88,7 @@ func WithWebListener(server flux.WebListener) Option {
 func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 	opts := []Option{
 		WithServerBanner(defaultBanner),
-		WithVersionLookupFunc(func(webex flux.WebExchange) string {
+		WithVersionLookupFunc(func(webex *flux.WebExchange) string {
 			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
@@ -210,7 +209,7 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 	return nil
 }
 
-func (s *BootstrapServer) route(webex flux.WebExchange, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
+func (s *BootstrapServer) route(webex *flux.WebExchange, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
 	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webex))
 	// 实现动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
@@ -240,31 +239,22 @@ func (s *BootstrapServer) route(webex flux.WebExchange, server flux.WebListener,
 		}
 		return flux.ErrRouteNotFound
 	}
-	ctxw := context.New(webex, endpoint)
+	ctxw := flux.NewContext(webex, endpoint)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
 	ctxw.SetAttribute(flux.XRequestHost, webex.Host())
 	ctxw.SetAttribute(flux.XRequestAgent, "flux/gateway")
-	defer context.ReleaseContext(ctxw)
-	logger.TraceContext(ctxw).Infow("SERVER:ROUTE:START")
+	trace := logger.TraceContext(ctxw)
+	trace.Infow("SERVER:ROUTE:START")
 	// hook
 	for _, hook := range s.hooks {
 		hook(webex, ctxw)
 	}
-	endfunc := func(start time.Time) {
+	defer func(start time.Time) {
 		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:END",
 			"metric", ctxw.Metrics(), "elapses", time.Since(start).String())
-	}
-	if err := s.router.Route(ctxw); nil == err {
-		r := ctxw.Response()
-		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:RESPONSE/DATA", "statusCode", r.StatusCode())
-		defer endfunc(ctxw.StartAt())
-		return server.Write(webex, r.HeaderVars(), r.StatusCode(), r.Payload())
-	} else {
-		logger.TraceContext(ctxw).Errorw("SERVER:ROUTE:RESPONSE/ERROR", "statusCode", err.StatusCode, "error", err)
-		defer endfunc(ctxw.StartAt())
-		return err.Merge(ctxw.Response().HeaderVars())
-	}
+	}(ctxw.StartAt())
+	return s.router.Route(ctxw)
 }
 
 func (s *BootstrapServer) onBackendServiceEvent(event flux.BackendServiceEvent) {
@@ -408,7 +398,7 @@ func (s *BootstrapServer) AddWebExchangeHook(f flux.WebExchangeHook) {
 }
 
 func (s *BootstrapServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MultiEndpoint) flux.WebHandler {
-	return func(webex flux.WebExchange) error {
+	return func(webex *flux.WebExchange) error {
 		return s.route(webex, server, endpoint)
 	}
 }
