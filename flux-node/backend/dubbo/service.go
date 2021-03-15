@@ -69,14 +69,14 @@ type (
 // TransporterService 集成DubboRPC框架的BackendService
 type TransporterService struct {
 	// 可外部配置
-	defaults          map[string]interface{} // 配置默认值
-	registryAlias     map[string]string      // Registry的别名
-	optionsFunc       []GenericOptionsFunc   // Dubbo Reference 配置函数
-	serviceFunc       GenericServiceFunc     // Dubbo Service 构建函数
-	invokeFunc        GenericInvokeFunc      // 执行Dubbo泛调用的函数
-	argAssembleFunc   ArgumentsAssembleFunc  // Dubbo参数封装函数
-	attAssembleFunc   AttachmentAssembleFun  // Attachment封装函数
-	responseCodecFunc flux.BackendCodecFunc  // 解析响应结果的函数
+	defaults        map[string]interface{} // 配置默认值
+	registryAlias   map[string]string      // Registry的别名
+	optionsFunc     []GenericOptionsFunc   // Dubbo Reference 配置函数
+	serviceFunc     GenericServiceFunc     // Dubbo Service 构建函数
+	invokeFunc      GenericInvokeFunc      // 执行Dubbo泛调用的函数
+	argAssembleFunc ArgumentsAssembleFunc  // Dubbo参数封装函数
+	attAssembleFunc AttachmentAssembleFun  // Attachment封装函数
+	codec           flux.BackendCodecFunc  // 解析响应结果的函数
 	// 内部私有
 	traceEnable   bool
 	configuration *flux.Configuration
@@ -100,7 +100,7 @@ func WithAttachmentAssembleFunc(fun AttachmentAssembleFun) Option {
 // WithResponseCodecFunc 用于配置响应数据解析实现函数
 func WithResponseCodecFunc(fun flux.BackendCodecFunc) Option {
 	return func(service *TransporterService) {
-		service.responseCodecFunc = fun
+		service.codec = fun
 	}
 }
 
@@ -200,11 +200,6 @@ func (b *TransporterService) Configuration() *flux.Configuration {
 	return b.configuration
 }
 
-// GetResultDecodeFunc returns result decode func
-func (b *TransporterService) GetBackendCodecFunc() flux.BackendCodecFunc {
-	return b.responseCodecFunc
-}
-
 // Init init backend
 func (b *TransporterService) Init(config *flux.Configuration) error {
 	logger.Info("Dubbo backend transport initializing")
@@ -279,7 +274,7 @@ func (b *TransporterService) InvokeCodec(ctx *flux.Context, service flux.Transpo
 		return nil, serr
 	}
 	// decode response
-	result, err := b.GetBackendCodecFunc()(ctx, raw)
+	result, err := b.codec(ctx, raw)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,

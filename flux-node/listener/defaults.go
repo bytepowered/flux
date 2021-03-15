@@ -4,6 +4,7 @@ import (
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/common"
 	"github.com/bytepowered/flux/flux-node/logger"
+	"reflect"
 )
 
 // DefaultNotfoundHandler 生成NotFound错误，由ErrorHandler处理
@@ -16,7 +17,7 @@ func DefaultNotfoundHandler(_ *flux.WebExchange) error {
 }
 
 func DefaultErrorHandler(webex *flux.WebExchange, error error) {
-	if nil == error {
+	if nil == error || (*flux.ServeError)(nil) == error || reflect.ValueOf(error).IsNil() {
 		return
 	}
 	serr, ok := error.(*flux.ServeError)
@@ -28,9 +29,12 @@ func DefaultErrorHandler(webex *flux.WebExchange, error error) {
 			CauseError: error,
 		}
 	}
-	if bytes, err := common.SerializeObject(serr); nil != err {
+	bytes, err := common.SerializeObject(serr)
+	if nil != err {
 		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
-	} else if err := webex.Write(serr.StatusCode, flux.MIMEApplicationJSON, bytes); nil != err {
+		return
+	}
+	if err := webex.Write(serr.StatusCode, flux.MIMEApplicationJSON, bytes); nil != err {
 		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
 	}
 }

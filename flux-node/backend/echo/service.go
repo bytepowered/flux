@@ -20,10 +20,6 @@ type TransportService struct {
 	decodeFunc flux.BackendCodecFunc
 }
 
-func (b *TransportService) GetBackendCodecFunc() flux.BackendCodecFunc {
-	return b.decodeFunc
-}
-
 func NewBackendTransportService() flux.BackendTransporter {
 	return &TransportService{
 		decodeFunc: NewResponseCodecFunc(),

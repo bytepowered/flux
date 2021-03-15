@@ -32,7 +32,7 @@ func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger
 		fields[k] = v
 	}
 	endpoint := ctx.Endpoint()
-	if endpoint.IsValid() {
+	if nil != endpoint && endpoint.IsValid() {
 		fields["appid"] = endpoint.Application
 		fields["bizid"] = endpoint.GetAttr(flux.EndpointAttrTagBizId).GetString()
 		fields["backend-service"] = endpoint.Service.ServiceID()

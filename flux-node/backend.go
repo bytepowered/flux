@@ -8,14 +8,12 @@ import (
 // 默认实现了Dubbo(gRpc)和Http两种协议。
 type (
 	BackendTransporter interface {
-		// Transport 完成前端Http请求与后端服务的数据交互
-		Transport(*Context) *ServeError
 		// Invoke 真正执行指定目标EndpointService的通讯，返回响应结果
 		Invoke(*Context, TransporterService) (interface{}, *ServeError)
 		// InvokeCodec 执行指定目标EndpointService的通讯，返回响应结果，并解析响应数据
 		InvokeCodec(*Context, TransporterService) (*BackendResponse, *ServeError)
-		// GetBackendCodecFunc 获取响应结果解析函数
-		GetBackendCodecFunc() BackendCodecFunc
+		// Transport 完成前端Http请求与后端服务的数据交互
+		Transport(*Context) *ServeError
 	}
 	// BackendCodecFunc 解析Backend返回的原始数据
 	BackendCodecFunc func(ctx *Context, raw interface{}) (*BackendResponse, error)

@@ -26,9 +26,9 @@ type (
 )
 
 type TransporterService struct {
-	httpClient        *http.Client
-	responseCodecFunc flux.BackendCodecFunc
-	argAssembleFunc   ArgumentsAssembleFunc
+	httpClient      *http.Client
+	codec           flux.BackendCodecFunc
+	argAssembleFunc ArgumentsAssembleFunc
 }
 
 func NewBackendTransporterService() *TransporterService {
@@ -36,7 +36,7 @@ func NewBackendTransporterService() *TransporterService {
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		responseCodecFunc: NewResponseCodecFunc(),
+		codec: NewResponseCodecFunc(),
 	}
 }
 
@@ -45,7 +45,7 @@ func NewBackendTransporterServiceWith(opts ...Option) *TransporterService {
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		responseCodecFunc: NewResponseCodecFunc(),
+		codec: NewResponseCodecFunc(),
 	}
 	for _, opt := range opts {
 		opt(bts)
@@ -63,7 +63,7 @@ func WithHttpClient(client *http.Client) Option {
 // WithResponseCodecFunc 用于配置响应数据解析实现函数
 func WithResponseCodecFunc(fun flux.BackendCodecFunc) Option {
 	return func(service *TransporterService) {
-		service.responseCodecFunc = fun
+		service.codec = fun
 	}
 }
 
@@ -72,10 +72,6 @@ func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
 	return func(service *TransporterService) {
 		service.argAssembleFunc = fun
 	}
-}
-
-func (b *TransporterService) GetBackendCodecFunc() flux.BackendCodecFunc {
-	return b.responseCodecFunc
 }
 
 func (b *TransporterService) Transport(ctx *flux.Context) *flux.ServeError {
@@ -89,7 +85,7 @@ func (b *TransporterService) InvokeCodec(ctx *flux.Context, service flux.Transpo
 		return nil, serr
 	}
 	// decode response
-	result, err := b.GetBackendCodecFunc()(ctx, raw)
+	result, err := b.codec(ctx, raw)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,

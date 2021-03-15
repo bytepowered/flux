@@ -61,21 +61,19 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 		return func(echoc echo.Context) error {
 			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
-			webex := flux.NewWebExchange(id, echoc.Request(), echoc.Response(), func() url.Values {
-				vars, ok := echoc.Get(__interContextKeyPathVars).(url.Values)
-				if ok {
+			echoc.Set(__interContextKeyWebContext, flux.NewWebExchange(id, echoc.Request(), echoc.Response(),
+				// 动态路径参数
+				func() url.Values { return loadPathVars(echoc) },
+				// 表单参数
+				func() url.Values {
+					vars, _ := echoc.FormParams()
 					return vars
-				}
-				vars = make(url.Values, len(echoc.ParamNames()))
-				echoc.Set(__interContextKeyPathVars, vars)
-				return vars
-			}, func() url.Values {
-				vars, _ := echoc.FormParams()
-				return vars
-			}, func() url.Values {
-				return echoc.QueryParams()
-			})
-			echoc.Set(__interContextKeyWebContext, webex)
+				},
+				// Query参数
+				echoc.QueryParams,
+				// 上下文参数
+				echoc.Get),
+			)
 			return next(echoc)
 		}
 	})
@@ -106,6 +104,19 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 		server.Pre(mws.AfterFeature...)
 	}
 	return aws
+}
+
+func loadPathVars(echoc echo.Context) url.Values {
+	vars, ok := echoc.Get(__interContextKeyPathVars).(url.Values)
+	if ok && nil != vars {
+		return vars
+	}
+	vars = make(url.Values, len(echoc.ParamNames()))
+	for _, k := range echoc.ParamNames() {
+		vars.Set(k, echoc.Param(k))
+	}
+	echoc.Set(__interContextKeyPathVars, vars)
+	return vars
 }
 
 // EchoWebListener 默认实现的基于echo框架的WebServer
@@ -165,6 +176,11 @@ func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
 	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, server-id: "+s.id)
 	s.started().server.HTTPErrorHandler = func(err error, c echo.Context) {
+		// 修正Echo的Error未判定问题
+		var cerr error = err.(error)
+		if nil == cerr {
+			return
+		}
 		webex, ok := c.Get(__interContextKeyWebContext).(*flux.WebExchange)
 		fluxpkg.Assert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webex, err)

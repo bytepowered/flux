@@ -33,6 +33,10 @@ func NewContext(webex *WebExchange, endpoint *Endpoint) *Context {
 	}
 }
 
+func MockContext(id string) *Context {
+	return NewContext(MockWebExchange(id), &Endpoint{})
+}
+
 // Application 返回当前Endpoint对应的应用名
 func (c *Context) Application() string {
 	return c.endpoint.Application
@@ -64,7 +68,7 @@ func (c *Context) Attributes() map[string]interface{} {
 
 // Attribute 获取指定key的Attribute。如果不存在，返回默认值；
 func (c *Context) Attribute(key string, defval interface{}) interface{} {
-	if v, ok := c.attributes[key]; ok {
+	if v, ok := c.GetVariable(key); ok {
 		return v
 	} else {
 		return defval

@@ -6,6 +6,7 @@ import (
 	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 )
 
@@ -107,26 +108,27 @@ type (
 	WebSkipper func(*WebExchange) bool
 )
 
+// NewWebExchange 构建 WebExchange 通过外部加载函数来加载请求参数
 func NewWebExchange(id string, request *http.Request, response http.ResponseWriter,
-	pathVarsLoader, formVarsLoader, queryVarsLoader func() url.Values) *WebExchange {
+	pathVars, formVars, queryVars func() url.Values, ctxVars func(key string) interface{}) *WebExchange {
 	return &WebExchange{
 		ctx:             context.WithValue(request.Context(), internal.ContextKeyRequestId, id),
 		request:         request,
 		response:        response,
-		pathVars:        make(url.Values, 4),
 		variables:       make(map[string]interface{}, 8),
-		pathVarsLoader:  pathVarsLoader,
-		formVarsLoader:  formVarsLoader,
-		queryVarsLoader: queryVarsLoader,
+		ctxVarsLoader:   ctxVars,
+		pathVarsLoader:  pathVars,
+		formVarsLoader:  formVars,
+		queryVarsLoader: queryVars,
 	}
 }
 
 type WebExchange struct {
 	ctx             context.Context
+	variables       map[string]interface{}
 	request         *http.Request
 	response        http.ResponseWriter
-	pathVars        url.Values
-	variables       map[string]interface{}
+	ctxVarsLoader   func(string) interface{}
 	pathVarsLoader  func() url.Values
 	formVarsLoader  func() url.Values
 	queryVarsLoader func() url.Values
@@ -258,7 +260,8 @@ func (w *WebExchange) ResponseWriter() http.ResponseWriter {
 
 // Variable 获取WebValue域键值；作用域与请求生命周期相同；
 func (w *WebExchange) Variable(key string) interface{} {
-	return w.variables[key]
+	v, _ := w.GetVariable(key)
+	return v
 }
 
 // SetVariable 设置Context域键值；作用域与请求生命周期相同；
@@ -266,11 +269,37 @@ func (w *WebExchange) SetVariable(key string, value interface{}) {
 	w.variables[key] = value
 }
 
+// SetVariable 设置Context域键值；作用域与请求生命周期相同；
+func (w *WebExchange) GetVariable(key string) (interface{}, bool) {
+	// 本地Variable
+	v, ok := w.variables[key]
+	if ok {
+		return v, true
+	}
+	// 从Context中加载
+	v = w.ctxVarsLoader(key)
+	return v, nil != v
+}
+
 func (w *WebExchange) setContentType(ct string) {
 	header := w.response.Header()
 	if header.Get(HeaderContentType) == "" {
 		header.Set(HeaderContentType, ct)
 	}
+}
+
+func _mockVarsLoader() url.Values {
+	return make(url.Values, 0)
+}
+
+func _mockCtxVarsLoader(key string) interface{} {
+	return nil
+}
+
+func MockWebExchange(id string) *WebExchange {
+	mockQ := httptest.NewRequest("GET", "http://mocking/"+id, nil)
+	mockW := httptest.NewRecorder()
+	return NewWebExchange(id, mockQ, mockW, _mockVarsLoader, _mockVarsLoader, _mockVarsLoader, _mockCtxVarsLoader)
 }
 
 // WebListener 定义Web框架服务器的接口；
