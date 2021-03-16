@@ -2,7 +2,7 @@ package echo
 
 import (
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/backend"
+	"github.com/bytepowered/flux/flux-node/transport"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"io/ioutil"
 	"net/http"
@@ -13,30 +13,30 @@ func init() {
 }
 
 var (
-	_ flux.Transporter = new(RpcEchoTransporter)
+	_ flux.Transporter = new(RpcTransporter)
 )
 
-type RpcEchoTransporter struct {
+type RpcTransporter struct {
 	codec  flux.TransportCodec
 	writer flux.TransportWriter
 }
 
-func (b *RpcEchoTransporter) Writer() flux.TransportWriter {
+func (b *RpcTransporter) Writer() flux.TransportWriter {
 	return b.writer
 }
 
 func NewTransporter() flux.Transporter {
-	return &RpcEchoTransporter{
+	return &RpcTransporter{
 		codec:  NewTransportCodecFunc(),
-		writer: new(backend.RpcTransportWriter),
+		writer: new(transport.DefaultTransportWriter),
 	}
 }
 
-func (b *RpcEchoTransporter) Transport(ctx *flux.Context) {
-	backend.DoTransport(ctx, b)
+func (b *RpcTransporter) Transport(ctx *flux.Context) {
+	transport.DoTransport(ctx, b)
 }
 
-func (b *RpcEchoTransporter) InvokeCodec(context *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
+func (b *RpcTransporter) InvokeCodec(context *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
 	resp, err := b.Invoke(context, service)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (b *RpcEchoTransporter) InvokeCodec(context *flux.Context, service flux.Tra
 	return codec, nil
 }
 
-func (b *RpcEchoTransporter) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
 	var data []byte
 	if r, err := ctx.BodyReader(); nil == err {
 		data, _ = ioutil.ReadAll(r)
@@ -53,7 +53,7 @@ func (b *RpcEchoTransporter) Invoke(ctx *flux.Context, service flux.TransporterS
 	}
 	header := ctx.HeaderVars()
 	return map[string]interface{}{
-		"backend-service":      service,
+		"transport-service":      service,
 		"request-id":           ctx.RequestId(),
 		"request-uri":          ctx.URI(),
 		"request-method":       ctx.Method(),

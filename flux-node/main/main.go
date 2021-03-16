@@ -2,18 +2,15 @@ package main
 
 import (
 	"github.com/bytepowered/flux/flux-node"
-	_ "github.com/bytepowered/flux/flux-node/backend/dubbo"
-	_ "github.com/bytepowered/flux/flux-node/backend/echo"
-	_ "github.com/bytepowered/flux/flux-node/backend/http"
 	"github.com/bytepowered/flux/flux-node/boot"
+	_ "github.com/bytepowered/flux/flux-node/transport/dubbo"
+	_ "github.com/bytepowered/flux/flux-node/transport/echo"
+	_ "github.com/bytepowered/flux/flux-node/transport/http"
 	_ "github.com/bytepowered/flux/flux-node/webecho"
 )
 
 import (
-	_ "github.com/apache/dubbo-go/cluster/cluster_impl"
-	_ "github.com/apache/dubbo-go/cluster/loadbalance"
 	_ "github.com/apache/dubbo-go/filter/filter_impl"
-	_ "github.com/apache/dubbo-go/registry/protocol"
 	_ "github.com/apache/dubbo-go/registry/zookeeper"
 )
 

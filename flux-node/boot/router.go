@@ -39,7 +39,7 @@ func (r *Router) Initial() error {
 	// Backends
 	for proto, backend := range ext.BackendTransporters() {
 		ns := flux.NamespaceBackendTransports + "." + proto
-		logger.Infow("Load backend", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
+		logger.Infow("Load transport", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
 		if err := r.AddInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}
