@@ -144,10 +144,11 @@ func (r *Router) Route(ctx *flux.Context) *flux.ServeError {
 			break
 		}
 		defer func() {
-			ctx.AddMetric("backend", time.Since(ctx.StartAt()))
+			ctx.AddMetric("transporter", time.Since(ctx.StartAt()))
 		}()
 		proto := ctx.Transporter().RpcProto()
-		if backend, ok := ext.BackendTransporterBy(proto); !ok {
+		transporter, ok := ext.BackendTransporterBy(proto)
+		if !ok {
 			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", proto, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
@@ -155,13 +156,12 @@ func (r *Router) Route(ctx *flux.Context) *flux.ServeError {
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
 				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", proto),
 			}
-		} else {
-			// Transporter exchange
-			timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("BackendTransporter", proto))
-			err := backend.Transport(ctx)
-			timer.ObserveDuration()
-			return err
 		}
+		// Transporter exchange
+		timer := prometheus.NewTimer(r.metrics.RouteDuration.WithLabelValues("Transporter", proto))
+		transporter.Transport(ctx)
+		timer.ObserveDuration()
+		return nil
 	}
 	// Walk filters
 	filters := append(ext.GlobalFilters(), selective...)

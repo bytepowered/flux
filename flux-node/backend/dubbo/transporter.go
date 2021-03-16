@@ -32,7 +32,7 @@ const (
 )
 
 func init() {
-	ext.RegisterBackendTransporter(flux.ProtoDubbo, NewTransporterService())
+	ext.RegisterTransporter(flux.ProtoDubbo, NewTransporter())
 }
 
 var (
@@ -41,20 +41,17 @@ var (
 )
 
 var (
-	_     flux.BackendTransporter = new(TransporterService)
-	_json                         = jsoniter.ConfigCompatibleWithStandardLibrary
+	_     flux.Transporter = new(RpcDubboTransporter)
+	_json                  = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 type (
 	// Option func to set option
-	Option func(service *TransporterService)
-)
-
-type (
-	// ArgumentsAssembleFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
-	ArgumentsAssembleFunc func(arguments []flux.Argument, context *flux.Context) (types []string, values interface{}, err error)
-	// AttachmentAssembleFun 封装Attachment附件的函数
-	AttachmentAssembleFun func(context *flux.Context) (interface{}, error)
+	Option func(*RpcDubboTransporter)
+	// ArgumentResolver Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
+	ArgumentResolver func(arguments []flux.Argument, context *flux.Context) (types []string, values interface{}, err error)
+	// AttachmentResolver 封装Attachment附件的函数
+	AttachmentResolver func(context *flux.Context) (interface{}, error)
 )
 
 type (
@@ -66,83 +63,91 @@ type (
 	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result
 )
 
-// TransporterService 集成DubboRPC框架的BackendService
-type TransporterService struct {
+// RpcDubboTransporter 集成DubboRPC框架的BackendService
+type RpcDubboTransporter struct {
 	// 可外部配置
-	defaults        map[string]interface{} // 配置默认值
-	registryAlias   map[string]string      // Registry的别名
-	optionsFunc     []GenericOptionsFunc   // Dubbo Reference 配置函数
-	serviceFunc     GenericServiceFunc     // Dubbo Service 构建函数
-	invokeFunc      GenericInvokeFunc      // 执行Dubbo泛调用的函数
-	argAssembleFunc ArgumentsAssembleFunc  // Dubbo参数封装函数
-	attAssembleFunc AttachmentAssembleFun  // Attachment封装函数
-	codec           flux.BackendCodecFunc  // 解析响应结果的函数
+	defaults  map[string]interface{} // 配置默认值
+	registry  map[string]string      // Registry的别名
+	optionsf  []GenericOptionsFunc   // Dubbo Reference 配置函数
+	servicef  GenericServiceFunc     // Dubbo Service 构建函数
+	invokef   GenericInvokeFunc      // 执行Dubbo泛调用的函数
+	aresolver ArgumentResolver       // Dubbo参数封装函数
+	tresolver AttachmentResolver     // Attachment封装函数
+	codec     flux.TransportCodec    // 解析响应结果的函数
+	writer    flux.TransportWriter   // Writer
 	// 内部私有
-	traceEnable   bool
+	trace         bool
 	configuration *flux.Configuration
-	serviceMutex  sync.RWMutex
+	servmx        sync.RWMutex
 }
 
-// WithArgumentAssembleFunc 用于配置Dubbo参数封装实现函数
-func WithArgumentAssembleFunc(fun ArgumentsAssembleFunc) Option {
-	return func(service *TransporterService) {
-		service.argAssembleFunc = fun
+// WithArgumentResolver 用于配置Dubbo参数封装实现函数
+func WithArgumentResolver(fun ArgumentResolver) Option {
+	return func(service *RpcDubboTransporter) {
+		service.aresolver = fun
 	}
 }
 
-// WithAttachmentAssembleFunc 用于配置Attachment封装实现函数
-func WithAttachmentAssembleFunc(fun AttachmentAssembleFun) Option {
-	return func(service *TransporterService) {
-		service.attAssembleFunc = fun
+// WithAttachmentResolver 用于配置Attachment封装实现函数
+func WithAttachmentResolver(fun AttachmentResolver) Option {
+	return func(service *RpcDubboTransporter) {
+		service.tresolver = fun
 	}
 }
 
-// WithResponseCodecFunc 用于配置响应数据解析实现函数
-func WithResponseCodecFunc(fun flux.BackendCodecFunc) Option {
-	return func(service *TransporterService) {
+// WithTransportCodec 用于配置响应数据解析实现函数
+func WithTransportCodec(fun flux.TransportCodec) Option {
+	return func(service *RpcDubboTransporter) {
 		service.codec = fun
+	}
+}
+
+// WithTransportWriter 用于配置响应数据解析实现函数
+func WithTransportWriter(fun flux.TransportWriter) Option {
+	return func(service *RpcDubboTransporter) {
+		service.writer = fun
 	}
 }
 
 // WithGenericOptionsFunc 用于配置DubboReference的参数配置函数
 func WithGenericOptionsFunc(fun GenericOptionsFunc) Option {
-	return func(service *TransporterService) {
-		service.optionsFunc = append(service.optionsFunc, fun)
+	return func(service *RpcDubboTransporter) {
+		service.optionsf = append(service.optionsf, fun)
 	}
 }
 
 // WithGenericServiceFunc 用于构建DubboRPCService的函数
 func WithGenericServiceFunc(fun GenericServiceFunc) Option {
-	return func(service *TransporterService) {
-		service.serviceFunc = fun
+	return func(service *RpcDubboTransporter) {
+		service.servicef = fun
 	}
 }
 
 // WithGenericInvokeFunc 用于调用DubboRPCService执行方法的函数
 func WithGenericInvokeFunc(fun GenericInvokeFunc) Option {
-	return func(service *TransporterService) {
-		service.invokeFunc = fun
+	return func(service *RpcDubboTransporter) {
+		service.invokef = fun
 	}
 }
 
 // WithRegistryAlias 用于配置DubboRegistry注册中心的配置别名
 func WithRegistryAlias(alias map[string]string) Option {
-	return func(service *TransporterService) {
-		service.registryAlias = alias
+	return func(service *RpcDubboTransporter) {
+		service.registry = alias
 	}
 }
 
 // WithDefaults 用于配置默认配置值
 func WithDefaults(defaults map[string]interface{}) Option {
-	return func(service *TransporterService) {
+	return func(service *RpcDubboTransporter) {
 		service.defaults = defaults
 	}
 }
 
-// NewTransportServiceWith New dubbo backend service with options
-func NewTransportServiceWith(opts ...Option) flux.BackendTransporter {
-	bts := &TransporterService{
-		optionsFunc: make([]GenericOptionsFunc, 0),
+// NewTransporterWith New dubbo backend service with optionsf
+func NewTransporterWith(opts ...Option) flux.Transporter {
+	bts := &RpcDubboTransporter{
+		optionsf: make([]GenericOptionsFunc, 0),
 	}
 	for _, opt := range opts {
 		opt(bts)
@@ -150,17 +155,14 @@ func NewTransportServiceWith(opts ...Option) flux.BackendTransporter {
 	return bts
 }
 
-// NewTransporterService New dubbo backend instance
-func NewTransporterService() flux.BackendTransporter {
-	return NewTransporterServiceOverrides()
+// NewTransporter New dubbo backend instance
+func NewTransporter() flux.Transporter {
+	return NewTransporterOverride()
 }
 
-// NewTransporterServiceOverrides New dubbo backend instance
-func NewTransporterServiceOverrides(overrides ...Option) flux.BackendTransporter {
+// NewTransporterOverride New dubbo backend instance
+func NewTransporterOverride(overrides ...Option) flux.Transporter {
 	opts := []Option{
-		WithArgumentAssembleFunc(DefaultArgAssembleFunc),
-		WithAttachmentAssembleFunc(DefaultAttAssembleFun),
-		WithResponseCodecFunc(NewResponseCodecFunc()),
 		WithRegistryAlias(map[string]string{
 			"id":       "dubbo.registry.id",
 			"protocol": "dubbo.registry.protocol",
@@ -191,34 +193,37 @@ func NewTransporterServiceOverrides(overrides ...Option) flux.BackendTransporter
 				Rest:  data,
 			}
 		}),
+		WithArgumentResolver(DefaultArgumentResolver),
+		WithAttachmentResolver(DefaultAttachmentResolver),
+		WithTransportCodec(NewTransportCodecFunc()),
+		WithTransportWriter(new(backend.RpcTransportWriter)),
 	}
-	return NewTransportServiceWith(append(opts, overrides...)...)
+	return NewTransporterWith(append(opts, overrides...)...)
 }
 
-// Configuration get config instance
-func (b *TransporterService) Configuration() *flux.Configuration {
-	return b.configuration
+func (b *RpcDubboTransporter) Writer() flux.TransportWriter {
+	return b.writer
 }
 
 // Init init backend
-func (b *TransporterService) Init(config *flux.Configuration) error {
+func (b *RpcDubboTransporter) Init(config *flux.Configuration) error {
 	logger.Info("Dubbo backend transport initializing")
 	config.SetDefaults(b.defaults)
 	b.configuration = config
-	b.traceEnable = config.GetBool(ConfigKeyTraceEnable)
-	logger.Infow("Dubbo backend transport request trace", "enable", b.traceEnable)
+	b.trace = config.GetBool(ConfigKeyTraceEnable)
+	logger.Infow("Dubbo backend transport request trace", "enable", b.trace)
 	// Set default impl if not present
-	if nil == b.optionsFunc {
-		b.optionsFunc = make([]GenericOptionsFunc, 0)
+	if nil == b.optionsf {
+		b.optionsf = make([]GenericOptionsFunc, 0)
 	}
-	if fluxpkg.IsNil(b.argAssembleFunc) {
-		b.argAssembleFunc = DefaultArgAssembleFunc
+	if fluxpkg.IsNil(b.aresolver) {
+		b.aresolver = DefaultArgumentResolver
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
 	// 支持定义Registry
 	registry := b.configuration.Sub("registry")
-	registry.SetGlobalAlias(b.registryAlias)
+	registry.SetGlobalAlias(b.registry)
 	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
 		consumerc.Registries[id] = rconfig
 		logger.Infow("Dubbo backend transport setup registry", "id", id, "config", rconfig)
@@ -228,24 +233,24 @@ func (b *TransporterService) Init(config *flux.Configuration) error {
 }
 
 // Startup startup service
-func (b *TransporterService) Startup() error {
+func (b *RpcDubboTransporter) Startup() error {
 	return nil
 }
 
 // Shutdown shutdown service
-func (b *TransporterService) Shutdown(_ context.Context) error {
+func (b *RpcDubboTransporter) Shutdown(_ context.Context) error {
 	dubgo.BeforeShutdown()
 	return nil
 }
 
-// Exchange do exchange with context
-func (b *TransporterService) Transport(ctx *flux.Context) *flux.ServeError {
-	return backend.DoTransport(ctx, b)
+// Transport do exchange with context
+func (b *RpcDubboTransporter) Transport(ctx *flux.Context) {
+	backend.DoTransport(ctx, b)
 }
 
 // Invoke invoke backend service with context
-func (b *TransporterService) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
-	types, values, err := b.argAssembleFunc(service.Arguments, ctx)
+func (b *RpcDubboTransporter) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
+	types, values, err := b.aresolver(service.Arguments, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -258,7 +263,7 @@ func (b *TransporterService) Invoke(ctx *flux.Context, service flux.TransporterS
 	}
 }
 
-func (b *TransporterService) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.BackendResponse, *flux.ServeError) {
+func (b *RpcDubboTransporter) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
 	raw, serr := b.Invoke(ctx, service)
 	select {
 	case <-ctx.Context().Done():
@@ -288,12 +293,12 @@ func (b *TransporterService) InvokeCodec(ctx *flux.Context, service flux.Transpo
 }
 
 // DoInvoke execute backend service with arguments
-func (b *TransporterService) DoInvoke(types []string, values interface{}, service flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
-	if b.traceEnable {
+func (b *RpcDubboTransporter) DoInvoke(types []string, values interface{}, service flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
+	if b.trace {
 		logger.TraceContext(ctx).Infow("BACKEND:DUBBO:INVOKE",
 			"backend-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
 	}
-	att, err := b.attAssembleFunc(ctx)
+	att, err := b.tresolver(ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:ATTACHMENT",
 			"backend-service", service.ServiceID(), "error", err)
@@ -306,7 +311,7 @@ func (b *TransporterService) DoInvoke(types []string, values interface{}, servic
 	}
 	generic := b.LoadGenericService(&service)
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
-	resultW := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
+	resultW := b.invokef(goctx, []interface{}{service.Method, types, values}, generic)
 	if cause := resultW.Error(); cause != nil {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
@@ -315,7 +320,7 @@ func (b *TransporterService) DoInvoke(types []string, values interface{}, servic
 			CauseError: cause,
 		}
 	} else {
-		if b.traceEnable {
+		if b.trace {
 			data := resultW.Result()
 			text, err := _json.MarshalToString(data)
 			ctxLogger := logger.TraceContext(ctx)
@@ -331,22 +336,22 @@ func (b *TransporterService) DoInvoke(types []string, values interface{}, servic
 }
 
 // LoadGenericService create and cache dubbo generic service
-func (b *TransporterService) LoadGenericService(backend *flux.TransporterService) common.RPCService {
-	b.serviceMutex.Lock()
-	defer b.serviceMutex.Unlock()
+func (b *RpcDubboTransporter) LoadGenericService(backend *flux.TransporterService) common.RPCService {
+	b.servmx.Lock()
+	defer b.servmx.Unlock()
 	if srv := dubgo.GetConsumerService(backend.Interface); nil != srv {
 		return srv
 	}
 	newRef := NewReference(backend.Interface, backend, b.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
-	for _, optsFunc := range b.optionsFunc {
+	for _, optsFunc := range b.optionsf {
 		if nil != optsFunc {
 			newRef = fluxpkg.MustNotNil(optsFunc(backend, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", backend.Interface)
-	srv := b.serviceFunc(backend)
+	srv := b.servicef(backend)
 	dubgo.SetConsumerService(srv)
 	newRef.Refer(srv)
 	newRef.Implement(srv)

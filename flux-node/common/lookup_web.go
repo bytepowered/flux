@@ -9,7 +9,7 @@ import (
 )
 
 // LookupWebValueByExpr 搜索LookupExpr表达式指定域的值。
-func LookupWebValueByExpr(webex *flux.WebExchange, expr string) string {
+func LookupWebValueByExpr(webex flux.ServerWebContext, expr string) string {
 	if "" == expr || nil == webex {
 		return ""
 	}
@@ -20,7 +20,7 @@ func LookupWebValueByExpr(webex *flux.WebExchange, expr string) string {
 	return LookupWebValue(webex, scope, key)
 }
 
-func LookupWebValue(webex *flux.WebExchange, scope, key string) string {
+func LookupWebValue(webex flux.ServerWebContext, scope, key string) string {
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
 		return webex.PathVar(key)

@@ -14,7 +14,7 @@ const (
 
 // Context 定义每个请求的上下文环境
 type Context struct {
-	*WebExchange
+	ServerWebContext
 	endpoint   *Endpoint
 	attributes map[string]interface{}
 	metrics    []Metric
@@ -22,19 +22,15 @@ type Context struct {
 	ctxLogger  Logger
 }
 
-func NewContext(webex *WebExchange, endpoint *Endpoint) *Context {
+func NewContext(webex ServerWebContext, endpoint *Endpoint) *Context {
 	return &Context{
-		WebExchange: webex,
-		endpoint:    endpoint,
-		attributes:  make(map[string]interface{}, 8),
-		metrics:     make([]Metric, 0, 8),
-		startTime:   time.Now(),
-		ctxLogger:   zap.S(),
+		ServerWebContext: webex,
+		endpoint:         endpoint,
+		attributes:       make(map[string]interface{}, 8),
+		metrics:          make([]Metric, 0, 8),
+		startTime:        time.Now(),
+		ctxLogger:        zap.S(),
 	}
-}
-
-func MockContext(id string) *Context {
-	return NewContext(MockWebExchange(id), &Endpoint{})
 }
 
 // Application 返回当前Endpoint对应的应用名

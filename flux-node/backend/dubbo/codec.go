@@ -12,12 +12,12 @@ const (
 	ResponseKeyHeaders    = "@net.bytepowered.flux.http-headers"
 )
 
-func NewResponseCodecFuncWith(codeKey, headerKey string) flux.BackendCodecFunc {
-	return func(ctx *flux.Context, raw interface{}) (*flux.BackendResponse, error) {
+func NewTransportCodecFuncWith(codeKey, headerKey string) flux.TransportCodec {
+	return func(ctx *flux.Context, raw interface{}) (*flux.ResponseBody, error) {
 		// 支持Dubbo返回Result类型
 		rpcr, ok := raw.(protocol.Result)
 		if !ok {
-			return &flux.BackendResponse{
+			return &flux.ResponseBody{
 				StatusCode: flux.StatusOK, Headers: make(http.Header, 0), Body: raw,
 			}, nil
 		}
@@ -36,12 +36,12 @@ func NewResponseCodecFuncWith(codeKey, headerKey string) flux.BackendCodecFunc {
 				attrs[k] = v
 			}
 		}
-		return &flux.BackendResponse{
+		return &flux.ResponseBody{
 			StatusCode: status, Headers: make(http.Header, 0), Attachments: attrs, Body: data,
 		}, nil
 	}
 }
 
-func NewResponseCodecFunc() flux.BackendCodecFunc {
-	return NewResponseCodecFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders)
+func NewTransportCodecFunc() flux.TransportCodec {
+	return NewTransportCodecFuncWith(ResponseKeyStatusCode, ResponseKeyHeaders)
 }

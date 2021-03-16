@@ -1,4 +1,4 @@
-package echoserver
+package webecho
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
+	"github.com/bytepowered/flux/flux-node/internal"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/labstack/echo/v4"
@@ -61,19 +62,7 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 		return func(echoc echo.Context) error {
 			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
-			echoc.Set(__interContextKeyWebContext, flux.NewWebExchange(id, echoc.Request(), echoc.Response(),
-				// 动态路径参数
-				func() url.Values { return loadPathVars(echoc) },
-				// 表单参数
-				func() url.Values {
-					vars, _ := echoc.FormParams()
-					return vars
-				},
-				// Query参数
-				echoc.QueryParams,
-				// 上下文参数
-				echoc.Get),
-			)
+			echoc.Set(__interContextKeyWebContext, internal.NewServeWebContext(id, echoc))
 			return next(echoc)
 		}
 	})
@@ -161,7 +150,7 @@ func (s *EchoWebListener) Listen() error {
 	}
 }
 
-func (s *EchoWebListener) SetRequestBodyResolver(r flux.WebBodyResolver) {
+func (s *EchoWebListener) SetBodyResolver(r flux.WebBodyResolver) {
 	fluxpkg.AssertNotNil(r, "WebBodyResolver must not nil, server-id: "+s.id)
 	s.started().bodyResolver = r
 }
@@ -181,7 +170,7 @@ func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 		if nil == cerr {
 			return
 		}
-		webex, ok := c.Get(__interContextKeyWebContext).(*flux.WebExchange)
+		webex, ok := c.Get(__interContextKeyWebContext).(flux.ServerWebContext)
 		fluxpkg.Assert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webex, err)
 	}
@@ -248,7 +237,7 @@ func toRoutePattern(uri string) string {
 }
 
 // 默认对RequestBody的表单数据进行解析
-func DefaultRequestBodyResolver(webex *flux.WebExchange) url.Values {
+func DefaultRequestBodyResolver(webex flux.ServerWebContext) url.Values {
 	return webex.FormVars()
 }
 

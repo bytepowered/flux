@@ -36,13 +36,13 @@ type (
 	// Option 配置HttpServeEngine函数
 	Option func(bs *BootstrapServer)
 	// VersionLookupFunc Http请求版本查找函数
-	VersionLookupFunc func(webex *flux.WebExchange) (version string)
+	VersionLookupFunc func(webex flux.ServerWebContext) (version string)
 )
 
 // BootstrapServer
 type BootstrapServer struct {
 	listener          map[string]flux.WebListener
-	hooks             []flux.WebExchangeHook
+	hooks             []flux.ContextExchangeHook
 	versionLookupFunc VersionLookupFunc
 	router            *Router
 	started           chan struct{}
@@ -52,7 +52,7 @@ type BootstrapServer struct {
 }
 
 // WithWebExchangeHooks 配置请求Hook函数列表
-func WithWebExchangeHooks(hooks ...flux.WebExchangeHook) Option {
+func WithWebExchangeHooks(hooks ...flux.ContextExchangeHook) Option {
 	return func(bs *BootstrapServer) {
 		bs.hooks = append(bs.hooks, hooks...)
 	}
@@ -88,7 +88,7 @@ func WithWebListener(server flux.WebListener) Option {
 func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 	opts := []Option{
 		WithServerBanner(defaultBanner),
-		WithVersionLookupFunc(func(webex *flux.WebExchange) string {
+		WithVersionLookupFunc(func(webex flux.ServerWebContext) string {
 			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
@@ -110,7 +110,7 @@ func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 	srv := &BootstrapServer{
 		router:   NewRouter(),
 		listener: make(map[string]flux.WebListener, 2),
-		hooks:    make([]flux.WebExchangeHook, 0, 4),
+		hooks:    make([]flux.ContextExchangeHook, 0, 4),
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),
 		banner:   defaultBanner,
@@ -209,7 +209,7 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 	return nil
 }
 
-func (s *BootstrapServer) route(webex *flux.WebExchange, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
+func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
 	endpoint, found := endpoints.LookupByVersion(s.versionLookupFunc(webex))
 	// 实现动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
@@ -393,12 +393,12 @@ func (s *BootstrapServer) WebListenerById(listenerId string) (flux.WebListener, 
 }
 
 // AddWebExchangeHook 添加Http与Flux的Context桥接函数
-func (s *BootstrapServer) AddWebExchangeHook(f flux.WebExchangeHook) {
+func (s *BootstrapServer) AddWebExchangeHook(f flux.ContextExchangeHook) {
 	s.hooks = append(s.hooks, f)
 }
 
 func (s *BootstrapServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MultiEndpoint) flux.WebHandler {
-	return func(webex *flux.WebExchange) error {
+	return func(webex flux.ServerWebContext) error {
 		return s.route(webex, server, endpoint)
 	}
 }

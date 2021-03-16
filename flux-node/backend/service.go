@@ -1,25 +1,25 @@
 package backend
 
 import (
-	"errors"
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/common"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-pkg"
-	"strconv"
 )
 
-func DoTransport(ctx *flux.Context, transport flux.BackendTransporter) *flux.ServeError {
+func DoTransport(ctx *flux.Context, transport flux.Transporter) {
 	response, err := transport.InvokeCodec(ctx, ctx.Transporter())
 	if err != nil {
-		return err
+		ctx.Logger().Errorw("BACKEND:TRANSPORT:INVOKE/ERROR", "error", err)
+		transport.Writer().WriteError(ctx, err)
+		return
 	}
 	// response
 	if response == nil {
 		select {
 		case <-ctx.Context().Done():
-			return nil
+			ctx.Logger().Warnw("BACKEND:TRANSPORT:CANCELED/BYCLIENT")
+			return
 		default:
 			break
 		}
@@ -29,37 +29,11 @@ func DoTransport(ctx *flux.Context, transport flux.BackendTransporter) *flux.Ser
 	for k, v := range response.Attachments {
 		ctx.SetAttribute(k, v)
 	}
-	headers := ctx.ResponseWriter().Header()
-	for k, vs := range response.Headers {
-		for _, v := range vs {
-			headers.Add(k, v)
-		}
-	}
-	bytes, serr := common.SerializeObject(response.Body)
-	if nil != serr {
-		return &flux.ServeError{
-			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageBackendDecodeResponse,
-			CauseError: errors.New("failed to decode response body"),
-		}
-	}
-	// Write bytes
-	headers.Set(flux.HeaderContentLength, strconv.Itoa(len(bytes)))
-	serr = ctx.Write(response.StatusCode, flux.MIMEApplicationJSONCharsetUTF8, bytes)
-	if nil != serr {
-		return &flux.ServeError{
-			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageBackendWriteResponse,
-			CauseError: errors.New("failed to write response data"),
-		}
-	}
-	return nil
+	transport.Writer().Write(ctx, response)
 }
 
 // DoInvokeCodec 执行后端服务，获取响应结果；
-func DoInvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.BackendResponse, *flux.ServeError) {
+func DoInvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
 	proto := service.RpcProto()
 	transport, ok := ext.BackendTransporterBy(proto)
 	if !ok {
@@ -71,4 +45,16 @@ func DoInvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.Ba
 		}
 	}
 	return transport.InvokeCodec(ctx, service)
+}
+
+var _ flux.TransportWriter = new(RpcTransportWriter)
+
+type RpcTransportWriter int
+
+func (r *RpcTransportWriter) Write(ctx *flux.Context, response *flux.ResponseBody) {
+	panic("implement me")
+}
+
+func (r *RpcTransportWriter) WriteError(ctx *flux.Context, err *flux.ServeError) {
+	panic("implement me")
 }

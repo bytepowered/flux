@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package echoserver
+package webecho
 
 import (
 	"github.com/bytepowered/flux/flux-node"
@@ -53,7 +53,7 @@ func NewCORSMiddlewareWith(config CorsConfig) flux.WebInterceptor {
 	exposeHeaders := strings.Join(config.ExposeHeaders, ",")
 	maxAge := strconv.Itoa(config.MaxAge)
 	return func(next flux.WebHandler) flux.WebHandler {
-		return func(webex *flux.WebExchange) error {
+		return func(webex flux.ServerWebContext) error {
 			if config.Skipper != nil && config.Skipper(webex) {
 				return next(webex)
 			}

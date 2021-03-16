@@ -87,9 +87,9 @@ type (
 	// ArgumentLookupFunc 参数值查找函数
 	ArgumentLookupFunc func(scope, key string, ctx *Context) (MTValue, error)
 
-	// WebExchangeHook 用于WebContext与Context的交互勾子；
+	// ContextExchangeHook 用于WebContext与Context的交互勾子；
 	// 在每个请求被路由执行时，在创建Context后被调用。
-	WebExchangeHook func(*WebExchange, *Context)
+	ContextExchangeHook func(ServerWebContext, *Context)
 )
 
 // Argument 定义Endpoint的参数结构元数据

@@ -1,4 +1,4 @@
-package echoserver
+package webecho
 
 import (
 	"github.com/bytepowered/flux/flux-node"
@@ -18,14 +18,14 @@ type EchoWebInterceptor flux.WebInterceptor
 
 func (call EchoWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(echoc echo.Context) error {
-		return call(func(webex *flux.WebExchange) error {
+		return call(func(webex flux.ServerWebContext) error {
 			return next(echoc)
 		})(toWebExchange(echoc))
 	}
 }
 
-func toWebExchange(echoc echo.Context) *flux.WebExchange {
-	webex, ok := echoc.Get(__interContextKeyWebContext).(*flux.WebExchange)
+func toWebExchange(echoc echo.Context) flux.ServerWebContext {
+	webex, ok := echoc.Get(__interContextKeyWebContext).(flux.ServerWebContext)
 	fluxpkg.Assert(ok == true && webex != nil, "<web-exchange> not found in echo.context")
 	return webex
 }

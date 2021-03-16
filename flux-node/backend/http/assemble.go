@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func DefaultArgumentAssemble(service *flux.TransporterService, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error) {
+func DefaultArgumentResolver(service *flux.TransporterService, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数

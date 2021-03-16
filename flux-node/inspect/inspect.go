@@ -58,7 +58,7 @@ func init() {
 	}
 }
 
-func EndpointsHandler(webex *flux.WebExchange) error {
+func EndpointsHandler(webex flux.ServerWebContext) error {
 	filters := make([]EndpointFilter, 0)
 	for _, key := range endpointQueryKeys {
 		if query := webex.QueryVar(key); "" != query {
@@ -79,7 +79,7 @@ func EndpointsHandler(webex *flux.WebExchange) error {
 	}
 }
 
-func ServicesHandler(ctx *flux.WebExchange) error {
+func ServicesHandler(ctx flux.ServerWebContext) error {
 	for _, key := range serviceQueryKeys {
 		if id := ctx.QueryVar(key); "" != id {
 			service, ok := ext.BackendServiceById(id)
@@ -120,7 +120,7 @@ func queryMatch(input, expected string) bool {
 	return strings.Contains(expected, input)
 }
 
-func send(webex *flux.WebExchange, status int, payload interface{}) error {
+func send(webex flux.ServerWebContext, status int, payload interface{}) error {
 	bytes, err := common.SerializeObject(payload)
 	if nil != err {
 		return err

@@ -7,20 +7,20 @@ import (
 )
 
 var (
-	ErrUnknownHttpBackendResponse = errors.New("BACKEND:UNKNOWN_HTTP_RESPONSE")
+	ErrUnknownHttpResponse = errors.New("BACKEND:UNKNOWN_HTTP_RESPONSE")
 )
 
-func NewResponseCodecFunc() flux.BackendCodecFunc {
-	return func(ctx *flux.Context, value interface{}) (*flux.BackendResponse, error) {
+func NewTransportCodecFunc() flux.TransportCodec {
+	return func(ctx *flux.Context, value interface{}) (*flux.ResponseBody, error) {
 		resp, ok := value.(*http.Response)
 		if !ok {
-			return &flux.BackendResponse{
+			return &flux.ResponseBody{
 				StatusCode: http.StatusBadGateway,
 				Headers:    make(http.Header, 0),
 				Body:       nil,
-			}, ErrUnknownHttpBackendResponse
+			}, ErrUnknownHttpResponse
 		}
-		return &flux.BackendResponse{
+		return &flux.ResponseBody{
 			StatusCode: resp.StatusCode,
 			Headers:    resp.Header,
 			Body:       resp.Body,

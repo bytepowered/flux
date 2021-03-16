@@ -8,7 +8,7 @@ import (
 )
 
 // DefaultNotfoundHandler 生成NotFound错误，由ErrorHandler处理
-func DefaultNotfoundHandler(_ *flux.WebExchange) error {
+func DefaultNotfoundHandler(_ flux.ServerWebContext) error {
 	return &flux.ServeError{
 		StatusCode: flux.StatusNotFound,
 		ErrorCode:  flux.ErrorCodeRequestNotFound,
@@ -16,7 +16,7 @@ func DefaultNotfoundHandler(_ *flux.WebExchange) error {
 	}
 }
 
-func DefaultErrorHandler(webex *flux.WebExchange, error error) {
+func DefaultErrorHandler(webex flux.ServerWebContext, error error) {
 	if nil == error || (*flux.ServeError)(nil) == error || reflect.ValueOf(error).IsNil() {
 		return
 	}
