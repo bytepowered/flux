@@ -3,7 +3,7 @@ package fluxpkg
 import "fmt"
 
 const (
-	assertMessagePrefix = "FXSERVER:CRITICAL:ASSERT:"
+	assertMessagePrefix = "SERVER:CRITICAL:ASSERT:"
 )
 
 func AssertT(tester func() bool, message string) {

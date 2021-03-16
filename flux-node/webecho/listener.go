@@ -33,7 +33,6 @@ const (
 
 const (
 	__interContextKeyWebContext = "__server.core.adapted.context#890b1fa9-93ad-4b44-af24-85bcbfe646b4"
-	__interContextKeyPathVars   = "__server.core.path.vars#890b1fa9-93ad-4b44-af24-85bcbfe646b4"
 )
 
 var _ flux.WebListener = new(EchoWebListener)
@@ -62,7 +61,20 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 		return func(echoc echo.Context) error {
 			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
-			echoc.Set(__interContextKeyWebContext, internal.NewServeWebContext(id, echoc))
+			swc := internal.NewServeWebContext(id, echoc)
+			echoc.Set(__interContextKeyWebContext, swc)
+			defer func() {
+				if rvr := recover(); rvr != nil && rvr != http.ErrAbortHandler {
+					logger.Trace(id).Errorw("SERVER:CRITICAL:PANIC", "error", rvr)
+					_ = echoc.JSON(http.StatusInternalServerError, map[string]interface{}{
+						"server.traceid": id,
+						"server.status":  "error",
+						"server.level":   "critical",
+						"server.message": "unexpected fault of the server",
+						"server.cause":   "internal error",
+					})
+				}
+			}()
 			return next(echoc)
 		}
 	})
@@ -93,19 +105,6 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 		server.Pre(mws.AfterFeature...)
 	}
 	return aws
-}
-
-func loadPathVars(echoc echo.Context) url.Values {
-	vars, ok := echoc.Get(__interContextKeyPathVars).(url.Values)
-	if ok && nil != vars {
-		return vars
-	}
-	vars = make(url.Values, len(echoc.ParamNames()))
-	for _, k := range echoc.ParamNames() {
-		vars.Set(k, echoc.Param(k))
-	}
-	echoc.Set(__interContextKeyPathVars, vars)
-	return vars
 }
 
 // EchoWebListener 默认实现的基于echo框架的WebServer
