@@ -69,9 +69,9 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 					_ = echoc.JSON(http.StatusInternalServerError, map[string]interface{}{
 						"server.traceid": id,
 						"server.status":  "error",
-						"server.level":   "critical",
-						"server.message": "unexpected fault of the server",
-						"server.cause":   "internal error",
+						"error.level":    "critical",
+						"error.message":  "unexpected fault of the server",
+						"error.cause":    "internal error",
 					})
 				}
 			}()
