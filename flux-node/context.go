@@ -43,7 +43,7 @@ func (c *Context) Endpoint() *Endpoint {
 	return c.endpoint
 }
 
-// Transporter 返回BackendService信息
+// Transporter 返回TransporterService信息
 func (c *Context) Transporter() TransporterService {
 	return c.endpoint.Service
 }

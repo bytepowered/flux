@@ -12,8 +12,8 @@ import (
 
 const (
 	// 在ZK注册的根节点。需要与客户端的注册保持一致。
-	zkDiscoveryHttpEndpointPath   = "/flux-endpoint"
-	zkDiscoveryBackendServicePath = "/flux-service"
+	zkDiscoveryEndpointPath = "/flux-endpoint"
+	zkDiscoveryServicePath  = "/flux-service"
 )
 
 const (
@@ -67,8 +67,8 @@ func (r *ZookeeperDiscoveryService) Id() string {
 // Init init discovery
 func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
-		zkConfigRootpathEndpoint: zkDiscoveryHttpEndpointPath,
-		zkConfigRootpathService:  zkDiscoveryBackendServicePath,
+		zkConfigRootpathEndpoint: zkDiscoveryEndpointPath,
+		zkConfigRootpathService:  zkDiscoveryServicePath,
 	})
 	selected := config.GetStringSlice(zkConfigRegistrySelector)
 	if len(selected) == 0 {
@@ -103,7 +103,7 @@ func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 }
 
 // OnEndpointChanged Listen http endpoints events
-func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpointEvent) error {
+func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.EndpointEvent) error {
 	const msg = "DISCOVERY:ZOOKEEPER:ENDPOINT:LISTEN_NODE"
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
@@ -125,7 +125,7 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpoi
 }
 
 // OnServiceChanged Listen gateway services events
-func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux.BackendServiceEvent) error {
+func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux.ServiceEvent) error {
 	const msg = "DISCOVERY:ZOOKEEPER:SERVICE:LISTEN_NODE"
 	listener := func(event remoting.NodeEvent) {
 		defer func() {
@@ -133,7 +133,7 @@ func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux.BackendServ
 				logger.Errorw(msg, "event", event, "error", r)
 			}
 		}()
-		if evt, ok := NewBackendServiceEvent(event.Data, event.EventType, event.Path); ok {
+		if evt, ok := NewServiceEvent(event.Data, event.EventType, event.Path); ok {
 			events <- evt
 		}
 	}

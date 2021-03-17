@@ -70,7 +70,7 @@ type (
 	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result
 )
 
-// RpcTransporter 集成DubboRPC框架的BackendService
+// RpcTransporter 集成DubboRPC框架的TransporterService
 type RpcTransporter struct {
 	// 可外部配置
 	defaults  map[string]interface{} // 配置默认值
@@ -188,8 +188,8 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 			"load_balance":          "random",
 			"protocol":              dubbo.DUBBO,
 		}),
-		WithGenericServiceFunc(func(backend *flux.TransporterService) common.RPCService {
-			return dubgo.NewGenericService(backend.Interface)
+		WithGenericServiceFunc(func(service *flux.TransporterService) common.RPCService {
+			return dubgo.NewGenericService(service.Interface)
 		}),
 		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result {
 			srv := rpc.(*dubgo.GenericService)
@@ -274,14 +274,14 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 	raw, serr := b.Invoke(ctx, service)
 	select {
 	case <-ctx.Context().Done():
-		logger.TraceContext(ctx).Infow("BACKEND:DUBBO:RPC_CANCELED",
+		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:RPC_CANCELED",
 			"transport-service", service.ServiceID(), "error", ctx.Context().Err())
 		return nil, serr
 	default:
 		break
 	}
 	if nil != serr {
-		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:RPC_ERROR",
+		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:RPC_ERROR",
 			"transport-service", service.ServiceID(), "error", serr.CauseError)
 		return nil, serr
 	}
@@ -291,7 +291,7 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageBackendDecodeResponse,
+			Message:    flux.ErrorMessageTransportDecodeResponse,
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
 		}
 	}
@@ -302,12 +302,12 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 // DoInvoke execute transport service with arguments
 func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
 	if b.trace {
-		logger.TraceContext(ctx).Infow("BACKEND:DUBBO:INVOKE",
+		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:INVOKE",
 			"transport-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
 	}
 	att, err := b.tresolver(ctx)
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("BACKEND:DUBBO:ATTACHMENT",
+		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
 			"transport-service", service.ServiceID(), "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -322,7 +322,7 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 	if cause := resultW.Error(); cause != nil {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
-			ErrorCode:  flux.ErrorCodeGatewayBackend,
+			ErrorCode:  flux.ErrorCodeGatewayTransporter,
 			Message:    flux.ErrorMessageDubboInvokeFailed,
 			CauseError: cause,
 		}
@@ -332,9 +332,9 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 			text, err := _json.MarshalToString(data)
 			ctxLogger := logger.TraceContext(ctx)
 			if nil == err {
-				ctxLogger.Infow("BACKEND:DUBBO:RECEIVED", "transport-service", service.ServiceID(), "response.json", text)
+				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED", "transport-service", service.ServiceID(), "response.json", text)
 			} else {
-				ctxLogger.Infow("BACKEND:DUBBO:RECEIVED",
+				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED",
 					"transport-service", service.ServiceID(), "response.type", reflect.TypeOf(data), "response.data", fmt.Sprintf("%+v", data))
 			}
 		}
@@ -343,22 +343,22 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 }
 
 // LoadGenericService create and cache dubbo generic service
-func (b *RpcTransporter) LoadGenericService(backend *flux.TransporterService) common.RPCService {
+func (b *RpcTransporter) LoadGenericService(service *flux.TransporterService) common.RPCService {
 	b.servmx.Lock()
 	defer b.servmx.Unlock()
-	if srv := dubgo.GetConsumerService(backend.Interface); nil != srv {
+	if srv := dubgo.GetConsumerService(service.Interface); nil != srv {
 		return srv
 	}
-	newRef := NewReference(backend.Interface, backend, b.configuration)
+	newRef := NewReference(service.Interface, service, b.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
 	for _, optsFunc := range b.optionsf {
 		if nil != optsFunc {
-			newRef = fluxpkg.MustNotNil(optsFunc(backend, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
+			newRef = fluxpkg.MustNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
-	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", backend.Interface)
-	srv := b.servicef(backend)
+	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", service.Interface)
+	srv := b.servicef(service)
 	dubgo.SetConsumerService(srv)
 	newRef.Refer(srv)
 	newRef.Implement(srv)
@@ -367,7 +367,7 @@ func (b *RpcTransporter) LoadGenericService(backend *flux.TransporterService) co
 		t = time.Millisecond * 10
 	}
 	<-time.After(t)
-	logger.Infow("DUBBO:GENERIC:CREATE: OJBK", "interface", backend.Interface)
+	logger.Infow("DUBBO:GENERIC:CREATE: OJBK", "interface", service.Interface)
 	return srv
 }
 

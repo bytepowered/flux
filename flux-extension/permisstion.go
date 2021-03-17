@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	flux "github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/transport"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
+	"github.com/bytepowered/flux/flux-node/transport"
 	"github.com/bytepowered/flux/flux-pkg"
 	"net/http"
 	"time"
@@ -101,7 +101,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 			services = append(services, endpoint.Permission)
 		}
 		for _, id := range endpoint.Permissions {
-			if srv, ok := ext.BackendServiceById(id); ok {
+			if srv, ok := ext.TransporterServiceById(id); ok {
 				services = append(services, srv)
 			} else {
 				return &flux.ServeError{

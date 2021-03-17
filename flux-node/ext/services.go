@@ -11,18 +11,18 @@ var (
 	servicesMap     *sync.Map = new(sync.Map)
 )
 
-func RegisterBackendServiceById(id string, service flux.TransporterService) {
+func RegisterTransporterServiceById(id string, service flux.TransporterService) {
 	servicesMap.Store(id, service)
 }
 
-// RegisterBackendService store transport service
-func RegisterBackendService(service flux.TransporterService) {
+// RegisterTransporterService store transport service
+func RegisterTransporterService(service flux.TransporterService) {
 	id := _ensureServiceID(&service)
-	RegisterBackendServiceById(id, service)
+	RegisterTransporterServiceById(id, service)
 }
 
-// BackendServiceById load transport service by serviceId
-func BackendServiceById(serviceID string) (flux.TransporterService, bool) {
+// TransporterServiceById load transport service by serviceId
+func TransporterServiceById(serviceID string) (flux.TransporterService, bool) {
 	v, ok := servicesMap.Load(serviceID)
 	if ok {
 		return v.(flux.TransporterService), true
@@ -30,13 +30,13 @@ func BackendServiceById(serviceID string) (flux.TransporterService, bool) {
 	return serviceNotFound, false
 }
 
-// RemoveBackendService remove transport service by serviceId
-func RemoveBackendService(serviceID string) {
+// RemoveTransporterService remove transport service by serviceId
+func RemoveTransporterService(serviceID string) {
 	servicesMap.Delete(serviceID)
 }
 
-// HasBackendService check service exists by service id
-func HasBackendService(serviceID string) bool {
+// HasTransporterService check service exists by service id
+func HasTransporterService(serviceID string) bool {
 	_, ok := servicesMap.Load(serviceID)
 	return ok
 }

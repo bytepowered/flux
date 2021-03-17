@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	ErrUnknownHttpResponse = errors.New("BACKEND:UNKNOWN_HTTP_RESPONSE")
+	ErrUnknownHttpResponse = errors.New("TRANSPORTER:HTTP:UNKNOWN_RESPONSE")
 )
 
 func NewTransportCodecFunc() flux.TransportCodec {

@@ -12,7 +12,7 @@ import (
 func DoTransport(ctx *flux.Context, transport flux.Transporter) {
 	response, err := transport.InvokeCodec(ctx, ctx.Transporter())
 	if err != nil {
-		ctx.Logger().Errorw("BACKEND:TRANSPORT:INVOKE/ERROR", "error", err)
+		ctx.Logger().Errorw("TRANSPORTER:INVOKE/ERROR", "error", err)
 		transport.Writer().WriteError(ctx, err)
 		return
 	}
@@ -20,7 +20,7 @@ func DoTransport(ctx *flux.Context, transport flux.Transporter) {
 	if response == nil {
 		select {
 		case <-ctx.Context().Done():
-			ctx.Logger().Warnw("BACKEND:TRANSPORT:CANCELED/BYCLIENT")
+			ctx.Logger().Warnw("TRANSPORTER:CANCELED/BYCLIENT")
 			return
 		default:
 			break
@@ -37,7 +37,7 @@ func DoTransport(ctx *flux.Context, transport flux.Transporter) {
 // DoInvokeCodec 执行后端服务，获取响应结果；
 func DoInvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
 	proto := service.RpcProto()
-	transport, ok := ext.BackendTransporterBy(proto)
+	transport, ok := ext.TransporterBy(proto)
 	if !ok {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -63,7 +63,7 @@ func (r *DefaultTransportWriter) Write(ctx *flux.Context, response *flux.Respons
 	if bytes, err := common.SerializeObject(response.Body); nil != err {
 		r.WriteError(ctx, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
-			Message:    flux.ErrorMessageBackendDecodeResponse,
+			Message:    flux.ErrorMessageTransportDecodeResponse,
 			CauseError: err,
 		})
 	} else {

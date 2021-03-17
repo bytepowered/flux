@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	invalidHttpEndpointEvent = flux.HttpEndpointEvent{}
+	invalidHttpEndpointEvent = flux.EndpointEvent{}
 )
 
 type CompatibleEndpoint struct {
@@ -17,7 +17,7 @@ type CompatibleEndpoint struct {
 	Authorize bool `json:"authorize"` // 此端点是否需要授权
 }
 
-func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.HttpEndpointEvent, ok bool) {
+func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.EndpointEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
@@ -44,7 +44,7 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEv
 	EnsureServiceAttrs(&comp.Service)
 	EnsureServiceAttrs(&comp.Permission)
 
-	event := flux.HttpEndpointEvent{Endpoint: comp.Endpoint}
+	event := flux.EndpointEvent{Endpoint: comp.Endpoint}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
 		event.EventType = flux.EventTypeAdded

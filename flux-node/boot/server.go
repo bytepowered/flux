@@ -157,8 +157,8 @@ func (s *BootstrapServer) start() error {
 	if err := s.router.Startup(); nil != err {
 		return err
 	}
-	endpoints := make(chan flux.HttpEndpointEvent, 2)
-	services := make(chan flux.BackendServiceEvent, 2)
+	endpoints := make(chan flux.EndpointEvent, 2)
+	services := make(chan flux.ServiceEvent, 2)
 	defer func() {
 		close(endpoints)
 		close(services)
@@ -178,7 +178,7 @@ func (s *BootstrapServer) start() error {
 	return <-errch
 }
 
-func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, services chan flux.BackendServiceEvent) error {
+func (s *BootstrapServer) startDiscovery(endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
 	for _, discovery := range ext.EndpointDiscoveries() {
 		if err := discovery.WatchEndpoints(endpoints); nil != err {
 			return err
@@ -196,13 +196,13 @@ func (s *BootstrapServer) startDiscovery(endpoints chan flux.HttpEndpointEvent, 
 				if !ok {
 					return
 				}
-				s.onHttpEndpointEvent(epEvt)
+				s.onEndpointEvent(epEvt)
 
 			case esEvt, ok := <-services:
 				if !ok {
 					return
 				}
-				s.onBackendServiceEvent(esEvt)
+				s.onServiceEvent(esEvt)
 			}
 		}
 	}()
@@ -257,35 +257,35 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 	return s.router.Route(ctxw)
 }
 
-func (s *BootstrapServer) onBackendServiceEvent(event flux.BackendServiceEvent) {
+func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
 	initArguments(service.Arguments)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:META:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RegisterBackendService(service)
+		ext.RegisterTransporterService(service)
 		if "" != service.AliasId {
-			ext.RegisterBackendServiceById(service.AliasId, service)
+			ext.RegisterTransporterServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:META:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RegisterBackendService(service)
+		ext.RegisterTransporterService(service)
 		if "" != service.AliasId {
-			ext.RegisterBackendServiceById(service.AliasId, service)
+			ext.RegisterTransporterServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:META:SERVICE:REMOVE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RemoveBackendService(service.ServiceId)
+		ext.RemoveTransporterService(service.ServiceId)
 		if "" != service.AliasId {
-			ext.RemoveBackendService(service.AliasId)
+			ext.RemoveTransporterService(service.AliasId)
 		}
 	}
 }
 
-func (s *BootstrapServer) onHttpEndpointEvent(event flux.HttpEndpointEvent) {
+func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	// Check http method
 	if !isAllowedHttpMethod(method) {

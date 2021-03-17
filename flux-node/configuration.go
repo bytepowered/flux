@@ -11,7 +11,7 @@ import (
 
 const (
 	NamespaceWebListeners              = "web_listeners"
-	NamespaceBackendTransports         = "backend_transports"
+	NamespaceTransporters              = "transporters"
 	NamespaceEndpointDiscoveryServices = "endpoint_discovery_services"
 )
 

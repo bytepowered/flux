@@ -3,8 +3,8 @@ package http
 import (
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/transport"
 	"github.com/bytepowered/flux/flux-node/ext"
+	"github.com/bytepowered/flux/flux-node/transport"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
@@ -102,7 +102,7 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageBackendDecodeResponse,
+			Message:    flux.ErrorMessageTransportDecodeResponse,
 			CauseError: fmt.Errorf("decode http response, err: %w", err),
 		}
 	}
@@ -137,7 +137,7 @@ func (b *RpcTransporter) ExecuteRequest(newRequest *http.Request, _ flux.Transpo
 		}
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayBackend,
+			ErrorCode:  flux.ErrorCodeGatewayTransporter,
 			Message:    msg,
 			CauseError: err,
 		}

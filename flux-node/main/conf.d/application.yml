@@ -50,8 +50,8 @@ endpoint_discovery_services:
         services: [ ]
         # 指定当前配置Service列表
 
-# BACKEND 配置参数
-backend_transports:
+# Transporter 配置参数
+transporters:
     # Dubbo 协议后端服务配置
     dubbo:
         # 集群策略：[Failover, Failfast, Failsafe/Failback, Available, Broadcast, Forking]

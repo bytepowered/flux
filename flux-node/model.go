@@ -340,14 +340,14 @@ func (m *MultiEndpoint) ToSerializable() map[string]*Endpoint {
 	return copies
 }
 
-// HttpEndpointEvent  定义从注册中心接收到的Endpoint数据变更
-type HttpEndpointEvent struct {
+// EndpointEvent  定义从注册中心接收到的Endpoint数据变更
+type EndpointEvent struct {
 	EventType EventType
 	Endpoint  Endpoint
 }
 
-// BackendServiceEvent  定义从注册中心接收到的Service定义数据变更
-type BackendServiceEvent struct {
+// ServiceEvent  定义从注册中心接收到的Service定义数据变更
+type ServiceEvent struct {
 	EventType EventType
 	Service   TransporterService
 }

@@ -36,11 +36,11 @@ func (r *Router) Prepare() error {
 
 func (r *Router) Initial() error {
 	logger.Info("Router initialing")
-	// Backends
-	for proto, backend := range ext.BackendTransporters() {
-		ns := flux.NamespaceBackendTransports + "." + proto
-		logger.Infow("Load transport", "proto", proto, "type", reflect.TypeOf(backend), "config-ns", ns)
-		if err := r.AddInitHook(backend, flux.NewConfigurationOfNS(ns)); nil != err {
+	// Transporter
+	for proto, transporter := range ext.Transporters() {
+		ns := flux.NamespaceTransporters + "." + proto
+		logger.Infow("Load transport", "proto", proto, "type", reflect.TypeOf(transporter), "config-ns", ns)
+		if err := r.AddInitHook(transporter, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}
 	}
@@ -111,8 +111,8 @@ func (r *Router) Route(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
-		backend := ctx.Transporter()
-		proto, uri, method := backend.RpcProto(), backend.Interface, backend.Method
+		transporter := ctx.Transporter()
+		proto, uri, method := transporter.RpcProto(), transporter.Interface, transporter.Method
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
@@ -147,7 +147,7 @@ func (r *Router) Route(ctx *flux.Context) *flux.ServeError {
 			ctx.AddMetric("transporter", time.Since(ctx.StartAt()))
 		}()
 		proto := ctx.Transporter().RpcProto()
-		transporter, ok := ext.BackendTransporterBy(proto)
+		transporter, ok := ext.TransporterBy(proto)
 		if !ok {
 			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", proto, "service", ctx.Endpoint().Service)

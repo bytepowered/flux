@@ -82,7 +82,7 @@ func EndpointsHandler(webex flux.ServerWebContext) error {
 func ServicesHandler(ctx flux.ServerWebContext) error {
 	for _, key := range serviceQueryKeys {
 		if id := ctx.QueryVar(key); "" != id {
-			service, ok := ext.BackendServiceById(id)
+			service, ok := ext.TransporterServiceById(id)
 			if ok {
 				return send(ctx, flux.StatusOK, service)
 			} else {

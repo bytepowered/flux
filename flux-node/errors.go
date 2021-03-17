@@ -7,29 +7,29 @@ import (
 )
 
 const (
-	ErrorCodeGatewayInternal  = "GATEWAY:INTERNAL"
-	ErrorCodeGatewayBackend   = "GATEWAY:BACKEND"
-	ErrorCodeGatewayEndpoint  = "GATEWAY:ENDPOINT"
-	ErrorCodeGatewayCircuited = "GATEWAY:CIRCUITED"
-	ErrorCodeGatewayCanceled  = "GATEWAY:CANCELED"
-	ErrorCodeRequestInvalid   = "REQUEST:INVALID"
-	ErrorCodeRequestNotFound  = "REQUEST:NOT_FOUND"
-	ErrorCodePermissionDenied = "PERMISSION:ACCESS_DENIED"
+	ErrorCodeGatewayInternal    = "GATEWAY:INTERNAL"
+	ErrorCodeGatewayTransporter = "GATEWAY:TRANSPORTER"
+	ErrorCodeGatewayEndpoint    = "GATEWAY:ENDPOINT"
+	ErrorCodeGatewayCircuited   = "GATEWAY:CIRCUITED"
+	ErrorCodeGatewayCanceled    = "GATEWAY:CANCELED"
+	ErrorCodeRequestInvalid     = "REQUEST:INVALID"
+	ErrorCodeRequestNotFound    = "REQUEST:NOT_FOUND"
+	ErrorCodePermissionDenied   = "PERMISSION:ACCESS_DENIED"
 )
 
 const (
 	ErrorMessageProtocolUnknown = "GATEWAY:PROTOCOL:UNKNOWN"
 
-	ErrorMessageBackendDecodeResponse = "BACKEND:DECODE_RESPONSE"
-	ErrorMessageBackendWriteResponse  = "BACKEND:WRITE_RESPONSE"
+	ErrorMessageTransportDecodeResponse = "TRANSPORT:DECODE_RESPONSE"
+	ErrorMessageTransportWriteResponse  = "TRANSPORT:WRITE_RESPONSE"
 
-	ErrorMessageDubboInvokeFailed        = "BACKEND:DU:INVOKE"
-	ErrorMessageDubboAssembleFailed      = "BACKEND:DU:ASSEMBLE"
-	ErrorMessageDubboDecodeInvalidHeader = "BACKEND:DU:DECODE:INVALID_HEADERS"
-	ErrorMessageDubboDecodeInvalidStatus = "BACKEND:DU:DECODE:INVALID_STATUS"
+	ErrorMessageDubboInvokeFailed        = "TRANSPORT:DU:INVOKE"
+	ErrorMessageDubboAssembleFailed      = "TRANSPORT:DU:ASSEMBLE"
+	ErrorMessageDubboDecodeInvalidHeader = "TRANSPORT:DU:DECODE:INVALID_HEADERS"
+	ErrorMessageDubboDecodeInvalidStatus = "TRANSPORT:DU:DECODE:INVALID_STATUS"
 
-	ErrorMessageHttpInvokeFailed   = "BACKEND:HT:INVOKE"
-	ErrorMessageHttpAssembleFailed = "BACKEND:HT:ASSEMBLE"
+	ErrorMessageHttpInvokeFailed   = "TRANSPORT:HT:INVOKE"
+	ErrorMessageHttpAssembleFailed = "TRANSPORT:HT:ASSEMBLE"
 
 	ErrorMessagePermissionAccessDenied    = "PERMISSION:ACCESS_DENIED"
 	ErrorMessagePermissionServiceNotFound = "PERMISSION:SERVICE:NOT_FOUND"

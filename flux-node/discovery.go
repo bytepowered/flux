@@ -7,8 +7,8 @@ type EndpointDiscovery interface {
 	Id() string
 
 	// WatchEndpoints 监听HttpEndpoint注册事件
-	WatchEndpoints(events chan<- HttpEndpointEvent) error
+	WatchEndpoints(events chan<- EndpointEvent) error
 
-	// WatchServices 监听BackendService注册事件
-	WatchServices(events chan<- BackendServiceEvent) error
+	// WatchServices 监听TransporterService注册事件
+	WatchServices(events chan<- ServiceEvent) error
 }

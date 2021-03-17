@@ -71,24 +71,24 @@ func (r *ResourceDiscoveryService) Init(config *flux.Configuration) error {
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchEndpoints(events chan<- flux.HttpEndpointEvent) error {
+func (r *ResourceDiscoveryService) WatchEndpoints(events chan<- flux.EndpointEvent) error {
 	for _, res := range r.resources {
 		for _, ep := range res.Endpoints {
 			if ep.IsValid() {
 				EnsureServiceAttrs(&ep.Service)
-				events <- flux.HttpEndpointEvent{EventType: flux.EventTypeAdded, Endpoint: ep}
+				events <- flux.EndpointEvent{EventType: flux.EventTypeAdded, Endpoint: ep}
 			}
 		}
 	}
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchServices(events chan<- flux.BackendServiceEvent) error {
+func (r *ResourceDiscoveryService) WatchServices(events chan<- flux.ServiceEvent) error {
 	for _, res := range r.resources {
 		for _, srv := range res.Services {
 			if srv.IsValid() {
 				EnsureServiceAttrs(&srv)
-				events <- flux.BackendServiceEvent{EventType: flux.EventTypeAdded, Service: srv}
+				events <- flux.ServiceEvent{EventType: flux.EventTypeAdded, Service: srv}
 			}
 		}
 	}

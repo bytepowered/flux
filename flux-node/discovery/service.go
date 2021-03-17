@@ -8,30 +8,30 @@ import (
 )
 
 var (
-	invalidBackendServiceEvent = flux.BackendServiceEvent{}
+	invalidServiceEvent = flux.ServiceEvent{}
 )
 
-func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.BackendServiceEvent, ok bool) {
+func NewServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.ServiceEvent, ok bool) {
 	// Check json text
 	size := len(bytes)
 	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
 		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONSIZE", "data", string(bytes), "node", node)
-		return invalidBackendServiceEvent, false
+		return invalidServiceEvent, false
 	}
 	service := flux.TransporterService{}
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
 		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONFORMAT",
 			"event-type", etype, "data", string(bytes), "error", err, "node", node)
-		return invalidBackendServiceEvent, false
+		return invalidServiceEvent, false
 	}
 	// 检查有效性
 	if !service.IsValid() {
 		logger.Warnw("DISCOVERY:SERVICE:INVALID_VALUES", "service", service, "node", node)
-		return invalidBackendServiceEvent, false
+		return invalidServiceEvent, false
 	}
 	EnsureServiceAttrs(&service)
 
-	event := flux.BackendServiceEvent{Service: service}
+	event := flux.ServiceEvent{Service: service}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
 		event.EventType = flux.EventTypeAdded
@@ -40,7 +40,7 @@ func NewBackendServiceEvent(bytes []byte, etype remoting.EventType, node string)
 	case remoting.EventTypeNodeUpdate:
 		event.EventType = flux.EventTypeUpdated
 	default:
-		return invalidBackendServiceEvent, false
+		return invalidServiceEvent, false
 	}
 
 	return event, true
