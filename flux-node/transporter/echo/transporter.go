@@ -2,8 +2,8 @@ package echo
 
 import (
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/transport"
 	"github.com/bytepowered/flux/flux-node/ext"
+	"github.com/bytepowered/flux/flux-node/transporter"
 	"io/ioutil"
 	"net/http"
 )
@@ -28,12 +28,12 @@ func (b *RpcTransporter) Writer() flux.TransportWriter {
 func NewTransporter() flux.Transporter {
 	return &RpcTransporter{
 		codec:  NewTransportCodecFunc(),
-		writer: new(transport.DefaultTransportWriter),
+		writer: new(transporter.DefaultTransportWriter),
 	}
 }
 
 func (b *RpcTransporter) Transport(ctx *flux.Context) {
-	transport.DoTransport(ctx, b)
+	transporter.DoTransport(ctx, b)
 }
 
 func (b *RpcTransporter) InvokeCodec(context *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
@@ -53,7 +53,7 @@ func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterServi
 	}
 	header := ctx.HeaderVars()
 	return map[string]interface{}{
-		"transport-service":      service,
+		"transporter-service":  service,
 		"request-id":           ctx.RequestId(),
 		"request-uri":          ctx.URI(),
 		"request-method":       ctx.Method(),

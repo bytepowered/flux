@@ -15,13 +15,13 @@ func RegisterTransporterServiceById(id string, service flux.TransporterService) 
 	servicesMap.Store(id, service)
 }
 
-// RegisterTransporterService store transport service
+// RegisterTransporterService store transporter service
 func RegisterTransporterService(service flux.TransporterService) {
 	id := _ensureServiceID(&service)
 	RegisterTransporterServiceById(id, service)
 }
 
-// TransporterServiceById load transport service by serviceId
+// TransporterServiceById load transporter service by serviceId
 func TransporterServiceById(serviceID string) (flux.TransporterService, bool) {
 	v, ok := servicesMap.Load(serviceID)
 	if ok {
@@ -30,7 +30,7 @@ func TransporterServiceById(serviceID string) (flux.TransporterService, bool) {
 	return serviceNotFound, false
 }
 
-// RemoveTransporterService remove transport service by serviceId
+// RemoveTransporterService remove transporter service by serviceId
 func RemoveTransporterService(serviceID string) {
 	servicesMap.Delete(serviceID)
 }

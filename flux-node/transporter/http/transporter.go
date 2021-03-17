@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
-	"github.com/bytepowered/flux/flux-node/transport"
+	"github.com/bytepowered/flux/flux-node/transporter"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
@@ -42,7 +42,7 @@ func NewRpcHttpTransporter() *RpcTransporter {
 			Timeout: time.Second * 10,
 		},
 		codec:  NewTransportCodecFunc(),
-		writer: new(transport.DefaultTransportWriter),
+		writer: new(transporter.DefaultTransportWriter),
 	}
 }
 
@@ -88,7 +88,7 @@ func WithTransportWriter(fun flux.TransportWriter) Option {
 }
 
 func (b *RpcTransporter) Transport(ctx *flux.Context) {
-	transport.DoTransport(ctx, b)
+	transporter.DoTransport(ctx, b)
 }
 
 func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {

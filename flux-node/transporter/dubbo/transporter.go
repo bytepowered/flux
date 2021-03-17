@@ -14,7 +14,7 @@ import (
 import (
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
-	"github.com/bytepowered/flux/flux-node/transport"
+	"github.com/bytepowered/flux/flux-node/transporter"
 	"github.com/bytepowered/flux/flux-pkg"
 )
 
@@ -151,7 +151,7 @@ func WithDefaults(defaults map[string]interface{}) Option {
 	}
 }
 
-// NewTransporterWith New dubbo transport service with optionsf
+// NewTransporterWith New dubbo transporter service with optionsf
 func NewTransporterWith(opts ...Option) flux.Transporter {
 	bts := &RpcTransporter{
 		optionsf: make([]GenericOptionsFunc, 0),
@@ -162,12 +162,12 @@ func NewTransporterWith(opts ...Option) flux.Transporter {
 	return bts
 }
 
-// NewTransporter New dubbo transport instance
+// NewTransporter New dubbo transporter instance
 func NewTransporter() flux.Transporter {
 	return NewTransporterOverride()
 }
 
-// NewTransporterOverride New dubbo transport instance
+// NewTransporterOverride New dubbo transporter instance
 func NewTransporterOverride(overrides ...Option) flux.Transporter {
 	opts := []Option{
 		WithRegistryAlias(map[string]string{
@@ -203,7 +203,7 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 		WithArgumentResolver(DefaultArgumentResolver),
 		WithAttachmentResolver(DefaultAttachmentResolver),
 		WithTransportCodec(NewTransportCodecFunc()),
-		WithTransportWriter(new(transport.DefaultTransportWriter)),
+		WithTransportWriter(new(transporter.DefaultTransportWriter)),
 	}
 	return NewTransporterWith(append(opts, overrides...)...)
 }
@@ -212,13 +212,13 @@ func (b *RpcTransporter) Writer() flux.TransportWriter {
 	return b.writer
 }
 
-// Init init transport
+// Init init transporter
 func (b *RpcTransporter) Init(config *flux.Configuration) error {
-	logger.Info("Dubbo transport transport initializing")
+	logger.Info("Dubbo transporter transporter initializing")
 	config.SetDefaults(b.defaults)
 	b.configuration = config
 	b.trace = config.GetBool(ConfigKeyTraceEnable)
-	logger.Infow("Dubbo transport transport request trace", "enable", b.trace)
+	logger.Infow("Dubbo transporter transporter request trace", "enable", b.trace)
 	// Set default impl if not present
 	if nil == b.optionsf {
 		b.optionsf = make([]GenericOptionsFunc, 0)
@@ -233,7 +233,7 @@ func (b *RpcTransporter) Init(config *flux.Configuration) error {
 	registry.SetGlobalAlias(b.registry)
 	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
 		consumerc.Registries[id] = rconfig
-		logger.Infow("Dubbo transport transport setup registry", "id", id, "config", rconfig)
+		logger.Infow("Dubbo transporter transporter setup registry", "id", id, "config", rconfig)
 	}
 	dubgo.SetConsumerConfig(consumerc)
 	return nil
@@ -252,10 +252,10 @@ func (b *RpcTransporter) Shutdown(_ context.Context) error {
 
 // Transport do exchange with context
 func (b *RpcTransporter) Transport(ctx *flux.Context) {
-	transport.DoTransport(ctx, b)
+	transporter.DoTransport(ctx, b)
 }
 
-// Invoke invoke transport service with context
+// Invoke invoke transporter service with context
 func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
 	types, values, err := b.aresolver(service.Arguments, ctx)
 	if nil != err {
@@ -275,14 +275,14 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 	select {
 	case <-ctx.Context().Done():
 		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:RPC_CANCELED",
-			"transport-service", service.ServiceID(), "error", ctx.Context().Err())
+			"transporter-service", service.ServiceID(), "error", ctx.Context().Err())
 		return nil, serr
 	default:
 		break
 	}
 	if nil != serr {
 		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:RPC_ERROR",
-			"transport-service", service.ServiceID(), "error", serr.CauseError)
+			"transporter-service", service.ServiceID(), "error", serr.CauseError)
 		return nil, serr
 	}
 	// decode response
@@ -299,16 +299,16 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 	return result, nil
 }
 
-// DoInvoke execute transport service with arguments
+// DoInvoke execute transporter service with arguments
 func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
 	if b.trace {
 		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:INVOKE",
-			"transport-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
+			"transporter-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
 	}
 	att, err := b.tresolver(ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
-			"transport-service", service.ServiceID(), "error", err)
+			"transporter-service", service.ServiceID(), "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -332,10 +332,10 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 			text, err := _json.MarshalToString(data)
 			ctxLogger := logger.TraceContext(ctx)
 			if nil == err {
-				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED", "transport-service", service.ServiceID(), "response.json", text)
+				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED", "transporter-service", service.ServiceID(), "response.json", text)
 			} else {
 				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED",
-					"transport-service", service.ServiceID(), "response.type", reflect.TypeOf(data), "response.data", fmt.Sprintf("%+v", data))
+					"transporter-service", service.ServiceID(), "response.type", reflect.TypeOf(data), "response.data", fmt.Sprintf("%+v", data))
 			}
 		}
 		return resultW, nil

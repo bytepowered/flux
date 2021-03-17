@@ -39,7 +39,7 @@ func (r *Router) Initial() error {
 	// Transporter
 	for proto, transporter := range ext.Transporters() {
 		ns := flux.NamespaceTransporters + "." + proto
-		logger.Infow("Load transport", "proto", proto, "type", reflect.TypeOf(transporter), "config-ns", ns)
+		logger.Infow("Load transporter", "proto", proto, "type", reflect.TypeOf(transporter), "config-ns", ns)
 		if err := r.AddInitHook(transporter, flux.NewConfigurationOfNS(ns)); nil != err {
 			return err
 		}

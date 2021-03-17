@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/boot"
-	_ "github.com/bytepowered/flux/flux-node/transport/dubbo"
-	_ "github.com/bytepowered/flux/flux-node/transport/echo"
-	_ "github.com/bytepowered/flux/flux-node/transport/http"
+	_ "github.com/bytepowered/flux/flux-node/transporter/dubbo"
+	_ "github.com/bytepowered/flux/flux-node/transporter/echo"
+	_ "github.com/bytepowered/flux/flux-node/transporter/http"
 	_ "github.com/bytepowered/flux/flux-node/webecho"
 )
 

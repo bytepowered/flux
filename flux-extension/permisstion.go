@@ -6,7 +6,7 @@ import (
 	flux "github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
-	"github.com/bytepowered/flux/flux-node/transport"
+	"github.com/bytepowered/flux/flux-node/transporter"
 	"github.com/bytepowered/flux/flux-pkg"
 	"net/http"
 	"time"
@@ -138,7 +138,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 
 // InvokeCodec 执行权限验证的后端服务，获取响应结果；
 func (p *PermissionFilter) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
-	return transport.DoInvokeCodec(ctx, service)
+	return transporter.DoInvokeCodec(ctx, service)
 }
 
 func EnsurePermissionStatusCode(status int) int {
