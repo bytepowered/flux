@@ -22,14 +22,21 @@ type Context struct {
 	ctxLogger  Logger
 }
 
-func NewContext(webex ServerWebContext, endpoint *Endpoint) *Context {
+func NewContext() *Context {
 	return &Context{
-		ServerWebContext: webex,
-		endpoint:         endpoint,
-		attributes:       make(map[string]interface{}, 8),
-		metrics:          make([]Metric, 0, 8),
-		startTime:        time.Now(),
-		ctxLogger:        zap.S(),
+		attributes: make(map[string]interface{}, 16),
+		metrics:    make([]Metric, 0, 16),
+	}
+}
+
+func (c *Context) Reset(webex ServerWebContext, endpoint *Endpoint) {
+	c.ServerWebContext = webex
+	c.endpoint = endpoint
+	c.ctxLogger = zap.S()
+	c.startTime = time.Now()
+	c.metrics = c.metrics[:0]
+	for k := range c.attributes {
+		delete(c.attributes, k)
 	}
 }
 

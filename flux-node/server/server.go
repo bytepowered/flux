@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -49,6 +50,7 @@ type BootstrapServer struct {
 	stopped  chan struct{}
 	banner   string
 	trace    bool
+	ctxpool  sync.Pool
 }
 
 // WithWebExchangeHooks 配置请求Hook函数列表
@@ -114,6 +116,7 @@ func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),
 		banner:   defaultBanner,
+		ctxpool:  sync.Pool{New: func() interface{} { return flux.NewContext() }},
 	}
 	for _, opt := range opts {
 		opt(srv)
@@ -239,7 +242,9 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 		}
 		return flux.ErrRouteNotFound
 	}
-	ctxw := flux.NewContext(webex, &endpoint)
+	ctxw := s.ctxpool.Get().(*flux.Context)
+	ctxw.Reset(webex, &endpoint)
+	defer s.ctxpool.Put(ctxw)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
 	ctxw.SetAttribute(flux.XRequestHost, webex.Host())

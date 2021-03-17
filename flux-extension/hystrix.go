@@ -69,9 +69,9 @@ func (r *HystrixFilter) Init(c *flux.Configuration) error {
 	c.SetDefaults(map[string]interface{}{
 		ConfigKeyRequestThreshold:      20,
 		ConfigKeyErrorPercentThreshold: 50,
+		ConfigKeyRequestMax:            1 * 1000,
 		ConfigKeySleepWindow:           10 * 1000,
-		ConfigKeyRequestMax:            5 * 100,
-		ConfigKeyTimeout:               10 * 1000,
+		ConfigKeyTimeout:               60 * 1000,
 	})
 	r.HystrixConfig.timeout = int(c.GetInt64(ConfigKeyTimeout))
 	r.HystrixConfig.maxConcurrentRequests = int(c.GetInt64(ConfigKeyRequestMax))
