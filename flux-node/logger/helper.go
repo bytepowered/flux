@@ -36,8 +36,8 @@ func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger
 		fields["appid"] = endpoint.Application
 		fields["bizid"] = endpoint.GetAttr(flux.EndpointAttrTagBizId).GetString()
 		fields["transporter-service"] = endpoint.Service.ServiceID()
-		fields["transporter-permission"] = strings.Join(endpoint.PermissionServiceIds(), ",")
-		fields["transporter-authorize"] = cast.ToString(endpoint.AttrAuthorize())
+		fields["transporter-permission"] = strings.Join(endpoint.PermissionIds(), ",")
+		fields["transporter-authorize"] = cast.ToString(endpoint.Authorize())
 		fields["endpoint-version"] = endpoint.Version
 		fields["endpoint-pattern"] = endpoint.HttpPattern
 	}

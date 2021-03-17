@@ -106,3 +106,29 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
 	assert.Equal("year", endpoint.Permission.Arguments[1].HttpName)
 	assert.Equal("PRIMITIVE", endpoint.Permission.Arguments[1].Type)
 }
+
+func TestLookupEndpoint(t *testing.T) {
+	v1 := Endpoint{
+		Version: "1.0",
+		EmbeddedExtensions: EmbeddedExtensions{
+			Extensions: map[string]interface{}{"a": "b"},
+		},
+	}
+	mve := NewMultiEndpoint(&v1)
+	ve, _ := mve.Lookup("1.0")
+	ve.Extensions["only-ve"] = "yes"
+	ve.Service.Extensions["only-ve"] = "yes"
+	ve.Permission.Extensions["only-ve"] = "yes"
+
+	if v1.Extensions["only-ve"] != nil {
+		t.Fatalf("MUST NOT MODIFIED, WAS: %+v", v1)
+	}
+
+	if v1.Service.Extensions["only-ve"] != nil {
+		t.Fatalf("MUST NOT MODIFIED, WAS: %+v", v1)
+	}
+
+	if v1.Permission.Extensions["only-ve"] != nil {
+		t.Fatalf("MUST NOT MODIFIED, WAS: %+v", v1)
+	}
+}

@@ -77,19 +77,19 @@ const (
 
 // EndpointAttributes
 const (
-	EndpointAttrTagNotDefined = ""          // 默认的，未定义的属性
-	EndpointAttrTagAuthorize  = "authorize" // 标识Endpoint访问是否需要授权
-	EndpointAttrTagServerId   = "serverid"  // 标识Endpoint绑定到哪个ListenServer服务
-	EndpointAttrTagBizId      = "bizid"     // 标识Endpoint绑定到业务标识
+	EndpointAttrTagNotDefined = ""           // 默认的，未定义的属性
+	EndpointAttrTagAuthorize  = "authorize"  // 标识Endpoint访问是否需要授权
+	EndpointAttrTagListenerId = "listenerid" // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAttrTagBizId      = "bizid"      // 标识Endpoint绑定到业务标识
 )
 
 type (
 	// ArgumentLookupFunc 参数值查找函数
 	ArgumentLookupFunc func(scope, key string, ctx *Context) (MTValue, error)
 
-	// ContextExchangeHook 用于WebContext与Context的交互勾子；
+	// ContextHookFunc 用于WebContext与Context的交互勾子；
 	// 在每个请求被路由执行时，在创建Context后被调用。
-	ContextExchangeHook func(ServerWebContext, *Context)
+	ContextHookFunc func(ServerWebContext, *Context)
 )
 
 // Argument 定义Endpoint的参数结构元数据
@@ -101,7 +101,7 @@ type Argument struct {
 	HttpName  string     `json:"httpName" yaml:"httpName"`   // 映射Http的参数Key
 	HttpScope string     `json:"httpScope" yaml:"httpScope"` // 映射Http参数值域
 	Fields    []Argument `json:"fields" yaml:"fields"`       // 子结构字段
-	// helper
+	// helper func
 	ValueLoader   func() MTValue     `json:"-"`
 	LookupFunc    ArgumentLookupFunc `json:"-"`
 	ValueResolver MTValueResolver    `json:"-"`
@@ -259,7 +259,7 @@ type Endpoint struct {
 	EmbeddedExtensions `yaml:",inline"`
 }
 
-func (e Endpoint) PermissionServiceIds() []string {
+func (e *Endpoint) PermissionIds() []string {
 	ids := make([]string, 0, 1+len(e.Permissions))
 	if e.Permission.IsValid() {
 		ids = append(ids, e.Permission.ServiceId)
@@ -268,11 +268,11 @@ func (e Endpoint) PermissionServiceIds() []string {
 	return ids
 }
 
-func (e Endpoint) IsValid() bool {
+func (e *Endpoint) IsValid() bool {
 	return "" != e.HttpMethod && "" != e.HttpPattern && e.Service.IsValid()
 }
 
-func (e Endpoint) AttrAuthorize() bool {
+func (e *Endpoint) Authorize() bool {
 	return e.GetAttr(EndpointAttrTagAuthorize).GetBool()
 }
 
@@ -291,17 +291,48 @@ func NewMultiEndpoint(endpoint *Endpoint) *MultiEndpoint {
 	}
 }
 
-// Find find endpoint by version
-func (m *MultiEndpoint) LookupByVersion(version string) (*Endpoint, bool) {
+func (m *MultiEndpoint) IsEmpty() bool {
 	m.RLock()
-	if "" == version || 1 == len(m.endpoint) {
-		rv := m.random()
-		m.RUnlock()
-		return rv, nil != rv
+	defer m.RUnlock()
+	return 0 == len(m.endpoint)
+}
+
+// Lookup lookup by version, returns a copy endpoint,and a flag
+func (m *MultiEndpoint) Lookup(version string) (Endpoint, bool) {
+	m.RLock()
+	defer m.RUnlock()
+	size := len(m.endpoint)
+	if 0 == size {
+		return Endpoint{}, false
 	}
-	v, ok := m.endpoint[version]
-	m.RUnlock()
-	return v, ok
+	if "" == version || 1 == size {
+		for _, ep := range m.endpoint {
+			return m.dup(ep), true
+		}
+	}
+	epv, ok := m.endpoint[version]
+	if !ok {
+		return Endpoint{}, false
+	}
+	return m.dup(epv), true
+}
+
+func (m *MultiEndpoint) dup(src *Endpoint) Endpoint {
+	out := *src
+	// _ = copier.Copy(out, src)
+	// duplicate maps
+	out.Extensions = m.mcopy(src.Extensions)
+	out.Service.Extensions = m.mcopy(src.Service.Extensions)
+	out.Permission.Extensions = m.mcopy(src.Permission.Extensions)
+	return out
+}
+
+func (m *MultiEndpoint) mcopy(src map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(src))
+	for k, v := range src {
+		out[k] = v
+	}
+	return out
 }
 
 func (m *MultiEndpoint) Update(version string, endpoint *Endpoint) {
@@ -316,25 +347,20 @@ func (m *MultiEndpoint) Delete(version string) {
 	m.Unlock()
 }
 
-func (m *MultiEndpoint) Random() *Endpoint {
+func (m *MultiEndpoint) Random() Endpoint {
 	m.RLock()
-	rv := m.random()
-	m.RUnlock()
-	return rv
-}
-
-func (m *MultiEndpoint) random() *Endpoint {
-	for _, v := range m.endpoint {
-		return v
+	defer m.RUnlock()
+	for _, ep := range m.endpoint {
+		return *ep
 	}
-	return nil
+	panic("SERVER:ASSERT: <multi-endpoint> must not empty, on query random")
 }
 
 func (m *MultiEndpoint) ToSerializable() map[string]*Endpoint {
-	copies := make(map[string]*Endpoint)
 	m.RLock()
-	for k, v := range m.endpoint {
-		copies[k] = v
+	copies := make(map[string]*Endpoint, len(m.endpoint))
+	for k, ep := range m.endpoint {
+		copies[k] = ep
 	}
 	m.RUnlock()
 	return copies

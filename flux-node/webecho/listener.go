@@ -133,9 +133,9 @@ func (s *EchoWebListener) Init(opts *flux.Configuration) error {
 		s.address = addr + ":" + port
 	}
 	if s.address == ":" {
-		return errors.New("web server config.address is required, was empty, server-id: " + s.id)
+		return errors.New("web server config.address is required, was empty, listener-id:: " + s.id)
 	}
-	fluxpkg.AssertNotNil(s.bodyResolver, "<body-resolver> is required, server-id: "+s.id)
+	fluxpkg.AssertNotNil(s.bodyResolver, "<body-resolver> is required, listener-id:: "+s.id)
 	return nil
 }
 
@@ -150,19 +150,19 @@ func (s *EchoWebListener) Listen() error {
 }
 
 func (s *EchoWebListener) SetBodyResolver(r flux.WebBodyResolver) {
-	fluxpkg.AssertNotNil(r, "WebBodyResolver must not nil, server-id: "+s.id)
+	fluxpkg.AssertNotNil(r, "WebBodyResolver must not nil, listener-id:: "+s.id)
 	s.started().bodyResolver = r
 }
 
 func (s *EchoWebListener) SetNotfoundHandler(f flux.WebHandler) {
-	fluxpkg.AssertNotNil(f, "NotfoundHandler must not nil, server-id: "+s.id)
+	fluxpkg.AssertNotNil(f, "NotfoundHandler must not nil, listener-id:: "+s.id)
 	s.started()
 	echo.NotFoundHandler = EchoWebHandler(f).AdaptFunc
 }
 
 func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
-	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, server-id: "+s.id)
+	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, listener-id:: "+s.id)
 	s.started().server.HTTPErrorHandler = func(err error, c echo.Context) {
 		// 修正Echo的Error未判定问题
 		var cerr error = err.(error)
@@ -176,17 +176,17 @@ func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 }
 
 func (s *EchoWebListener) AddInterceptor(i flux.WebInterceptor) {
-	fluxpkg.AssertNotNil(i, "Interceptor must not nil, server-id: "+s.id)
+	fluxpkg.AssertNotNil(i, "Interceptor must not nil, listener-id:: "+s.id)
 	s.server.Pre(EchoWebInterceptor(i).AdaptFunc)
 }
 
 func (s *EchoWebListener) AddMiddleware(m flux.WebInterceptor) {
-	fluxpkg.AssertNotNil(m, "Middleware must not nil, server-id: "+s.id)
+	fluxpkg.AssertNotNil(m, "Middleware must not nil, listener-id:: "+s.id)
 	s.server.Use(EchoWebInterceptor(m).AdaptFunc)
 }
 
 func (s *EchoWebListener) AddHandler(method, pattern string, h flux.WebHandler, is ...flux.WebInterceptor) {
-	fluxpkg.AssertNotNil(h, "Handler must not nil, server-id: "+s.id)
+	fluxpkg.AssertNotNil(h, "Handler must not nil, listener-id:: "+s.id)
 	fluxpkg.Assert("" != method, "Method must not empty")
 	fluxpkg.Assert("" != pattern, "Pattern must not empty")
 	wms := make([]echo.MiddlewareFunc, len(is))
@@ -197,7 +197,7 @@ func (s *EchoWebListener) AddHandler(method, pattern string, h flux.WebHandler, 
 }
 
 func (s *EchoWebListener) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
-	fluxpkg.AssertNotNil(h, "Handler must not nil, server-id: "+s.id)
+	fluxpkg.AssertNotNil(h, "Handler must not nil, listener-id:: "+s.id)
 	fluxpkg.Assert("" != method, "Method must not empty")
 	fluxpkg.Assert("" != pattern, "Pattern must not empty")
 	wms := make([]echo.MiddlewareFunc, len(m))

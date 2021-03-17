@@ -34,18 +34,18 @@ var (
 func init() {
 	endpointFilterFactories[queryKeyApplication] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			return queryMatch(query, ep.Random().Application)
+			return !ep.IsEmpty() && queryMatch(query, ep.Random().Application)
 		}
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
 			proto := ep.Random().Service.RpcProto()
-			return queryMatch(query, proto)
+			return !ep.IsEmpty() && queryMatch(query, proto)
 		}
 	}
 	httpPatternFilter := func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			return queryMatch(query, ep.Random().HttpPattern)
+			return !ep.IsEmpty() && queryMatch(query, ep.Random().HttpPattern)
 		}
 	}
 	endpointFilterFactories[queryKeyHttpPattern] = httpPatternFilter
@@ -53,7 +53,7 @@ func init() {
 
 	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
 		return func(ep *flux.MultiEndpoint) bool {
-			return queryMatch(query, ep.Random().Service.Interface)
+			return !ep.IsEmpty() && queryMatch(query, ep.Random().Service.Interface)
 		}
 	}
 }
@@ -69,8 +69,8 @@ func EndpointsHandler(webex flux.ServerWebContext) error {
 	}
 	if len(filters) == 0 {
 		m := make(map[string]map[string]*flux.Endpoint, 16)
-		for k, v := range ext.Endpoints() {
-			m[k] = v.ToSerializable()
+		for k, mep := range ext.Endpoints() {
+			m[k] = mep.ToSerializable()
 		}
 		return send(webex, flux.StatusOK, m)
 	} else {
