@@ -1,4 +1,4 @@
-package boot
+package server
 
 import (
 	"context"
@@ -12,20 +12,20 @@ import (
 	"time"
 )
 
-type Router struct {
+type Dispatcher struct {
 	metrics *Metrics
 	hooks   []flux.PrepareHookFunc
 }
 
-func NewRouter() *Router {
-	return &Router{
+func NewRouter() *Dispatcher {
+	return &Dispatcher{
 		metrics: NewMetrics(),
 		hooks:   make([]flux.PrepareHookFunc, 0, 4),
 	}
 }
 
-func (r *Router) Prepare() error {
-	logger.Info("Router preparing")
+func (r *Dispatcher) Prepare() error {
+	logger.Info("Dispatcher preparing")
 	for _, hook := range append(ext.PrepareHooks(), r.hooks...) {
 		if err := hook(); nil != err {
 			return err
@@ -34,8 +34,8 @@ func (r *Router) Prepare() error {
 	return nil
 }
 
-func (r *Router) Initial() error {
-	logger.Info("Router initialing")
+func (r *Dispatcher) Initial() error {
+	logger.Info("Dispatcher initialing")
 	// Transporter
 	for proto, transporter := range ext.Transporters() {
 		ns := flux.NamespaceTransporters + "." + proto
@@ -79,7 +79,7 @@ func (r *Router) Initial() error {
 	return nil
 }
 
-func (r *Router) AddInitHook(ref interface{}, config *flux.Configuration) error {
+func (r *Dispatcher) AddInitHook(ref interface{}, config *flux.Configuration) error {
 	if init, ok := ref.(flux.Initializer); ok {
 		if err := init.Init(config); nil != err {
 			return err
@@ -89,7 +89,7 @@ func (r *Router) AddInitHook(ref interface{}, config *flux.Configuration) error 
 	return nil
 }
 
-func (r *Router) Startup() error {
+func (r *Dispatcher) Startup() error {
 	for _, startup := range sortedStartup(ext.StartupHooks()) {
 		if err := startup.Startup(); nil != err {
 			return err
@@ -98,7 +98,7 @@ func (r *Router) Startup() error {
 	return nil
 }
 
-func (r *Router) Shutdown(ctx context.Context) error {
+func (r *Dispatcher) Shutdown(ctx context.Context) error {
 	for _, shutdown := range sortedShutdown(ext.ShutdownHooks()) {
 		if err := shutdown.Shutdown(ctx); nil != err {
 			return err
@@ -107,7 +107,7 @@ func (r *Router) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (r *Router) Route(ctx *flux.Context) *flux.ServeError {
+func (r *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
@@ -168,7 +168,7 @@ func (r *Router) Route(ctx *flux.Context) *flux.ServeError {
 	return doMetricEndpointFunc(r.walk(transport, filters)(ctx))
 }
 
-func (r *Router) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
+func (r *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}

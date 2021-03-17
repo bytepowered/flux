@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/boot"
+	"github.com/bytepowered/flux/flux-node/server"
 	_ "github.com/bytepowered/flux/flux-node/transporter/dubbo"
 	_ "github.com/bytepowered/flux/flux-node/transporter/echo"
 	_ "github.com/bytepowered/flux/flux-node/transporter/http"
@@ -23,6 +23,6 @@ var (
 // 注意：自定义实现main方法时，需要导入WebServer实现模块；
 // 或者导入 _ "github.com/bytepowered/flux/webecho" 自动注册WebServer；
 func main() {
-	boot.InitLogger()
-	boot.Bootstrap(flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate})
+	server.InitLogger()
+	server.Bootstrap(flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate})
 }

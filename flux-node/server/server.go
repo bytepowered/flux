@@ -1,4 +1,4 @@
-package boot
+package server
 
 import (
 	goctx "context"
@@ -44,7 +44,7 @@ type BootstrapServer struct {
 	listener          map[string]flux.WebListener
 	hooks             []flux.ContextExchangeHook
 	versionLookupFunc VersionLookupFunc
-	router            *Router
+	router            *Dispatcher
 	started           chan struct{}
 	stopped           chan struct{}
 	banner            string
