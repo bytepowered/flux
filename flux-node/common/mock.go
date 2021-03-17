@@ -16,5 +16,7 @@ func MockWebContext(id string) flux.ServerWebContext {
 }
 
 func MockContext(id string) *flux.Context {
-	return flux.NewContext(MockWebContext(id), &flux.Endpoint{})
+	ctx := flux.NewContext()
+	ctx.Reset(MockWebContext(id), &flux.Endpoint{})
+	return ctx
 }
