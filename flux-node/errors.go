@@ -18,6 +18,12 @@ const (
 )
 
 const (
+	ErrorCodeJwtRequires  = "AUTHORIZATION:JWT:REQUIRES"
+	ErrorCodeJwtMalformed = "AUTHORIZATION:JWT:MALFORMED"
+	ErrorCodeJwtExpired   = "AUTHORIZATION:JWT:EXPIRED"
+)
+
+const (
 	ErrorMessageProtocolUnknown = "GATEWAY:PROTOCOL:UNKNOWN"
 
 	ErrorMessageTransportDecodeResponse = "TRANSPORT:DECODE_RESPONSE"

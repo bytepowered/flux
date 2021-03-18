@@ -149,6 +149,15 @@ func (c EmbeddedAttributes) GetAttrs(name string) []Attribute {
 	return attrs
 }
 
+func (c EmbeddedAttributes) HasAttr(name string) bool {
+	for _, attr := range c.Attributes {
+		if strings.ToLower(attr.Name) == strings.ToLower(name) {
+			return true
+		}
+	}
+	return false
+}
+
 // EmbeddedExtensions
 type EmbeddedExtensions struct {
 	Extensions map[string]interface{} `json:"extensions" yaml:"extensions"` // 扩展信息
