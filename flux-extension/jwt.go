@@ -7,6 +7,7 @@ import (
 	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
+	"github.com/spf13/cast"
 	"net/http"
 	"strings"
 )
@@ -16,7 +17,8 @@ const (
 )
 
 const (
-	FeatureJWT = "feature:jwt"
+	FeatureJWT             = "feature:jwt"
+	ConfigKeyAttachmentKey = "attachment_key"
 )
 
 var (
@@ -26,6 +28,7 @@ var (
 var _ flux.Filter = new(JWTFilter)
 
 type JWTConfig struct {
+	AttachmentKey string
 	// 默认查找Token的函数
 	TokenExtractor func(ctx *flux.Context) (string, error)
 	// 加载签名验证密钥的函数
@@ -46,11 +49,15 @@ func (f *JWTFilter) FilterId() string {
 	return TypeIdJWTFilter
 }
 
-func (f *JWTFilter) Init(_ *flux.Configuration) error {
+func (f *JWTFilter) Init(config *flux.Configuration) error {
 	if f.Config.TokenExtractor == nil {
 		f.Config.TokenExtractor = func(ctx *flux.Context) (string, error) {
 			return ExtractTokenOAuth2(ctx)
 		}
+	}
+	// ClaimsKey
+	if "" == f.Config.AttachmentKey {
+		f.Config.AttachmentKey = cast.ToString(config.GetOrDefault(ConfigKeyAttachmentKey, "jwt.claims"))
 	}
 	fluxpkg.AssertNotNil(f.Config.SecretLoader, "<secret-loader> must not nil")
 	return nil
@@ -63,6 +70,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			return next(ctx)
 		}
 		tokenStr, err := f.Config.TokenExtractor(ctx)
+		ctx.Logger().Infow("AUTHORIZATION:JWT:TOKEN_VERIFY", "token", tokenStr)
 		// 启用JWT特性，但没有传Token参数
 		if ctx.Endpoint().HasAttr(FeatureJWT) && (tokenStr == "" || err == ErrNoTokenInRequest) {
 			return &flux.ServeError{
@@ -77,9 +85,12 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			return f.Config.SecretLoader(ctx)
 		})
 		if token != nil && token.Valid {
+			ctx.Logger().Infow("AUTHORIZATION:JWT:PASSED", "jwt.claims", claims)
 			// set claims to attributes
-			ctx.SetAttribute("jwt.claims", claims)
+			ctx.SetAttribute(f.Config.AttachmentKey, claims)
 			return next(ctx)
+		} else {
+			ctx.Logger().Infow("AUTHORIZATION:JWT:REJECT", "error", err)
 		}
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
