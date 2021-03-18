@@ -72,10 +72,13 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			}
 		}
 		// 解析和校验
-		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 			return f.Config.SecretLoader(ctx)
 		})
 		if token != nil && token.Valid {
+			// set claims to attributes
+			ctx.SetAttribute("jwt.claims", claims)
 			return next(ctx)
 		}
 		if ve, ok := err.(*jwt.ValidationError); ok {
