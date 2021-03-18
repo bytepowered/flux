@@ -21,10 +21,6 @@ const (
 	ConfigKeyAttachmentKey = "attachment_key"
 )
 
-var (
-	ErrNoTokenInRequest = request.ErrNoTokenInRequest
-)
-
 var _ flux.Filter = new(JWTFilter)
 
 type JWTConfig struct {
@@ -72,11 +68,11 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		tokenStr, err := f.Config.TokenExtractor(ctx)
 		ctx.Logger().Infow("AUTHORIZATION:JWT:TOKEN_VERIFY", "token", tokenStr)
 		// 启用JWT特性，但没有传Token参数
-		if ctx.Endpoint().HasAttr(FeatureJWT) && (tokenStr == "" || err == ErrNoTokenInRequest) {
+		if ctx.Endpoint().HasAttr(FeatureJWT) && (tokenStr == "" || err == request.ErrNoTokenInRequest) {
 			return &flux.ServeError{
 				StatusCode: http.StatusUnauthorized,
 				ErrorCode:  flux.ErrorCodeJwtExpired,
-				Message:    "SERVER:JWT: token not found",
+				Message:    "JWT:VALIDATE: token not found",
 			}
 		}
 		// 解析和校验
@@ -85,32 +81,32 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			return f.Config.SecretLoader(ctx)
 		})
 		if token != nil && token.Valid {
-			ctx.Logger().Infow("AUTHORIZATION:JWT:PASSED", "jwt.claims", claims)
+			ctx.Logger().Infow("JWT:VALIDATE:PASSED", "jwt.claims", claims)
 			// set claims to attributes
 			ctx.SetAttribute(f.Config.AttachmentKey, claims)
 			return next(ctx)
 		} else {
-			ctx.Logger().Infow("AUTHORIZATION:JWT:REJECT", "error", err)
+			ctx.Logger().Infow("JWT:VALIDATE:REJECTED", "error", err)
 		}
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
 				return &flux.ServeError{
 					StatusCode: http.StatusBadRequest,
 					ErrorCode:  flux.ErrorCodeJwtMalformed,
-					Message:    "SERVER:JWT: token malformed",
+					Message:    "JWT:VALIDATE: token malformed",
 				}
 			} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
 				// Token is either expired or not active yet
 				return &flux.ServeError{
 					StatusCode: http.StatusUnauthorized,
 					ErrorCode:  flux.ErrorCodeJwtRequires,
-					Message:    "SERVER:JWT:token is expired/not active",
+					Message:    "JWT:VALIDATE:token is expired/not active",
 				}
 			} else {
 				return &flux.ServeError{
 					StatusCode: http.StatusBadRequest,
 					ErrorCode:  flux.ErrorCodeJwtMalformed,
-					Message:    "SERVER:JWT: Couldn't handle",
+					Message:    "JWT:VALIDATE: Couldn't handle",
 					CauseError: err,
 				}
 			}
@@ -118,7 +114,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			return &flux.ServeError{
 				StatusCode: http.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeJwtMalformed,
-				Message:    "SERVER:JWT: Couldn't handle",
+				Message:    "JWT:VALIDATE: Couldn't handle",
 				CauseError: err,
 			}
 		}
