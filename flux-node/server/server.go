@@ -224,14 +224,8 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 		}
 	}
 	defer func(id string) {
-		if r := recover(); r != nil {
-			trace := logger.Trace(id)
-			if err, ok := r.(error); ok {
-				trace.Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", err)
-			} else {
-				trace.Errorw("SERVER:ROUTE:CRITICAL_PANIC", "recover", r)
-			}
-			trace.Error(string(debug.Stack()))
+		if rvr := recover(); rvr != nil {
+			logger.Trace(id).Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", rvr, "error.trace", string(debug.Stack()))
 		}
 	}(webex.RequestId())
 	if !found {
@@ -240,7 +234,10 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 				"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 			)
 		}
-		return flux.ErrRouteNotFound
+		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
+		return server.HandleNotfound(webex)
+	} else {
+		fluxpkg.Assert(endpoint.IsValid(), "<endpoint> must valid when routing")
 	}
 	ctxw := s.ctxpool.Get().(*flux.Context)
 	ctxw.Reset(webex, &endpoint)
@@ -248,7 +245,7 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
 	ctxw.SetAttribute(flux.XRequestHost, webex.Host())
-	ctxw.SetAttribute(flux.XRequestAgent, "flux/gateway")
+	ctxw.SetAttribute(flux.XRequestAgent, "flux.go")
 	trace := logger.TraceContext(ctxw)
 	trace.Infow("SERVER:ROUTE:START")
 	// hook

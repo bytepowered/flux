@@ -210,8 +210,14 @@ type WebListener interface {
 	// SetErrorHandler 设置Web请求错误处理函数
 	SetErrorHandler(h WebErrorHandler)
 
+	// HandleError 处理Web请求错误
+	HandleError(webex ServerWebContext, err error)
+
 	// SetNotfoundHandler 设置Web路由不存在处理函数
 	SetNotfoundHandler(h WebHandler)
+
+	// NotfoundHandle 调用NotFound处理函数
+	HandleNotfound(webex ServerWebContext) error
 
 	// SetBodyResolver 设置Body体解析接口
 	SetBodyResolver(decoder WebBodyResolver)
