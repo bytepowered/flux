@@ -18,63 +18,67 @@ var (
 	contextKeyPathVars  = ContextKey{key: "__internal.context.path.vars"}
 )
 
-var _ flux.ServerWebContext = new(webcontext)
+var _ flux.ServerWebContext = new(EchoWebContext)
 
 func NewServeWebContext(id string, echoc echo.Context) flux.ServerWebContext {
-	return &webcontext{
+	return &EchoWebContext{
 		echoc:     echoc,
 		context:   context.WithValue(echoc.Request().Context(), contextKeyRequestId, id),
 		variables: make(map[interface{}]interface{}, 16),
 	}
 }
 
-type webcontext struct {
+type EchoWebContext struct {
 	context   context.Context
 	echoc     echo.Context
 	variables map[interface{}]interface{}
 }
 
-func (w *webcontext) RequestId() string {
+func (w *EchoWebContext) ShadowContext() echo.Context {
+	return w.echoc
+}
+
+func (w *EchoWebContext) RequestId() string {
 	return w.context.Value(contextKeyRequestId).(string)
 }
 
-func (w *webcontext) Context() context.Context {
+func (w *EchoWebContext) Context() context.Context {
 	return w.context
 }
 
-func (w *webcontext) Request() *http.Request {
+func (w *EchoWebContext) Request() *http.Request {
 	return w.echoc.Request()
 }
 
-func (w *webcontext) URI() string {
+func (w *EchoWebContext) URI() string {
 	return w.Request().RequestURI
 }
 
-func (w *webcontext) URL() *url.URL {
+func (w *EchoWebContext) URL() *url.URL {
 	return w.Request().URL
 }
 
-func (w *webcontext) Method() string {
+func (w *EchoWebContext) Method() string {
 	return w.Request().Method
 }
 
-func (w *webcontext) Host() string {
+func (w *EchoWebContext) Host() string {
 	return w.Request().Host
 }
 
-func (w *webcontext) RemoteAddr() string {
+func (w *EchoWebContext) RemoteAddr() string {
 	return w.Request().RemoteAddr
 }
 
-func (w *webcontext) HeaderVars() http.Header {
+func (w *EchoWebContext) HeaderVars() http.Header {
 	return w.Request().Header
 }
 
-func (w *webcontext) QueryVars() url.Values {
+func (w *EchoWebContext) QueryVars() url.Values {
 	return w.echoc.QueryParams()
 }
 
-func (w *webcontext) PathVars() url.Values {
+func (w *EchoWebContext) PathVars() url.Values {
 	v, ok := w.variables[contextKeyPathVars]
 	if ok {
 		return v.(url.Values)
@@ -87,41 +91,41 @@ func (w *webcontext) PathVars() url.Values {
 	return vars
 }
 
-func (w *webcontext) FormVars() url.Values {
+func (w *EchoWebContext) FormVars() url.Values {
 	f, _ := w.echoc.FormParams()
 	return f
 }
 
-func (w *webcontext) CookieVars() []*http.Cookie {
+func (w *EchoWebContext) CookieVars() []*http.Cookie {
 	return w.echoc.Cookies()
 }
 
-func (w *webcontext) HeaderVar(name string) string {
+func (w *EchoWebContext) HeaderVar(name string) string {
 	return w.Request().Header.Get(name)
 }
 
-func (w *webcontext) QueryVar(name string) string {
+func (w *EchoWebContext) QueryVar(name string) string {
 	return w.echoc.QueryParam(name)
 }
 
-func (w *webcontext) PathVar(name string) string {
+func (w *EchoWebContext) PathVar(name string) string {
 	// use cached vars
 	return w.PathVars().Get(name)
 }
 
-func (w *webcontext) FormVar(name string) string {
+func (w *EchoWebContext) FormVar(name string) string {
 	return w.echoc.FormValue(name)
 }
 
-func (w *webcontext) CookieVar(name string) (*http.Cookie, error) {
+func (w *EchoWebContext) CookieVar(name string) (*http.Cookie, error) {
 	return w.echoc.Cookie(name)
 }
 
-func (w *webcontext) BodyReader() (io.ReadCloser, error) {
+func (w *EchoWebContext) BodyReader() (io.ReadCloser, error) {
 	return w.Request().GetBody()
 }
 
-func (w *webcontext) Rewrite(method string, path string) {
+func (w *EchoWebContext) Rewrite(method string, path string) {
 	if "" != method {
 		w.Request().Method = method
 	}
@@ -130,32 +134,32 @@ func (w *webcontext) Rewrite(method string, path string) {
 	}
 }
 
-func (w *webcontext) Write(statusCode int, contentType string, bytes []byte) error {
+func (w *EchoWebContext) Write(statusCode int, contentType string, bytes []byte) error {
 	return w.echoc.Blob(statusCode, contentType, bytes)
 }
 
-func (w *webcontext) WriteStream(statusCode int, contentType string, reader io.Reader) error {
+func (w *EchoWebContext) WriteStream(statusCode int, contentType string, reader io.Reader) error {
 	return w.echoc.Stream(statusCode, contentType, reader)
 }
 
-func (w *webcontext) SetResponseWriter(rw http.ResponseWriter) {
+func (w *EchoWebContext) SetResponseWriter(rw http.ResponseWriter) {
 	w.echoc.Response().Writer = rw
 }
 
-func (w *webcontext) ResponseWriter() http.ResponseWriter {
+func (w *EchoWebContext) ResponseWriter() http.ResponseWriter {
 	return w.echoc.Response().Writer
 }
 
-func (w *webcontext) Variable(key string) interface{} {
+func (w *EchoWebContext) Variable(key string) interface{} {
 	v, _ := w.GetVariable(key)
 	return v
 }
 
-func (w *webcontext) SetVariable(key string, value interface{}) {
+func (w *EchoWebContext) SetVariable(key string, value interface{}) {
 	w.variables[key] = value
 }
 
-func (w *webcontext) GetVariable(key string) (interface{}, bool) {
+func (w *EchoWebContext) GetVariable(key string) (interface{}, bool) {
 	// 本地Variable
 	v, ok := w.variables[key]
 	if ok {

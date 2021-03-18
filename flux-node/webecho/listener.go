@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strings"
 )
 
@@ -65,7 +66,7 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 			echoc.Set(__interContextKeyWebContext, swc)
 			defer func() {
 				if rvr := recover(); rvr != nil && rvr != http.ErrAbortHandler {
-					logger.Trace(id).Errorw("SERVER:CRITICAL:PANIC", "error", rvr)
+					logger.Trace(id).Errorw("SERVER:CRITICAL:PANIC", "error", rvr, "error.trace", string(debug.Stack()))
 					_ = echoc.JSON(http.StatusInternalServerError, map[string]interface{}{
 						"server.traceid": id,
 						"server.status":  "error",
@@ -160,19 +161,26 @@ func (s *EchoWebListener) SetNotfoundHandler(f flux.WebHandler) {
 	echo.NotFoundHandler = EchoWebHandler(f).AdaptFunc
 }
 
+func (s *EchoWebListener) HandleNotfound(webex flux.ServerWebContext) error {
+	return echo.NotFoundHandler(webex.(*internal.EchoWebContext).ShadowContext())
+}
+
 func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
 	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, listener-id:: "+s.id)
 	s.started().server.HTTPErrorHandler = func(err error, c echo.Context) {
-		// 修正Echo的Error未判定问题
-		var cerr error = err.(error)
-		if nil == cerr {
+		// 修正Error未判定为nil的问题问题
+		if nil == err || err == (*flux.ServeError)(nil) {
 			return
 		}
 		webex, ok := c.Get(__interContextKeyWebContext).(flux.ServerWebContext)
 		fluxpkg.Assert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webex, err)
 	}
+}
+
+func (s *EchoWebListener) HandleError(webex flux.ServerWebContext, err error) {
+	s.started().server.HTTPErrorHandler(err, webex.(*internal.EchoWebContext).ShadowContext())
 }
 
 func (s *EchoWebListener) AddInterceptor(i flux.WebInterceptor) {
