@@ -28,7 +28,7 @@ type JWTConfig struct {
 	// 默认查找Token的函数
 	TokenExtractor func(ctx *flux.Context) (string, error)
 	// 加载签名验证密钥的函数
-	SecretLoader func(ctx *flux.Context) ([]byte, error)
+	SecretLoader func(ctx *flux.Context, claims jwt.Claims) ([]byte, error)
 }
 
 func NewJWTFilter(config JWTConfig) *JWTFilter {
@@ -78,7 +78,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		// 解析和校验
 		claims := jwt.MapClaims{}
 		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-			return f.Config.SecretLoader(ctx)
+			return f.Config.SecretLoader(ctx, token.Claims)
 		})
 		if token != nil && token.Valid {
 			ctx.Logger().Infow("JWT:VALIDATE:PASSED", "jwt.claims", claims)
