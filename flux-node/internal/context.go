@@ -79,16 +79,12 @@ func (w *EchoWebContext) QueryVars() url.Values {
 }
 
 func (w *EchoWebContext) PathVars() url.Values {
-	v, ok := w.variables[contextKeyPathVars]
-	if ok {
-		return v.(url.Values)
+	names := w.echoc.ParamNames()
+	copied := make(url.Values, len(names))
+	for _, n := range names {
+		copied.Set(n, w.echoc.Param(n))
 	}
-	vars := make(url.Values, len(w.echoc.ParamNames()))
-	for _, n := range w.echoc.ParamNames() {
-		vars.Set(n, w.echoc.Param(n))
-	}
-	w.variables[contextKeyPathVars] = vars
-	return vars
+	return copied
 }
 
 func (w *EchoWebContext) FormVars() url.Values {
@@ -110,7 +106,7 @@ func (w *EchoWebContext) QueryVar(name string) string {
 
 func (w *EchoWebContext) PathVar(name string) string {
 	// use cached vars
-	return w.PathVars().Get(name)
+	return w.echoc.Param(name)
 }
 
 func (w *EchoWebContext) FormVar(name string) string {
