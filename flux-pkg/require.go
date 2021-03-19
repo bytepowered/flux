@@ -14,8 +14,15 @@ func MustNotEmpty(str string, msg string) string {
 	return str
 }
 
-func IsNil(v interface{}) bool {
-	return v == nil || reflect.ValueOf(v).IsNil()
+func IsNil(i interface{}) bool {
+	if nil == i {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }
 
 func IsNotNil(v interface{}) bool {
