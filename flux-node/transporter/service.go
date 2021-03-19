@@ -82,7 +82,7 @@ func (r *DefaultTransportWriter) WriteError(ctx *flux.Context, err *flux.ServeEr
 }
 
 func (r *DefaultTransportWriter) write(ctx *flux.Context, status int, body []byte) {
-	ctx.Request().Header.Add("X-Writer-Id", "Fx-TWriter")
+	ctx.ResponseWriter().Header().Add("X-Writer-Id", "Fx-TWriter")
 	err := ctx.Write(status, flux.MIMEApplicationJSONCharsetUTF8, body)
 	if nil != err {
 		ctx.Logger().Errorw("TRANSPORT:WRITE:ERROR", "error", err)
