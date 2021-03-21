@@ -34,6 +34,7 @@ func DefaultErrorHandler(webex flux.ServerWebContext, error error) {
 		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
 		return
 	}
+	webex.ResponseWriter().Header().Add("X-Writer-Id", "Fx-EWriter")
 	if err := webex.Write(serr.StatusCode, flux.MIMEApplicationJSON, bytes); nil != err {
 		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
 	}
