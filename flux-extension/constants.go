@@ -1,4 +1,4 @@
-package extension
+package fluxext
 
 const (
 	ConfigKeyCacheExpiration   = "cache_expiration"
