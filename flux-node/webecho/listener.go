@@ -63,6 +63,7 @@ func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, iden
 			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
 			swc := internal.NewServeWebContext(id, echoc)
+			fluxpkg.AssertNil(echoc.Get(__interContextKeyWebContext), "<web-context> must be nil")
 			echoc.Set(__interContextKeyWebContext, swc)
 			defer func() {
 				if rvr := recover(); rvr != nil && rvr != http.ErrAbortHandler {

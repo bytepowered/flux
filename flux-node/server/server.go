@@ -88,6 +88,7 @@ func WithWebListener(server flux.WebListener) Option {
 func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 	opts := []Option{
 		WithServerBanner(defaultBanner),
+		// Lookup version
 		WithVersionLookupFunc(func(webex flux.ServerWebContext) string {
 			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
@@ -249,8 +250,7 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 		hook(webex, ctxw)
 	}
 	defer func(start time.Time) {
-		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:END",
-			"metric", ctxw.Metrics(), "elapses", time.Since(start).String())
+		trace.Infow("SERVER:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
 	return s.router.Route(ctxw)
 }
