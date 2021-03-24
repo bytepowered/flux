@@ -24,7 +24,7 @@ const (
 var _ flux.Filter = new(JWTFilter)
 
 type JWTConfig struct {
-	AttachmentKey string
+	AttKeyPrefix string
 	// 默认查找Token的函数
 	TokenExtractor func(ctx *flux.Context) (string, error)
 	// 加载签名验证密钥的函数
@@ -51,9 +51,9 @@ func (f *JWTFilter) Init(config *flux.Configuration) error {
 			return ExtractTokenOAuth2(ctx)
 		}
 	}
-	// ClaimsKey
-	if "" == f.Config.AttachmentKey {
-		f.Config.AttachmentKey = cast.ToString(config.GetOrDefault(ConfigKeyAttachmentKey, "jwt.claims"))
+	// ClaimsKeyPrefix
+	if "" == f.Config.AttKeyPrefix {
+		f.Config.AttKeyPrefix = cast.ToString(config.GetOrDefault(ConfigKeyAttachmentKey, "jwt"))
 	}
 	fluxpkg.AssertNotNil(f.Config.SecretKeyLoader, "<secret-loader> must not nil")
 	return nil
@@ -81,9 +81,11 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			return f.Config.SecretKeyLoader(ctx, token)
 		})
 		if token != nil && token.Valid {
-			ctx.Logger().Infow("JWT:VALIDATE:PASSED", "jwt.claims", claims)
 			// set claims to attributes
-			ctx.SetAttribute(f.Config.AttachmentKey, claims)
+			ctx.Logger().Infow("JWT:VALIDATE:PASSED", "jwt.claims", claims)
+			for k, v := range claims {
+				ctx.SetAttribute(f.Config.AttKeyPrefix+"."+k, v)
+			}
 			return next(ctx)
 		} else {
 			ctx.Logger().Infow("JWT:VALIDATE:REJECTED", "error", err)
