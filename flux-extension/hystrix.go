@@ -189,8 +189,8 @@ func (*HystrixFilter) readConfig(conf *flux.Configuration, defaults map[string]i
 	return hystrix.CommandConfig{
 		Timeout:                getIntOr(ConfigKeyTimeout),
 		MaxConcurrentRequests:  getIntOr(ConfigKeyRequestMax),
-		SleepWindow:            getIntOr(ConfigKeyRequestThreshold),
-		ErrorPercentThreshold:  getIntOr(ConfigKeySleepWindow),
-		RequestVolumeThreshold: getIntOr(ConfigKeyErrorPercentThreshold),
+		RequestVolumeThreshold: getIntOr(ConfigKeyRequestThreshold),
+		SleepWindow:            getIntOr(ConfigKeySleepWindow),
+		ErrorPercentThreshold:  getIntOr(ConfigKeyErrorPercentThreshold),
 	}
 }
