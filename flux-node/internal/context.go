@@ -15,7 +15,6 @@ type ContextKey struct {
 
 var (
 	contextKeyRequestId = ContextKey{key: "__internal.context.request.id"}
-	contextKeyPathVars  = ContextKey{key: "__internal.context.path.vars"}
 )
 
 var _ flux.ServerWebContext = new(EchoWebContext)

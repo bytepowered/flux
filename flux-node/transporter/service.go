@@ -10,28 +10,24 @@ import (
 )
 
 func DoTransport(ctx *flux.Context, transport flux.Transporter) {
-	response, err := transport.InvokeCodec(ctx, ctx.Transporter())
-	if err != nil {
-		ctx.Logger().Errorw("TRANSPORTER:INVOKE/ERROR", "error", err)
-		transport.Writer().WriteError(ctx, err)
+	response, serr := transport.InvokeCodec(ctx, ctx.Transporter())
+	select {
+	case <-ctx.Context().Done():
+		ctx.Logger().Warnw("TRANSPORTER:CANCELED/BYCLIENT")
 		return
+	default:
+		break
 	}
-	// response
-	if response == nil {
-		select {
-		case <-ctx.Context().Done():
-			ctx.Logger().Warnw("TRANSPORTER:CANCELED/BYCLIENT")
-			return
-		default:
-			break
+	if serr != nil {
+		ctx.Logger().Errorw("TRANSPORTER:INVOKE/ERROR", "error", serr)
+		transport.Writer().WriteError(ctx, serr)
+	} else {
+		fluxpkg.AssertNotNil(response, "exchange: <response> must-not nil, request-id: "+ctx.RequestId())
+		for k, v := range response.Attachments {
+			ctx.SetAttribute(k, v)
 		}
+		transport.Writer().Write(ctx, response)
 	}
-	fluxpkg.AssertNotNil(response, "exchange: <response> must-not nil, request-id: "+ctx.RequestId())
-	// attachments
-	for k, v := range response.Attachments {
-		ctx.SetAttribute(k, v)
-	}
-	transport.Writer().Write(ctx, response)
 }
 
 // DoInvokeCodec 执行后端服务，获取响应结果；
@@ -48,6 +44,8 @@ func DoInvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.Re
 	}
 	return transport.InvokeCodec(ctx, service)
 }
+
+// DefaultTransportWriter
 
 var _ flux.TransportWriter = new(DefaultTransportWriter)
 

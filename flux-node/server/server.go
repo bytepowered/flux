@@ -17,7 +17,6 @@ import (
 	"os/signal"
 	"runtime/debug"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -50,7 +49,6 @@ type BootstrapServer struct {
 	stopped  chan struct{}
 	banner   string
 	trace    bool
-	ctxpool  sync.Pool
 }
 
 // WithWebExchangeHooks 配置请求Hook函数列表
@@ -90,6 +88,7 @@ func WithWebListener(server flux.WebListener) Option {
 func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 	opts := []Option{
 		WithServerBanner(defaultBanner),
+		// Lookup version
 		WithVersionLookupFunc(func(webex flux.ServerWebContext) string {
 			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
@@ -116,7 +115,6 @@ func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 		started:  make(chan struct{}),
 		stopped:  make(chan struct{}),
 		banner:   defaultBanner,
-		ctxpool:  sync.Pool{New: func() interface{} { return flux.NewContext() }},
 	}
 	for _, opt := range opts {
 		opt(srv)
@@ -239,9 +237,8 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 	} else {
 		fluxpkg.Assert(endpoint.IsValid(), "<endpoint> must valid when routing")
 	}
-	ctxw := s.ctxpool.Get().(*flux.Context)
+	ctxw := flux.NewContext()
 	ctxw.Reset(webex, &endpoint)
-	defer s.ctxpool.Put(ctxw)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
 	ctxw.SetAttribute(flux.XRequestHost, webex.Host())
@@ -253,8 +250,7 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 		hook(webex, ctxw)
 	}
 	defer func(start time.Time) {
-		logger.TraceContext(ctxw).Infow("SERVER:ROUTE:END",
-			"metric", ctxw.Metrics(), "elapses", time.Since(start).String())
+		trace.Infow("SERVER:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
 	return s.router.Route(ctxw)
 }
