@@ -143,16 +143,21 @@ type EmbeddedAttributes struct {
 }
 
 func (c EmbeddedAttributes) GetAttr(name string) Attribute {
+	v, _ := c.GetAttrEx(name)
+	return v
+}
+
+func (c EmbeddedAttributes) GetAttrEx(name string) (Attribute, bool) {
 	for _, attr := range c.Attributes {
 		if strings.ToLower(attr.Name) == strings.ToLower(name) {
-			return attr
+			return attr, true
 		}
 	}
-	return Attribute{}
+	return Attribute{}, false
 }
 
 func (c EmbeddedAttributes) GetAttrs(name string) []Attribute {
-	attrs := make([]Attribute, 0, 4)
+	attrs := make([]Attribute, 0, 2)
 	for _, attr := range c.Attributes {
 		if strings.ToLower(attr.Name) == strings.ToLower(name) {
 			attrs = append(attrs, attr)
