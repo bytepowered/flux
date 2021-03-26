@@ -60,15 +60,6 @@ func (c *Context) TransportId() string {
 	return c.endpoint.Service.ServiceID()
 }
 
-// Attributes 返回所有Attributes键值对；只读；
-func (c *Context) Attributes() map[string]interface{} {
-	out := make(map[string]interface{}, len(c.attributes))
-	for k, v := range c.attributes {
-		out[k] = v
-	}
-	return out
-}
-
 // Attribute 获取指定key的Attribute。如果不存在，返回默认值；
 func (c *Context) Attribute(key string, defval interface{}) interface{} {
 	if v, ok := c.GetVariable(key); ok {
@@ -78,9 +69,32 @@ func (c *Context) Attribute(key string, defval interface{}) interface{} {
 	}
 }
 
+// Attributes 返回所有Attributes键值对；只读；
+// 搜索位置及顺序：
+// 1. Context自身的Attributes；【HIGH】
+// 2. Endpoint的Attributes；【LOW】
+func (c *Context) Attributes() map[string]interface{} {
+	out := make(map[string]interface{}, len(c.attributes))
+	for _, attr := range c.endpoint.Attributes {
+		out[attr.Name] = attr.Value
+	}
+	for k, v := range c.attributes {
+		out[k] = v
+	}
+	return out
+}
+
 // GetAttribute 获取指定key的Attribute，返回值和是否存在标识
+// 搜索位置及顺序：
+// 1. Context自身的Attributes；【HIGH】
+// 2. Endpoint的Attributes；【LOW】
 func (c *Context) GetAttribute(key string) (interface{}, bool) {
 	v, ok := c.attributes[key]
+	if !ok {
+		if attr, aok := c.endpoint.GetAttrEx(key); aok {
+			return attr.Value, true
+		}
+	}
 	return v, ok
 }
 
