@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestParseJsonTextToEndpoint(t *testing.T) {
+func TestParseEndpointModelV2(t *testing.T) {
 	text := `{
     "endpointId": "auc:/api/users/register:1.0",
     "version": "1.0",
@@ -95,25 +95,87 @@ func TestParseJsonTextToEndpoint(t *testing.T) {
         }
     ]
 }`
+	AssertWith(t, text, []AssertCase{
+		{
+			Expected: true,
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.IsValid() },
+		},
+		{
+			Expected: "auc",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Application },
+		},
+		{
+			Expected: "1.0",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Version },
+		},
+		{
+			Expected: "/api/users/register",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpPattern },
+		},
+		{
+			Expected: "POST",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpMethod },
+		},
+		{
+			Expected: false,
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Permission.IsValid() },
+		},
+		{
+			Expected: 0,
+			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Permissions) },
+		},
+		{
+			Expected: ":superadmin",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("roles").GetString() },
+		},
+		{
+			Expected: []string{"key=query:etag", "ttl=3600"},
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("feature:cache").GetStringSlice() },
+		},
+		{
+			Expected: true,
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("Authorize").GetBool() },
+		},
+		{
+			Expected: 3,
+			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Service.Arguments) },
+		},
+		{
+			Expected: "context",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Name },
+		},
+		{
+			Expected: "COMPLEX",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Type },
+		},
+		{
+			Expected: "$body",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpName },
+		},
+		{
+			Expected: "BODY",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpScope },
+		},
+		{
+			Expected: "DUBBO",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.RpcProto() },
+		},
+	})
+}
+
+func AssertWith(t *testing.T, text string, cases []AssertCase) {
 	endpoint := Endpoint{}
 	serializer := NewJsonSerializer()
 	err := serializer.Unmarshal([]byte(text), &endpoint)
-	assert := assert2.New(t)
-	assert.NoError(err, "Should not error")
-	assert.True(endpoint.IsValid())
-	assert.Equal("auc", endpoint.Application)
-	assert.Equal("1.0", endpoint.Version)
-	assert.Equal("/api/users/register", endpoint.HttpPattern)
-	assert.Equal("POST", endpoint.HttpMethod)
-	assert.False(endpoint.Permission.IsValid())
-	assert.True(len(endpoint.Permissions) == 0)
-	assert.Equal(":superadmin", endpoint.GetAttr("roles").GetString())
-	assert.Equal([]string{"key=query:etag", "ttl=3600"}, endpoint.GetAttr("feature:cache").GetStringSlice())
-	assert.Equal(true, endpoint.GetAttr("Authorize").GetBool())
-	assert.Equal(3, len(endpoint.Service.Arguments))
-	assert.Equal("context", endpoint.Service.Arguments[0].Name)
-	assert.Equal("COMPLEX", endpoint.Service.Arguments[0].Type)
-	assert.Equal("$body", endpoint.Service.Arguments[0].Fields[0].HttpName)
-	assert.Equal("BODY", endpoint.Service.Arguments[0].Fields[0].HttpScope)
-	assert.Equal("DUBBO", endpoint.Service.RpcProto())
+	tAssert := assert2.New(t)
+	tAssert.Nil(err, "err must nil")
+	for _, c := range cases {
+		tAssert.Equal(c.Expected, c.Actual(&endpoint), c.Message)
+	}
+}
+
+type AssertCase struct {
+	Expected interface{}
+	Actual   func(endpoint *Endpoint) interface{}
+	Message  string
 }

@@ -1,44 +1,53 @@
 package discovery
 
 import (
+	"fmt"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
-	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-node/remoting"
+	"strings"
 )
 
 var (
-	invalidHttpEndpointEvent = flux.EndpointEvent{}
+	emptyEndpointEvent = flux.EndpointEvent{}
 )
 
 type CompatibleEndpoint struct {
 	flux.Endpoint
 	// Deprecated
-	Authorize bool `json:"authorize"` // 此端点是否需要授权
+	Authorize bool `json:"authorize"`
+	// Deprecated
+	Extensions map[string]interface{} `json:"extensions"`
 }
 
-func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt flux.EndpointEvent, ok bool) {
+func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.EndpointEvent, err error) {
 	// Check json text
 	size := len(bytes)
-	if size < len("{\"k\":0}") || (bytes[0] != '[' && bytes[size-1] != '}') {
-		logger.Warnw("DISCOVERY:ENDPOINT:ILLEGAL_JSONSIZE", "data", string(bytes), "node", node)
-		return invalidHttpEndpointEvent, false
+	if size < len("{\"k\":0}") {
+		return emptyEndpointEvent, fmt.Errorf("ILLEGAL_JSONSIZE: %d", size)
+	}
+	prefix := strings.TrimSpace(string(bytes[:5]))
+	if prefix[0] != '[' && prefix[0] != '{' {
+		return emptyEndpointEvent, fmt.Errorf("ILLEGAL_JSONDATA: %s", string(bytes))
 	}
 	comp := CompatibleEndpoint{}
 	if err := ext.JSONUnmarshal(bytes, &comp); nil != err {
-		logger.Warnw("DISCOVERY:ENDPOINT:ILLEGAL_JSONFORMAT",
-			"event-type", etype, "data", string(bytes), "error", err, "node", node)
-		return invalidHttpEndpointEvent, false
+		return emptyEndpointEvent, fmt.Errorf("ILLEGAL_JSONFORMAT: err: %w", err)
 	}
 	// 检查有效性
 	if !comp.IsValid() {
-		logger.Warnw("DISCOVERY:ENDPOINT:INVALID_VALUES", "data", string(bytes), "node", node)
-		return invalidHttpEndpointEvent, false
+		return emptyEndpointEvent, fmt.Errorf("INVALID_VALUES: data=%s", string(bytes))
 	}
 	// 兼容旧结构
+	// 旧版本没有Attribute结构
 	if len(comp.Attributes) == 0 {
+		// 1. Authorize
 		comp.Attributes = []flux.Attribute{
 			{Name: flux.EndpointAttrTagAuthorize, Value: comp.Authorize},
+		}
+		// 2. Extension
+		for k, v := range comp.Extensions {
+			comp.Attributes = append(comp.Attributes, flux.Attribute{Name: k, Value: v})
 		}
 	}
 	EnsureServiceAttrs(&comp.Service)
@@ -53,7 +62,7 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType, node string) (fxEv
 	case remoting.EventTypeNodeUpdate:
 		event.EventType = flux.EventTypeUpdated
 	default:
-		return invalidHttpEndpointEvent, false
+		return emptyEndpointEvent, fmt.Errorf("UNKNOWN_EVT_TYPE: type=%d", etype)
 	}
-	return event, true
+	return event, nil
 }

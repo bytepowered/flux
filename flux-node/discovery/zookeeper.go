@@ -111,8 +111,10 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.EndpointEv
 				logger.Errorw(msg, "event", event, "error", r)
 			}
 		}()
-		if evt, ok := NewEndpointEvent(event.Data, event.EventType, event.Path); ok {
+		if evt, err := NewEndpointEvent(event.Data, event.EventType); nil == err {
 			events <- evt
+		} else {
+			logger.Errorw(msg, "event", event, "error", err)
 		}
 	}
 	logger.Infow(msg, "node-path", r.endpointPath)
