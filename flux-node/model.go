@@ -114,7 +114,19 @@ type Attribute struct {
 }
 
 func (a Attribute) GetString() string {
-	return cast.ToString(a.Value)
+	if values, ok := a.Value.([]interface{}); ok {
+		if len(values) > 0 {
+			return cast.ToString(values[0])
+		} else {
+			return ""
+		}
+	} else {
+		return cast.ToString(a.Value)
+	}
+}
+
+func (a Attribute) GetStringSlice() []string {
+	return cast.ToStringSlice(a.Value)
 }
 
 func (a Attribute) GetInt() int {
@@ -158,56 +170,16 @@ func (c EmbeddedAttributes) HasAttr(name string) bool {
 	return false
 }
 
-// EmbeddedExtensions
-type EmbeddedExtensions struct {
-	Extensions map[string]interface{} `json:"extensions" yaml:"extensions"` // 扩展信息
-}
-
-func (e EmbeddedExtensions) GetValue(name string) (interface{}, bool) {
-	v, ok := e.Extensions[name]
-	return v, ok
-}
-
-func (e EmbeddedExtensions) GetString(name string) string {
-	v, ok := e.Extensions[name]
-	if ok {
-		return cast.ToString(v)
-	} else {
-		return ""
-	}
-}
-
-func (e EmbeddedExtensions) GetBool(name string) bool {
-	v, ok := e.Extensions[name]
-	if ok {
-		return cast.ToBool(v)
-	} else {
-		return false
-	}
-}
-
-func (e EmbeddedExtensions) GetInt(name string) int {
-	v, ok := e.Extensions[name]
-	if ok {
-		return cast.ToInt(v)
-	} else {
-		return 0
-	}
-}
-
 // TransporterService 定义连接上游目标服务的信息
 type TransporterService struct {
-	AliasId    string     `json:"aliasId" yaml:"aliasId"`       // Service别名
-	ServiceId  string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
-	Scheme     string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
-	RemoteHost string     `json:"remoteHost" yaml:"remoteHost"` // Service侧的Host
-	Interface  string     `json:"interface" yaml:"interface"`   // Service侧的URL
-	Method     string     `json:"method" yaml:"method"`         // Service侧的方法
-	Arguments  []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
-	// Extends
+	AliasId            string     `json:"aliasId" yaml:"aliasId"`       // Service别名
+	ServiceId          string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
+	Scheme             string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
+	RemoteHost         string     `json:"remoteHost" yaml:"remoteHost"` // Service侧的Host
+	Interface          string     `json:"interface" yaml:"interface"`   // Service侧的URL
+	Method             string     `json:"method" yaml:"method"`         // Service侧的方法
+	Arguments          []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
 	EmbeddedAttributes `yaml:",inline"`
-	EmbeddedExtensions `yaml:",inline"`
-
 	// Deprecated
 	AttrRpcProto string `json:"rpcProto" yaml:"rpcProto"`
 	// Deprecated
@@ -265,7 +237,6 @@ type Endpoint struct {
 	Permission         TransporterService `json:"permission" yaml:"permission"`   // Deprecated 权限验证定义
 	Permissions        []string           `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
 	EmbeddedAttributes `yaml:",inline"`
-	EmbeddedExtensions `yaml:",inline"`
 }
 
 func (e *Endpoint) PermissionIds() []string {
@@ -327,21 +298,8 @@ func (m *MultiEndpoint) Lookup(version string) (Endpoint, bool) {
 }
 
 func (m *MultiEndpoint) dup(src *Endpoint) Endpoint {
-	out := *src
-	// _ = copier.Copy(out, src)
-	// duplicate maps
-	out.Extensions = m.mcopy(src.Extensions)
-	out.Service.Extensions = m.mcopy(src.Service.Extensions)
-	out.Permission.Extensions = m.mcopy(src.Permission.Extensions)
-	return out
-}
-
-func (m *MultiEndpoint) mcopy(src map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(src))
-	for k, v := range src {
-		out[k] = v
-	}
-	return out
+	dup := *src
+	return dup
 }
 
 func (m *MultiEndpoint) Update(version string, endpoint *Endpoint) {

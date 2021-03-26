@@ -5,130 +5,177 @@ import (
 	"testing"
 )
 
-func TestParseJsonTextToEndpoint(t *testing.T) {
+func TestParseEndpointModelV2(t *testing.T) {
 	text := `{
-    "version":"3.0",
-    "application":"testapp",
-		"authorize":true,
+    "endpointId": "auc:/api/users/register:1.0",
+    "version": "1.0",
+    "application": "auc",
+    "httpPattern": "/api/users/register",
+    "httpMethod": "POST",
     "service": {
-			"protocol":"DUBBO",
-			"group":"myg",
-			"version":"1.0.0",
-			"retries":0,
-			"interface":"foo.bar.Transporter",
-			"method":"reportDetail",
-			"arguments":[
-							{
-									"class":"java.lang.String",
-									"generic":[],
-									"name":"devId",
-									"type":"PRIMITIVE",
-									"httpName":"devId",
-									"httpScope":"AUTO"
-							},
-							{
-									"class":"java.lang.Integer",
-									"generic":[],
-									"name":"year",
-									"type":"PRIMITIVE",
-									"httpName":"year",
-									"httpScope":"AUTO"
-							},
-							{
-									"class":"java.lang.Integer",
-									"generic":[],
-									"name":"month",
-									"type":"PRIMITIVE",
-									"httpName":"month",
-									"httpScope":"AUTO"
-							},
-							{
-									"class":"java.lang.Integer",
-									"generic":[],
-									"name":"week",
-									"type":"PRIMITIVE",
-									"httpName":"week",
-									"httpScope":"AUTO"
-							}
-					]
-		},
-    "httpPattern":"/api/foo/bar",
-    "httpMethod":"POST",
-		"extensions": {
-				"key": "value",
-				"bool": true
-		},
-		"permission": {
-				"interface":"foo.bar.Transporter",
-    		"method":"checkPermission",
-				"protocol":"DUBBO",
-				"arguments":[
-						{
-								"class":"java.lang.String",
-								"generic":[],
-								"name":"devId",
-								"type":"PRIMITIVE",
-								"httpName":"devId",
-								"httpScope":"AUTO"
-						},
-						{
-								"class":"java.lang.Integer",
-								"generic":[],
-								"name":"year",
-								"type":"PRIMITIVE",
-								"httpName":"year",
-								"httpScope":"AUTO"
-						}
-				]
-		},
-		"f0": "bar",
-		"f1": "bar"
+        "serviceId": "com.foo.bar.testing.app.TestingAppService:testContext",
+        "interface": "com.foo.bar.testing.app.TestingAppService",
+        "method": "testContext",
+        "arguments": [
+            {
+                "class": "com.foo.bar.endpoint.support.BizAppContext",
+                "generic": [],
+                "name": "context",
+                "type": "COMPLEX",
+                "fields": [
+                    {
+                        "class": "java.lang.String",
+                        "generic": [],
+                        "name": "body",
+                        "type": "PRIMITIVE",
+                        "httpName": "$body",
+                        "httpScope": "BODY"
+                    }
+                ]
+            },
+            {
+                "class": "java.util.Map",
+                "generic": [
+                    "java.lang.String",
+                    "java.lang.String"
+                ],
+                "name": "attrs",
+                "type": "PRIMITIVE",
+                "httpName": "$attrs",
+                "httpScope": "ATTRS"
+            },
+            {
+                "class": "java.util.List",
+                "generic": [
+                    "java.lang.String"
+                ],
+                "name": "roles",
+                "type": "PRIMITIVE",
+                "httpName": "roles",
+                "httpScope": "ATTR"
+            }
+        ],
+        "attributes": [
+            {
+                "name": "RpcProto",
+                "value": "DUBBO"
+            },
+            {
+                "name": "RpcGroup",
+                "value": ""
+            },
+            {
+                "name": "RpcVersion",
+                "value": ""
+            }
+        ]
+    },
+    "permissions": [],
+    "attributes": [
+        {
+            "name": "feature:cache",
+            "value": [
+                "key=query:etag",
+                "ttl=3600"
+            ]
+        },
+        {
+            "name": "roles",
+            "value": [
+                ":superadmin"
+            ]
+        },
+        {
+            "name": "Authorize",
+            "value": true
+        },
+        {
+            "name": "protoType",
+            "value": "Gateway"
+        }
+    ]
 }`
+	AssertWith(t, text, []AssertCase{
+		{
+			Expected: true,
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.IsValid() },
+		},
+		{
+			Expected: "auc",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Application },
+		},
+		{
+			Expected: "1.0",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Version },
+		},
+		{
+			Expected: "/api/users/register",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpPattern },
+		},
+		{
+			Expected: "POST",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpMethod },
+		},
+		{
+			Expected: false,
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Permission.IsValid() },
+		},
+		{
+			Expected: 0,
+			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Permissions) },
+		},
+		{
+			Expected: ":superadmin",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("roles").GetString() },
+		},
+		{
+			Expected: []string{"key=query:etag", "ttl=3600"},
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("feature:cache").GetStringSlice() },
+		},
+		{
+			Expected: true,
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("Authorize").GetBool() },
+		},
+		{
+			Expected: 3,
+			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Service.Arguments) },
+		},
+		{
+			Expected: "context",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Name },
+		},
+		{
+			Expected: "COMPLEX",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Type },
+		},
+		{
+			Expected: "$body",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpName },
+		},
+		{
+			Expected: "BODY",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpScope },
+		},
+		{
+			Expected: "DUBBO",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.RpcProto() },
+		},
+	})
+}
+
+func AssertWith(t *testing.T, text string, cases []AssertCase) {
 	endpoint := Endpoint{}
 	serializer := NewJsonSerializer()
 	err := serializer.Unmarshal([]byte(text), &endpoint)
-	assert := assert2.New(t)
-	assert.NoError(err, "Should not error")
-	assert.Equal("/api/foo/bar", endpoint.HttpPattern)
-	assert.Equal(4, len(endpoint.Service.Arguments))
-	assert.Equal("month", endpoint.Service.Arguments[2].Name)
-	assert.Equal("month", endpoint.Service.Arguments[2].HttpName)
-	assert.Equal("PRIMITIVE", endpoint.Service.Arguments[2].Type)
-
-	assert.Equal("DUBBO", endpoint.Service.AttrRpcProto)
-	assert.Equal("reportDetail", endpoint.Service.Method)
-
-	assert.Equal(map[string]interface{}{"key": "value", "bool": true}, endpoint.EmbeddedAttributes)
-
-	assert.Equal("checkPermission", endpoint.Permission.Method)
-	assert.Equal(2, len(endpoint.Permission.Arguments))
-	assert.Equal("year", endpoint.Permission.Arguments[1].Name)
-	assert.Equal("year", endpoint.Permission.Arguments[1].HttpName)
-	assert.Equal("PRIMITIVE", endpoint.Permission.Arguments[1].Type)
+	tAssert := assert2.New(t)
+	tAssert.Nil(err, "err must nil")
+	for _, c := range cases {
+		tAssert.Equal(c.Expected, c.Actual(&endpoint), c.Message)
+	}
 }
 
-func TestLookupEndpoint(t *testing.T) {
-	v1 := Endpoint{
-		Version: "1.0",
-		EmbeddedExtensions: EmbeddedExtensions{
-			Extensions: map[string]interface{}{"a": "b"},
-		},
-	}
-	mve := NewMultiEndpoint(&v1)
-	ve, _ := mve.Lookup("1.0")
-	ve.Extensions["only-ve"] = "yes"
-	ve.Service.Extensions["only-ve"] = "yes"
-	ve.Permission.Extensions["only-ve"] = "yes"
-
-	if v1.Extensions["only-ve"] != nil {
-		t.Fatalf("MUST NOT MODIFIED, WAS: %+v", v1)
-	}
-
-	if v1.Service.Extensions["only-ve"] != nil {
-		t.Fatalf("MUST NOT MODIFIED, WAS: %+v", v1)
-	}
-
-	if v1.Permission.Extensions["only-ve"] != nil {
-		t.Fatalf("MUST NOT MODIFIED, WAS: %+v", v1)
-	}
+type AssertCase struct {
+	Expected interface{}
+	Actual   func(endpoint *Endpoint) interface{}
+	Message  string
 }
