@@ -172,7 +172,8 @@ func (s *BootstrapServer) start() error {
 	logger.Info("SERVER:START:DISCOVERY:START")
 	ctx, canceled := context.WithCancel(context.Background())
 	defer canceled()
-	if err := s.discovery(ctx, endpoints, services); nil != err {
+	go s.startEventLoop(ctx, endpoints, services)
+	if err := s.startEventWatch(ctx, endpoints, services); nil != err {
 		return err
 	}
 	logger.Info("SERVER:START:DISCOVERY:OK")
@@ -189,7 +190,28 @@ func (s *BootstrapServer) start() error {
 	return <-errch
 }
 
-func (s *BootstrapServer) discovery(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
+func (s *BootstrapServer) startEventLoop(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) {
+	logger.Info("SERVER:START:DISCOVERY:EVENT_LOOP:START")
+	defer logger.Info("SERVER:START:DISCOVERY:EVENT_LOOP:STOP")
+	for {
+		select {
+		case epEvt, ok := <-endpoints:
+			if ok {
+				s.onEndpointEvent(epEvt)
+			}
+
+		case esEvt, ok := <-services:
+			if ok {
+				s.onServiceEvent(esEvt)
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *BootstrapServer) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
 	for _, discovery := range ext.EndpointDiscoveries() {
 		logger.Infow("SERVER:START:DISCOVERY:WATCH", "discovery-id", discovery.Id())
 		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
@@ -200,27 +222,6 @@ func (s *BootstrapServer) discovery(ctx context.Context, endpoints chan flux.End
 		}
 		logger.Infow("SERVER:START:DISCOVERY:WATCH/OK", "discovery-id", discovery.Id())
 	}
-	// 通过channel注册接收到的事件
-	go func() {
-		logger.Info("SERVER:START:DISCOVERY_LOOP:START")
-		defer logger.Info("SERVER:START:DISCOVERY_LOOP:STOP")
-		for {
-			select {
-			case epEvt, ok := <-endpoints:
-				if ok {
-					s.onEndpointEvent(epEvt)
-				}
-
-			case esEvt, ok := <-services:
-				if ok {
-					s.onServiceEvent(esEvt)
-				}
-
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
 	return nil
 }
 
