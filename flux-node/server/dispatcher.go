@@ -17,7 +17,7 @@ type Dispatcher struct {
 	hooks   []flux.PrepareHookFunc
 }
 
-func NewRouter() *Dispatcher {
+func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
 		metrics: NewMetrics(),
 		hooks:   make([]flux.PrepareHookFunc, 0, 4),

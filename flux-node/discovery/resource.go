@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
@@ -71,7 +72,7 @@ func (r *ResourceDiscoveryService) Init(config *flux.Configuration) error {
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchEndpoints(events chan<- flux.EndpointEvent) error {
+func (r *ResourceDiscoveryService) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	for _, res := range r.resources {
 		for _, ep := range res.Endpoints {
 			if ep.IsValid() {
@@ -83,7 +84,7 @@ func (r *ResourceDiscoveryService) WatchEndpoints(events chan<- flux.EndpointEve
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchServices(events chan<- flux.ServiceEvent) error {
+func (r *ResourceDiscoveryService) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	for _, res := range r.resources {
 		for _, srv := range res.Services {
 			if srv.IsValid() {

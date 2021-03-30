@@ -11,6 +11,7 @@ import (
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/net/context"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -41,14 +42,14 @@ type (
 
 // BootstrapServer
 type BootstrapServer struct {
-	listener map[string]flux.WebListener
-	hooks    []flux.ContextHookFunc
-	version  VersionLookupFunc
-	router   *Dispatcher
-	started  chan struct{}
-	stopped  chan struct{}
-	banner   string
-	trace    bool
+	listener   map[string]flux.WebListener
+	hooks      []flux.ContextHookFunc
+	version    VersionLookupFunc
+	dispatcher *Dispatcher
+	started    chan struct{}
+	stopped    chan struct{}
+	banner     string
+	trace      bool
 }
 
 // WithWebExchangeHooks 配置请求Hook函数列表
@@ -75,7 +76,7 @@ func WithServerBanner(banner string) Option {
 // WithPrepareHooks 配置服务启动预备阶段Hook函数列表
 func WithPrepareHooks(hooks ...flux.PrepareHookFunc) Option {
 	return func(bs *BootstrapServer) {
-		bs.router.hooks = append(bs.router.hooks, hooks...)
+		bs.dispatcher.hooks = append(bs.dispatcher.hooks, hooks...)
 	}
 }
 
@@ -109,12 +110,12 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 
 func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 	srv := &BootstrapServer{
-		router:   NewRouter(),
-		listener: make(map[string]flux.WebListener, 2),
-		hooks:    make([]flux.ContextHookFunc, 0, 4),
-		started:  make(chan struct{}),
-		stopped:  make(chan struct{}),
-		banner:   defaultBanner,
+		dispatcher: NewDispatcher(),
+		listener:   make(map[string]flux.WebListener, 2),
+		hooks:      make([]flux.ContextHookFunc, 0, 4),
+		started:    make(chan struct{}),
+		stopped:    make(chan struct{}),
+		banner:     defaultBanner,
 	}
 	for _, opt := range opts {
 		opt(srv)
@@ -124,24 +125,24 @@ func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 
 // Prepare Call before init and startup
 func (s *BootstrapServer) Prepare() error {
-	return s.router.Prepare()
+	return s.dispatcher.Prepare()
 }
 
 // Initial
 func (s *BootstrapServer) Initial() error {
 	// Listen Server
-	for id, srv := range s.listener {
-		if err := srv.Init(LoadWebListenerConfig(id)); nil != err {
+	for id, webListener := range s.listener {
+		if err := webListener.Init(LoadWebListenerConfig(id)); nil != err {
 			return err
 		}
 	}
 	// Discovery
 	for _, dis := range ext.EndpointDiscoveries() {
-		if err := s.router.AddInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
+		if err := s.dispatcher.AddInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
 			return err
 		}
 	}
-	return s.router.Initial()
+	return s.dispatcher.Initial()
 }
 
 func (s *BootstrapServer) Startup(build flux.Build) error {
@@ -155,55 +156,68 @@ func (s *BootstrapServer) Startup(build flux.Build) error {
 func (s *BootstrapServer) start() error {
 	dl := s.defaultListener()
 	fluxpkg.Assert(nil != dl, "<default listener> is required")
-	if err := s.router.Startup(); nil != err {
+	// Dispatcher
+	logger.Info("SERVER:START:DISPATCHER:START")
+	if err := s.dispatcher.Startup(); nil != err {
 		return err
 	}
+	logger.Info("SERVER:START:DISPATCHER:OK")
+	// Discovery
 	endpoints := make(chan flux.EndpointEvent, 2)
 	services := make(chan flux.ServiceEvent, 2)
 	defer func() {
 		close(endpoints)
 		close(services)
 	}()
-	if err := s.startDiscovery(endpoints, services); nil != err {
+	logger.Info("SERVER:START:DISCOVERY:START")
+	ctx, canceled := context.WithCancel(context.Background())
+	defer canceled()
+	if err := s.discovery(ctx, endpoints, services); nil != err {
 		return err
 	}
-	// Start Servers
+	logger.Info("SERVER:START:DISCOVERY:OK")
+	// Listeners
 	var errch chan error
 	for lid, wl := range s.listener {
+		logger.Infow("SERVER:START:LISTENER:START", "listener-id", wl.ListenerId())
 		go func(id string, server flux.WebListener) {
-			logger.Infow("WebListener starting, listener-id:: " + id)
 			errch <- server.Listen()
+			logger.Infow("SERVER:START:LISTENER:STOP", "listener-id", id)
 		}(lid, wl)
 	}
 	close(s.started)
 	return <-errch
 }
 
-func (s *BootstrapServer) startDiscovery(endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
+func (s *BootstrapServer) discovery(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
 	for _, discovery := range ext.EndpointDiscoveries() {
-		if err := discovery.WatchEndpoints(endpoints); nil != err {
+		logger.Infow("SERVER:START:DISCOVERY:WATCH", "discovery-id", discovery.Id())
+		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
 			return err
 		}
-		if err := discovery.WatchServices(services); nil != err {
+		if err := discovery.WatchServices(ctx, services); nil != err {
 			return err
 		}
+		logger.Infow("SERVER:START:DISCOVERY:WATCH/OK", "discovery-id", discovery.Id())
 	}
+	// 通过channel注册接收到的事件
 	go func() {
-		logger.Info("Discovery event loop: START")
-		defer logger.Info("Discovery event loop: STOP")
+		logger.Info("SERVER:START:DISCOVERY_LOOP:START")
+		defer logger.Info("SERVER:START:DISCOVERY_LOOP:STOP")
 		for {
 			select {
 			case epEvt, ok := <-endpoints:
-				if !ok {
-					return
+				if ok {
+					s.onEndpointEvent(epEvt)
 				}
-				s.onEndpointEvent(epEvt)
 
 			case esEvt, ok := <-services:
-				if !ok {
-					return
+				if ok {
+					s.onServiceEvent(esEvt)
 				}
-				s.onServiceEvent(esEvt)
+
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
@@ -252,7 +266,7 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 	defer func(start time.Time) {
 		trace.Infow("SERVER:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
-	return s.router.Route(ctxw)
+	return s.dispatcher.Route(ctxw)
 }
 
 func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
@@ -332,7 +346,7 @@ func (s *BootstrapServer) Shutdown(ctx goctx.Context) error {
 			logger.Warnw("Server["+id+"] shutdown http server", "error", err)
 		}
 	}
-	return s.router.Shutdown(ctx)
+	return s.dispatcher.Shutdown(ctx)
 }
 
 // GracefulShutdown

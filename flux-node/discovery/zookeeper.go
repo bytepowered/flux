@@ -8,6 +8,7 @@ import (
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-node/remoting"
 	"github.com/bytepowered/flux/flux-node/remoting/zk"
+	"time"
 )
 
 const (
@@ -103,46 +104,62 @@ func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 }
 
 // OnEndpointChanged Listen http endpoints events
-func (r *ZookeeperDiscoveryService) WatchEndpoints(events chan<- flux.EndpointEvent) error {
+func (r *ZookeeperDiscoveryService) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	const msg = "DISCOVERY:ZOOKEEPER:ENDPOINT:LISTEN_NODE"
-	listener := func(event remoting.NodeEvent) {
+	// Watch回调函数
+	callback := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw(msg, "event", event, "error", r)
+				logger.Errorw(msg, "endpoint-event", event, "error", r)
 			}
 		}()
 		if evt, err := NewEndpointEvent(event.Data, event.EventType); nil == err {
 			events <- evt
 		} else {
-			logger.Errorw(msg, "event", event, "error", err)
+			logger.Errorw(msg, "endpoint-event", event, "error", err)
 		}
 	}
-	logger.Infow(msg, "node-path", r.endpointPath)
-	for _, retriever := range r.retrievers {
-		if err := r.watch(retriever, r.endpointPath, listener); err != nil {
-			return err
-		}
-	}
-	return nil
+	logger.Infow(msg, "endpoint-path", r.endpointPath)
+	return r.onRetrievers(ctx, r.endpointPath, callback)
 }
 
 // OnServiceChanged Listen gateway services events
-func (r *ZookeeperDiscoveryService) WatchServices(events chan<- flux.ServiceEvent) error {
+func (r *ZookeeperDiscoveryService) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	const msg = "DISCOVERY:ZOOKEEPER:SERVICE:LISTEN_NODE"
-	listener := func(event remoting.NodeEvent) {
+	callback := func(event remoting.NodeEvent) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw(msg, "event", event, "error", r)
+				logger.Errorw(msg, "endpoint-event", event, "error", r)
 			}
 		}()
 		if evt, ok := NewServiceEvent(event.Data, event.EventType, event.Path); ok {
 			events <- evt
 		}
 	}
-	logger.Infow(msg, "node-path", r.servicePath)
+	logger.Infow(msg, "endpoint-path", r.servicePath)
+	return r.onRetrievers(ctx, r.servicePath, callback)
+}
+
+func (r *ZookeeperDiscoveryService) onRetrievers(ctx context.Context, path string, callback func(remoting.NodeEvent)) error {
 	for _, retriever := range r.retrievers {
-		if err := r.watch(retriever, r.servicePath, listener); err != nil {
-			return err
+		watcher := func(ret *zk.ZookeeperRetriever, notify chan<- struct{}) {
+			if err := r.watch(ret, path, callback); err != nil {
+				logger.Errorw("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/Error", "watch-path", path, "error", err)
+			} else {
+				logger.Infow("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/Success", "watch-path", path)
+			}
+			notify <- struct{}{}
+		}
+		notify := make(chan struct{})
+		go watcher(retriever, notify)
+		select {
+		case <-ctx.Done():
+			logger.Infow("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/CANCELED", "watch-path", path)
+			return nil
+		case <-time.After(time.Minute):
+			logger.Warnw("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/TIMEOUT", "watch-path", path)
+		case <-notify:
+			continue
 		}
 	}
 	return nil
@@ -154,9 +171,8 @@ func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, root
 			return fmt.Errorf("init metadata node: %w", err)
 		}
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:META:WATCH", "path", rootpath)
 	return retriever.AddChildrenNodeChangedListener("", rootpath, func(event remoting.NodeEvent) {
-		logger.Infow("DISCOVERY:ZOOKEEPER:META:RECEIVED", "event", event)
+		logger.Infow("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH:RECV", "event", event)
 		if event.EventType == remoting.EventTypeChildAdd {
 			if err := retriever.AddNodeChangedListener("", event.Path, nodeListener); nil != err {
 				logger.Warnw("Watch child node data", "error", err)
