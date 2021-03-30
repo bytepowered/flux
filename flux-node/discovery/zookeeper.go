@@ -166,7 +166,11 @@ func (r *ZookeeperDiscoveryService) onRetrievers(ctx context.Context, path strin
 }
 
 func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
-	if exist, _ := retriever.Exists(rootpath); !exist {
+	exist, err := retriever.Exists(rootpath)
+	if nil != err {
+		return fmt.Errorf("check path exists, path: %s, error: %w", rootpath, err)
+	}
+	if !exist {
 		if err := retriever.Create(rootpath); nil != err {
 			return fmt.Errorf("init metadata node: %w", err)
 		}
