@@ -18,9 +18,9 @@ const (
 )
 
 const (
-	ErrorCodeJwtRequires  = "AUTHORIZATION:JWT:REQUIRES"
 	ErrorCodeJwtMalformed = "AUTHORIZATION:JWT:MALFORMED"
 	ErrorCodeJwtExpired   = "AUTHORIZATION:JWT:EXPIRED"
+	ErrorCodeJwtNotFound  = "AUTHORIZATION:JWT:NOTFOUND"
 )
 
 const (
@@ -44,14 +44,6 @@ const (
 	ErrorMessageWebServerRequestNotFound = "SERVER:REQUEST:NOT_FOUND"
 
 	ErrorMessageRequestPrepare = "REQUEST:BODY:PREPARE"
-)
-
-var (
-	ErrRouteNotFound = &ServeError{
-		StatusCode: http.StatusNotFound,
-		ErrorCode:  ErrorCodeRequestNotFound,
-		Message:    ErrorMessageWebServerRequestNotFound,
-	}
 )
 
 // ServeError 定义网关处理请求的服务错误；

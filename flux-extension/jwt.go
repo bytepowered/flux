@@ -71,7 +71,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		if ctx.Endpoint().HasAttr(FeatureJWT) && (tokenStr == "" || err == request.ErrNoTokenInRequest) {
 			return &flux.ServeError{
 				StatusCode: http.StatusUnauthorized,
-				ErrorCode:  flux.ErrorCodeJwtExpired,
+				ErrorCode:  flux.ErrorCodeJwtNotFound,
 				Message:    "JWT:VALIDATE: token not found",
 			}
 		}
@@ -101,7 +101,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 				// Token is either expired or not active yet
 				return &flux.ServeError{
 					StatusCode: http.StatusUnauthorized,
-					ErrorCode:  flux.ErrorCodeJwtRequires,
+					ErrorCode:  flux.ErrorCodeJwtExpired,
 					Message:    "JWT:VALIDATE:token is expired/not active",
 				}
 			} else {
