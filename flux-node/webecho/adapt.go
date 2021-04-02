@@ -10,7 +10,7 @@ import (
 type EchoWebHandler flux.WebHandler
 
 func (call EchoWebHandler) AdaptFunc(ctx echo.Context) error {
-	return call(toWebExchange(ctx))
+	return call(toServerWebContext(ctx))
 }
 
 // EchoWebInterceptor 实现flux.WebInterceptor与Echo框架的echo.MiddlewareFunc函数适配
@@ -20,12 +20,12 @@ func (call EchoWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc
 	return func(echoc echo.Context) error {
 		return call(func(webex flux.ServerWebContext) error {
 			return next(echoc)
-		})(toWebExchange(echoc))
+		})(toServerWebContext(echoc))
 	}
 }
 
-func toWebExchange(echoc echo.Context) flux.ServerWebContext {
+func toServerWebContext(echoc echo.Context) flux.ServerWebContext {
 	webex, ok := echoc.Get(__interContextKeyWebContext).(flux.ServerWebContext)
-	fluxpkg.Assert(ok == true && webex != nil, "<web-exchange> not found in echo.context")
+	fluxpkg.Assert(ok == true && webex != nil, "<server-web-context> not found in echo.context")
 	return webex
 }
