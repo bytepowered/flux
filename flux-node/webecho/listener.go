@@ -39,14 +39,14 @@ const (
 var _ flux.WebListener = new(EchoWebListener)
 
 func init() {
-	ext.SetWebListenerFactory(NewEchoWebListener)
+	ext.SetWebListenerFactory(NewWebListener)
 }
 
-func NewEchoWebListener(listenerId string, config *flux.Configuration) flux.WebListener {
-	return NewEchoWebListenerWith(listenerId, config, DefaultIdentifier, nil)
+func NewWebListener(listenerId string, config *flux.Configuration) flux.WebListener {
+	return NewWebListenerWith(listenerId, config, DefaultIdentifier, nil)
 }
 
-func NewEchoWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentifier, mws *AdaptMiddleware) flux.WebListener {
+func NewWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentifier, mws *AdaptMiddleware) flux.WebListener {
 	fluxpkg.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
 	server.Pre(RepeatableReader)
