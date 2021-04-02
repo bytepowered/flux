@@ -1,7 +1,9 @@
 package internal
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -129,12 +131,18 @@ func (w *EchoWebContext) Rewrite(method string, path string) {
 	}
 }
 
-func (w *EchoWebContext) Write(statusCode int, contentType string, bytes []byte) error {
-	return w.echoc.Blob(statusCode, contentType, bytes)
+func (w *EchoWebContext) Write(statusCode int, contentType string, data []byte) error {
+	return w.WriteStream(statusCode, contentType, bytes.NewReader(data))
 }
 
 func (w *EchoWebContext) WriteStream(statusCode int, contentType string, reader io.Reader) error {
-	return w.echoc.Stream(statusCode, contentType, reader)
+	writer := w.echoc.Response()
+	writer.Header().Set(echo.HeaderContentType, contentType)
+	writer.WriteHeader(statusCode)
+	if _, err := io.Copy(writer, reader); nil != err {
+		return fmt.Errorf("web context write failed, error: %w", err)
+	}
+	return nil
 }
 
 func (w *EchoWebContext) SetResponseWriter(rw http.ResponseWriter) {
@@ -164,17 +172,3 @@ func (w *EchoWebContext) GetVariable(key string) (interface{}, bool) {
 	v = w.echoc.Get(key)
 	return v, nil != v
 }
-
-//func _mockVarsLoader() url.Values {
-//	return make(url.Values, 0)
-//}
-//
-//func _mockCtxVarsLoader(key string) interface{} {
-//	return nil
-//}
-//
-//func MockWebExchange(id string) ServerWebContext {
-//	mockQ := httptest.NewRequest("GET", "http://mocking/"+id, nil)
-//	mockW := httptest.NewRecorder()
-//	return NewServeWebExchange(id, mockQ, mockW, _mockVarsLoader, _mockVarsLoader, _mockVarsLoader, _mockCtxVarsLoader)
-//}
