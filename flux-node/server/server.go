@@ -16,7 +16,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -49,7 +48,6 @@ type BootstrapServer struct {
 	started    chan struct{}
 	stopped    chan struct{}
 	banner     string
-	trace      bool
 }
 
 // WithWebExchangeHooks 配置请求Hook函数列表
@@ -225,7 +223,12 @@ func (s *BootstrapServer) startEventWatch(ctx context.Context, endpoints chan fl
 	return nil
 }
 
-func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MultiEndpoint) error {
+func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MultiEndpoint) (err error) {
+	defer func(id string) {
+		if rvr := recover(); rvr != nil {
+			err = fmt.Errorf("SERVER:ROUTE:CRITICAL_PANIC:%w", rvr)
+		}
+	}(webex.RequestId())
 	endpoint, found := endpoints.Lookup(s.version(webex))
 	// 实现动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
@@ -236,17 +239,10 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 			}
 		}
 	}
-	defer func(id string) {
-		if rvr := recover(); rvr != nil {
-			logger.Trace(id).Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", rvr, "error.trace", string(debug.Stack()))
-		}
-	}(webex.RequestId())
 	if !found {
-		if s.trace {
-			logger.Trace(webex.RequestId()).Infow("SERVER:ROUTE:NOT_FOUND",
-				"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
-			)
-		}
+		logger.Trace(webex.RequestId()).Infow("SERVER:ROUTE:NOT_FOUND",
+			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
+		)
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
 		return server.HandleNotfound(webex)
 	} else {
@@ -267,7 +263,11 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 	defer func(start time.Time) {
 		trace.Infow("SERVER:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
-	return s.dispatcher.Route(ctxw)
+	// route
+	if serr := s.dispatcher.Route(ctxw); nil != err {
+		server.HandleError(webex, serr)
+	}
+	return nil
 }
 
 func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
@@ -275,21 +275,21 @@ func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
 	initArguments(service.Arguments)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("SERVER:META:SERVICE:ADD",
+		logger.Infow("SERVER:EVENT:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RegisterTransporterService(service)
 		if "" != service.AliasId {
 			ext.RegisterTransporterServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
-		logger.Infow("SERVER:META:SERVICE:UPDATE",
+		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RegisterTransporterService(service)
 		if "" != service.AliasId {
 			ext.RegisterTransporterServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
-		logger.Infow("SERVER:META:SERVICE:REMOVE",
+		logger.Infow("SERVER:EVENT:SERVICE:REMOVE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RemoveTransporterService(service.ServiceId)
 		if "" != service.AliasId {
@@ -302,7 +302,7 @@ func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	// Check http method
 	if !isAllowedHttpMethod(method) {
-		logger.Warnw("SERVER:META:ENDPOINT:METHOD/X", "method", method, "pattern", event.Endpoint.HttpPattern)
+		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", "method", method, "pattern", event.Endpoint.HttpPattern)
 		return
 	}
 	pattern := event.Endpoint.HttpPattern
@@ -313,7 +313,7 @@ func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("SERVER:META:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
+		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
 		bind.Update(endpoint.Version, &endpoint)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if isreg {
@@ -323,17 +323,17 @@ func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 			}
 			server, ok := s.WebListenerById(id)
 			if ok {
-				logger.Infow("SERVER:META:ENDPOINT:HTTP_HANDLER/"+id, "method", method, "pattern", pattern)
+				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+id, "method", method, "pattern", pattern)
 				server.AddHandler(method, pattern, s.newEndpointHandler(server, bind))
 			} else {
-				logger.Errorw("SERVER:META:ENDPOINT:LISTENER_MISSED/"+id, "method", method, "pattern", pattern)
+				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+id, "method", method, "pattern", pattern)
 			}
 		}
 	case flux.EventTypeUpdated:
-		logger.Infow("SERVER:META:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
+		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
 		bind.Update(endpoint.Version, &endpoint)
 	case flux.EventTypeRemoved:
-		logger.Infow("SERVER:META:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
+		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
 		bind.Delete(endpoint.Version)
 	}
 }

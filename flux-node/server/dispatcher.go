@@ -111,8 +111,8 @@ func (r *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
-		transporter := ctx.Transporter()
-		proto, uri, method := transporter.RpcProto(), transporter.Interface, transporter.Method
+		service := ctx.Transporter()
+		proto, uri, method := service.RpcProto(), service.Interface, service.Method
 		r.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
