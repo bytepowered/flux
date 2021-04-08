@@ -94,13 +94,14 @@ type (
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
-	Name      string     `json:"name" yaml:"name"`           // 参数名称
-	Type      string     `json:"type" yaml:"type"`           // 参数结构类型
-	Class     string     `json:"class" yaml:"class"`         // 参数类型
-	Generic   []string   `json:"generic" yaml:"generic"`     // 泛型类型
-	HttpName  string     `json:"httpName" yaml:"httpName"`   // 映射Http的参数Key
-	HttpScope string     `json:"httpScope" yaml:"httpScope"` // 映射Http参数值域
-	Fields    []Argument `json:"fields" yaml:"fields"`       // 子结构字段
+	Name               string           `json:"name" yaml:"name"`           // 参数名称
+	Type               string           `json:"type" yaml:"type"`           // 参数结构类型
+	Class              string           `json:"class" yaml:"class"`         // 参数类型
+	Generic            []string         `json:"generic" yaml:"generic"`     // 泛型类型
+	HttpName           string           `json:"httpName" yaml:"httpName"`   // 映射Http的参数Key
+	HttpScope          string           `json:"httpScope" yaml:"httpScope"` // 映射Http参数值域
+	Fields             []Argument       `json:"fields" yaml:"fields"`       // 子结构字段
+	EmbeddedAttributes `yaml:",inline"` // 属性列表
 	// helper func
 	ValueLoader   func() MTValue     `json:"-"`
 	LookupFunc    ArgumentLookupFunc `json:"-"`
@@ -219,7 +220,7 @@ func (b TransporterService) RpcRetries() string {
 
 // IsValid 判断服务配置是否有效；Interface+Method不能为空；
 func (b TransporterService) IsValid() bool {
-	return "" != b.Interface && "" != b.Method
+	return b.Interface != "" && "" != b.Method
 }
 
 // HasArgs 判定是否有参数
@@ -254,7 +255,7 @@ func (e *Endpoint) PermissionIds() []string {
 }
 
 func (e *Endpoint) IsValid() bool {
-	return "" != e.HttpMethod && "" != e.HttpPattern && e.Service.IsValid()
+	return e.HttpMethod != "" && "" != e.HttpPattern && e.Service.IsValid()
 }
 
 func (e *Endpoint) Authorize() bool {
@@ -279,7 +280,7 @@ func NewMultiEndpoint(endpoint *Endpoint) *MultiEndpoint {
 func (m *MultiEndpoint) IsEmpty() bool {
 	m.RLock()
 	defer m.RUnlock()
-	return 0 == len(m.endpoint)
+	return len(m.endpoint) == 0
 }
 
 // Lookup lookup by version, returns a copy endpoint,and a flag
