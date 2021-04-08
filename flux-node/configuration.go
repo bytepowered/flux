@@ -240,7 +240,7 @@ func (c *Configuration) GetConfigurationSlice(key string) []*Configuration {
 	}
 	out := make([]*Configuration, 0, sliceV.Len())
 	for i := 0; i < sliceV.Len(); i++ {
-		sm := cast.ToStringMap(sliceV.Index(i))
+		sm := cast.ToStringMap(sliceV.Index(i).Interface())
 		if len(sm) > 0 {
 			out = append(out, NewConfigurationOfMap(sm))
 		}
