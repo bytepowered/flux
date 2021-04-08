@@ -264,7 +264,7 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 		trace.Infow("SERVER:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
 	// route
-	if serr := s.dispatcher.Route(ctxw); nil != err {
+	if serr := s.dispatcher.Route(ctxw); nil != serr {
 		server.HandleError(webex, serr)
 	}
 	return nil
