@@ -1,10 +1,10 @@
 package flux
 
 import (
-	"fmt"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -225,11 +225,27 @@ func (c *Configuration) GetStringMapString(key string) map[string]string {
 	return cast.ToStringMapString(c.Get(key))
 }
 
-// GetStringMapString returns the value associated with the key as a map of strings.
+// GetConfigurationSlice returns the value associated with the key as a slice of configurations
 func (c *Configuration) GetConfigurationSlice(key string) []*Configuration {
-	slice := c.Get(key)
-	fmt.Println(slice)
-	return nil
+	if !c.IsSet(key) {
+		return nil
+	}
+	v := c.Get(key)
+	if v == nil {
+		return nil
+	}
+	sliceV := reflect.ValueOf(v)
+	if sliceV.Kind() != reflect.Slice {
+		return nil
+	}
+	out := make([]*Configuration, 0, sliceV.Len())
+	for i := 0; i < sliceV.Len(); i++ {
+		sm := cast.ToStringMap(sliceV.Index(i))
+		if len(sm) > 0 {
+			out = append(out, NewConfigurationOfMap(sm))
+		}
+	}
+	return out
 }
 
 const (
