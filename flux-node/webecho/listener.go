@@ -153,12 +153,12 @@ func (s *EchoWebListener) Listen() error {
 
 func (s *EchoWebListener) SetBodyResolver(r flux.WebBodyResolver) {
 	fluxpkg.AssertNotNil(r, "WebBodyResolver must not nil, listener-id: "+s.id)
-	s.started().bodyResolver = r
+	s.mustNotStarted().bodyResolver = r
 }
 
 func (s *EchoWebListener) SetNotfoundHandler(f flux.WebHandler) {
 	fluxpkg.AssertNotNil(f, "NotfoundHandler must not nil, listener-id: "+s.id)
-	s.started()
+	s.mustNotStarted()
 	echo.NotFoundHandler = EchoWebHandler(f).AdaptFunc
 }
 
@@ -169,7 +169,7 @@ func (s *EchoWebListener) HandleNotfound(webex flux.ServerWebContext) error {
 func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
 	fluxpkg.AssertNotNil(handler, "ErrorHandler must not nil, listener-id: "+s.id)
-	s.started().server.HTTPErrorHandler = func(err error, c echo.Context) {
+	s.mustNotStarted().server.HTTPErrorHandler = func(err error, c echo.Context) {
 		// 修正Error未判定为nil的问题问题
 		if fluxpkg.IsNil(err) {
 			return
@@ -181,7 +181,7 @@ func (s *EchoWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 }
 
 func (s *EchoWebListener) HandleError(webex flux.ServerWebContext, err error) {
-	s.started().server.HTTPErrorHandler(err, webex.(*internal.EchoWebContext).ShadowContext())
+	s.server.HTTPErrorHandler(err, webex.(*internal.EchoWebContext).ShadowContext())
 }
 
 func (s *EchoWebListener) AddInterceptor(i flux.WebInterceptor) {
@@ -196,8 +196,8 @@ func (s *EchoWebListener) AddMiddleware(m flux.WebInterceptor) {
 
 func (s *EchoWebListener) AddHandler(method, pattern string, h flux.WebHandler, is ...flux.WebInterceptor) {
 	fluxpkg.AssertNotNil(h, "Handler must not nil, listener-id: "+s.id)
-	fluxpkg.Assert("" != method, "Method must not empty")
-	fluxpkg.Assert("" != pattern, "Pattern must not empty")
+	fluxpkg.Assert(method != "", "Method must not empty")
+	fluxpkg.Assert(pattern != "", "Pattern must not empty")
 	wms := make([]echo.MiddlewareFunc, len(is))
 	for i, mi := range is {
 		wms[i] = EchoWebInterceptor(mi).AdaptFunc
@@ -229,8 +229,8 @@ func (s *EchoWebListener) Close(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func (s *EchoWebListener) started() *EchoWebListener {
-	fluxpkg.Assert(!s.isstarted, "illegal started: web listener is started")
+func (s *EchoWebListener) mustNotStarted() *EchoWebListener {
+	fluxpkg.Assert(!s.isstarted, "illegal state: web listener is started")
 	return s
 }
 
