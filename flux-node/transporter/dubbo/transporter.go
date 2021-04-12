@@ -301,10 +301,6 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 
 // DoInvoke execute transporter service with arguments
 func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
-	if b.trace {
-		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:INVOKE",
-			"transporter-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", ctx.Attributes())
-	}
 	att, err := b.tresolver(ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
@@ -315,6 +311,10 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 			Message:    flux.ErrorMessageDubboAssembleFailed,
 			CauseError: err,
 		}
+	}
+	if b.trace {
+		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:INVOKE",
+			"transporter-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", att)
 	}
 	generic := b.LoadGenericService(&service)
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
