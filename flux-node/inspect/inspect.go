@@ -17,7 +17,7 @@ const (
 	queryKeyServiceId1   = "service"
 )
 
-type EndpointFilter func(ep *flux.MultiEndpoint) bool
+type EndpointFilter func(ep *flux.MVCEndpoint) bool
 
 var (
 	endpointQueryKeys = []string{queryKeyApplication, queryKeyProtocol,
@@ -33,18 +33,18 @@ var (
 
 func init() {
 	endpointFilterFactories[queryKeyApplication] = func(query string) EndpointFilter {
-		return func(ep *flux.MultiEndpoint) bool {
+		return func(ep *flux.MVCEndpoint) bool {
 			return !ep.IsEmpty() && queryMatch(query, ep.Random().Application)
 		}
 	}
 	endpointFilterFactories[queryKeyProtocol] = func(query string) EndpointFilter {
-		return func(ep *flux.MultiEndpoint) bool {
+		return func(ep *flux.MVCEndpoint) bool {
 			proto := ep.Random().Service.RpcProto()
 			return !ep.IsEmpty() && queryMatch(query, proto)
 		}
 	}
 	httpPatternFilter := func(query string) EndpointFilter {
-		return func(ep *flux.MultiEndpoint) bool {
+		return func(ep *flux.MVCEndpoint) bool {
 			return !ep.IsEmpty() && queryMatch(query, ep.Random().HttpPattern)
 		}
 	}
@@ -52,7 +52,7 @@ func init() {
 	endpointFilterFactories[queryKeyHttpPattern0] = httpPatternFilter
 
 	endpointFilterFactories[queryKeyInterface] = func(query string) EndpointFilter {
-		return func(ep *flux.MultiEndpoint) bool {
+		return func(ep *flux.MVCEndpoint) bool {
 			return !ep.IsEmpty() && queryMatch(query, ep.Random().Service.Interface)
 		}
 	}
@@ -100,7 +100,7 @@ func ServicesHandler(ctx flux.ServerWebContext) error {
 	})
 }
 
-func queryWithEndpointFilters(data map[string]*flux.MultiEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
+func queryWithEndpointFilters(data map[string]*flux.MVCEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
 	items := make([]map[string]*flux.Endpoint, 0, 16)
 DataLoop:
 	for _, v := range data {

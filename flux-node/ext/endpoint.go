@@ -9,24 +9,24 @@ var (
 	endpoints = new(sync.Map)
 )
 
-func RegisterEndpoint(key string, endpoint *flux.Endpoint) *flux.MultiEndpoint {
+func RegisterEndpoint(key string, endpoint *flux.Endpoint) *flux.MVCEndpoint {
 	mve := flux.NewMultiEndpoint(endpoint)
 	endpoints.Store(key, mve)
 	return mve
 }
 
-func EndpointByKey(key string) (*flux.MultiEndpoint, bool) {
+func EndpointByKey(key string) (*flux.MVCEndpoint, bool) {
 	ep, ok := endpoints.Load(key)
 	if ok {
-		return ep.(*flux.MultiEndpoint), true
+		return ep.(*flux.MVCEndpoint), true
 	}
 	return nil, false
 }
 
-func Endpoints() map[string]*flux.MultiEndpoint {
-	out := make(map[string]*flux.MultiEndpoint, 32)
+func Endpoints() map[string]*flux.MVCEndpoint {
+	out := make(map[string]*flux.MVCEndpoint, 32)
 	endpoints.Range(func(key, value interface{}) bool {
-		out[key.(string)] = value.(*flux.MultiEndpoint)
+		out[key.(string)] = value.(*flux.MVCEndpoint)
 		return true
 	})
 	return out

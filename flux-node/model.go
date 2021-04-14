@@ -1,6 +1,7 @@
 package flux
 
 import (
+	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"github.com/spf13/cast"
 	"strings"
 	"sync"
@@ -262,77 +263,77 @@ func (e *Endpoint) Authorize() bool {
 	return e.GetAttr(EndpointAttrTagAuthorize).GetBool()
 }
 
-// Multi version Endpoint
-type MultiEndpoint struct {
-	endpoint      map[string]*Endpoint // 各版本数据
+// Multi version control Endpoint
+type MVCEndpoint struct {
+	versions      map[string]*Endpoint // 各版本数据
 	*sync.RWMutex                      // 读写锁
 }
 
-func NewMultiEndpoint(endpoint *Endpoint) *MultiEndpoint {
-	return &MultiEndpoint{
-		endpoint: map[string]*Endpoint{
+func NewMultiEndpoint(endpoint *Endpoint) *MVCEndpoint {
+	return &MVCEndpoint{
+		versions: map[string]*Endpoint{
 			endpoint.Version: endpoint,
 		},
 		RWMutex: new(sync.RWMutex),
 	}
 }
 
-func (m *MultiEndpoint) IsEmpty() bool {
+func (m *MVCEndpoint) IsEmpty() bool {
 	m.RLock()
 	defer m.RUnlock()
-	return len(m.endpoint) == 0
+	return len(m.versions) == 0
 }
 
 // Lookup lookup by version, returns a copy endpoint,and a flag
-func (m *MultiEndpoint) Lookup(version string) (Endpoint, bool) {
+func (m *MVCEndpoint) Lookup(version string) (Endpoint, bool) {
 	m.RLock()
 	defer m.RUnlock()
-	size := len(m.endpoint)
+	size := len(m.versions)
 	if 0 == size {
 		return Endpoint{}, false
 	}
 	if "" == version || 1 == size {
-		for _, ep := range m.endpoint {
+		for _, ep := range m.versions {
 			return m.dup(ep), true
 		}
 	}
-	epv, ok := m.endpoint[version]
+	epv, ok := m.versions[version]
 	if !ok {
 		return Endpoint{}, false
 	}
 	return m.dup(epv), true
 }
 
-func (m *MultiEndpoint) dup(src *Endpoint) Endpoint {
+func (m *MVCEndpoint) dup(src *Endpoint) Endpoint {
 	dup := *src
 	return dup
 }
 
-func (m *MultiEndpoint) Update(version string, endpoint *Endpoint) {
+func (m *MVCEndpoint) Update(version string, endpoint *Endpoint) {
 	m.Lock()
-	m.endpoint[version] = endpoint
+	m.versions[version] = endpoint
 	m.Unlock()
 }
 
-func (m *MultiEndpoint) Delete(version string) {
+func (m *MVCEndpoint) Delete(version string) {
 	m.Lock()
-	delete(m.endpoint, version)
+	delete(m.versions, version)
 	m.Unlock()
 }
 
-func (m *MultiEndpoint) Random() Endpoint {
+func (m *MVCEndpoint) Random() Endpoint {
 	m.RLock()
 	defer m.RUnlock()
-	for _, ep := range m.endpoint {
+	for _, ep := range m.versions {
 		return *ep
 	}
-	panic("SERVER:ASSERT: <multi-endpoint> must not empty, on query random")
+	panic(fluxpkg.AssertMessagePrefix + "<multi-endpoint> must not empty, on query random")
 }
 
-func (m *MultiEndpoint) ToSerializable() map[string]*Endpoint {
+func (m *MVCEndpoint) ToSerializable() map[string]*Endpoint {
 	m.RLock()
-	copies := make(map[string]*Endpoint, len(m.endpoint))
-	for k, ep := range m.endpoint {
+	copies := make(map[string]*Endpoint, len(m.versions))
+	for k, ep := range m.versions {
 		copies[k] = ep
 	}
 	m.RUnlock()

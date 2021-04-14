@@ -41,26 +41,26 @@ type (
 
 // BootstrapServer
 type BootstrapServer struct {
-	listener   map[string]flux.WebListener
-	hooks      []flux.ContextHookFunc
-	version    VersionLookupFunc
-	dispatcher *Dispatcher
-	started    chan struct{}
-	stopped    chan struct{}
-	banner     string
+	listener    map[string]flux.WebListener
+	hookFunc    []flux.ContextHookFunc
+	versionFunc VersionLookupFunc
+	dispatcher  *Dispatcher
+	started     chan struct{}
+	stopped     chan struct{}
+	banner      string
 }
 
-// WithWebExchangeHooks 配置请求Hook函数列表
-func WithWebExchangeHooks(hooks ...flux.ContextHookFunc) Option {
+// WithContextHooks 配置请求Hook函数列表
+func WithContextHooks(hooks ...flux.ContextHookFunc) Option {
 	return func(bs *BootstrapServer) {
-		bs.hooks = append(bs.hooks, hooks...)
+		bs.hookFunc = append(bs.hookFunc, hooks...)
 	}
 }
 
 // WithVersionLookupFunc 配置Web请求版本选择函数
 func WithVersionLookupFunc(fun VersionLookupFunc) Option {
 	return func(bs *BootstrapServer) {
-		bs.version = fun
+		bs.versionFunc = fun
 	}
 }
 
@@ -110,7 +110,7 @@ func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 	srv := &BootstrapServer{
 		dispatcher: NewDispatcher(),
 		listener:   make(map[string]flux.WebListener, 2),
-		hooks:      make([]flux.ContextHookFunc, 0, 4),
+		hookFunc:   make([]flux.ContextHookFunc, 0, 4),
 		started:    make(chan struct{}),
 		stopped:    make(chan struct{}),
 		banner:     defaultBanner,
@@ -223,13 +223,13 @@ func (s *BootstrapServer) startEventWatch(ctx context.Context, endpoints chan fl
 	return nil
 }
 
-func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MultiEndpoint) (err error) {
+func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (err error) {
 	defer func(id string) {
 		if rvr := recover(); rvr != nil {
 			err = fmt.Errorf("SERVER:ROUTE:CRITICAL_PANIC:%w", rvr)
 		}
 	}(webex.RequestId())
-	endpoint, found := endpoints.Lookup(s.version(webex))
+	endpoint, found := endpoints.Lookup(s.versionFunc(webex))
 	// 实现动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
 		if selector.Active(webex, server.ListenerId()) {
@@ -257,7 +257,7 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 	trace := logger.TraceContext(ctxw)
 	trace.Infow("SERVER:ROUTE:START")
 	// hook
-	for _, hook := range s.hooks {
+	for _, hook := range s.hookFunc {
 		hook(webex, ctxw)
 	}
 	defer func(start time.Time) {
@@ -406,16 +406,16 @@ func (s *BootstrapServer) WebListenerById(listenerId string) (flux.WebListener, 
 
 // AddContextHookFunc 添加Http与Flux的Context桥接函数
 func (s *BootstrapServer) AddContextHookFunc(f flux.ContextHookFunc) {
-	s.hooks = append(s.hooks, f)
+	s.hookFunc = append(s.hookFunc, f)
 }
 
-func (s *BootstrapServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MultiEndpoint) flux.WebHandler {
+func (s *BootstrapServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MVCEndpoint) flux.WebHandler {
 	return func(webex flux.ServerWebContext) error {
 		return s.route(webex, server, endpoint)
 	}
 }
 
-func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*flux.MultiEndpoint, bool) {
+func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*flux.MVCEndpoint, bool) {
 	if mve, ok := ext.EndpointByKey(routeKey); ok {
 		return mve, false
 	} else {
