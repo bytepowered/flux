@@ -21,6 +21,15 @@ func RegisterTransporterService(service flux.TransporterService) {
 	RegisterTransporterServiceById(id, service)
 }
 
+func TransporterServices() map[string]flux.TransporterService {
+	out := make(map[string]flux.TransporterService, 512)
+	endpoints.Range(func(key, value interface{}) bool {
+		out[key.(string)] = value.(flux.TransporterService)
+		return true
+	})
+	return out
+}
+
 // TransporterServiceById load transporter service by serviceId
 func TransporterServiceById(serviceID string) (flux.TransporterService, bool) {
 	v, ok := servicesMap.Load(serviceID)

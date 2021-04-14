@@ -330,11 +330,11 @@ func (m *MVCEndpoint) Random() Endpoint {
 	panic(fluxpkg.AssertMessagePrefix + "<multi-endpoint> must not empty, on query random")
 }
 
-func (m *MVCEndpoint) ToSerializable() map[string]*Endpoint {
+func (m *MVCEndpoint) Endpoints() []*Endpoint {
 	m.RLock()
-	copies := make(map[string]*Endpoint, len(m.versions))
-	for k, ep := range m.versions {
-		copies[k] = ep
+	copies := make([]*Endpoint, 0, len(m.versions))
+	for _, ep := range m.versions {
+		copies = append(copies, ep)
 	}
 	m.RUnlock()
 	return copies

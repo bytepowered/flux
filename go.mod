@@ -11,6 +11,8 @@ require (
 	github.com/dop251/goja v0.0.0-20210317175251-bb14c2267b76
 	github.com/dubbogo/go-zookeeper v1.0.1
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/graphql-go/graphql v0.7.9
+	github.com/graphql-go/handler v0.2.3
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
 	github.com/json-iterator/go v1.1.9
 	github.com/labstack/echo/v4 v4.1.16

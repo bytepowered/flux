@@ -91,6 +91,9 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 		WithVersionLookupFunc(func(webex flux.ServerWebContext) string {
 			return webex.HeaderVar(DefaultHttpHeaderVersion)
 		}),
+		WithPrepareHooks(
+			fluxinspect.InitSchema,
+		),
 		// Default WebListener
 		WithWebListener(listener.New(ListenerIdDefault, LoadWebListenerConfig(ListenerIdDefault), nil)),
 		// Admin WebListener

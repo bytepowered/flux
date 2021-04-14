@@ -6,31 +6,66 @@ import (
 )
 
 const (
-	queryKeyServiceId0 = "service-id"
-	queryKeyServiceId1 = "service"
+	srvQueryKeyServiceId = "id"
+	srvQueryKeyInterface = "interface"
 )
+
+type ServiceFilter func(ep *flux.TransporterService) bool
 
 var (
-	serviceQueryKeys = []string{queryKeyServiceId0, queryKeyServiceId1}
+	serviceQueryKeys = []string{srvQueryKeyServiceId, srvQueryKeyInterface}
+	serviceFilters   = make(map[string]func(string) ServiceFilter)
 )
 
-func ServicesHandler(ctx flux.ServerWebContext) error {
+func init() {
+	serviceFilters[srvQueryKeyServiceId] = func(query string) ServiceFilter {
+		return func(srv *flux.TransporterService) bool {
+			return srv.IsValid() && queryMatch(query, srv.ServiceID())
+		}
+	}
+	serviceFilters[srvQueryKeyInterface] = func(query string) ServiceFilter {
+		return func(srv *flux.TransporterService) bool {
+			return srv.IsValid() && queryMatch(query, srv.Interface)
+		}
+	}
+}
+
+func DoQueryServices(args func(key string) string) []*flux.TransporterService {
+	filters := make([]ServiceFilter, 0)
 	for _, key := range serviceQueryKeys {
-		if id := ctx.QueryVar(key); "" != id {
-			service, ok := ext.TransporterServiceById(id)
-			if ok {
-				return send(ctx, flux.StatusOK, service)
-			} else {
-				return send(ctx, flux.StatusNotFound, map[string]string{
-					"status":     "failed",
-					"message":    "service not found",
-					"service-id": id,
-				})
+		if value := args(key); value != "" {
+			if f, ok := serviceFilters[key]; ok {
+				filters = append(filters, f(value))
 			}
 		}
 	}
-	return send(ctx, flux.StatusBadRequest, map[string]string{
-		"status":  "failed",
-		"message": "param is required: serviceId",
+	if len(filters) == 0 {
+		out := make([]*flux.TransporterService, 0, 16)
+		for _, srv := range ext.TransporterServices() {
+			out = append(out, &srv)
+		}
+		return out
+	} else {
+		return queryServiceByFilters(ext.TransporterServices(), filters...)
+	}
+}
+
+func ServicesHandler(ctx flux.ServerWebContext) error {
+	services := DoQueryServices(func(key string) string {
+		return ctx.QueryVar(key)
 	})
+	return send(ctx, flux.StatusOK, services)
+}
+
+func queryServiceByFilters(data map[string]flux.TransporterService, filters ...ServiceFilter) []*flux.TransporterService {
+	outs := make([]*flux.TransporterService, 0, 16)
+	for _, srv := range data {
+		for _, filter := range filters {
+			if !filter(&srv) {
+				continue
+			}
+			outs = append(outs, &srv)
+		}
+	}
+	return outs
 }

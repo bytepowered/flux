@@ -15,7 +15,7 @@ web_listeners:
             # 设置是否开启支持跨域访问特性，默认关闭
             cors_enable: true
             # 设置是否开启检查跨站请求伪造特性，默认关闭
-            csrf_enable: true
+            csrf_enable: false
 
     # 网关内部管理服务
     admin:

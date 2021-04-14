@@ -1,0 +1,133 @@
+package fluxinspect
+
+import (
+	"github.com/bytepowered/flux/flux-node"
+	"github.com/graphql-go/graphql"
+)
+
+var (
+	// Map
+	MapScalarType = graphql.NewScalar(graphql.ScalarConfig{
+		Name:        "JSONObject",
+		Description: "由服务端单向序列化的JSONObject对象.",
+		Serialize: func(value interface{}) interface{} {
+			return value
+		},
+	})
+	// Endpoint
+	ServiceScalarType = graphql.NewObject(graphql.ObjectConfig{
+		Name:        "Service",
+		Description: "网关后端Service元数据",
+		Fields: graphql.Fields{
+			"aliasId": newServiceStringField("Service别名", func(ep *flux.TransporterService) string {
+				return ep.AliasId
+			}),
+			"serviceId": newServiceStringField("Service的标识ID", func(ep *flux.TransporterService) string {
+				return ep.ServiceID()
+			}),
+			"scheme": newServiceStringField("Service侧URL的Scheme", func(ep *flux.TransporterService) string {
+				return ep.Scheme
+			}),
+			"remoteHost": newServiceStringField("Service侧的Host", func(ep *flux.TransporterService) string {
+				return ep.RemoteHost
+			}),
+			"interface": newServiceStringField("Service侧的URL/Interface", func(ep *flux.TransporterService) string {
+				return ep.Interface
+			}),
+			"method": newServiceStringField("Service侧的方法", func(ep *flux.TransporterService) string {
+				return ep.Method
+			}),
+			"attributes": newAttributesField("服务属性列表", func(src interface{}) []flux.Attribute {
+				if srv, ok := src.(*flux.TransporterService); ok {
+					return srv.Attributes
+				}
+				return nil
+			}),
+			"arguments": newArgumentField("接口参数列表"),
+		},
+	})
+	// Endpoint
+	EndpointScalarType = graphql.NewObject(graphql.ObjectConfig{
+		Name:        "Endpoint",
+		Description: "已注册到网关的Endpoint元数据",
+		Fields: graphql.Fields{
+			"application": newEndpointStringField("所属应用名", func(ep *flux.Endpoint) string {
+				return ep.Application
+			}),
+			"version": newEndpointStringField("端点版本号", func(ep *flux.Endpoint) string {
+				return ep.Version
+			}),
+			"httpPattern": newEndpointStringField("映射Http侧的UriPattern", func(ep *flux.Endpoint) string {
+				return ep.HttpPattern
+			}),
+			"httpMethod": newEndpointStringField("映射Http侧的UriPattern", func(ep *flux.Endpoint) string {
+				return ep.HttpMethod
+			}),
+			"attributes": newAttributesField("端点属性列表", func(src interface{}) []flux.Attribute {
+				if srv, ok := src.(*flux.Endpoint); ok {
+					return srv.Attributes
+				}
+				return nil
+			}),
+			"service": &graphql.Field{
+				Type:        ServiceScalarType,
+				Description: "上游/后端服务",
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					if ep, ok := p.Source.(*flux.Endpoint); ok {
+						return &ep.Service, nil
+					}
+					return nil, nil
+				},
+			},
+		},
+	})
+)
+
+func newAttributesField(desc string, af func(interface{}) []flux.Attribute) *graphql.Field {
+	return &graphql.Field{
+		Type:        MapScalarType,
+		Description: desc,
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			return af(p.Source), nil
+		},
+	}
+}
+
+func newArgumentField(desc string) *graphql.Field {
+	return &graphql.Field{
+		Type:        MapScalarType,
+		Description: desc,
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			if srv, ok := p.Source.(*flux.TransporterService); ok {
+				return srv.Arguments, nil
+			}
+			return nil, nil
+		},
+	}
+}
+
+func newServiceStringField(desc string, f func(endpoint *flux.TransporterService) string) *graphql.Field {
+	return &graphql.Field{
+		Type:        graphql.NewNonNull(graphql.String),
+		Description: desc,
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			if srv, ok := p.Source.(*flux.TransporterService); ok {
+				return f(srv), nil
+			}
+			return "", nil
+		},
+	}
+}
+
+func newEndpointStringField(desc string, f func(endpoint *flux.Endpoint) string) *graphql.Field {
+	return &graphql.Field{
+		Type:        graphql.NewNonNull(graphql.String),
+		Description: desc,
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			if ep, ok := p.Source.(*flux.Endpoint); ok {
+				return f(ep), nil
+			}
+			return "", nil
+		},
+	}
+}
