@@ -1,10 +1,8 @@
-package inspect
+package fluxinspect
 
 import (
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/common"
 	"github.com/bytepowered/flux/flux-node/ext"
-	"strings"
 )
 
 const (
@@ -13,8 +11,6 @@ const (
 	queryKeyHttpPattern  = "http-pattern"
 	queryKeyHttpPattern0 = "pattern"
 	queryKeyInterface    = "interface"
-	queryKeyServiceId0   = "service-id"
-	queryKeyServiceId1   = "service"
 )
 
 type EndpointFilter func(ep *flux.MVCEndpoint) bool
@@ -24,7 +20,6 @@ var (
 		queryKeyHttpPattern, queryKeyHttpPattern0,
 		queryKeyInterface,
 	}
-	serviceQueryKeys = []string{queryKeyServiceId0, queryKeyServiceId1}
 )
 
 var (
@@ -77,53 +72,4 @@ func EndpointsHandler(webex flux.ServerWebContext) error {
 		return send(webex, flux.StatusOK,
 			queryWithEndpointFilters(ext.Endpoints(), filters...))
 	}
-}
-
-func ServicesHandler(ctx flux.ServerWebContext) error {
-	for _, key := range serviceQueryKeys {
-		if id := ctx.QueryVar(key); "" != id {
-			service, ok := ext.TransporterServiceById(id)
-			if ok {
-				return send(ctx, flux.StatusOK, service)
-			} else {
-				return send(ctx, flux.StatusNotFound, map[string]string{
-					"status":     "failed",
-					"message":    "service not found",
-					"service-id": id,
-				})
-			}
-		}
-	}
-	return send(ctx, flux.StatusBadRequest, map[string]string{
-		"status":  "failed",
-		"message": "param is required: serviceId",
-	})
-}
-
-func queryWithEndpointFilters(data map[string]*flux.MVCEndpoint, filters ...EndpointFilter) []map[string]*flux.Endpoint {
-	items := make([]map[string]*flux.Endpoint, 0, 16)
-DataLoop:
-	for _, v := range data {
-		for _, filter := range filters {
-			// 任意Filter返回True
-			if filter(v) {
-				items = append(items, v.ToSerializable())
-				continue DataLoop
-			}
-		}
-	}
-	return items
-}
-
-func queryMatch(input, expected string) bool {
-	input, expected = strings.ToLower(input), strings.ToLower(expected)
-	return strings.Contains(expected, input)
-}
-
-func send(webex flux.ServerWebContext, status int, payload interface{}) error {
-	bytes, err := common.SerializeObject(payload)
-	if nil != err {
-		return err
-	}
-	return webex.Write(status, flux.MIMEApplicationJSONCharsetUTF8, bytes)
 }

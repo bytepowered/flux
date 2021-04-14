@@ -4,9 +4,9 @@ import (
 	goctx "context"
 	"fmt"
 	dubgo "github.com/apache/dubbo-go/config"
+	"github.com/bytepowered/flux/flux-inspect"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
-	"github.com/bytepowered/flux/flux-node/inspect"
 	"github.com/bytepowered/flux/flux-node/listener"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/bytepowered/flux/flux-pkg"
@@ -97,8 +97,8 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 		WithWebListener(listener.New(ListenServerIdAdmin, LoadWebListenerConfig(ListenServerIdAdmin), nil,
 			// 内部元数据查询
 			listener.WithWebHandlers([]listener.WebHandlerTuple{
-				{Method: "GET", Pattern: "/inspect/endpoints", Handler: inspect.EndpointsHandler},
-				{Method: "GET", Pattern: "/inspect/services", Handler: inspect.ServicesHandler},
+				{Method: "GET", Pattern: "/inspect/endpoints", Handler: fluxinspect.EndpointsHandler},
+				{Method: "GET", Pattern: "/inspect/services", Handler: fluxinspect.ServicesHandler},
 				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),
 		)),
