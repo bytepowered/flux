@@ -52,15 +52,15 @@ func DoQueryEndpoints(args func(key string) string) []*flux.Endpoint {
 			}
 		}
 	}
+	endpoints := ext.Endpoints()
 	if len(filters) == 0 {
-		out := make([]*flux.Endpoint, 0, 16)
-		for _, mep := range ext.Endpoints() {
+		out := make([]*flux.Endpoint, 0, len(endpoints))
+		for _, mep := range endpoints {
 			out = append(out, mep.Endpoints()...)
 		}
 		return out
-	} else {
-		return queryEndpointByFilters(ext.Endpoints(), filters...)
 	}
+	return queryEndpointByFilters(endpoints, filters...)
 }
 
 func EndpointsHandler(webex flux.ServerWebContext) error {
@@ -70,15 +70,19 @@ func EndpointsHandler(webex flux.ServerWebContext) error {
 	return send(webex, flux.StatusOK, m)
 }
 
-func queryEndpointByFilters(data map[string]*flux.MVCEndpoint, filters ...EndpointFilter) []*flux.Endpoint {
+func queryEndpointByFilters(endpoints map[string]*flux.MVCEndpoint, filters ...EndpointFilter) []*flux.Endpoint {
 	out := make([]*flux.Endpoint, 0, 16)
-	for _, v := range data {
+	for _, ep := range endpoints {
+		passed := true
 		for _, filter := range filters {
-			if !filter(v) {
-				continue
+			passed = filter(ep)
+			if !passed {
+				break
 			}
 		}
-		out = append(out, v.Endpoints()...)
+		if passed {
+			out = append(out, ep.Endpoints()...)
+		}
 	}
 	return out
 }

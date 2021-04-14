@@ -30,7 +30,7 @@ func init() {
 	}
 }
 
-func DoQueryServices(args func(key string) string) []*flux.TransporterService {
+func DoQueryServices(args func(key string) string) []flux.TransporterService {
 	filters := make([]ServiceFilter, 0)
 	for _, key := range serviceQueryKeys {
 		if value := args(key); value != "" {
@@ -39,15 +39,15 @@ func DoQueryServices(args func(key string) string) []*flux.TransporterService {
 			}
 		}
 	}
+	services := ext.TransporterServices()
 	if len(filters) == 0 {
-		out := make([]*flux.TransporterService, 0, 16)
-		for _, srv := range ext.TransporterServices() {
-			out = append(out, &srv)
+		out := make([]flux.TransporterService, 0, len(services))
+		for _, srv := range services {
+			out = append(out, srv)
 		}
 		return out
-	} else {
-		return queryServiceByFilters(ext.TransporterServices(), filters...)
 	}
+	return queryServiceByFilters(services, filters...)
 }
 
 func ServicesHandler(ctx flux.ServerWebContext) error {
@@ -57,14 +57,18 @@ func ServicesHandler(ctx flux.ServerWebContext) error {
 	return send(ctx, flux.StatusOK, services)
 }
 
-func queryServiceByFilters(data map[string]flux.TransporterService, filters ...ServiceFilter) []*flux.TransporterService {
-	outs := make([]*flux.TransporterService, 0, 16)
+func queryServiceByFilters(data map[string]flux.TransporterService, filters ...ServiceFilter) []flux.TransporterService {
+	outs := make([]flux.TransporterService, 0, 16)
 	for _, srv := range data {
+		passed := true
 		for _, filter := range filters {
-			if !filter(&srv) {
-				continue
+			passed = filter(&srv)
+			if !passed {
+				break
 			}
-			outs = append(outs, &srv)
+		}
+		if passed {
+			outs = append(outs, srv)
 		}
 	}
 	return outs
