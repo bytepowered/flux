@@ -38,10 +38,8 @@ var (
 				return ep.Method
 			}),
 			"attributes": newAttributesField("服务属性列表", func(src interface{}) []flux.Attribute {
-				if srv, ok := src.(*flux.TransporterService); ok {
-					return srv.Attributes
-				}
-				return nil
+				srv, _ := src.(*flux.TransporterService)
+				return srv.Attributes
 			}),
 			"arguments": newArgumentField("接口参数列表"),
 		},
@@ -64,19 +62,26 @@ var (
 				return ep.HttpMethod
 			}),
 			"attributes": newAttributesField("端点属性列表", func(src interface{}) []flux.Attribute {
-				if srv, ok := src.(*flux.Endpoint); ok {
-					return srv.Attributes
-				}
-				return nil
+				srv, _ := src.(*flux.Endpoint)
+				return srv.Attributes
 			}),
 			"service": &graphql.Field{
 				Type:        ServiceScalarType,
 				Description: "上游/后端服务",
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					if ep, ok := p.Source.(*flux.Endpoint); ok {
-						return &ep.Service, nil
+					ep, _ := p.Source.(*flux.Endpoint)
+					return &ep.Service, nil
+				},
+			},
+			"permissions": &graphql.Field{
+				Type:        MapScalarType,
+				Description: "多组权限验证服务ID列表",
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					ep, _ := p.Source.(*flux.Endpoint)
+					if ep.Permissions == nil {
+						return []string{}, nil
 					}
-					return nil, nil
+					return ep.Permissions, nil
 				},
 			},
 		},
@@ -88,7 +93,11 @@ func newAttributesField(desc string, af func(interface{}) []flux.Attribute) *gra
 		Type:        MapScalarType,
 		Description: desc,
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-			return af(p.Source), nil
+			attrs := af(p.Source)
+			if attrs == nil {
+				attrs = []flux.Attribute{}
+			}
+			return attrs, nil
 		},
 	}
 }
@@ -98,10 +107,14 @@ func newArgumentField(desc string) *graphql.Field {
 		Type:        MapScalarType,
 		Description: desc,
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			var args []flux.Argument
 			if srv, ok := p.Source.(*flux.TransporterService); ok {
-				return srv.Arguments, nil
+				args = srv.Arguments
 			}
-			return nil, nil
+			if args == nil {
+				args = []flux.Argument{}
+			}
+			return args, nil
 		},
 	}
 }
