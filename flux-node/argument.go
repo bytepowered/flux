@@ -22,6 +22,11 @@ func (a Argument) Resolve(ctx *Context) (interface{}, error) {
 		if nil != err {
 			return nil, err
 		}
+		if !mtv.Valid {
+			if attr, ok := a.GetAttrEx(ArgumentAttributeTagDefault); ok {
+				mtv = WrapStringMTValue(attr.GetString())
+			}
+		}
 		return a.ValueResolver(mtv, a.Class, a.Generic)
 	}
 	// POJO Values

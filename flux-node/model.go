@@ -84,6 +84,11 @@ const (
 	EndpointAttrTagBizId      = "bizid"      // 标识Endpoint绑定到业务标识
 )
 
+// ArgumentAttributes
+const (
+	ArgumentAttributeTagDefault = "default" // 参数的默认值属性
+)
+
 type (
 	// ArgumentLookupFunc 参数值查找函数
 	ArgumentLookupFunc func(scope, key string, ctx *Context) (MTValue, error)
