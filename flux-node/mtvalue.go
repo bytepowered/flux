@@ -21,28 +21,33 @@ const (
 
 // MTValue 包含指示值的媒体类型和Value结构
 type MTValue struct {
+	Valid     bool        // 是否有效
 	Value     interface{} // 原始值类型
 	MediaType string      // 媒体类型
 }
 
+func NewInvalidMTValue() MTValue {
+	return WrapObjectMTValue(nil)
+}
+
 func WrapStringMTValue(value string) MTValue {
-	return MTValue{Value: value, MediaType: ValueMediaTypeGoString}
+	return MTValue{Valid: value != "", Value: value, MediaType: ValueMediaTypeGoString}
 }
 
 func WrapObjectMTValue(value interface{}) MTValue {
-	return MTValue{Value: value, MediaType: ValueMediaTypeGoObject}
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoObject}
 }
 
 func WrapStrMapMTValue(value map[string]interface{}) MTValue {
-	return MTValue{Value: value, MediaType: ValueMediaTypeGoStringMap}
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoStringMap}
 }
 
 func WrapStrListMTValue(value []string) MTValue {
-	return MTValue{Value: value, MediaType: ValueMediaTypeGoStringList}
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoStringList}
 }
 
 func WrapStrValuesMapMTValue(value map[string][]string) MTValue {
-	return MTValue{Value: value, MediaType: ValueMediaTypeGoStringValuesMap}
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoStringValuesMap}
 }
 
 // MTValueResolver 将未定类型的值，按指定类型以及泛型类型转换为实际类型

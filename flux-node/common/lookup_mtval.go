@@ -10,7 +10,7 @@ import (
 
 // LookupExpr 搜索LookupExpr表达式指定域的值。
 func LookupMTValueByExpr(expr string, ctx *flux.Context) (interface{}, error) {
-	if "" == expr || nil == ctx {
+	if expr == "" || nil == ctx {
 		return nil, errors.New("empty lookup expr, or context is nil")
 	}
 	scope, key, ok := fluxpkg.LookupParseExpr(expr)
@@ -26,32 +26,44 @@ func LookupMTValueByExpr(expr string, ctx *flux.Context) (interface{}, error) {
 
 // 默认实现查找MTValue
 func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, err error) {
-	if "" == scope || "" == key {
-		return flux.WrapObjectMTValue(nil), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
+	if scope == "" || key == "" {
+		return flux.NewInvalidMTValue(), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
 	}
 	if nil == ctx {
-		return flux.WrapObjectMTValue(nil), errors.New("lookup nil context")
+		return flux.NewInvalidMTValue(), errors.New("lookup nil context")
 	}
-	//req := ctx.Request()
+	mapLookup := func(values map[string][]string, key string) flux.MTValue {
+		if vs, ok := values[key]; ok {
+			if len(vs) == 1 {
+				return flux.WrapStringMTValue(vs[0])
+			} else if len(vs) > 1 {
+				return flux.WrapStrListMTValue(vs)
+			} else {
+				return flux.WrapStringMTValue("")
+			}
+		} else {
+			return flux.NewInvalidMTValue()
+		}
+	}
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
-		return flux.WrapStringMTValue(ctx.PathVar(key)), nil
+		return mapLookup(ctx.PathVars(), key), nil
 	case flux.ScopePathMap:
 		return flux.WrapStrValuesMapMTValue(ctx.PathVars()), nil
 	case flux.ScopeQuery:
-		return flux.WrapStringMTValue(ctx.QueryVar(key)), nil
+		return mapLookup(ctx.QueryVars(), key), nil
 	case flux.ScopeQueryMulti:
 		return flux.WrapStrListMTValue(ctx.QueryVars()[key]), nil
 	case flux.ScopeQueryMap:
 		return flux.WrapStrValuesMapMTValue(ctx.QueryVars()), nil
 	case flux.ScopeForm:
-		return flux.WrapStringMTValue(ctx.FormVar(key)), nil
+		return mapLookup(ctx.FormVars(), key), nil
 	case flux.ScopeFormMap:
 		return flux.WrapStrValuesMapMTValue(ctx.FormVars()), nil
 	case flux.ScopeFormMulti:
 		return flux.WrapStrListMTValue(ctx.FormVars()[key]), nil
 	case flux.ScopeHeader:
-		return flux.WrapStringMTValue(ctx.HeaderVar(key)), nil
+		return mapLookup(ctx.HeaderVars(), key), nil
 	case flux.ScopeHeaderMap:
 		return flux.WrapStrValuesMapMTValue(ctx.HeaderVars()), nil
 	case flux.ScopeAttr:
@@ -61,7 +73,7 @@ func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, er
 		return flux.WrapStrMapMTValue(ctx.Attributes()), nil
 	case flux.ScopeBody:
 		reader, err := ctx.BodyReader()
-		return flux.MTValue{Value: reader, MediaType: ctx.HeaderVar(flux.HeaderContentType)}, err
+		return flux.MTValue{Valid: err == nil, Value: reader, MediaType: ctx.HeaderVar(flux.HeaderContentType)}, err
 	case flux.ScopeParam:
 		v, _ := fluxpkg.LookupByProviders(key, ctx.QueryVars, ctx.FormVars)
 		return flux.WrapStringMTValue(v), nil
@@ -72,7 +84,7 @@ func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, er
 		case "uri":
 			return flux.WrapStringMTValue(ctx.URI()), nil
 		default:
-			return flux.WrapStringMTValue(""), nil
+			return flux.NewInvalidMTValue(), nil
 		}
 	case flux.ScopeAuto:
 		fallthrough
@@ -85,6 +97,6 @@ func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, er
 		if v, ok := ctx.GetAttribute(key); ok {
 			return flux.WrapObjectMTValue(v), nil
 		}
-		return flux.WrapObjectMTValue(nil), nil
+		return flux.NewInvalidMTValue(), nil
 	}
 }
