@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	fluxinspect "github.com/bytepowered/flux/flux-inspect"
+	"errors"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
@@ -61,12 +61,8 @@ func Bootstrap(build flux.Build) {
 	if err := server.Initial(); nil != err {
 		logger.Panic("BootstrapServer init:", err)
 	}
-	// GraphQL inspect
-	admin, _ := server.WebListenerById(ListenServerIdAdmin)
-	admin.AddHandler("GET", "/inspect/graphql", fluxinspect.NewGraphQLHandler())
-	admin.AddHandler("POST", "/inspect/graphql", fluxinspect.NewGraphQLHandler())
 	go func() {
-		if err := server.Startup(build); nil != err && err != http.ErrServerClosed {
+		if err := server.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error(err)
 		}
 	}()

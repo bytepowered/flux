@@ -52,7 +52,7 @@ func HasTransporterService(serviceID string) bool {
 
 func _ensureServiceID(service *flux.TransporterService) string {
 	id := service.ServiceId
-	if "" == id {
+	if id == "" {
 		id = service.Interface + ":" + service.Method
 	}
 	if len(id) < len("a:b") {

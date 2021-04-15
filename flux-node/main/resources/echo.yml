@@ -7,7 +7,7 @@ endpoints:
         httpPattern: "/debug/flux/echo/get"
         httpMethod: "GET"
         attributes:
-            -   name: "ServerTag"
+            -   name: "listenerId"
                 value: "admin"
         # 后端服务配置
         service:

@@ -151,7 +151,7 @@ func (c EmbeddedAttributes) GetAttr(name string) Attribute {
 
 func (c EmbeddedAttributes) GetAttrEx(name string) (Attribute, bool) {
 	for _, attr := range c.Attributes {
-		if strings.ToLower(attr.Name) == strings.ToLower(name) {
+		if strings.EqualFold(attr.Name, name) {
 			return attr, true
 		}
 	}
@@ -161,7 +161,7 @@ func (c EmbeddedAttributes) GetAttrEx(name string) (Attribute, bool) {
 func (c EmbeddedAttributes) GetAttrs(name string) []Attribute {
 	attrs := make([]Attribute, 0, 2)
 	for _, attr := range c.Attributes {
-		if strings.ToLower(attr.Name) == strings.ToLower(name) {
+		if strings.EqualFold(attr.Name, name) {
 			attrs = append(attrs, attr)
 		}
 	}
@@ -170,7 +170,7 @@ func (c EmbeddedAttributes) GetAttrs(name string) []Attribute {
 
 func (c EmbeddedAttributes) HasAttr(name string) bool {
 	for _, attr := range c.Attributes {
-		if strings.ToLower(attr.Name) == strings.ToLower(name) {
+		if strings.EqualFold(attr.Name, name) {
 			return true
 		}
 	}

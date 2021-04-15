@@ -10,12 +10,12 @@ type _serializeKvPair struct {
 	Value string `json:"value"`
 }
 
-var toUnmarshalJsonData = []byte(`[
+var toUnmarshalJSONData = []byte(`[
 		{"name": "user.name", "value": "yongjia.chen"},
 		{"name": "user.age",    "value": "18"}
 	]`)
 
-var toMarshalJsonData = []_serializeKvPair{
+var toMarshalJSONData = []_serializeKvPair{
 	{Name: "user.name", Value: "yongjia.chen"},
 	{Name: "user.age", Value: "18"},
 }
@@ -72,14 +72,14 @@ func _BenchmarkUnmarshalWith(b *testing.B, unmarshaler func(data []byte, v inter
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		var pairs []_serializeKvPair
-		err := unmarshaler(toUnmarshalJsonData, &pairs)
+		err := unmarshaler(toUnmarshalJSONData, &pairs)
 		if err != nil {
 			b.Fatal(err)
 		}
-		if 2 != len(pairs) {
+		if len(pairs) != 2 {
 			b.Fatalf("array size not match, was: %d", len(pairs))
 		}
-		if "18" != pairs[1].Value {
+		if pairs[1].Value != "18" {
 			b.Fatalf("value not match, was: %s", pairs[1].Value)
 		}
 	}
@@ -88,7 +88,7 @@ func _BenchmarkUnmarshalWith(b *testing.B, unmarshaler func(data []byte, v inter
 func _BenchmarkMarshalWith(b *testing.B, marshaler func(v interface{}) ([]byte, error)) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		bs, err := marshaler(toMarshalJsonData)
+		bs, err := marshaler(toMarshalJSONData)
 		if err != nil {
 			b.Fatal(err)
 		}

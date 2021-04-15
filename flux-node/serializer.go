@@ -16,20 +16,20 @@ type Serializer interface {
 }
 
 // 默认JSON序列化实现
-type JsonSerializer struct {
+type JSONSerializer struct {
 	json jsoniter.API
 }
 
-func (s *JsonSerializer) Marshal(v interface{}) ([]byte, error) {
+func (s *JSONSerializer) Marshal(v interface{}) ([]byte, error) {
 	return s.json.Marshal(v)
 }
 
-func (s *JsonSerializer) Unmarshal(d []byte, v interface{}) error {
+func (s *JSONSerializer) Unmarshal(d []byte, v interface{}) error {
 	return s.json.Unmarshal(d, v)
 }
 
 func NewJsonSerializer() Serializer {
 	// 容忍字符串和数字互转
 	extra.RegisterFuzzyDecoders()
-	return &JsonSerializer{json: jsoniter.ConfigCompatibleWithStandardLibrary}
+	return &JSONSerializer{json: jsoniter.ConfigCompatibleWithStandardLibrary}
 }

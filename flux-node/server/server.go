@@ -97,8 +97,13 @@ func NewDefaultBootstrapServer(options ...Option) *BootstrapServer {
 		WithWebListener(listener.New(ListenServerIdAdmin, LoadWebListenerConfig(ListenServerIdAdmin), nil,
 			// 内部元数据查询
 			listener.WithWebHandlers([]listener.WebHandlerTuple{
+				// GraphQL Inspect
+				{Method: "POST", Pattern: "/inspect/graphql", Handler: fluxinspect.NewGraphQLHandler()},
+				{Method: "GET", Pattern: "/inspect/graphql", Handler: fluxinspect.NewGraphQLHandler()},
+				// Http Inspect
 				{Method: "GET", Pattern: "/inspect/endpoints", Handler: fluxinspect.EndpointsHandler},
 				{Method: "GET", Pattern: "/inspect/services", Handler: fluxinspect.ServicesHandler},
+				// Metrics
 				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),
 		)),
@@ -145,7 +150,7 @@ func (s *BootstrapServer) Initial() error {
 
 func (s *BootstrapServer) Startup(build flux.Build) error {
 	logger.Infof(VersionFormat, build.CommitId, build.Version, build.Date)
-	if "" != s.banner {
+	if s.banner != "" {
 		logger.Info(s.banner)
 	}
 	return s.start()
@@ -278,21 +283,21 @@ func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
 		logger.Infow("SERVER:EVENT:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RegisterTransporterService(service)
-		if "" != service.AliasId {
+		if service.AliasId != "" {
 			ext.RegisterTransporterServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RegisterTransporterService(service)
-		if "" != service.AliasId {
+		if service.AliasId != "" {
 			ext.RegisterTransporterServiceById(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:SERVICE:REMOVE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
 		ext.RemoveTransporterService(service.ServiceId)
-		if "" != service.AliasId {
+		if service.AliasId != "" {
 			ext.RemoveTransporterService(service.AliasId)
 		}
 	}
@@ -394,13 +399,13 @@ func (s *BootstrapServer) SetWebNotfoundHandler(nfh flux.WebHandler) {
 }
 
 // AddWebListener 添加指定ID
-func (s *BootstrapServer) AddWebListener(id string, server flux.WebListener) {
-	s.listener[id] = fluxpkg.MustNotNil(server, "WebListener is nil").(flux.WebListener)
+func (s *BootstrapServer) AddWebListener(listenerID string, server flux.WebListener) {
+	s.listener[strings.ToLower(listenerID)] = fluxpkg.MustNotNil(server, "WebListener is nil").(flux.WebListener)
 }
 
 // WebListenerById 返回ListenServer实例
-func (s *BootstrapServer) WebListenerById(listenerId string) (flux.WebListener, bool) {
-	ls, ok := s.listener[listenerId]
+func (s *BootstrapServer) WebListenerById(listenerID string) (flux.WebListener, bool) {
+	ls, ok := s.listener[strings.ToLower(listenerID)]
 	return ls, ok
 }
 
