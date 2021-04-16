@@ -231,6 +231,9 @@ type WebListener interface {
 	// AddHttpHandler 添加http标准请求路由处理函数及其中间件
 	AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler)
 
+	// ServeHTTP Http调用
+	ServeHTTP(w http.ResponseWriter, r *http.Request)
+
 	// ShadowServer 返回具体实现的WebServer服务对象，如echo,fasthttp的Server
 	ShadowServer() interface{}
 

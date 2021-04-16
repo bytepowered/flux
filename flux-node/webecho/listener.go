@@ -216,6 +216,10 @@ func (s *EchoWebListener) AddHttpHandler(method, pattern string, h http.Handler,
 	s.server.Add(method, toRoutePattern(pattern), echo.WrapHandler(h), wms...)
 }
 
+func (s *EchoWebListener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.server.ServeHTTP(w, r)
+}
+
 func (s *EchoWebListener) ShadowRouter() interface{} {
 	return s.server
 }
