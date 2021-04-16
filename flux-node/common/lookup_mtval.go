@@ -78,10 +78,11 @@ func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, er
 	case flux.ScopeAuto:
 		fallthrough
 	default:
-		if v, ok := fluxpkg.LookupByProviders(key, ctx.PathVars, ctx.QueryVars, ctx.FormVars, func() url.Values {
-			return url.Values(ctx.HeaderVars())
-		}); ok {
+		if v, ok := fluxpkg.LookupByProviders(key, ctx.PathVars, ctx.QueryVars, ctx.FormVars); ok {
 			return flux.WrapStringMTValue(v), nil
+		}
+		if mtv := lookupValues(ctx.HeaderVars(), key); mtv.Valid {
+			return mtv, nil
 		}
 		if v, ok := ctx.GetAttribute(key); ok {
 			return flux.WrapObjectMTValue(v), nil
@@ -101,15 +102,18 @@ func lookupValues(mapVal interface{}, key string) flux.MTValue {
 		value, ok = mapVal.(http.Header)[textproto.CanonicalMIMEHeaderKey(key)]
 	case map[string][]string:
 		value, ok = mapVal.(map[string][]string)[key]
+	default:
+		ok = false
 	}
 	if ok {
-		if len(value) == 1 {
+		switch {
+		case len(value) == 1:
 			return flux.WrapStringMTValue(value[0])
-		} else if len(value) > 1 {
+		case len(value) > 1:
 			copied := make([]string, len(value))
 			copy(copied, value)
 			return flux.WrapStrListMTValue(copied)
-		} else {
+		default:
 			return flux.WrapStringMTValue("")
 		}
 	} else {
