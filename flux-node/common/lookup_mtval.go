@@ -4,6 +4,8 @@ import (
 	"errors"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-pkg"
+	"net/http"
+	"net/textproto"
 	"net/url"
 	"strings"
 )
@@ -32,38 +34,25 @@ func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, er
 	if nil == ctx {
 		return flux.NewInvalidMTValue(), errors.New("lookup nil context")
 	}
-	mapLookup := func(values map[string][]string, key string) flux.MTValue {
-		if vs, ok := values[key]; ok {
-			if len(vs) == 1 {
-				return flux.WrapStringMTValue(vs[0])
-			} else if len(vs) > 1 {
-				return flux.WrapStrListMTValue(vs)
-			} else {
-				return flux.WrapStringMTValue("")
-			}
-		} else {
-			return flux.NewInvalidMTValue()
-		}
-	}
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
-		return mapLookup(ctx.PathVars(), key), nil
+		return lookupValues(ctx.PathVars(), key), nil
 	case flux.ScopePathMap:
 		return flux.WrapStrValuesMapMTValue(ctx.PathVars()), nil
 	case flux.ScopeQuery:
-		return mapLookup(ctx.QueryVars(), key), nil
+		return lookupValues(ctx.QueryVars(), key), nil
 	case flux.ScopeQueryMulti:
 		return flux.WrapStrListMTValue(ctx.QueryVars()[key]), nil
 	case flux.ScopeQueryMap:
 		return flux.WrapStrValuesMapMTValue(ctx.QueryVars()), nil
 	case flux.ScopeForm:
-		return mapLookup(ctx.FormVars(), key), nil
+		return lookupValues(ctx.FormVars(), key), nil
 	case flux.ScopeFormMap:
 		return flux.WrapStrValuesMapMTValue(ctx.FormVars()), nil
 	case flux.ScopeFormMulti:
 		return flux.WrapStrListMTValue(ctx.FormVars()[key]), nil
 	case flux.ScopeHeader:
-		return mapLookup(ctx.HeaderVars(), key), nil
+		return lookupValues(ctx.HeaderVars(), key), nil
 	case flux.ScopeHeaderMap:
 		return flux.WrapStrValuesMapMTValue(ctx.HeaderVars()), nil
 	case flux.ScopeAttr:
@@ -98,5 +87,32 @@ func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, er
 			return flux.WrapObjectMTValue(v), nil
 		}
 		return flux.NewInvalidMTValue(), nil
+	}
+}
+
+func lookupValues(mapVal interface{}, key string) flux.MTValue {
+	var value []string
+	var ok bool
+	switch mapVal.(type) {
+	case url.Values:
+		value, ok = mapVal.(url.Values)[key]
+	case http.Header:
+		// Header: key case insensitive
+		value, ok = mapVal.(http.Header)[textproto.CanonicalMIMEHeaderKey(key)]
+	case map[string][]string:
+		value, ok = mapVal.(map[string][]string)[key]
+	}
+	if ok {
+		if len(value) == 1 {
+			return flux.WrapStringMTValue(value[0])
+		} else if len(value) > 1 {
+			copied := make([]string, len(value))
+			copy(copied, value)
+			return flux.WrapStrListMTValue(copied)
+		} else {
+			return flux.WrapStringMTValue("")
+		}
+	} else {
+		return flux.NewInvalidMTValue()
 	}
 }

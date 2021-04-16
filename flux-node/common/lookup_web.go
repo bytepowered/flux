@@ -4,7 +4,6 @@ import (
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/spf13/cast"
-	"net/url"
 	"strings"
 )
 
@@ -42,11 +41,15 @@ func LookupWebValue(webex flux.ServerWebContext, scope, key string) string {
 		v, _ := fluxpkg.LookupByProviders(key, webex.QueryVars, webex.FormVars)
 		return v
 	case flux.ScopeAuto:
-		if v, ok := fluxpkg.LookupByProviders(key, webex.PathVars, webex.QueryVars, webex.FormVars, func() url.Values {
-			return url.Values(webex.HeaderVars())
-		}); ok {
+		// Post args
+		if v, ok := fluxpkg.LookupByProviders(key, webex.PathVars, webex.QueryVars, webex.FormVars); ok {
 			return v
 		}
+		// Header: key case insensitive
+		if v := webex.HeaderVar(key); v != "" {
+			return v
+		}
+		// Variables
 		return cast.ToString(webex.Variable(key))
 	default:
 		return ""
