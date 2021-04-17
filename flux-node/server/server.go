@@ -282,23 +282,23 @@ func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RegisterTransporterService(service)
+		ext.RegisterService(service)
 		if service.AliasId != "" {
-			ext.RegisterTransporterServiceById(service.AliasId, service)
+			ext.RegisterServiceByID(service.AliasId, service)
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RegisterTransporterService(service)
+		ext.RegisterService(service)
 		if service.AliasId != "" {
-			ext.RegisterTransporterServiceById(service.AliasId, service)
+			ext.RegisterServiceByID(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:SERVICE:REMOVE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RemoveTransporterService(service.ServiceId)
+		ext.RemoveServiceByID(service.ServiceId)
 		if service.AliasId != "" {
-			ext.RemoveTransporterService(service.AliasId)
+			ext.RemoveServiceByID(service.AliasId)
 		}
 	}
 }
@@ -314,7 +314,7 @@ func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 	routeKey := fmt.Sprintf("%s#%s", method, pattern)
 	endpoint := event.Endpoint
 	initArguments(endpoint.Service.Arguments)
-	initArguments(endpoint.Permission.Arguments)
+	initArguments(endpoint.PermissionService.Arguments)
 	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:

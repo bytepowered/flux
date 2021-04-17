@@ -10,7 +10,7 @@ const (
 	srvQueryKeyInterface = "interface"
 )
 
-type ServiceFilter func(ep *flux.TransporterService) bool
+type ServiceFilter func(srv *flux.Service) bool
 
 var (
 	serviceQueryKeys = []string{srvQueryKeyServiceId, srvQueryKeyInterface}
@@ -19,18 +19,18 @@ var (
 
 func init() {
 	serviceFilters[srvQueryKeyServiceId] = func(query string) ServiceFilter {
-		return func(srv *flux.TransporterService) bool {
+		return func(srv *flux.Service) bool {
 			return srv.IsValid() && queryMatch(query, srv.ServiceID())
 		}
 	}
 	serviceFilters[srvQueryKeyInterface] = func(query string) ServiceFilter {
-		return func(srv *flux.TransporterService) bool {
+		return func(srv *flux.Service) bool {
 			return srv.IsValid() && queryMatch(query, srv.Interface)
 		}
 	}
 }
 
-func DoQueryServices(args func(key string) string) []flux.TransporterService {
+func DoQueryServices(args func(key string) string) []flux.Service {
 	filters := make([]ServiceFilter, 0)
 	for _, key := range serviceQueryKeys {
 		if value := args(key); value != "" {
@@ -39,9 +39,9 @@ func DoQueryServices(args func(key string) string) []flux.TransporterService {
 			}
 		}
 	}
-	services := ext.TransporterServices()
+	services := ext.Services()
 	if len(filters) == 0 {
-		out := make([]flux.TransporterService, 0, len(services))
+		out := make([]flux.Service, 0, len(services))
 		for _, srv := range services {
 			out = append(out, srv)
 		}
@@ -57,8 +57,8 @@ func ServicesHandler(ctx flux.ServerWebContext) error {
 	return send(ctx, flux.StatusOK, services)
 }
 
-func queryServiceByFilters(data map[string]flux.TransporterService, filters ...ServiceFilter) []flux.TransporterService {
-	outs := make([]flux.TransporterService, 0, 16)
+func queryServiceByFilters(data map[string]flux.Service, filters ...ServiceFilter) []flux.Service {
+	outs := make([]flux.Service, 0, 16)
 	for _, srv := range data {
 		passed := true
 		for _, filter := range filters {

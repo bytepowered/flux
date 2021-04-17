@@ -10,9 +10,9 @@ var (
 )
 
 func RegisterEndpoint(key string, endpoint *flux.Endpoint) *flux.MVCEndpoint {
-	mve := flux.NewMultiEndpoint(endpoint)
-	endpoints.Store(key, mve)
-	return mve
+	mvce := flux.NewMVCEndpoint(endpoint)
+	endpoints.Store(key, mvce)
+	return mvce
 }
 
 func EndpointByKey(key string) (*flux.MVCEndpoint, bool) {

@@ -10,7 +10,7 @@ import (
 )
 
 func DoTransport(ctx *flux.Context, transport flux.Transporter) {
-	response, serr := transport.InvokeCodec(ctx, ctx.Transporter())
+	response, serr := transport.InvokeCodec(ctx, ctx.Service())
 	select {
 	case <-ctx.Context().Done():
 		ctx.Logger().Warnw("TRANSPORTER:CANCELED/BYCLIENT")
@@ -31,9 +31,9 @@ func DoTransport(ctx *flux.Context, transport flux.Transporter) {
 }
 
 // DoInvokeCodec 执行后端服务，获取响应结果；
-func DoInvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
+func DoInvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
 	proto := service.RpcProto()
-	transport, ok := ext.TransporterBy(proto)
+	transport, ok := ext.TransporterByProto(proto)
 	if !ok {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,

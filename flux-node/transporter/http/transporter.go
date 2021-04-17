@@ -22,7 +22,7 @@ type (
 	// Option 配置函数
 	Option func(service *RpcTransporter)
 	// ArgumentResolver Http调用参数封装函数，可外部化配置为其它协议的值对象
-	ArgumentResolver func(service *flux.TransporterService, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error)
+	ArgumentResolver func(service *flux.Service, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error)
 )
 
 type RpcTransporter struct {
@@ -91,7 +91,7 @@ func (b *RpcTransporter) Transport(ctx *flux.Context) {
 	transporter.DoTransport(ctx, b)
 }
 
-func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
+func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
 	raw, serr := b.Invoke(ctx, service)
 	if nil != serr {
 		return nil, serr
@@ -109,7 +109,7 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 	return result, nil
 }
 
-func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
 	body, _ := ctx.BodyReader()
 	newRequest, err := b.argResolver(&service, ctx.URL(), body, ctx)
 	if nil != err {
@@ -123,7 +123,7 @@ func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterServi
 	return b.ExecuteRequest(newRequest, service, ctx)
 }
 
-func (b *RpcTransporter) ExecuteRequest(newRequest *http.Request, _ flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) ExecuteRequest(newRequest *http.Request, _ flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
 	// Header透传以及传递AttrValues
 	newRequest.Header = ctx.HeaderVars()
 	for k, v := range ctx.Attributes() {

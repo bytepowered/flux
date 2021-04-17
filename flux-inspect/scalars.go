@@ -19,26 +19,26 @@ var (
 		Name:        "Service",
 		Description: "网关后端Service元数据",
 		Fields: graphql.Fields{
-			"aliasId": newServiceStringField("Service别名", func(ep *flux.TransporterService) string {
-				return ep.AliasId
+			"aliasId": newServiceStringField("Service别名", func(srv *flux.Service) string {
+				return srv.AliasId
 			}),
-			"serviceId": newServiceStringField("Service的标识ID", func(ep *flux.TransporterService) string {
-				return ep.ServiceID()
+			"serviceId": newServiceStringField("Service的标识ID", func(srv *flux.Service) string {
+				return srv.ServiceID()
 			}),
-			"scheme": newServiceStringField("Service侧URL的Scheme", func(ep *flux.TransporterService) string {
-				return ep.Scheme
+			"scheme": newServiceStringField("Service侧URL的Scheme", func(srv *flux.Service) string {
+				return srv.Scheme
 			}),
-			"remoteHost": newServiceStringField("Service侧的Host", func(ep *flux.TransporterService) string {
-				return ep.RemoteHost
+			"url": newServiceStringField("Service侧的Url", func(srv *flux.Service) string {
+				return srv.Url
 			}),
-			"interface": newServiceStringField("Service侧的URL/Interface", func(ep *flux.TransporterService) string {
-				return ep.Interface
+			"interface": newServiceStringField("Service侧的URL/Interface", func(srv *flux.Service) string {
+				return srv.Interface
 			}),
-			"method": newServiceStringField("Service侧的方法", func(ep *flux.TransporterService) string {
-				return ep.Method
+			"method": newServiceStringField("Service侧的方法", func(srv *flux.Service) string {
+				return srv.Method
 			}),
 			"attributes": newAttributesField("服务属性列表", func(src interface{}) []flux.Attribute {
-				srv, _ := src.(*flux.TransporterService)
+				srv, _ := src.(*flux.Service)
 				return srv.Attributes
 			}),
 			"arguments": newArgumentField("接口参数列表"),
@@ -108,7 +108,7 @@ func newArgumentField(desc string) *graphql.Field {
 		Description: desc,
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 			var args []flux.Argument
-			if srv, ok := p.Source.(*flux.TransporterService); ok {
+			if srv, ok := p.Source.(*flux.Service); ok {
 				args = srv.Arguments
 			}
 			if args == nil {
@@ -119,12 +119,12 @@ func newArgumentField(desc string) *graphql.Field {
 	}
 }
 
-func newServiceStringField(desc string, f func(endpoint *flux.TransporterService) string) *graphql.Field {
+func newServiceStringField(desc string, f func(endpoint *flux.Service) string) *graphql.Field {
 	return &graphql.Field{
 		Type:        graphql.NewNonNull(graphql.String),
 		Description: desc,
 		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-			if srv, ok := p.Source.(*flux.TransporterService); ok {
+			if srv, ok := p.Source.(*flux.Service); ok {
 				return f(srv), nil
 			}
 			return "", nil

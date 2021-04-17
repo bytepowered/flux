@@ -113,7 +113,7 @@ func TestParseEndpointModelV1(t *testing.T) {
 		},
 		{
 			Expected: false,
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Permission.IsValid() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.PermissionService.IsValid() },
 		},
 		{
 			Expected: 0,

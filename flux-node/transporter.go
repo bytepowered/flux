@@ -9,9 +9,9 @@ type (
 	// 默认实现了Dubbo(gRpc)和Http两种协议。
 	Transporter interface {
 		// Invoke 真正执行指定目标EndpointService的通讯，返回响应结果
-		Invoke(*Context, TransporterService) (interface{}, *ServeError)
+		Invoke(*Context, Service) (interface{}, *ServeError)
 		// InvokeCodec 执行指定目标EndpointService的通讯，返回响应结果，并解析响应数据
-		InvokeCodec(*Context, TransporterService) (*ResponseBody, *ServeError)
+		InvokeCodec(*Context, Service) (*ResponseBody, *ServeError)
 		// Transport 完成前端Http请求与后端服务的数据交互
 		Transport(*Context)
 		// Writer

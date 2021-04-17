@@ -7,50 +7,51 @@ import (
 )
 
 var (
-	serviceNotFound flux.TransporterService
-	servicesMap     *sync.Map = new(sync.Map)
+	serviceNotFound flux.Service
+	servicesMap     = new(sync.Map)
 )
 
-func RegisterTransporterServiceById(id string, service flux.TransporterService) {
+func RegisterServiceByID(id string, service flux.Service) {
 	servicesMap.Store(id, service)
 }
 
-// RegisterTransporterService store transporter service
-func RegisterTransporterService(service flux.TransporterService) {
+// RegisterService store transporter service
+func RegisterService(service flux.Service) {
 	id := _ensureServiceID(&service)
-	RegisterTransporterServiceById(id, service)
+	RegisterServiceByID(id, service)
 }
 
-func TransporterServices() map[string]flux.TransporterService {
-	out := make(map[string]flux.TransporterService, 512)
+// Services 返回全部注册的Service
+func Services() map[string]flux.Service {
+	out := make(map[string]flux.Service, 512)
 	endpoints.Range(func(key, value interface{}) bool {
-		out[key.(string)] = value.(flux.TransporterService)
+		out[key.(string)] = value.(flux.Service)
 		return true
 	})
 	return out
 }
 
-// TransporterServiceById load transporter service by serviceId
-func TransporterServiceById(serviceID string) (flux.TransporterService, bool) {
+// ServiceByID load transporter service by serviceId
+func ServiceByID(serviceID string) (flux.Service, bool) {
 	v, ok := servicesMap.Load(serviceID)
 	if ok {
-		return v.(flux.TransporterService), true
+		return v.(flux.Service), true
 	}
 	return serviceNotFound, false
 }
 
-// RemoveTransporterService remove transporter service by serviceId
-func RemoveTransporterService(serviceID string) {
+// RemoveServiceByID remove transporter service by serviceId
+func RemoveServiceByID(serviceID string) {
 	servicesMap.Delete(serviceID)
 }
 
-// HasTransporterService check service exists by service id
-func HasTransporterService(serviceID string) bool {
+// HasServiceByID check service exists by service id
+func HasServiceByID(serviceID string) bool {
 	_, ok := servicesMap.Load(serviceID)
 	return ok
 }
 
-func _ensureServiceID(service *flux.TransporterService) string {
+func _ensureServiceID(service *flux.Service) string {
 	id := service.ServiceId
 	if id == "" {
 		id = service.Interface + ":" + service.Method
