@@ -52,7 +52,7 @@ func NewWebListenerWith(listenerId string, options *flux.Configuration, identifi
 	server.Pre(RepeatableReader)
 	server.HideBanner = true
 	server.HidePort = true
-	aws := &EchoWebListener{
+	webListener := &EchoWebListener{
 		id:           listenerId,
 		server:       server,
 		bodyResolver: DefaultRequestBodyResolver,
@@ -62,7 +62,7 @@ func NewWebListenerWith(listenerId string, options *flux.Configuration, identifi
 		return func(echoc echo.Context) error {
 			id := identifier(echoc)
 			fluxpkg.Assert("" != id, "<request-id> is empty, return by id lookup func")
-			swc := internal.NewServeWebContext(id, echoc)
+			swc := internal.NewServeWebContext(echoc, id, webListener)
 			fluxpkg.AssertNil(echoc.Get(__interContextKeyWebContext), "<web-context> must be nil")
 			echoc.Set(__interContextKeyWebContext, swc)
 			defer func() {
@@ -89,24 +89,24 @@ func NewWebListenerWith(listenerId string, options *flux.Configuration, identifi
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
 	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
-		logger.Infof("WebListener(id:%s), feature BODY-LIMIT: enabled, size= %s", aws.id, limit)
+		logger.Infof("WebListener(id:%s), feature BODY-LIMIT: enabled, size= %s", webListener.id, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
 	// CORS
 	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
-		logger.Infof("WebListener(id:%s), feature CORS: enabled", aws.id)
+		logger.Infof("WebListener(id:%s), feature CORS: enabled", webListener.id)
 		server.Pre(middleware.CORS())
 	}
 	// CSRF
 	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
-		logger.Infof("WebListener(id:%s), feature CSRF: enabled", aws.id)
+		logger.Infof("WebListener(id:%s), feature CSRF: enabled", webListener.id)
 		server.Pre(middleware.CSRF())
 	}
 	// After features
 	if mws != nil && len(mws.AfterFeature) > 0 {
 		server.Pre(mws.AfterFeature...)
 	}
-	return aws
+	return webListener
 }
 
 // EchoWebListener 默认实现的基于echo框架的WebServer

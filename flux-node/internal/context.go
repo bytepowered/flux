@@ -11,28 +11,26 @@ import (
 	"net/url"
 )
 
-type ContextKey struct {
-	key string
-}
-
-var (
-	contextKeyRequestId = ContextKey{key: "__internal.context.request.id"}
-)
-
 var _ flux.ServerWebContext = new(EchoWebContext)
 
-func NewServeWebContext(id string, echoc echo.Context) flux.ServerWebContext {
+func NewServeWebContext(ctx echo.Context, reqid string, listener flux.WebListener) flux.ServerWebContext {
 	return &EchoWebContext{
-		echoc:     echoc,
-		context:   context.WithValue(echoc.Request().Context(), contextKeyRequestId, id),
+		echoc:     ctx,
+		listener:  listener,
+		context:   context.WithValue(ctx.Request().Context(), keyRequestId, reqid),
 		variables: make(map[interface{}]interface{}, 16),
 	}
 }
 
 type EchoWebContext struct {
+	listener  flux.WebListener
 	context   context.Context
 	echoc     echo.Context
 	variables map[interface{}]interface{}
+}
+
+func (w *EchoWebContext) WebListener() flux.WebListener {
+	return w.listener
 }
 
 func (w *EchoWebContext) ShadowContext() echo.Context {
@@ -40,7 +38,7 @@ func (w *EchoWebContext) ShadowContext() echo.Context {
 }
 
 func (w *EchoWebContext) RequestId() string {
-	return w.context.Value(contextKeyRequestId).(string)
+	return w.context.Value(keyRequestId).(string)
 }
 
 func (w *EchoWebContext) Context() context.Context {
