@@ -13,6 +13,7 @@ func TestParseEndpointModelV2(t *testing.T) {
     "httpPattern": "/api/users/register",
     "httpMethod": "POST",
     "service": {
+		"kind": "DubboService",
         "serviceId": "com.foo.bar.testing.app.TestingAppService:testContext",
         "interface": "com.foo.bar.testing.app.TestingAppService",
         "method": "testContext",
@@ -66,7 +67,7 @@ func TestParseEndpointModelV2(t *testing.T) {
             },
             {
                 "name": "RpcVersion",
-                "value": ""
+                "value": "0.0.0.0.1"
             }
         ]
     },
@@ -137,6 +138,10 @@ func TestParseEndpointModelV2(t *testing.T) {
 			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("Authorize").GetBool() },
 		},
 		{
+			Expected: "DubboService",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Kind },
+		},
+		{
 			Expected: 3,
 			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Service.Arguments) },
 		},
@@ -159,6 +164,10 @@ func TestParseEndpointModelV2(t *testing.T) {
 		{
 			Expected: "DUBBO",
 			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.RpcProto() },
+		},
+		{
+			Expected: "0.0.0.0.1",
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.RpcVersion() },
 		},
 	})
 }
