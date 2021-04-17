@@ -69,19 +69,19 @@ const (
 // ServiceAttributes
 const (
 	ServiceAttrTagNotDefined = ""
-	ServiceAttrTagRpcProto   = "rpcproto"
-	ServiceAttrTagRpcGroup   = "rpcgroup"
-	ServiceAttrTagRpcVersion = "rpcversion"
-	ServiceAttrTagRpcTimeout = "rpctimeout"
-	ServiceAttrTagRpcRetries = "rpcretries"
+	ServiceAttrTagRpcProto   = "rpcProto"
+	ServiceAttrTagRpcGroup   = "rpcGroup"
+	ServiceAttrTagRpcVersion = "rpcVersion"
+	ServiceAttrTagRpcTimeout = "rpcTimeout"
+	ServiceAttrTagRpcRetries = "rpcRetries"
 )
 
 // EndpointAttributes
 const (
 	EndpointAttrTagNotDefined = ""           // 默认的，未定义的属性
 	EndpointAttrTagAuthorize  = "authorize"  // 标识Endpoint访问是否需要授权
-	EndpointAttrTagListenerId = "listenerid" // 标识Endpoint绑定到哪个ListenServer服务
-	EndpointAttrTagBizId      = "bizid"      // 标识Endpoint绑定到业务标识
+	EndpointAttrTagListenerId = "listenerId" // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAttrTagBizId      = "bizId"      // 标识Endpoint绑定到业务标识
 )
 
 // ArgumentAttributes
@@ -100,14 +100,14 @@ type (
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
-	Name               string     `json:"name" yaml:"name"`           // 参数名称
-	Type               string     `json:"type" yaml:"type"`           // 参数结构类型
-	Class              string     `json:"class" yaml:"class"`         // 参数类型
-	Generic            []string   `json:"generic" yaml:"generic"`     // 泛型类型
-	HttpName           string     `json:"httpName" yaml:"httpName"`   // 映射Http的参数Key
-	HttpScope          string     `json:"httpScope" yaml:"httpScope"` // 映射Http参数值域
-	Fields             []Argument `json:"fields" yaml:"fields"`       // 子结构字段
-	EmbeddedAttributes `yaml:",inline"`                               // 属性列表
+	Name               string           `json:"name" yaml:"name"`           // 参数名称
+	Type               string           `json:"type" yaml:"type"`           // 参数结构类型
+	Class              string           `json:"class" yaml:"class"`         // 参数类型
+	Generic            []string         `json:"generic" yaml:"generic"`     // 泛型类型
+	HttpName           string           `json:"httpName" yaml:"httpName"`   // 映射Http的参数Key
+	HttpScope          string           `json:"httpScope" yaml:"httpScope"` // 映射Http参数值域
+	Fields             []Argument       `json:"fields" yaml:"fields"`       // 子结构字段
+	EmbeddedAttributes `yaml:",inline"` // 属性列表
 	// helper func
 	ValueLoader   func() MTValue     `json:"-"`
 	LookupFunc    ArgumentLookupFunc `json:"-"`
@@ -184,6 +184,7 @@ func (c EmbeddedAttributes) HasAttr(name string) bool {
 
 // Service 定义连接上游目标服务的信息
 type Service struct {
+	Kind               string     `json:"kind" yaml:"kind"`           // Service类型
 	AliasId            string     `json:"aliasId" yaml:"aliasId"`     // Service别名
 	ServiceId          string     `json:"serviceId" yaml:"serviceId"` // Service的标识ID
 	Scheme             string     `json:"scheme" yaml:"scheme"`       // Service侧URL的Scheme
