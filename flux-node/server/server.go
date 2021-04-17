@@ -310,18 +310,17 @@ func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", "method", method, "pattern", event.Endpoint.HttpPattern)
 		return
 	}
-	pattern := event.Endpoint.HttpPattern
-	routeKey := fmt.Sprintf("%s#%s", method, pattern)
 	endpoint := event.Endpoint
 	initArguments(endpoint.Service.Arguments)
 	initArguments(endpoint.PermissionService.Arguments)
-	bind, isreg := s.selectMultiEndpoint(routeKey, &endpoint)
+	pattern := event.Endpoint.HttpPattern
+	mvce, register := s.selectMVCEndpoint(&endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
-		bind.Update(endpoint.Version, &endpoint)
+		mvce.Update(endpoint.Version, &endpoint)
 		// 根据Endpoint属性，选择ListenServer来绑定
-		if isreg {
+		if register {
 			id := endpoint.GetAttr(flux.EndpointAttrTagListenerId).GetString()
 			if id == "" {
 				id = ListenerIdDefault
@@ -329,17 +328,17 @@ func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 			server, ok := s.WebListenerById(id)
 			if ok {
 				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+id, "method", method, "pattern", pattern)
-				server.AddHandler(method, pattern, s.newEndpointHandler(server, bind))
+				server.AddHandler(method, pattern, s.newEndpointHandler(server, mvce))
 			} else {
 				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+id, "method", method, "pattern", pattern)
 			}
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
-		bind.Update(endpoint.Version, &endpoint)
+		mvce.Update(endpoint.Version, &endpoint)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
-		bind.Delete(endpoint.Version)
+		mvce.Delete(endpoint.Version)
 	}
 }
 
@@ -420,11 +419,12 @@ func (s *BootstrapServer) newEndpointHandler(server flux.WebListener, endpoint *
 	}
 }
 
-func (s *BootstrapServer) selectMultiEndpoint(routeKey string, endpoint *flux.Endpoint) (*flux.MVCEndpoint, bool) {
-	if mve, ok := ext.EndpointByKey(routeKey); ok {
+func (s *BootstrapServer) selectMVCEndpoint(endpoint *flux.Endpoint) (*flux.MVCEndpoint, bool) {
+	key := ext.MakeEndpointKey(endpoint.HttpMethod, endpoint.HttpPattern)
+	if mve, ok := ext.EndpointByKey(key); ok {
 		return mve, false
 	} else {
-		return ext.RegisterEndpoint(routeKey, endpoint), true
+		return ext.RegisterEndpoint(key, endpoint), true
 	}
 }
 
