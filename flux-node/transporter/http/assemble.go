@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func DefaultArgumentResolver(service *flux.TransporterService, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error) {
+func DefaultArgumentResolver(service *flux.Service, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error) {
 	inParams := service.Arguments
 	newQuery := inURL.RawQuery
 	// 使用可重复读的GetBody函数
@@ -41,7 +41,7 @@ func DefaultArgumentResolver(service *flux.TransporterService, inURL *url.URL, b
 	}
 	// 未定义参数，即透传Http请求：Rewrite inRequest path
 	newUrl := &url.URL{
-		Host:       service.RemoteHost,
+		Host:       service.Url,
 		Path:       service.Interface,
 		Scheme:     service.Scheme,
 		Opaque:     inURL.Opaque,

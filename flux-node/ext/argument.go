@@ -26,12 +26,11 @@ func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
 }
 
 func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() flux.MTValue) flux.Argument {
-	name := fluxpkg.MustNotEmpty(argName, "argName is empty")
 	return flux.Argument{
 		Class:         fluxpkg.MustNotEmpty(typeClass, "typeClass is empty"),
 		Type:          flux.ArgumentTypePrimitive,
-		Name:          name,
-		HttpName:      name,
+		Name:          fluxpkg.MustNotEmpty(argName, "argName is empty"),
+		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
 		ValueLoader:   valLoader,
 		LookupFunc:    ArgumentLookupFunc(),
@@ -40,12 +39,11 @@ func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() 
 }
 
 func NewComplexArgument(typeClass, argName string) flux.Argument {
-	name := fluxpkg.MustNotEmpty(argName, "argName is empty")
 	return flux.Argument{
 		Class:         fluxpkg.MustNotEmpty(typeClass, "typeClass is empty"),
 		Type:          flux.ArgumentTypeComplex,
-		Name:          name,
-		HttpName:      name,
+		Name:          fluxpkg.MustNotEmpty(argName, "argName is empty"),
+		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
 		LookupFunc:    ArgumentLookupFunc(),
 		ValueResolver: MTValueResolverByType(typeClass),

@@ -50,13 +50,13 @@ func (c *Context) Endpoint() *Endpoint {
 	return c.endpoint
 }
 
-// Transporter 返回TransporterService信息
-func (c *Context) Transporter() TransporterService {
+// Service 返回Service信息
+func (c *Context) Service() Service {
 	return c.endpoint.Service
 }
 
-// TransportId 返回Endpoint Service的服务标识
-func (c *Context) TransportId() string {
+// ServiceID 返回Endpoint Service的服务标识
+func (c *Context) ServiceID() string {
 	return c.endpoint.Service.ServiceID()
 }
 

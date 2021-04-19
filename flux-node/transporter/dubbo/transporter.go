@@ -63,9 +63,9 @@ type (
 
 type (
 	// GenericOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
-	GenericOptionsFunc func(*flux.TransporterService, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+	GenericOptionsFunc func(*flux.Service, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 	// GenericServiceFunc 用于构建DubboGo泛型调用Service实例
-	GenericServiceFunc func(*flux.TransporterService) common.RPCService
+	GenericServiceFunc func(*flux.Service) common.RPCService
 	// GenericInvokeFunc 用于执行Dubbo泛调用方法，返回统一Result数据结构
 	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result
 )
@@ -188,7 +188,7 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 			"load_balance":          "random",
 			"protocol":              dubbo.DUBBO,
 		}),
-		WithGenericServiceFunc(func(service *flux.TransporterService) common.RPCService {
+		WithGenericServiceFunc(func(service *flux.Service) common.RPCService {
 			return dubgo.NewGenericService(service.Interface)
 		}),
 		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result {
@@ -256,7 +256,7 @@ func (b *RpcTransporter) Transport(ctx *flux.Context) {
 }
 
 // Invoke invoke transporter service with context
-func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
 	types, values, err := b.aresolver(service.Arguments, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
@@ -270,7 +270,7 @@ func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterServi
 	}
 }
 
-func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
+func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
 	raw, serr := b.Invoke(ctx, service)
 	select {
 	case <-ctx.Context().Done():
@@ -300,7 +300,7 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Transporter
 }
 
 // DoInvoke execute transporter service with arguments
-func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.TransporterService, ctx *flux.Context) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
 	att, err := b.tresolver(ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
@@ -343,7 +343,7 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 }
 
 // LoadGenericService create and cache dubbo generic service
-func (b *RpcTransporter) LoadGenericService(service *flux.TransporterService) common.RPCService {
+func (b *RpcTransporter) LoadGenericService(service *flux.Service) common.RPCService {
 	b.servmx.Lock()
 	defer b.servmx.Unlock()
 	if srv := dubgo.GetConsumerService(service.Interface); nil != srv {
@@ -391,12 +391,12 @@ func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryCon
 	}
 }
 
-func NewReference(refid string, service *flux.TransporterService, config *flux.Configuration) *dubgo.ReferenceConfig {
+func NewReference(refid string, service *flux.Service, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("Create dubbo reference-config",
-		"service", service.Interface, "remote-host", service.RemoteHost,
+		"target-service", service.Interface, "target-url", service.Url,
 		"rpc-group", service.RpcGroup(), "rpc-version", service.RpcVersion())
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
-	ref.Url = service.RemoteHost
+	ref.Url = service.Url
 	ref.InterfaceName = service.Interface
 	ref.Version = service.RpcVersion()
 	ref.Group = service.RpcGroup()

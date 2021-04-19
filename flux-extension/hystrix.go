@@ -81,7 +81,7 @@ func (r *HystrixFilter) Init(c *flux.Configuration) error {
 	// 默认实现
 	if fluxpkg.IsNil(r.HystrixConfig.ServiceNameFunc) {
 		r.HystrixConfig.ServiceNameFunc = func(ctx *flux.Context) (name string) {
-			return ctx.TransportId()
+			return ctx.ServiceID()
 		}
 	}
 	if r.HystrixConfig.ServiceSkipFunc == nil {
