@@ -27,6 +27,10 @@ const (
 	TypeIdHystrixFilter = "hystrix_filter"
 )
 
+const (
+	hystrixRequestId = "hystrix.request.id"
+)
+
 func NewHystrixFilter(c HystrixConfig) *HystrixFilter {
 	return &HystrixFilter{
 		HystrixConfig: c,
@@ -38,7 +42,7 @@ type (
 	// HystrixServiceNameFunc 用于构建服务标识的函数
 	HystrixServiceNameFunc func(ctx *flux.Context) (serviceName string)
 	// HystrixDowngradeFunc 熔断降级处理函数
-	HystrixDowngradeFunc func(ctx *flux.Context) *flux.ServeError
+	HystrixDowngradeFunc func(ctx *flux.Context, err error) *flux.ServeError
 )
 
 // HystrixConfig 熔断器配置
@@ -122,9 +126,9 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			if serr, ok := err.(*flux.ServeError); ok {
 				reterr = serr
 			} else if cerr, ok := err.(hystrix.CircuitError); ok {
-				logger.Infow("HYSTRIX:CIRCUITED/DOWNGRADE",
+				logger.Trace(c.Value(hystrixRequestId).(string)).Infow("HYSTRIX:CIRCUITED/DOWNGRADE",
 					"is-circuited", ok, "service-name", serviceName, "circuit-error", cerr)
-				reterr = r.HystrixConfig.ServiceDowngradeFunc(ctx)
+				reterr = r.HystrixConfig.ServiceDowngradeFunc(ctx, cerr)
 			} else if strings.Contains(err.Error(), context.Canceled.Error()) {
 				reterr = &flux.ServeError{
 					StatusCode: flux.StatusOK,
@@ -142,16 +146,17 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			}
 			return nil // fallback dont return errors
 		}
-		_ = hystrix.DoC(ctx.Context(), serviceName, work, fallback)
+		_ = hystrix.DoC(context.WithValue(ctx.Context(), hystrixRequestId, ctx.RequestId()), serviceName, work, fallback)
 		return reterr
 	}
 }
 
-func DefaultDowngradeFunc(ctx *flux.Context) *flux.ServeError {
+func DefaultDowngradeFunc(ctx *flux.Context, err error) *flux.ServeError {
 	return &flux.ServeError{
 		StatusCode: http.StatusServiceUnavailable,
 		ErrorCode:  flux.ErrorCodeGatewayCircuited,
 		Message:    "CIRCUITED:SERVER_BUSY:DOWNGRADE",
+		CauseError: err,
 	}
 }
 
