@@ -187,6 +187,9 @@ type ServerWebContext interface {
 
 	// SetVariable 设置Context域键值；作用域与请求生命周期相同；
 	GetVariable(key string) (interface{}, bool)
+
+	// WebListener 返回当前请求所属的WebListener
+	WebListener() WebListener
 }
 
 // WebListener 定义Web框架服务器的接口；
