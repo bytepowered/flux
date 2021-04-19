@@ -16,6 +16,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -231,7 +232,8 @@ func (s *BootstrapServer) startEventWatch(ctx context.Context, endpoints chan fl
 func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (err error) {
 	defer func(id string) {
 		if rvr := recover(); rvr != nil {
-			err = fmt.Errorf("SERVER:ROUTE:CRITICAL_PANIC:%w", rvr)
+			logger.Trace(webex.RequestId()).Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", rvr, "debug", string(debug.Stack()))
+			err = fmt.Errorf("SERVER:ROUTE:%s", rvr)
 		}
 	}(webex.RequestId())
 	endpoint, found := endpoints.Lookup(s.versionFunc(webex))
