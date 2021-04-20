@@ -69,19 +69,19 @@ const (
 // ServiceAttributes
 const (
 	ServiceAttrTagNotDefined = ""
-	ServiceAttrTagRpcProto   = "rpcproto"
-	ServiceAttrTagRpcGroup   = "rpcgroup"
-	ServiceAttrTagRpcVersion = "rpcversion"
-	ServiceAttrTagRpcTimeout = "rpctimeout"
-	ServiceAttrTagRpcRetries = "rpcretries"
+	ServiceAttrTagRpcProto   = "rpcProto"
+	ServiceAttrTagRpcGroup   = "rpcGroup"
+	ServiceAttrTagRpcVersion = "rpcVersion"
+	ServiceAttrTagRpcTimeout = "rpcTimeout"
+	ServiceAttrTagRpcRetries = "rpcRetries"
 )
 
 // EndpointAttributes
 const (
 	EndpointAttrTagNotDefined = ""           // 默认的，未定义的属性
 	EndpointAttrTagAuthorize  = "authorize"  // 标识Endpoint访问是否需要授权
-	EndpointAttrTagListenerId = "listenerid" // 标识Endpoint绑定到哪个ListenServer服务
-	EndpointAttrTagBizId      = "bizid"      // 标识Endpoint绑定到业务标识
+	EndpointAttrTagListenerId = "listenerId" // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAttrTagBizId      = "bizId"      // 标识Endpoint绑定到业务标识
 )
 
 // ArgumentAttributes
@@ -182,15 +182,16 @@ func (c EmbeddedAttributes) HasAttr(name string) bool {
 	return false
 }
 
-// TransporterService 定义连接上游目标服务的信息
-type TransporterService struct {
-	AliasId            string     `json:"aliasId" yaml:"aliasId"`       // Service别名
-	ServiceId          string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
-	Scheme             string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
-	RemoteHost         string     `json:"remoteHost" yaml:"remoteHost"` // Service侧的Host
-	Interface          string     `json:"interface" yaml:"interface"`   // Service侧的URL
-	Method             string     `json:"method" yaml:"method"`         // Service侧的方法
-	Arguments          []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
+// Service 定义连接上游目标服务的信息
+type Service struct {
+	Kind               string     `json:"kind" yaml:"kind"`           // Service类型
+	AliasId            string     `json:"aliasId" yaml:"aliasId"`     // Service别名
+	ServiceId          string     `json:"serviceId" yaml:"serviceId"` // Service的标识ID
+	Scheme             string     `json:"scheme" yaml:"scheme"`       // Service侧URL的Scheme
+	Url                string     `json:"url" yaml:"url"`             // Service侧的Host
+	Interface          string     `json:"interface" yaml:"interface"` // Service侧的URL/Interface
+	Method             string     `json:"method" yaml:"method"`       // Service侧的方法
+	Arguments          []Argument `json:"arguments" yaml:"arguments"` // Service侧的参数结构
 	EmbeddedAttributes `yaml:",inline"`
 	// Deprecated
 	AttrRpcProto string `json:"rpcProto" yaml:"rpcProto"`
@@ -204,57 +205,58 @@ type TransporterService struct {
 	AttrRpcRetries string `json:"rpcRetries" yaml:"rpcRetries"`
 }
 
-func (b TransporterService) RpcProto() string {
+func (b Service) RpcProto() string {
 	return b.GetAttr(ServiceAttrTagRpcProto).GetString()
 }
 
-func (b TransporterService) RpcTimeout() string {
+func (b Service) RpcTimeout() string {
 	return b.GetAttr(ServiceAttrTagRpcTimeout).GetString()
 }
 
-func (b TransporterService) RpcGroup() string {
+func (b Service) RpcGroup() string {
 	return b.GetAttr(ServiceAttrTagRpcGroup).GetString()
 }
 
-func (b TransporterService) RpcVersion() string {
+func (b Service) RpcVersion() string {
 	return b.GetAttr(ServiceAttrTagRpcVersion).GetString()
 }
 
-func (b TransporterService) RpcRetries() string {
+func (b Service) RpcRetries() string {
 	return b.GetAttr(ServiceAttrTagRpcRetries).GetString()
 }
 
 // IsValid 判断服务配置是否有效；Interface+Method不能为空；
-func (b TransporterService) IsValid() bool {
+func (b Service) IsValid() bool {
 	return b.Interface != "" && "" != b.Method
 }
 
 // HasArgs 判定是否有参数
-func (b TransporterService) HasArgs() bool {
+func (b Service) HasArgs() bool {
 	return len(b.Arguments) > 0
 }
 
 // ServiceID 构建标识当前服务的ID
-func (b TransporterService) ServiceID() string {
+func (b Service) ServiceID() string {
 	return b.Interface + ":" + b.Method
 }
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
-	Application        string             `json:"application" yaml:"application"` // 所属应用名
-	Version            string             `json:"version" yaml:"version"`         // 端点版本号
-	HttpPattern        string             `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
-	HttpMethod         string             `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
-	Service            TransporterService `json:"service" yaml:"service"`         // 上游/后端服务
-	Permission         TransporterService `json:"permission" yaml:"permission"`   // Deprecated 权限验证定义
-	Permissions        []string           `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
+	Application        string   `json:"application" yaml:"application"` // 所属应用名
+	Version            string   `json:"version" yaml:"version"`         // 端点版本号
+	HttpPattern        string   `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
+	HttpMethod         string   `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
+	Service            Service  `json:"service" yaml:"service"`         // 上游/后端服务
+	Permissions        []string `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
 	EmbeddedAttributes `yaml:",inline"`
+	// Deprecated 权限验证定义
+	PermissionService Service `json:"permission" yaml:"permission"`
 }
 
 func (e *Endpoint) PermissionIds() []string {
 	ids := make([]string, 0, 1+len(e.Permissions))
-	if e.Permission.IsValid() {
-		ids = append(ids, e.Permission.ServiceId)
+	if e.PermissionService.IsValid() {
+		ids = append(ids, e.PermissionService.ServiceId)
 	}
 	ids = append(ids, e.Permissions...)
 	return ids
@@ -274,7 +276,7 @@ type MVCEndpoint struct {
 	*sync.RWMutex                      // 读写锁
 }
 
-func NewMultiEndpoint(endpoint *Endpoint) *MVCEndpoint {
+func NewMVCEndpoint(endpoint *Endpoint) *MVCEndpoint {
 	return &MVCEndpoint{
 		versions: map[string]*Endpoint{
 			endpoint.Version: endpoint,
@@ -354,5 +356,5 @@ type EndpointEvent struct {
 // ServiceEvent  定义从注册中心接收到的Service定义数据变更
 type ServiceEvent struct {
 	EventType EventType
-	Service   TransporterService
+	Service   Service
 }

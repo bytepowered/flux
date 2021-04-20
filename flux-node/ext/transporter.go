@@ -9,14 +9,14 @@ var (
 	transporters = make(map[string]flux.Transporter, 4)
 )
 
-func RegisterTransporter(protoName string, transporter flux.Transporter) {
-	protoName = fluxpkg.MustNotEmpty(protoName, "protoName is empty")
-	transporters[protoName] = fluxpkg.MustNotNil(transporter, "Transporter is nil").(flux.Transporter)
+func RegisterTransporter(proto string, transporter flux.Transporter) {
+	proto = fluxpkg.MustNotEmpty(proto, "protoName is empty")
+	transporters[proto] = fluxpkg.MustNotNil(transporter, "Transporter is nil").(flux.Transporter)
 }
 
-func TransporterBy(protoName string) (flux.Transporter, bool) {
-	protoName = fluxpkg.MustNotEmpty(protoName, "protoName is empty")
-	transporter, ok := transporters[protoName]
+func TransporterByProto(proto string) (flux.Transporter, bool) {
+	proto = fluxpkg.MustNotEmpty(proto, "protoName is empty")
+	transporter, ok := transporters[proto]
 	return transporter, ok
 }
 

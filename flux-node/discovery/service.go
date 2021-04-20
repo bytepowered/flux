@@ -18,7 +18,7 @@ func NewServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt
 		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONSIZE", "data", string(bytes), "node", node)
 		return invalidServiceEvent, false
 	}
-	service := flux.TransporterService{}
+	service := flux.Service{}
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
 		logger.Warnw("DISCOVERY:SERVICE:ILLEGAL_JSONFORMAT",
 			"event-type", etype, "data", string(bytes), "error", err, "node", node)
@@ -47,7 +47,7 @@ func NewServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt
 }
 
 // EnsureServiceAttrs 兼容旧协议数据格式
-func EnsureServiceAttrs(service *flux.TransporterService) *flux.TransporterService {
+func EnsureServiceAttrs(service *flux.Service) *flux.Service {
 	if len(service.Attributes) == 0 {
 		service.Attributes = []flux.Attribute{
 			{Name: flux.ServiceAttrTagRpcProto, Value: service.AttrRpcProto},

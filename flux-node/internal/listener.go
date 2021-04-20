@@ -108,7 +108,7 @@ type AdaptWebListener struct {
 	tlsCertFile  string
 	tlsKeyFile   string
 	address      string
-	isstarted    bool
+	started      bool
 }
 
 func (s *AdaptWebListener) ListenerId() string {
@@ -133,7 +133,7 @@ func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
 
 func (s *AdaptWebListener) Listen() error {
 	logger.Infof("WebListener(id:%s) start listen: %s", s.id, s.address)
-	s.isstarted = true
+	s.started = true
 	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
 		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)
 	} else {
@@ -219,12 +219,12 @@ func (s *AdaptWebListener) ShadowServer() interface{} {
 }
 
 func (s *AdaptWebListener) Close(ctx context.Context) error {
-	s.isstarted = false
+	s.started = false
 	return s.server.Shutdown(ctx)
 }
 
 func (s *AdaptWebListener) mustNotStarted() *AdaptWebListener {
-	fluxpkg.Assert(!s.isstarted, "illegal state: web listener is started")
+	fluxpkg.Assert(!s.started, "illegal state: web listener is started")
 	return s
 }
 

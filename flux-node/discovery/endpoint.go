@@ -51,7 +51,7 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.Endpoi
 		}
 	}
 	EnsureServiceAttrs(&comp.Service)
-	EnsureServiceAttrs(&comp.Permission)
+	EnsureServiceAttrs(&comp.PermissionService)
 
 	event := flux.EndpointEvent{Endpoint: comp.Endpoint}
 	switch etype {

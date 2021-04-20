@@ -36,7 +36,7 @@ func (b *RpcTransporter) Transport(ctx *flux.Context) {
 	transporter.DoTransport(ctx, b)
 }
 
-func (b *RpcTransporter) InvokeCodec(context *flux.Context, service flux.TransporterService) (*flux.ResponseBody, *flux.ServeError) {
+func (b *RpcTransporter) InvokeCodec(context *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
 	resp, err := b.Invoke(context, service)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (b *RpcTransporter) InvokeCodec(context *flux.Context, service flux.Transpo
 	return codec, nil
 }
 
-func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterService) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
 	var data []byte
 	if r, err := ctx.BodyReader(); nil == err {
 		data, _ = ioutil.ReadAll(r)
@@ -53,7 +53,7 @@ func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.TransporterServi
 	}
 	header := ctx.HeaderVars()
 	return map[string]interface{}{
-		"transporter-service":  service,
+		"service":              service,
 		"request-id":           ctx.RequestId(),
 		"request-uri":          ctx.URI(),
 		"request-method":       ctx.Method(),
