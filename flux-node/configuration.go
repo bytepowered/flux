@@ -40,7 +40,7 @@ func NewConfigurationOfNS(namespace string) *Configuration {
 	if v == nil {
 		v = viper.New()
 	}
-	return NewConfigurationOfViper(v)
+	return NewConfigurationOfViperPrefix(v, namespace)
 }
 
 // NewConfigurationOfViper 根据指定Viper实例来构建。如果Viper实例为nil，新建一个空配置实例。
@@ -51,10 +51,18 @@ func NewConfigurationOfViper(in *viper.Viper) *Configuration {
 	return &Configuration{instance: in}
 }
 
+func NewConfigurationOfViperPrefix(in *viper.Viper, prefix string) *Configuration {
+	if nil == in {
+		in = viper.New()
+	}
+	return &Configuration{instance: in, namespace: prefix}
+}
+
 // Configuration 封装Viper实例访问接口的配置类
 type Configuration struct {
 	instance    *viper.Viper      // 实际的配置实例
 	globalAlias map[string]string // 全局配置别名
+	namespace   string
 }
 
 // Reference 返回Viper实例
@@ -64,7 +72,7 @@ func (c *Configuration) Reference() *viper.Viper {
 
 // Sub 获取当前实例的子级配置对象
 func (c *Configuration) Sub(name string) *Configuration {
-	return NewConfigurationOfViper(c.instance.Sub(name))
+	return NewConfigurationOfViperPrefix(c.instance.Sub(name), name)
 }
 
 func (c *Configuration) Get(key string) interface{} {
@@ -85,6 +93,9 @@ func (c *Configuration) GetOrDefault(key string, def interface{}) interface{} {
 		switch typ {
 		case DynamicTypeConfig:
 			if viper.IsSet(dkey) {
+				if c.namespace+"."+key == dkey {
+					return defv
+				}
 				return viper.Get(dkey)
 			} else {
 				return defv
