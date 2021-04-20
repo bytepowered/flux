@@ -40,7 +40,7 @@ func NewConfigurationOfNS(namespace string) *Configuration {
 	if v == nil {
 		v = viper.New()
 	}
-	return NewConfigurationOfViperPrefix(v, namespace)
+	return NewConfigurationOfViperNamespace(v, namespace)
 }
 
 // NewConfigurationOfViper 根据指定Viper实例来构建。如果Viper实例为nil，新建一个空配置实例。
@@ -51,11 +51,11 @@ func NewConfigurationOfViper(in *viper.Viper) *Configuration {
 	return &Configuration{instance: in}
 }
 
-func NewConfigurationOfViperPrefix(in *viper.Viper, prefix string) *Configuration {
+func NewConfigurationOfViperNamespace(in *viper.Viper, namespace string) *Configuration {
 	if nil == in {
 		in = viper.New()
 	}
-	return &Configuration{instance: in, namespace: prefix}
+	return &Configuration{instance: in, namespace: namespace}
 }
 
 // Configuration 封装Viper实例访问接口的配置类
@@ -72,7 +72,7 @@ func (c *Configuration) Reference() *viper.Viper {
 
 // Sub 获取当前实例的子级配置对象
 func (c *Configuration) Sub(name string) *Configuration {
-	return NewConfigurationOfViperPrefix(c.instance.Sub(name), name)
+	return NewConfigurationOfViperNamespace(c.instance.Sub(name), name)
 }
 
 func (c *Configuration) Get(key string) interface{} {
