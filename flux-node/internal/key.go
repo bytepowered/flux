@@ -6,5 +6,6 @@ type Key struct {
 }
 
 var (
-	keyRequestId = Key{id: "inter.context.request.id/926820fa-7ad8-4444-9080-d690ce31c93a"}
+	keyRequestId  = Key{id: "inter.context.request.id/926820fa-7ad8-4444-9080-d690ce31c93a"}
+	keyWebContext = Key{id: "inter.context.web.ctx/890b1fa9-93ad-4b44-af24-85bcbfe646b4"}
 )
