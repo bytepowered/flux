@@ -3,7 +3,6 @@ package dubbo
 import (
 	hessian "github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/spf13/cast"
 )
 
 // Dubbo默认参数封装处理：转换成hession协议对象。
@@ -27,7 +26,5 @@ func DefaultArgumentResolver(arguments []flux.Argument, ctx *flux.Context) ([]st
 
 // DefaultAttachmentResolver 默认实现封装DubboAttachment的函数
 func DefaultAttachmentResolver(ctx *flux.Context) (interface{}, error) {
-	// Note: must be map[string]string
-	// Ref: dubbo-go@v1.5.1/common/proxy/proxy.go:150
-	return cast.ToStringMapStringE(ctx.Attributes())
+	return ctx.Attributes(), nil
 }

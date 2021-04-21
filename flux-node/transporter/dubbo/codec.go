@@ -25,20 +25,22 @@ func NewTransportCodecFuncWith(codeKey, headerKey string) flux.TransportCodec {
 		if err := rpcr.Error(); nil != err {
 			return nil, err
 		}
-		data := rpcr.Result()
+		body := rpcr.Result()
+		// 从Attachment中读取StatusCode，HeaderMap
 		status := flux.StatusOK
+		header := make(http.Header)
 		for k, v := range rpcr.Attachments() {
 			if k == codeKey {
 				status = cast.ToInt(v)
 			} else if k == headerKey {
-				// TODO 需要更新Attachment类型为map[string]interface{}
+				for hk, hv := range cast.ToStringMap(v) {
+					header.Set(hk, cast.ToString(hv))
+				}
 			} else {
 				attrs[k] = v
 			}
 		}
-		return &flux.ResponseBody{
-			StatusCode: status, Headers: make(http.Header, 0), Attachments: attrs, Body: data,
-		}, nil
+		return &flux.ResponseBody{StatusCode: status, Headers: header, Attachments: attrs, Body: body}, nil
 	}
 }
 
