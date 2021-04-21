@@ -53,7 +53,7 @@ func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interf
 	}
 	header := ctx.HeaderVars()
 	return map[string]interface{}{
-		"service":  service,
+		"service":              service,
 		"request-id":           ctx.RequestId(),
 		"request-uri":          ctx.URI(),
 		"request-method":       ctx.Method(),

@@ -6,7 +6,6 @@ import (
 	_ "github.com/bytepowered/flux/flux-node/transporter/dubbo"
 	_ "github.com/bytepowered/flux/flux-node/transporter/echo"
 	_ "github.com/bytepowered/flux/flux-node/transporter/http"
-	_ "github.com/bytepowered/flux/flux-node/webecho"
 )
 
 import (
