@@ -40,7 +40,7 @@ func (r *Dispatcher) Initial() error {
 	for proto, transporter := range ext.Transporters() {
 		ns := flux.NamespaceTransporters + "." + proto
 		logger.Infow("Load transporter", "proto", proto, "type", reflect.TypeOf(transporter), "config-ns", ns)
-		if err := r.AddInitHook(transporter, flux.NewConfigurationOfNS(ns)); nil != err {
+		if err := r.AddInitHook(transporter, flux.NewConfiguration(ns)); nil != err {
 			return err
 		}
 	}
@@ -48,7 +48,7 @@ func (r *Dispatcher) Initial() error {
 	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
 		ns := filter.FilterId()
 		logger.Infow("Load static-filter", "type", reflect.TypeOf(filter), "config-ns", ns)
-		config := flux.NewConfigurationOfNS(ns)
+		config := flux.NewConfiguration(ns)
 		if IsDisabled(config) {
 			logger.Infow("Set static-filter DISABLED", "filter-id", filter.FilterId())
 			continue

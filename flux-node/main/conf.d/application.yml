@@ -1,9 +1,10 @@
 # 网关Http监听服务器配置
-web_listeners:
+listeners:
     # 默认Web服务
     default:
         # 服务器绑定地址
-        address: "0.0.0.0"
+        address: "${listeners.default.master}"
+        master: "0.0.0.0"
         bind_port: 8080
         # 设置TLS密钥文件地址
         tls_cert_file: ""
@@ -23,7 +24,7 @@ web_listeners:
         bind_port: 9527
 
 # EndpointDiscoveryService (EDS) 配置
-endpoint_discovery_services:
+discoveries:
     # 默认EDS为 zookeeper；支持多注册中心。
     zookeeper:
         rootpath_endpoint: "/flux-endpoint"
@@ -101,3 +102,12 @@ circuit_filter:
         your_app_id:
             timeout: 30_000
             request_max: 500
+
+# 动态Filter配置
+dynfilter:
+    -   id: "filterid1"
+        type: "not-exist-type-id-1"
+        disable: true
+    -   id: "filterid2"
+        type: "not-exist-type-id-2"
+        disable: true

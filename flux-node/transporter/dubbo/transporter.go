@@ -230,7 +230,7 @@ func (b *RpcTransporter) Init(config *flux.Configuration) error {
 	consumerc := dubgo.GetConsumerConfig()
 	// 支持定义Registry
 	registry := b.configuration.Sub("registry")
-	registry.SetGlobalAlias(b.registry)
+	registry.SetKeyAlias(b.registry)
 	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
 		consumerc.Registries[id] = rconfig
 		logger.Infow("Dubbo transporter transporter setup registry", "id", id, "config", rconfig)
