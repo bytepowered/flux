@@ -87,13 +87,13 @@ func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 		id := selected[i]
 		r.retrievers[i] = zk.NewZookeeperRetriever(id)
 		zkconf := registries.Sub(id)
-		zkconf.SetGlobalAlias(map[string]string{
+		zkconf.SetKeyAlias(map[string]string{
 			"address":  "zookeeper.address",
 			"password": "zookeeper.password",
 			"timeout":  "zookeeper.timeout",
 		})
 		if len(r.globalAlias) != 0 {
-			zkconf.SetGlobalAlias(r.globalAlias)
+			zkconf.SetKeyAlias(r.globalAlias)
 		}
 		logger.Infow("ZkEndpointDiscovery start zk discovery", "discovery-id", id)
 		if err := r.retrievers[i].Init(zkconf); nil != err {

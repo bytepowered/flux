@@ -100,44 +100,44 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		expected interface{}
 	}{
 		{
-			config:   NewConfigurationOfNS("empty"),
-			lookup:   "user",
+			config:   NewGlobalConfig(),
+			lookup:   "myuserid",
 			expected: nil,
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOfNS("empty")
-				c.Set("user", "chen")
+				c := NewGlobalConfig()
+				c.Set("userE", "chen")
 				return c
 			}(),
-			lookup:   "user",
+			lookup:   "userE",
 			expected: "chen",
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOfNS("empty")
-				c.Set("user", "${username}")
+				c := NewGlobalConfig()
+				c.Set("userX", "${username}")
 				return c
 			}(),
-			lookup:   "user",
+			lookup:   "userX",
 			expected: "chen",
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOfNS("empty")
-				c.Set("user", "${usernameX:haha}")
+				c := NewGlobalConfig()
+				c.Set("usernameA", "${usernameX:haha}")
 				return c
 			}(),
-			lookup:   "user",
+			lookup:   "usernameA",
 			expected: "haha",
 		},
 		{
 			config: func() *Configuration {
-				c := NewConfigurationOfNS("empty")
-				c.Set("user", "${user.year}")
+				c := NewGlobalConfig()
+				c.Set("userA", "${user.year}")
 				return c
 			}(),
-			lookup:   "user",
+			lookup:   "userA",
 			expected: 2020,
 		},
 	}
@@ -145,4 +145,8 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 	for _, tcase := range cases {
 		assert.Equal(tcase.expected, tcase.config.Get(tcase.lookup))
 	}
+}
+
+func NewGlobalConfig() *Configuration {
+	return &Configuration{nspath: "", registry: viper.GetViper()}
 }

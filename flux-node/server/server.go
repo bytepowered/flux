@@ -145,7 +145,7 @@ func (s *BootstrapServer) Initial() error {
 	}
 	// Discovery
 	for _, dis := range ext.EndpointDiscoveries() {
-		if err := s.dispatcher.AddInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
+		if err := s.dispatcher.AddInitHook(dis, LoadDiscoveryConfig(dis.Id())); nil != err {
 			return err
 		}
 	}
@@ -449,21 +449,19 @@ func (s *BootstrapServer) defaultListener() flux.WebListener {
 }
 
 func LoadWebListenerConfig(id string) *flux.Configuration {
-	return flux.NewConfigurationOfNS(flux.NamespaceWebListeners + "." + id)
+	return flux.NewConfiguration(flux.MakeConfigurationKey(flux.NamespaceWebListeners, id))
 }
 
-func LoadEndpointDiscoveryConfig(id string) *flux.Configuration {
-	return flux.NewConfigurationOfNS(flux.NamespaceEndpointDiscoveryServices + "." + id)
+func LoadDiscoveryConfig(id string) *flux.Configuration {
+	return flux.NewConfiguration(flux.MakeConfigurationKey(flux.NamespaceDiscoveries, id))
 }
 
 func isAllowedHttpMethod(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut,
 		http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace:
-		// Allowed
 		return true
 	default:
-		// http.MethodConnect, and Others
 		logger.Errorw("Ignore unsupported http method:", "method", method)
 		return false
 	}
