@@ -70,7 +70,11 @@ func (c *Configuration) ToStringMap() map[string]interface{} {
 }
 
 func (c *Configuration) Keys() []string {
-	return c.registry.Sub(c.nspath).AllKeys()
+	v := c.registry.Sub(c.nspath)
+	if v != nil {
+		return v.AllKeys()
+	}
+	return []string{}
 }
 
 func (c *Configuration) ToConfigurations() []*Configuration {
