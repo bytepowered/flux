@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/common"
+	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
 	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"github.com/labstack/echo/v4"
@@ -76,7 +76,7 @@ func DefaultErrorHandler(webex flux.ServerWebContext, error error) {
 			CauseError: error,
 		}
 	}
-	data, err := common.SerializeObject(serr)
+	data, err := ext.JSONMarshalObject(serr)
 	if nil != err {
 		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
 		return
