@@ -164,7 +164,17 @@ func TestConfiguration_GetStruct(t *testing.T) {
 	assert.Equal(user.Name, "chen")
 	assert.Equal(user.Year, 2020)
 	assert.Equal(user.Id, "yongjiapro")
+}
 
+func TestConfiguration_Keys(t *testing.T) {
+	viper.Set("app.year", 2020)
+	viper.Set("app.profile", "yongjiapro")
+	viper.Set("app.id", "yongjiapro")
+	app := NewConfiguration("app")
+	assert := assert2.New(t)
+	keys := app.Keys()
+	assert.Contains(keys, "year")
+	assert.Contains(keys, "profile")
 }
 
 func NewGlobalConfig() *Configuration {

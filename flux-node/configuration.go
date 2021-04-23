@@ -69,6 +69,10 @@ func (c *Configuration) ToStringMap() map[string]interface{} {
 	return cast.ToStringMap(c.registry.Get(c.nspath))
 }
 
+func (c *Configuration) Keys() []string {
+	return c.registry.Sub(c.nspath).AllKeys()
+}
+
 func (c *Configuration) ToConfigurations() []*Configuration {
 	return ToConfigurations(c.nspath, c.registry.Get(c.nspath))
 }
