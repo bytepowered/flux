@@ -108,6 +108,7 @@ func (c *Configuration) doget(key string, indef interface{}) interface{} {
 		}
 		switch ptype {
 		case DynamicTypeConfig:
+			// check circle key
 			if key == pkey {
 				return usedef
 			}

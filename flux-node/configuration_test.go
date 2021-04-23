@@ -177,6 +177,13 @@ func TestConfiguration_Keys(t *testing.T) {
 	assert.Contains(keys, "profile")
 }
 
+func TestConfiguration_CircleKey(t *testing.T) {
+	viper.Set("app.year", "${app.year:2020}")
+	app := NewConfiguration("app")
+	assert := assert2.New(t)
+	assert.Equal("2020", app.GetString("year"))
+}
+
 func NewGlobalConfig() *Configuration {
 	return &Configuration{nspath: "", registry: viper.GetViper()}
 }
