@@ -38,20 +38,22 @@ func NewConfiguration(namespace string) *Configuration {
 		nspath:   namespace,
 		dataID:   namespace,
 		registry: viper.GetViper(), // 持有Viper全局实例，通过Namespace来控制查询的Key
-		local:    false,
+		reglocal: false,
+		alias:    make(map[string]string),
 	}
 }
 
 // Configuration 封装Viper实例访问接口的配置类
 type Configuration struct {
-	dataID   string       // 数据ID
-	nspath   string       // 配置所属命名空间
-	registry *viper.Viper // 实际的配置实例
-	local    bool         // 是否使用本地Viper实例
+	dataID   string            // 数据ID
+	nspath   string            // 配置所属命名空间
+	registry *viper.Viper      // 实际的配置实例
+	reglocal bool              // 是否使用本地Viper实例
+	alias    map[string]string // 本地Key别名
 }
 
 func (c *Configuration) makeKey(key string) string {
-	if c.local || c.nspath == "" {
+	if c.reglocal || c.nspath == "" {
 		return key
 	}
 	return MakeConfigurationKey(c.nspath, key)
@@ -129,6 +131,12 @@ func (c *Configuration) doget(key string, indef interface{}) interface{} {
 			return val
 		}
 	}
+	// check local alias
+	if nil == val {
+		if alias, ok := c.alias[key]; ok {
+			val = c.registry.Get(alias)
+		}
+	}
 	if nil == val {
 		return indef
 	}
@@ -142,8 +150,9 @@ func (c *Configuration) Set(key string, value interface{}) {
 
 // SetKeyAlias 设置当前配置实例的Key与GlobalAlias的映射
 func (c *Configuration) SetKeyAlias(keyAlias map[string]string) {
+	// 指定命名空间的Alias，不设置到全局Viper实例
 	for key, alias := range keyAlias {
-		c.registry.RegisterAlias(alias, c.makeKey(key))
+		c.alias[c.makeKey(key)] = alias
 	}
 }
 
@@ -285,8 +294,8 @@ func ToConfigurations(namespace string, v interface{}) []*Configuration {
 		sm := cast.ToStringMap(sliceV.Index(i).Interface())
 		if len(sm) > 0 {
 			out = append(out, &Configuration{
-				nspath: namespace + fmt.Sprintf("[%d]", i),
-				local:  true,
+				nspath:   namespace + fmt.Sprintf("[%d]", i),
+				reglocal: true,
 				registry: func() *viper.Viper {
 					r := viper.New()
 					for k, v := range sm {
