@@ -1,4 +1,4 @@
-package internal
+package listener
 
 import (
 	"github.com/bytepowered/flux/flux-node"
