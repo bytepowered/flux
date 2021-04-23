@@ -2,6 +2,7 @@ package flux
 
 import (
 	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"os"
@@ -250,6 +251,20 @@ func (c *Configuration) GetConfigurations(key string) []*Configuration {
 		return nil
 	}
 	return ToConfigurations(key, v)
+}
+
+func (c *Configuration) GetStruct(key string, outptr interface{}) error {
+	return c.GetStructTag(key, "json", outptr)
+}
+
+func (c *Configuration) GetStructTag(key, structTag string, outptr interface{}) error {
+	key = c.makeKey(key)
+	if !c.registry.IsSet(key) {
+		return nil
+	}
+	return c.registry.UnmarshalKey(key, outptr, func(opt *mapstructure.DecoderConfig) {
+		opt.TagName = structTag
+	})
 }
 
 func ToConfigurations(namespace string, v interface{}) []*Configuration {

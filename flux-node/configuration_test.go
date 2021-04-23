@@ -147,6 +147,26 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 	}
 }
 
+func TestConfiguration_GetStruct(t *testing.T) {
+	viper.Set("app.user.name", "chen")
+	viper.Set("app.user.year", 2020)
+	viper.Set("app.user.id", "yongjiapro")
+	viper.Set("app.profile", "yongjiapro")
+	app := NewConfiguration("app")
+	user := struct {
+		Name string `json:"name"`
+		Year int    `json:"year"`
+		Id   string `json:"id"`
+	}{}
+	assert := assert2.New(t)
+	err := app.GetStruct("user", &user)
+	assert.Nil(err)
+	assert.Equal(user.Name, "chen")
+	assert.Equal(user.Year, 2020)
+	assert.Equal(user.Id, "yongjiapro")
+
+}
+
 func NewGlobalConfig() *Configuration {
 	return &Configuration{nspath: "", registry: viper.GetViper()}
 }
