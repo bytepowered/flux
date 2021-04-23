@@ -1,9 +1,11 @@
 package flux
 
 import (
+	"fmt"
 	"github.com/spf13/viper"
 	assert2 "github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestParseDynamicKey(t *testing.T) {
@@ -182,6 +184,22 @@ func TestConfiguration_CircleKey(t *testing.T) {
 	app := NewConfiguration("app")
 	assert := assert2.New(t)
 	assert.Equal("2020", app.GetString("year"))
+}
+
+func TestConfiguration_WatchKey(t *testing.T) {
+	viper.Set("app.year", "2020")
+	app := NewConfiguration("app")
+	app.StartWatch(func(key string, value interface{}) {
+		fmt.Printf("key=%s, value=%d \n", key, value)
+	})
+	go func() {
+		for i := 0; i < 10; i++ {
+			<-time.After(time.Second)
+			app.Set("year", i)
+		}
+	}()
+	<-time.After(time.Second*10)
+	app.StopWatch()
 }
 
 func NewGlobalConfig() *Configuration {

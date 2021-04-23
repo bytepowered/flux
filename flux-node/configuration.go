@@ -50,6 +50,7 @@ type Configuration struct {
 	registry *viper.Viper      // 实际的配置实例
 	reglocal bool              // 是否使用本地Viper实例
 	alias    map[string]string // 本地Key别名
+	wstop    chan struct{}
 }
 
 func (c *Configuration) makeKey(key string) string {
@@ -283,6 +284,50 @@ func (c *Configuration) GetStructTag(key, structTag string, outptr interface{}) 
 	return c.registry.UnmarshalKey(key, outptr, func(opt *mapstructure.DecoderConfig) {
 		opt.TagName = structTag
 	})
+}
+
+func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
+	if c.wstop != nil {
+		return
+	}
+	c.wstop = make(chan struct{}, 1)
+	values := make(map[string]interface{}, 16)
+	for _, k := range c.Keys() {
+		values[k] = c.Get(k)
+	}
+	go func() {
+		watch := time.NewTicker(time.Second)
+		defer func() {
+			watch.Stop()
+			c.wstop = nil
+		}()
+		for {
+			select {
+			case <-watch.C:
+				for _, key := range c.Keys() {
+					newV := c.Get(key)
+					if oldV := values[key]; !reflect.DeepEqual(oldV, newV) {
+						values[key] = newV
+						notify(key, newV)
+					}
+				}
+
+			case <-c.wstop:
+				return
+			}
+		}
+	}()
+}
+
+func (c *Configuration) StopWatch() {
+	if c.wstop == nil {
+		return
+	}
+	select {
+	case c.wstop <- struct{}{}:
+	default:
+		return
+	}
 }
 
 func ToConfigurations(namespace string, v interface{}) []*Configuration {
