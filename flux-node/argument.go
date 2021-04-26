@@ -24,7 +24,7 @@ func (a Argument) Resolve(ctx *Context) (interface{}, error) {
 		}
 		if !mtv.Valid {
 			if attr, ok := a.GetAttrEx(ArgumentAttributeTagDefault); ok {
-				mtv = WrapStringMTValue(attr.GetString())
+				mtv = NewStringMTValue(attr.GetString())
 			}
 		}
 		return a.ValueResolver(mtv, a.Class, a.Generic)

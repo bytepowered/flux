@@ -62,7 +62,7 @@ func NewStringArgument(argName string) flux.Argument {
 
 func NewStringArgumentWith(argName string, value string) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangStringClassName, argName, func() flux.MTValue {
-		return flux.WrapStringMTValue(value)
+		return flux.NewStringMTValue(value)
 	})
 }
 
@@ -72,7 +72,7 @@ func NewIntegerArgument(argName string) flux.Argument {
 
 func NewIntegerArgumentWith(argName string, value int32) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangIntegerClassName, argName, func() flux.MTValue {
-		return flux.WrapObjectMTValue(value)
+		return flux.NewObjectMTValue(value)
 	})
 }
 
@@ -82,7 +82,7 @@ func NewLongArgument(argName string) flux.Argument {
 
 func NewLongArgumentWith(argName string, value int64) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangLongClassName, argName, func() flux.MTValue {
-		return flux.WrapObjectMTValue(value)
+		return flux.NewObjectMTValue(value)
 	})
 }
 
@@ -92,7 +92,7 @@ func NewBooleanArgument(argName string) flux.Argument {
 
 func NewBooleanArgumentWith(argName string, value bool) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangBooleanClassName, argName, func() flux.MTValue {
-		return flux.WrapObjectMTValue(value)
+		return flux.NewObjectMTValue(value)
 	})
 }
 
@@ -102,7 +102,7 @@ func NewFloatArgument(argName string) flux.Argument {
 
 func NewFloatArgumentWith(argName string, value float64) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangFloatClassName, argName, func() flux.MTValue {
-		return flux.WrapObjectMTValue(value)
+		return flux.NewObjectMTValue(value)
 	})
 }
 

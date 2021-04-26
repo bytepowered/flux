@@ -12,7 +12,7 @@ func LookupWebValueByExpr(webex flux.ServerWebContext, expr string) string {
 	if "" == expr || nil == webex {
 		return ""
 	}
-	scope, key, ok := fluxpkg.LookupParseExpr(expr)
+	scope, key, ok := fluxpkg.ParseScopeExpr(expr)
 	if !ok {
 		return ""
 	}
