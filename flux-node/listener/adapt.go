@@ -1,4 +1,4 @@
-package internal
+package listener
 
 import (
 	"github.com/bytepowered/flux/flux-node"
@@ -25,7 +25,7 @@ func (call AdaptWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFun
 }
 
 func toServerWebContext(echoc echo.Context) flux.ServerWebContext {
-	webex, ok := echoc.Request().Context().Value(keyWebContext).(flux.ServerWebContext)
+	webex, ok := echoc.Get(string(keyWebContext)).(flux.ServerWebContext)
 	fluxpkg.Assert(ok == true && webex != nil, "<server-web-context> not found in echo.context")
 	return webex
 }

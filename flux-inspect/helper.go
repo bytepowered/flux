@@ -2,7 +2,7 @@ package fluxinspect
 
 import (
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/common"
+	"github.com/bytepowered/flux/flux-node/ext"
 	"strings"
 )
 
@@ -12,7 +12,7 @@ func queryMatch(input, expected string) bool {
 }
 
 func send(webex flux.ServerWebContext, status int, payload interface{}) error {
-	bytes, err := common.SerializeObject(payload)
+	bytes, err := ext.JSONMarshalObject(payload)
 	if nil != err {
 		return err
 	}

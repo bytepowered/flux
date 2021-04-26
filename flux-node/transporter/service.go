@@ -3,7 +3,6 @@ package transporter
 import (
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/common"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-pkg"
 	"github.com/spf13/cast"
@@ -58,7 +57,7 @@ func (r *DefaultTransportWriter) Write(ctx *flux.Context, response *flux.Respons
 			header.Add(k, v)
 		}
 	}
-	if bytes, err := common.SerializeObject(response.Body); nil != err {
+	if bytes, err := ext.JSONMarshalObject(response.Body); nil != err {
 		r.WriteError(ctx, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			Message:    flux.ErrorMessageTransportDecodeResponse,
@@ -70,7 +69,7 @@ func (r *DefaultTransportWriter) Write(ctx *flux.Context, response *flux.Respons
 }
 
 func (r *DefaultTransportWriter) WriteError(ctx *flux.Context, err *flux.ServeError) {
-	bytes, _ := common.SerializeObject(map[string]interface{}{
+	bytes, _ := ext.JSONMarshalObject(map[string]interface{}{
 		"status":  "error",
 		"code":    err.ErrorCode,
 		"message": err.Message,

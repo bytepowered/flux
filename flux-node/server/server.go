@@ -16,7 +16,9 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -45,6 +47,7 @@ type BootstrapServer struct {
 	hookFunc    []flux.ContextHookFunc
 	versionFunc VersionLookupFunc
 	dispatcher  *Dispatcher
+	pooled      *sync.Pool
 	started     chan struct{}
 	stopped     chan struct{}
 	banner      string
@@ -116,6 +119,7 @@ func NewBootstrapServerWith(opts ...Option) *BootstrapServer {
 		dispatcher: NewDispatcher(),
 		listener:   make(map[string]flux.WebListener, 2),
 		hookFunc:   make([]flux.ContextHookFunc, 0, 4),
+		pooled:     &sync.Pool{New: func() interface{} { return flux.NewContext() }},
 		started:    make(chan struct{}),
 		stopped:    make(chan struct{}),
 		banner:     defaultBanner,
@@ -141,7 +145,7 @@ func (s *BootstrapServer) Initial() error {
 	}
 	// Discovery
 	for _, dis := range ext.EndpointDiscoveries() {
-		if err := s.dispatcher.AddInitHook(dis, LoadEndpointDiscoveryConfig(dis.Id())); nil != err {
+		if err := s.dispatcher.AddInitHook(dis, LoadDiscoveryConfig(dis.Id())); nil != err {
 			return err
 		}
 	}
@@ -231,7 +235,8 @@ func (s *BootstrapServer) startEventWatch(ctx context.Context, endpoints chan fl
 func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (err error) {
 	defer func(id string) {
 		if rvr := recover(); rvr != nil {
-			err = fmt.Errorf("SERVER:ROUTE:CRITICAL_PANIC:%w", rvr)
+			logger.Trace(id).Errorw("SERVER:ROUTE:CRITICAL_PANIC", "error", rvr, "debug", string(debug.Stack()))
+			err = fmt.Errorf("SERVER:ROUTE:%s", rvr)
 		}
 	}(webex.RequestId())
 	endpoint, found := endpoints.Lookup(s.versionFunc(webex))
@@ -253,12 +258,11 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 	} else {
 		fluxpkg.Assert(endpoint.IsValid(), "<endpoint> must valid when routing")
 	}
-	ctxw := flux.NewContext()
+	ctxw := s.pooled.Get().(*flux.Context)
+	defer s.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
-	ctxw.SetAttribute(flux.XRequestHost, webex.Host())
-	ctxw.SetAttribute(flux.XRequestAgent, "flux.go")
 	trace := logger.TraceContext(ctxw)
 	trace.Infow("SERVER:ROUTE:START")
 	// hook
@@ -445,21 +449,19 @@ func (s *BootstrapServer) defaultListener() flux.WebListener {
 }
 
 func LoadWebListenerConfig(id string) *flux.Configuration {
-	return flux.NewConfigurationOfNS(flux.NamespaceWebListeners + "." + id)
+	return flux.NewConfiguration(flux.MakeConfigurationKey(flux.NamespaceWebListeners, id))
 }
 
-func LoadEndpointDiscoveryConfig(id string) *flux.Configuration {
-	return flux.NewConfigurationOfNS(flux.NamespaceEndpointDiscoveryServices + "." + id)
+func LoadDiscoveryConfig(id string) *flux.Configuration {
+	return flux.NewConfiguration(flux.MakeConfigurationKey(flux.NamespaceDiscoveries, id))
 }
 
 func isAllowedHttpMethod(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut,
 		http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace:
-		// Allowed
 		return true
 	default:
-		// http.MethodConnect, and Others
 		logger.Errorw("Ignore unsupported http method:", "method", method)
 		return false
 	}

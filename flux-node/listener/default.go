@@ -1,15 +1,18 @@
-package internal
+package listener
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/bytepowered/flux/flux-node"
+	"github.com/bytepowered/flux/flux-node/ext"
+	"github.com/bytepowered/flux/flux-node/logger"
 	fluxpkg "github.com/bytepowered/flux/flux-pkg"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
 	"io"
 	"io/ioutil"
 	"net/url"
+	"reflect"
 )
 
 // 默认对RequestBody的表单数据进行解析
@@ -48,5 +51,38 @@ func RepeatableReader(next echo.HandlerFunc) echo.HandlerFunc {
 		// 恢复Body，但ParseForm解析后，request.Body无法重读，需要通过GetBody
 		request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 		return next(echo)
+	}
+}
+
+// DefaultNotfoundHandler 生成NotFound错误，由ErrorHandler处理
+func DefaultNotfoundHandler(_ flux.ServerWebContext) error {
+	return &flux.ServeError{
+		StatusCode: flux.StatusNotFound,
+		ErrorCode:  flux.ErrorCodeRequestNotFound,
+		Message:    flux.ErrorMessageWebServerRequestNotFound,
+	}
+}
+
+func DefaultErrorHandler(webex flux.ServerWebContext, error error) {
+	if nil == error || (*flux.ServeError)(nil) == error || reflect.ValueOf(error).IsNil() {
+		return
+	}
+	serr, ok := error.(*flux.ServeError)
+	if !ok {
+		serr = &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    error.Error(),
+			CauseError: error,
+		}
+	}
+	data, err := ext.JSONMarshalObject(serr)
+	if nil != err {
+		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
+		return
+	}
+	webex.ResponseWriter().Header().Add("X-Writer-Id", "Fx-EWriter")
+	if err := webex.Write(serr.StatusCode, flux.MIMEApplicationJSON, data); nil != err {
+		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
 	}
 }

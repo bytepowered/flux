@@ -5,11 +5,12 @@ import (
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-node/ext"
 	"github.com/bytepowered/flux/flux-node/logger"
-	"github.com/spf13/viper"
 )
 
 const (
-	dynConfigKeyTypeId = "type-id"
+	dynConfigKeyDynamicFilter = "dynfilter"
+	dynConfigKeyFilterId      = "id"
+	dynConfigKeyFilterType    = "type"
 )
 
 type AwareConfig struct {
@@ -22,25 +23,25 @@ type AwareConfig struct {
 // 动态加载Filter
 func dynamicFilters() ([]AwareConfig, error) {
 	out := make([]AwareConfig, 0)
-	for id := range viper.GetStringMap("filter") {
-		v := viper.Sub("filter." + id)
-		if v == nil || !v.IsSet(dynConfigKeyTypeId) {
-			logger.Infow("Filter configuration is empty or without typeId", "typeId", id)
+	fconfig := flux.NewConfiguration(dynConfigKeyDynamicFilter)
+	for _, config := range fconfig.ToConfigurations() {
+		filterID := config.GetString(dynConfigKeyFilterId)
+		if filterID == "" {
+			logger.Infow("Filter configuration is empty or without filter-id", "filter-id", filterID)
 			continue
 		}
-		config := flux.NewConfigurationOfViper(v)
-		typeId := config.GetString(dynConfigKeyTypeId)
+		filterType := config.GetString(dynConfigKeyFilterType)
 		if IsDisabled(config) {
-			logger.Infow("Filter is DISABLED", "typeId", typeId, "filter-id", id)
+			logger.Infow("Filter is DISABLED", "filter-type", filterType, "filter-id", filterID)
 			continue
 		}
-		factory, ok := ext.FactoryByType(typeId)
+		factory, ok := ext.FactoryByType(filterType)
 		if !ok {
-			return nil, fmt.Errorf("FilterFactory not found, typeId: %s, name: %s", typeId, id)
+			return nil, fmt.Errorf("FilterFactory not found, filter-type: %s, filter-id: %s", filterType, filterID)
 		}
 		out = append(out, AwareConfig{
-			Id:      id,
-			TypeId:  typeId,
+			Id:      filterID,
+			TypeId:  filterType,
 			Factory: factory,
 			Config:  config,
 		})

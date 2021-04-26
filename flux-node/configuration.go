@@ -1,6 +1,8 @@
 package flux
 
 import (
+	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"os"
@@ -10,140 +12,161 @@ import (
 )
 
 const (
-	NamespaceWebListeners              = "web_listeners"
-	NamespaceTransporters              = "transporters"
-	NamespaceEndpointDiscoveryServices = "endpoint_discovery_services"
+	NamespaceWebListeners = "listeners"
+	NamespaceTransporters = "transporters"
+	NamespaceDiscoveries  = "discoveries"
 )
 
-// NewGlobalConfiguration 创建全局Viper实例的配置对象
-func NewGlobalConfiguration() *Configuration {
-	return NewConfigurationOfViper(viper.GetViper())
-}
-
-// NewEmptyConfiguration 创建空的Viper实例的配置对象
-func NewEmptyConfiguration() *Configuration {
-	return NewConfigurationOfViper(viper.New())
-}
-
-// NewConfigurationOfMap 根据指定Map实例来构建。
-func NewConfigurationOfMap(config map[string]interface{}) *Configuration {
-	v := viper.New()
-	for key, val := range config {
-		v.Set(key, val)
+func MakeConfigurationKey(keys ...string) string {
+	if len(keys) == 0 {
+		return ""
 	}
-	return NewConfigurationOfViper(v)
+	for _, key := range keys {
+		if key == "" {
+			panic("configuration: not allow empty key")
+		}
+	}
+	return strings.Join(keys, ".")
 }
 
-// NewConfigurationOfNS 根据指定Namespace，在Viper全局配置中查找配置实例。如果NS不存在，新建一个空配置实例。
-func NewConfigurationOfNS(namespace string) *Configuration {
-	v := viper.Sub(namespace)
-	if v == nil {
-		v = viper.New()
+// NewConfiguration 根据指定Namespace的配置
+func NewConfiguration(namespace string) *Configuration {
+	if namespace == "" {
+		panic("configuration: not allow empty namespace")
 	}
-	return NewConfigurationOfViperNamespace(v, namespace)
-}
-
-// NewConfigurationOfViper 根据指定Viper实例来构建。如果Viper实例为nil，新建一个空配置实例。
-func NewConfigurationOfViper(in *viper.Viper) *Configuration {
-	if nil == in {
-		in = viper.New()
+	return &Configuration{
+		nspath:   namespace,
+		dataID:   namespace,
+		registry: viper.GetViper(), // 持有Viper全局实例，通过Namespace来控制查询的Key
+		reglocal: false,
+		alias:    make(map[string]string),
 	}
-	return &Configuration{instance: in}
-}
-
-func NewConfigurationOfViperNamespace(in *viper.Viper, namespace string) *Configuration {
-	if nil == in {
-		in = viper.New()
-	}
-	return &Configuration{instance: in, namespace: namespace}
 }
 
 // Configuration 封装Viper实例访问接口的配置类
 type Configuration struct {
-	instance    *viper.Viper      // 实际的配置实例
-	globalAlias map[string]string // 全局配置别名
-	namespace   string
+	dataID   string            // 数据ID
+	nspath   string            // 配置所属命名空间
+	registry *viper.Viper      // 实际的配置实例
+	reglocal bool              // 是否使用本地Viper实例
+	alias    map[string]string // 本地Key别名
+	wstop    chan struct{}
 }
 
-// Reference 返回Viper实例
-func (c *Configuration) Reference() *viper.Viper {
-	return c.instance
+func (c *Configuration) makeKey(key string) string {
+	if c.reglocal || c.nspath == "" {
+		return key
+	}
+	return MakeConfigurationKey(c.nspath, key)
 }
 
-// Sub 获取当前实例的子级配置对象
-func (c *Configuration) Sub(name string) *Configuration {
-	return NewConfigurationOfViperNamespace(c.instance.Sub(name), name)
+func (c *Configuration) SetDataId(dataID string) {
+	c.dataID = dataID
+}
+
+func (c *Configuration) DataId() string {
+	return c.dataID
+}
+
+func (c *Configuration) ToStringMap() map[string]interface{} {
+	return cast.ToStringMap(c.registry.Get(c.nspath))
+}
+
+func (c *Configuration) Keys() []string {
+	v := c.registry.Sub(c.nspath)
+	if v != nil {
+		return v.AllKeys()
+	}
+	return []string{}
+}
+
+func (c *Configuration) ToConfigurations() []*Configuration {
+	return ToConfigurations(c.nspath, c.registry.Get(c.nspath))
+}
+
+func (c *Configuration) Sub(subNamespace string) *Configuration {
+	return NewConfiguration(c.makeKey(subNamespace))
 }
 
 func (c *Configuration) Get(key string) interface{} {
-	return c.GetOrDefault(key, nil)
+	return c.doget(c.makeKey(key), nil)
 }
 
-// GetOrDefault 查找指定Key的配置值。
-// 从当前NS查询不到配置时，
-// 1. 如果Value为动态Key，则根据动态Key读取全局配置；
-// 2. 如果配置globalAlias映射，则根据AliasKey读取全局配置。
-// 与Viper的Alias不同的是，Configuration的GlobalAlias是作用于局部命名空间下的别名映射。
-// 当然，这不影响原有Viper的Alias功能。
 func (c *Configuration) GetOrDefault(key string, def interface{}) interface{} {
-	v := c.instance.Get(key)
-	// 动态全局Key和默认值： ${username:yongjia}
-	if strv, ok := v.(string); ok {
-		dkey, defv, typ := ParseDynamicKey(strv)
-		switch typ {
+	return c.doget(c.makeKey(key), def)
+}
+
+func (c *Configuration) doget(key string, indef interface{}) interface{} {
+	val := c.registry.Get(key)
+	if expr, ok := val.(string); ok {
+		// 动态全局Key和默认值： ${username:yongjia}
+		pkey, pdef, ptype := ParseDynamicKey(expr)
+		var usedef interface{}
+		if indef != nil {
+			usedef = indef
+		} else {
+			usedef = pdef
+		}
+		switch ptype {
 		case DynamicTypeConfig:
-			if viper.IsSet(dkey) {
-				if c.namespace+"."+key == dkey {
-					return defv
-				}
-				return viper.Get(dkey)
-			} else {
-				return defv
+			// check circle key
+			if key == pkey {
+				return usedef
 			}
-		case DynamicTypeEnv:
-			if ev, ok := os.LookupEnv(dkey); ok {
-				return ev
+			if c.registry.IsSet(pkey) {
+				return c.doget(pkey, usedef)
 			} else {
-				return defv
+				return usedef
 			}
 
+		case DynamicTypeEnv:
+			if ev, ok := os.LookupEnv(pkey); ok {
+				return ev
+			} else {
+				return usedef
+			}
+
+		case DynamicTypeValue:
+			return val
+
 		default:
-			return v
+			return val
 		}
 	}
-	// GlobalAlias优先级低一些
-	if nil == v && c.globalAlias != nil {
-		if alias, ok := c.globalAlias[key]; ok {
-			v = viper.Get(alias)
+	// check local alias
+	if nil == val {
+		if alias, ok := c.alias[key]; ok {
+			val = c.registry.Get(alias)
 		}
 	}
-	if nil == v {
-		v = def
+	if nil == val {
+		return indef
 	}
-	return v
+	return val
 }
 
 // Set 向当前配置实例以覆盖的方式设置Key-Value键值。
 func (c *Configuration) Set(key string, value interface{}) {
-	c.instance.Set(key, value)
+	c.registry.Set(c.makeKey(key), value)
 }
 
-// SetGlobalAlias 设置当前配置实例的Key与GlobalAlias的映射
-// GlobalAlias 映射的Key是针对当前Configuration下的Key列表的映射。
-// 如果在当前Configuration实例中查找不到值是时，将尝试使用GlobalAlias映射的Key，在全局对象中查找。
-func (c *Configuration) SetGlobalAlias(globalAlias map[string]string) {
-	c.globalAlias = globalAlias
+// SetKeyAlias 设置当前配置实例的Key与GlobalAlias的映射
+func (c *Configuration) SetKeyAlias(keyAlias map[string]string) {
+	// 指定命名空间的Alias，不设置到全局Viper实例
+	for key, alias := range keyAlias {
+		c.alias[c.makeKey(key)] = alias
+	}
 }
 
 // SetDefault 为当前配置实例设置单个默认值。与Viper的SetDefault一致，作用于当前配置实例。
 func (c *Configuration) SetDefault(key string, value interface{}) {
-	c.instance.SetDefault(key, value)
+	c.registry.SetDefault(c.makeKey(key), value)
 }
 
 // SetDefault 为当前配置实例设置一组默认值。与Viper的SetDefault一致，作用于当前配置实例。
 func (c *Configuration) SetDefaults(defaults map[string]interface{}) {
-	for k, v := range defaults {
-		c.instance.SetDefault(k, v)
+	for key, val := range defaults {
+		c.registry.SetDefault(c.makeKey(key), val)
 	}
 }
 
@@ -154,7 +177,7 @@ func (c *Configuration) IsSet(keys ...string) bool {
 	}
 	// Any not set, return false
 	for _, key := range keys {
-		if !c.instance.IsSet(key) {
+		if !c.registry.IsSet(c.makeKey(key)) {
 			return false
 		}
 	}
@@ -236,15 +259,78 @@ func (c *Configuration) GetStringMapString(key string) map[string]string {
 	return cast.ToStringMapString(c.Get(key))
 }
 
-// GetConfigurationSlice returns the value associated with the key as a slice of configurations
-func (c *Configuration) GetConfigurationSlice(key string) []*Configuration {
-	if !c.IsSet(key) {
+// GetConfigurations returns the value associated with the key as a slice of configurations
+func (c *Configuration) GetConfigurations(key string) []*Configuration {
+	key = c.makeKey(key)
+	if !c.registry.IsSet(key) {
 		return nil
 	}
-	v := c.Get(key)
+	v := c.registry.Get(key)
 	if v == nil {
 		return nil
 	}
+	return ToConfigurations(key, v)
+}
+
+func (c *Configuration) GetStruct(key string, outptr interface{}) error {
+	return c.GetStructTag(key, "json", outptr)
+}
+
+func (c *Configuration) GetStructTag(key, structTag string, outptr interface{}) error {
+	key = c.makeKey(key)
+	if !c.registry.IsSet(key) {
+		return nil
+	}
+	return c.registry.UnmarshalKey(key, outptr, func(opt *mapstructure.DecoderConfig) {
+		opt.TagName = structTag
+	})
+}
+
+func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
+	if c.wstop != nil {
+		return
+	}
+	c.wstop = make(chan struct{}, 1)
+	values := make(map[string]interface{}, 16)
+	for _, k := range c.Keys() {
+		values[k] = c.Get(k)
+	}
+	go func() {
+		watch := time.NewTicker(time.Second)
+		defer func() {
+			watch.Stop()
+			c.wstop = nil
+		}()
+		for {
+			select {
+			case <-watch.C:
+				for _, key := range c.Keys() {
+					newV := c.Get(key)
+					if oldV := values[key]; !reflect.DeepEqual(oldV, newV) {
+						values[key] = newV
+						notify(key, newV)
+					}
+				}
+
+			case <-c.wstop:
+				return
+			}
+		}
+	}()
+}
+
+func (c *Configuration) StopWatch() {
+	if c.wstop == nil {
+		return
+	}
+	select {
+	case c.wstop <- struct{}{}:
+	default:
+		return
+	}
+}
+
+func ToConfigurations(namespace string, v interface{}) []*Configuration {
 	sliceV := reflect.ValueOf(v)
 	if sliceV.Kind() != reflect.Slice {
 		return nil
@@ -253,7 +339,17 @@ func (c *Configuration) GetConfigurationSlice(key string) []*Configuration {
 	for i := 0; i < sliceV.Len(); i++ {
 		sm := cast.ToStringMap(sliceV.Index(i).Interface())
 		if len(sm) > 0 {
-			out = append(out, NewConfigurationOfMap(sm))
+			out = append(out, &Configuration{
+				nspath:   namespace + fmt.Sprintf("[%d]", i),
+				reglocal: true,
+				registry: func() *viper.Viper {
+					r := viper.New()
+					for k, v := range sm {
+						r.Set(k, v)
+					}
+					return r
+				}(),
+			})
 		}
 	}
 	return out
