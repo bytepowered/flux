@@ -2,8 +2,11 @@ package ext
 
 import (
 	"errors"
+	"fmt"
 	"github.com/bytepowered/flux/flux-node"
 	"github.com/bytepowered/flux/flux-pkg"
+	"io"
+	"io/ioutil"
 	"strings"
 )
 
@@ -45,4 +48,27 @@ func JSONUnmarshal(data []byte, out interface{}) error {
 		return errors.New("JSON serializer not found")
 	}
 	return json.Unmarshal(data, out)
+}
+
+func JSONMarshalObject(body interface{}) ([]byte, error) {
+	if bytes, ok := body.([]byte); ok {
+		return bytes, nil
+	} else if str, ok := body.(string); ok {
+		return []byte(str), nil
+	} else if r, ok := body.(io.Reader); ok {
+		if c, ok := r.(io.Closer); ok {
+			defer c.Close()
+		}
+		if bytes, err := ioutil.ReadAll(r); nil != err {
+			return nil, fmt.Errorf("SERVER:SERIALIZE/READER: %w", err)
+		} else {
+			return bytes, nil
+		}
+	} else {
+		if bytes, err := JSONMarshal(body); nil != err {
+			return nil, fmt.Errorf("SERVER:SERIALIZE/JSON: %w", err)
+		} else {
+			return bytes, nil
+		}
+	}
 }
