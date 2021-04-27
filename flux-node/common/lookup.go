@@ -11,7 +11,7 @@ import (
 )
 
 // LookupMTValueByExpr 搜索LookupExpr表达式指定域的值。
-func LookupMTValueByExpr(expr string, ctx *flux.Context) (interface{}, error) {
+func LookupMTValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
 	if expr == "" || nil == ctx {
 		return nil, errors.New("empty lookup expr, or context is nil")
 	}
@@ -19,15 +19,15 @@ func LookupMTValueByExpr(expr string, ctx *flux.Context) (interface{}, error) {
 	if !ok {
 		return "", errors.New("illegal lookup expr: " + expr)
 	}
-	mtv, err := LookupMTValue(scope, key, ctx)
+	mtv, err := LookupMTValue(ctx, scope, key)
 	if nil != err {
 		return "", err
 	}
 	return mtv.Value, nil
 }
 
-// LookupMTValue 根据指定 Scope/Key 查找参数值；返回MTValue对象，包含值对象的MediaType类型；
-func LookupMTValue(scope, key string, ctx *flux.Context) (value flux.MTValue, err error) {
+// LookupMTValue 根据Scope,Key从Context中查找参数；支持复杂参数类型
+func LookupMTValue(ctx *flux.Context, scope, key string) (value flux.MTValue, err error) {
 	if scope == "" || key == "" {
 		return flux.NewInvalidMTValue(), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
 	}
