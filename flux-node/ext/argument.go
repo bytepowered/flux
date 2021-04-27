@@ -8,15 +8,15 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义参数值查找逻辑。
 var (
-	argumentLookupFunc flux.ArgumentLookupFunc
+	lookupFunc flux.LookupFunc
 )
 
-func SetArgumentLookupFunc(f flux.ArgumentLookupFunc) {
-	argumentLookupFunc = fluxpkg.MustNotNil(f, "ArgumentLookupFunc is nil").(flux.ArgumentLookupFunc)
+func SetLookupFunc(f flux.LookupFunc) {
+	lookupFunc = fluxpkg.MustNotNil(f, "LookupFunc is nil").(flux.LookupFunc)
 }
 
-func ArgumentLookupFunc() flux.ArgumentLookupFunc {
-	return argumentLookupFunc
+func LookupFunc() flux.LookupFunc {
+	return lookupFunc
 }
 
 //// 构建参数值对象工具函数
@@ -33,7 +33,7 @@ func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() 
 		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
 		ValueLoader:   valLoader,
-		LookupFunc:    ArgumentLookupFunc(),
+		LookupFunc:    LookupFunc(),
 		ValueResolver: MTValueResolverByType(typeClass),
 	}
 }
@@ -45,7 +45,7 @@ func NewComplexArgument(typeClass, argName string) flux.Argument {
 		Name:          fluxpkg.MustNotEmpty(argName, "argName is empty"),
 		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
-		LookupFunc:    ArgumentLookupFunc(),
+		LookupFunc:    LookupFunc(),
 		ValueResolver: MTValueResolverByType(typeClass),
 	}
 }

@@ -90,8 +90,8 @@ const (
 )
 
 type (
-	// ArgumentLookupFunc 参数值查找函数
-	ArgumentLookupFunc func(scope, key string, ctx *Context) (MTValue, error)
+	// LookupFunc 参数值查找函数
+	LookupFunc func(ctx *Context, scope, key string) (MTValue, error)
 
 	// ContextHookFunc 用于WebContext与Context的交互勾子；
 	// 在每个请求被路由执行时，在创建Context后被调用。
@@ -109,9 +109,9 @@ type Argument struct {
 	Fields             []Argument       `json:"fields" yaml:"fields"`       // 子结构字段
 	EmbeddedAttributes `yaml:",inline"` // 属性列表
 	// helper func
-	ValueLoader   func() MTValue     `json:"-"`
-	LookupFunc    ArgumentLookupFunc `json:"-"`
-	ValueResolver MTValueResolver    `json:"-"`
+	ValueLoader   func() MTValue  `json:"-"`
+	LookupFunc    LookupFunc      `json:"-"`
+	ValueResolver MTValueResolver `json:"-"`
 }
 
 // Attribute 定义服务的属性信息
