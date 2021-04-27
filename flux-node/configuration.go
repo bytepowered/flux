@@ -2,6 +2,7 @@ package flux
 
 import (
 	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"os"
@@ -37,20 +38,23 @@ func NewConfiguration(namespace string) *Configuration {
 		nspath:   namespace,
 		dataID:   namespace,
 		registry: viper.GetViper(), // 持有Viper全局实例，通过Namespace来控制查询的Key
-		local:    false,
+		reglocal: false,
+		alias:    make(map[string]string),
 	}
 }
 
 // Configuration 封装Viper实例访问接口的配置类
 type Configuration struct {
-	dataID   string       // 数据ID
-	nspath   string       // 配置所属命名空间
-	registry *viper.Viper // 实际的配置实例
-	local    bool         // 是否使用本地Viper实例
+	dataID   string            // 数据ID
+	nspath   string            // 配置所属命名空间
+	registry *viper.Viper      // 实际的配置实例
+	reglocal bool              // 是否使用本地Viper实例
+	alias    map[string]string // 本地Key别名
+	wstop    chan struct{}
 }
 
 func (c *Configuration) makeKey(key string) string {
-	if c.local || c.nspath == "" {
+	if c.reglocal || c.nspath == "" {
 		return key
 	}
 	return MakeConfigurationKey(c.nspath, key)
@@ -66,6 +70,14 @@ func (c *Configuration) DataId() string {
 
 func (c *Configuration) ToStringMap() map[string]interface{} {
 	return cast.ToStringMap(c.registry.Get(c.nspath))
+}
+
+func (c *Configuration) Keys() []string {
+	v := c.registry.Sub(c.nspath)
+	if v != nil {
+		return v.AllKeys()
+	}
+	return []string{}
 }
 
 func (c *Configuration) ToConfigurations() []*Configuration {
@@ -97,6 +109,7 @@ func (c *Configuration) doget(key string, indef interface{}) interface{} {
 		}
 		switch ptype {
 		case DynamicTypeConfig:
+			// check circle key
 			if key == pkey {
 				return usedef
 			}
@@ -120,6 +133,12 @@ func (c *Configuration) doget(key string, indef interface{}) interface{} {
 			return val
 		}
 	}
+	// check local alias
+	if nil == val {
+		if alias, ok := c.alias[key]; ok {
+			val = c.registry.Get(alias)
+		}
+	}
 	if nil == val {
 		return indef
 	}
@@ -133,8 +152,9 @@ func (c *Configuration) Set(key string, value interface{}) {
 
 // SetKeyAlias 设置当前配置实例的Key与GlobalAlias的映射
 func (c *Configuration) SetKeyAlias(keyAlias map[string]string) {
+	// 指定命名空间的Alias，不设置到全局Viper实例
 	for key, alias := range keyAlias {
-		c.registry.RegisterAlias(alias, c.makeKey(key))
+		c.alias[c.makeKey(key)] = alias
 	}
 }
 
@@ -252,6 +272,64 @@ func (c *Configuration) GetConfigurations(key string) []*Configuration {
 	return ToConfigurations(key, v)
 }
 
+func (c *Configuration) GetStruct(key string, outptr interface{}) error {
+	return c.GetStructTag(key, "json", outptr)
+}
+
+func (c *Configuration) GetStructTag(key, structTag string, outptr interface{}) error {
+	key = c.makeKey(key)
+	if !c.registry.IsSet(key) {
+		return nil
+	}
+	return c.registry.UnmarshalKey(key, outptr, func(opt *mapstructure.DecoderConfig) {
+		opt.TagName = structTag
+	})
+}
+
+func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
+	if c.wstop != nil {
+		return
+	}
+	c.wstop = make(chan struct{}, 1)
+	values := make(map[string]interface{}, 16)
+	for _, k := range c.Keys() {
+		values[k] = c.Get(k)
+	}
+	go func() {
+		watch := time.NewTicker(time.Second)
+		defer func() {
+			watch.Stop()
+			c.wstop = nil
+		}()
+		for {
+			select {
+			case <-watch.C:
+				for _, key := range c.Keys() {
+					newV := c.Get(key)
+					if oldV := values[key]; !reflect.DeepEqual(oldV, newV) {
+						values[key] = newV
+						notify(key, newV)
+					}
+				}
+
+			case <-c.wstop:
+				return
+			}
+		}
+	}()
+}
+
+func (c *Configuration) StopWatch() {
+	if c.wstop == nil {
+		return
+	}
+	select {
+	case c.wstop <- struct{}{}:
+	default:
+		return
+	}
+}
+
 func ToConfigurations(namespace string, v interface{}) []*Configuration {
 	sliceV := reflect.ValueOf(v)
 	if sliceV.Kind() != reflect.Slice {
@@ -262,8 +340,8 @@ func ToConfigurations(namespace string, v interface{}) []*Configuration {
 		sm := cast.ToStringMap(sliceV.Index(i).Interface())
 		if len(sm) > 0 {
 			out = append(out, &Configuration{
-				nspath: namespace + fmt.Sprintf("[%d]", i),
-				local:  true,
+				nspath:   namespace + fmt.Sprintf("[%d]", i),
+				reglocal: true,
 				registry: func() *viper.Viper {
 					r := viper.New()
 					for k, v := range sm {

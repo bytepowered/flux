@@ -17,6 +17,7 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/labstack/gommon v0.3.0
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
 	github.com/spaolacci/murmur3 v1.1.0

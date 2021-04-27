@@ -151,7 +151,7 @@ func WithDefaults(defaults map[string]interface{}) Option {
 	}
 }
 
-// NewTransporterWith New dubbo transporter service with optionsf
+// NewTransporterWith New dubbo transporter service with options
 func NewTransporterWith(opts ...Option) flux.Transporter {
 	bts := &RpcTransporter{
 		optionsf: make([]GenericOptionsFunc, 0),
@@ -188,17 +188,13 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 			"load_balance":          "random",
 			"protocol":              dubbo.DUBBO,
 		}),
+		// 使用带Result结果的RPCService实现
 		WithGenericServiceFunc(func(service *flux.Service) common.RPCService {
-			return dubgo.NewGenericService(service.Interface)
+			return NewResultRPCService(service.Interface)
 		}),
-		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result {
-			srv := rpc.(*dubgo.GenericService)
-			data, err := srv.Invoke(ctx, args)
-			return &protocol.RPCResult{
-				Attrs: nil,
-				Err:   err,
-				Rest:  data,
-			}
+		// 转换为 ResultRPCService 的调用
+		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, service common.RPCService) protocol.Result {
+			return service.(*ResultRPCService).Invoke(ctx, args)
 		}),
 		WithArgumentResolver(DefaultArgumentResolver),
 		WithAttachmentResolver(DefaultAttachmentResolver),
