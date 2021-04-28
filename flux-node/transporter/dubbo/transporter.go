@@ -55,10 +55,10 @@ var (
 type (
 	// Option func to set option
 	Option func(*RpcTransporter)
-	// ArgumentResolver Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
-	ArgumentResolver func(arguments []flux.Argument, context *flux.Context) (types []string, values interface{}, err error)
-	// AttachmentResolver 封装Attachment附件的函数
-	AttachmentResolver func(context *flux.Context) (interface{}, error)
+	// ArgumentsAssemblyFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
+	ArgumentsAssemblyFunc func(arguments []flux.Argument, context *flux.Context) (types []string, values interface{}, err error)
+	// AttachmentsAssemblyFunc 封装Attachment附件的函数
+	AttachmentsAssemblyFunc func(context *flux.Context) (interface{}, error)
 )
 
 type (
@@ -73,32 +73,32 @@ type (
 // RpcTransporter 集成DubboRPC框架的TransporterService
 type RpcTransporter struct {
 	// 可外部配置
-	defaults  map[string]interface{} // 配置默认值
-	registry  map[string]string      // Registry的别名
-	optionsf  []GenericOptionsFunc   // Dubbo Reference 配置函数
-	servicef  GenericServiceFunc     // Dubbo Service 构建函数
-	invokef   GenericInvokeFunc      // 执行Dubbo泛调用的函数
-	aresolver ArgumentResolver       // Dubbo参数封装函数
-	tresolver AttachmentResolver     // Attachment封装函数
-	codec     flux.TransportCodec    // 解析响应结果的函数
-	writer    flux.TransportWriter   // Writer
+	defaults         map[string]interface{}  // 配置默认值
+	registry         map[string]string       // Registry的别名
+	optionsFunc      []GenericOptionsFunc    // Dubbo Reference 配置函数
+	serviceFunc      GenericServiceFunc      // Dubbo Service 构建函数
+	invokeFunc       GenericInvokeFunc       // 执行Dubbo泛调用的函数
+	argsAssemblyFunc ArgumentsAssemblyFunc   // Dubbo参数封装函数
+	attrAssemblyFunc AttachmentsAssemblyFunc // Attachment封装函数
+	codec            flux.TransportCodec     // 解析响应结果的函数
+	writer           flux.TransportWriter    // Writer
 	// 内部私有
 	trace         bool
 	configuration *flux.Configuration
 	servmx        sync.RWMutex
 }
 
-// WithArgumentResolver 用于配置Dubbo参数封装实现函数
-func WithArgumentResolver(fun ArgumentResolver) Option {
+// WithArgumentsAssemblyFunc 用于配置Dubbo参数封装实现函数
+func WithArgumentsAssemblyFunc(fun ArgumentsAssemblyFunc) Option {
 	return func(service *RpcTransporter) {
-		service.aresolver = fun
+		service.argsAssemblyFunc = fun
 	}
 }
 
-// WithAttachmentResolver 用于配置Attachment封装实现函数
-func WithAttachmentResolver(fun AttachmentResolver) Option {
+// WithAttachmentsAssemblyFunc 用于配置Attachment封装实现函数
+func WithAttachmentsAssemblyFunc(fun AttachmentsAssemblyFunc) Option {
 	return func(service *RpcTransporter) {
-		service.tresolver = fun
+		service.attrAssemblyFunc = fun
 	}
 }
 
@@ -119,21 +119,21 @@ func WithTransportWriter(fun flux.TransportWriter) Option {
 // WithGenericOptionsFunc 用于配置DubboReference的参数配置函数
 func WithGenericOptionsFunc(fun GenericOptionsFunc) Option {
 	return func(service *RpcTransporter) {
-		service.optionsf = append(service.optionsf, fun)
+		service.optionsFunc = append(service.optionsFunc, fun)
 	}
 }
 
 // WithGenericServiceFunc 用于构建DubboRPCService的函数
 func WithGenericServiceFunc(fun GenericServiceFunc) Option {
 	return func(service *RpcTransporter) {
-		service.servicef = fun
+		service.serviceFunc = fun
 	}
 }
 
 // WithGenericInvokeFunc 用于调用DubboRPCService执行方法的函数
 func WithGenericInvokeFunc(fun GenericInvokeFunc) Option {
 	return func(service *RpcTransporter) {
-		service.invokef = fun
+		service.invokeFunc = fun
 	}
 }
 
@@ -154,7 +154,7 @@ func WithDefaults(defaults map[string]interface{}) Option {
 // NewTransporterWith New dubbo transporter service with options
 func NewTransporterWith(opts ...Option) flux.Transporter {
 	bts := &RpcTransporter{
-		optionsf: make([]GenericOptionsFunc, 0),
+		optionsFunc: make([]GenericOptionsFunc, 0),
 	}
 	for _, opt := range opts {
 		opt(bts)
@@ -196,8 +196,8 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, service common.RPCService) protocol.Result {
 			return service.(*ResultRPCService).Invoke(ctx, args)
 		}),
-		WithArgumentResolver(DefaultArgumentResolver),
-		WithAttachmentResolver(DefaultAttachmentResolver),
+		WithArgumentsAssemblyFunc(DefaultArgumentsAssemblyFunc),
+		WithAttachmentsAssemblyFunc(DefaultAttachmentAssemblyFunc),
 		WithTransportCodec(NewTransportCodecFunc()),
 		WithTransportWriter(new(transporter.DefaultTransportWriter)),
 	}
@@ -216,11 +216,11 @@ func (b *RpcTransporter) Init(config *flux.Configuration) error {
 	b.trace = config.GetBool(ConfigKeyTraceEnable)
 	logger.Infow("Dubbo transporter transporter request trace", "enable", b.trace)
 	// Set default impl if not present
-	if nil == b.optionsf {
-		b.optionsf = make([]GenericOptionsFunc, 0)
+	if nil == b.optionsFunc {
+		b.optionsFunc = make([]GenericOptionsFunc, 0)
 	}
-	if fluxpkg.IsNil(b.aresolver) {
-		b.aresolver = DefaultArgumentResolver
+	if fluxpkg.IsNil(b.argsAssemblyFunc) {
+		b.argsAssemblyFunc = DefaultArgumentsAssemblyFunc
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
@@ -253,7 +253,7 @@ func (b *RpcTransporter) Transport(ctx *flux.Context) {
 
 // Invoke invoke transporter service with context
 func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
-	types, values, err := b.aresolver(service.Arguments, ctx)
+	types, values, err := b.argsAssemblyFunc(service.Arguments, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -297,7 +297,7 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*
 
 // DoInvoke execute transporter service with arguments
 func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
-	att, err := b.tresolver(ctx)
+	att, err := b.attrAssemblyFunc(ctx)
 	if nil != err {
 		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
 			"transporter-service", service.ServiceID(), "error", err)
@@ -314,7 +314,7 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 	}
 	generic := b.LoadGenericService(&service)
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
-	resultW := b.invokef(goctx, []interface{}{service.Method, types, values}, generic)
+	resultW := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
 	if cause := resultW.Error(); cause != nil {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
@@ -348,13 +348,13 @@ func (b *RpcTransporter) LoadGenericService(service *flux.Service) common.RPCSer
 	newRef := NewReference(service.Interface, service, b.configuration)
 	// Options
 	const msg = "Dubbo option-func return nil reference"
-	for _, optsFunc := range b.optionsf {
+	for _, optsFunc := range b.optionsFunc {
 		if nil != optsFunc {
 			newRef = fluxpkg.MustNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", service.Interface)
-	srv := b.servicef(service)
+	srv := b.serviceFunc(service)
 	dubgo.SetConsumerService(srv)
 	newRef.Refer(srv)
 	newRef.Implement(srv)
