@@ -134,7 +134,7 @@ func ExtractTokenByFeature(ctx *flux.Context) (string, error) {
 	if "" == expr {
 		return "", fmt.Errorf("<%s> not found in endpoint.attrs", FeatureJWT)
 	}
-	scope, key, ok := fluxpkg.LookupParseExpr(expr)
+	scope, key, ok := fluxpkg.ParseScopeExpr(expr)
 	if !ok {
 		return "", fmt.Errorf("<%s> value is not a valid expr: %s", FeatureJWT, expr)
 	}

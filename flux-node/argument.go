@@ -18,13 +18,13 @@ func (a Argument) Resolve(ctx *Context) (interface{}, error) {
 	}
 	// Single value
 	if len(a.Fields) == 0 {
-		mtv, err := a.LookupFunc(a.HttpScope, a.HttpName, ctx)
+		mtv, err := a.LookupFunc(ctx, a.HttpScope, a.HttpName)
 		if nil != err {
 			return nil, err
 		}
 		if !mtv.Valid {
 			if attr, ok := a.GetAttrEx(ArgumentAttributeTagDefault); ok {
-				mtv = WrapStringMTValue(attr.GetString())
+				mtv = NewStringMTValue(attr.GetString())
 			}
 		}
 		return a.ValueResolver(mtv, a.Class, a.Generic)

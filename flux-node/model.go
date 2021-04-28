@@ -56,6 +56,8 @@ const (
 	ArgumentTypePrimitive = "PRIMITIVE"
 	// 复杂参数类型：POJO
 	ArgumentTypeComplex = "COMPLEX"
+	// JSONMap类型
+	ArgumentTypeJSONMap = "JSONMAP"
 )
 
 // Support protocols
@@ -90,8 +92,8 @@ const (
 )
 
 type (
-	// ArgumentLookupFunc 参数值查找函数
-	ArgumentLookupFunc func(scope, key string, ctx *Context) (MTValue, error)
+	// LookupFunc 参数值查找函数
+	LookupFunc func(ctx *Context, scope, key string) (MTValue, error)
 
 	// ContextHookFunc 用于WebContext与Context的交互勾子；
 	// 在每个请求被路由执行时，在创建Context后被调用。
@@ -109,9 +111,9 @@ type Argument struct {
 	Fields             []Argument       `json:"fields" yaml:"fields"`       // 子结构字段
 	EmbeddedAttributes `yaml:",inline"` // 属性列表
 	// helper func
-	ValueLoader   func() MTValue     `json:"-"`
-	LookupFunc    ArgumentLookupFunc `json:"-"`
-	ValueResolver MTValueResolver    `json:"-"`
+	ValueLoader   func() MTValue  `json:"-"`
+	LookupFunc    LookupFunc      `json:"-"`
+	ValueResolver MTValueResolver `json:"-"`
 }
 
 // Attribute 定义服务的属性信息
@@ -242,6 +244,7 @@ func (b Service) ServiceID() string {
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
+	Kind               string   `json:"kind" yaml:"kind"`               // Endpoint类型
 	Application        string   `json:"application" yaml:"application"` // 所属应用名
 	Version            string   `json:"version" yaml:"version"`         // 端点版本号
 	HttpPattern        string   `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern

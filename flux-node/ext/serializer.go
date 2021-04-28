@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux/flux-pkg"
 	"io"
 	"io/ioutil"
+	"strings"
 )
 
 // Default name
@@ -23,11 +24,13 @@ var (
 
 func RegisterSerializer(typeName string, serializer flux.Serializer) {
 	typeName = fluxpkg.MustNotEmpty(typeName, "typeName is empty")
+	typeName = strings.ToLower(typeName)
 	typedSerializers[typeName] = fluxpkg.MustNotNil(serializer, "Serializer is nil").(flux.Serializer)
 }
 
 func SerializerByType(typeName string) flux.Serializer {
 	typeName = fluxpkg.MustNotEmpty(typeName, "typeName is empty")
+	typeName = strings.ToLower(typeName)
 	return typedSerializers[typeName]
 }
 

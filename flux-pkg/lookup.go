@@ -5,16 +5,25 @@ import (
 	"strings"
 )
 
-// LookupParseExpr 解析Lookup键值对
-func LookupParseExpr(expr string) (scope, key string, ok bool) {
+// ParseDefineExpr 解析键值定义的表达式（KEY=VALUE），返回(Key,Value)元组；
+func ParseDefineExpr(expr string) (key, value string, ok bool) {
+	return ParseExprBySep(expr, "=")
+}
+
+// ParseScopeExpr 解析指定查找域的表达式（SCOPE:KEY），返回(Scope,key)元组；
+func ParseScopeExpr(expr string) (scope, key string, ok bool) {
+	return ParseExprBySep(expr, ":")
+}
+
+func ParseExprBySep(expr, sep string) (scope, key string, ok bool) {
 	if "" == expr {
 		return
 	}
-	kv := strings.Split(expr, ":")
-	if len(kv) < 2 || ("" == kv[0] || "" == kv[1]) {
-		return
+	kv := strings.Split(expr, sep)
+	if len(kv) == 1 {
+		return expr, "", false
 	}
-	return strings.ToUpper(kv[0]), kv[1], true
+	return kv[0], kv[1], true
 }
 
 func LookupByProviders(key string, providers ...func() url.Values) (string, bool) {

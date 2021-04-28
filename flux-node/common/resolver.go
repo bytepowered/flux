@@ -133,16 +133,18 @@ func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 		return make(map[string]interface{}, 0), nil
 	}
 	switch mtValue.MediaType {
-	case flux.ValueMediaTypeGoStringMap:
+	case flux.MediaTypeGoMapStringList:
+		return mtValue.Value.(map[string]interface{}), nil
+	case flux.MediaTypeGoMapString:
 		return cast.ToStringMap(mtValue.Value), nil
-	case flux.ValueMediaTypeGoString:
+	case flux.MediaTypeGoString:
 		var hashmap = map[string]interface{}{}
 		if err := ext.JSONUnmarshal([]byte(mtValue.Value.(string)), &hashmap); nil != err {
 			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mtValue.Value, err)
 		} else {
 			return hashmap, nil
 		}
-	case flux.ValueMediaTypeGoObject:
+	case flux.MediaTypeGoObject:
 		if sm, err := cast.ToStringMapE(mtValue.Value); nil != err {
 			return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", mtValue.Value, mtValue.Value)
 		} else {
@@ -150,13 +152,13 @@ func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 		}
 	default:
 		var data []byte
-		if strings.Contains(mtValue.MediaType, "application/json") {
+		if mtValue.MediaType.Contains("application/json") {
 			if bs, err := toByteArray(mtValue.Value); nil != err {
 				return nil, err
 			} else {
 				data = bs
 			}
-		} else if strings.Contains(mtValue.MediaType, "application/x-www-form-urlencoded") {
+		} else if mtValue.MediaType.Contains("application/x-www-form-urlencoded") {
 			if bs, err := toByteArray(mtValue.Value); nil != err {
 				return nil, err
 			} else if jbs, err := JSONBytesFromQueryString(bs); nil != err {
@@ -197,7 +199,7 @@ func ToGenericListE(generics []string, mtValue flux.MTValue) (interface{}, error
 		vValue := reflect.ValueOf(mtValue.Value)
 		out := make([]interface{}, vValue.Len())
 		for i := 0; i < vValue.Len(); i++ {
-			if v, err := resolver(flux.WrapObjectMTValue(vValue.Index(i).Interface()), generic, []string{}); nil != err {
+			if v, err := resolver(flux.NewObjectMTValue(vValue.Index(i).Interface()), generic, []string{}); nil != err {
 				return nil, err
 			} else {
 				out[i] = v
