@@ -10,7 +10,7 @@ import (
 var mock = echo.New()
 
 func MockWebContext(id string) flux.ServerWebContext {
-	mr := httptest.NewRequest("GET", "http://mockctx/"+id, nil)
+	mr := httptest.NewRequest("GET", "http://mocking/"+id, nil)
 	mw := httptest.NewRecorder()
 	return listener.NewServeWebContext(mock.NewContext(mr, mw), id, nil)
 }

@@ -8,15 +8,15 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义参数值查找逻辑。
 var (
-	lookupFunc flux.LookupFunc
+	argumentLookupFunc flux.ArgumentLookupFunc
 )
 
-func SetLookupFunc(f flux.LookupFunc) {
-	lookupFunc = fluxpkg.MustNotNil(f, "LookupFunc is nil").(flux.LookupFunc)
+func SetArgumentLookupFunc(f flux.ArgumentLookupFunc) {
+	argumentLookupFunc = fluxpkg.MustNotNil(f, "ArgumentLookupFunc is nil").(flux.ArgumentLookupFunc)
 }
 
-func LookupFunc() flux.LookupFunc {
-	return lookupFunc
+func ArgumentLookupFunc() flux.ArgumentLookupFunc {
+	return argumentLookupFunc
 }
 
 //// 构建参数值对象工具函数
@@ -33,7 +33,7 @@ func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() 
 		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
 		ValueLoader:   valLoader,
-		LookupFunc:    LookupFunc(),
+		LookupFunc:    ArgumentLookupFunc(),
 		ValueResolver: MTValueResolverByType(typeClass),
 	}
 }
@@ -45,7 +45,7 @@ func NewComplexArgument(typeClass, argName string) flux.Argument {
 		Name:          fluxpkg.MustNotEmpty(argName, "argName is empty"),
 		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
-		LookupFunc:    LookupFunc(),
+		LookupFunc:    ArgumentLookupFunc(),
 		ValueResolver: MTValueResolverByType(typeClass),
 	}
 }
@@ -62,7 +62,7 @@ func NewStringArgument(argName string) flux.Argument {
 
 func NewStringArgumentWith(argName string, value string) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangStringClassName, argName, func() flux.MTValue {
-		return flux.NewStringMTValue(value)
+		return flux.WrapStringMTValue(value)
 	})
 }
 
@@ -72,7 +72,7 @@ func NewIntegerArgument(argName string) flux.Argument {
 
 func NewIntegerArgumentWith(argName string, value int32) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangIntegerClassName, argName, func() flux.MTValue {
-		return flux.NewObjectMTValue(value)
+		return flux.WrapObjectMTValue(value)
 	})
 }
 
@@ -82,7 +82,7 @@ func NewLongArgument(argName string) flux.Argument {
 
 func NewLongArgumentWith(argName string, value int64) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangLongClassName, argName, func() flux.MTValue {
-		return flux.NewObjectMTValue(value)
+		return flux.WrapObjectMTValue(value)
 	})
 }
 
@@ -92,7 +92,7 @@ func NewBooleanArgument(argName string) flux.Argument {
 
 func NewBooleanArgumentWith(argName string, value bool) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangBooleanClassName, argName, func() flux.MTValue {
-		return flux.NewObjectMTValue(value)
+		return flux.WrapObjectMTValue(value)
 	})
 }
 
@@ -102,7 +102,7 @@ func NewFloatArgument(argName string) flux.Argument {
 
 func NewFloatArgumentWith(argName string, value float64) flux.Argument {
 	return NewPrimitiveArgumentWithLoader(flux.JavaLangFloatClassName, argName, func() flux.MTValue {
-		return flux.NewObjectMTValue(value)
+		return flux.WrapObjectMTValue(value)
 	})
 }
 

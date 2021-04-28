@@ -2,7 +2,6 @@ package fluxscript
 
 import (
 	"github.com/bytepowered/flux/flux-node"
-	"github.com/bytepowered/flux/flux-node/common"
 	"github.com/bytepowered/flux/flux-node/logger"
 	"github.com/spaolacci/murmur3"
 	"math/rand"
@@ -27,7 +26,6 @@ type ScriptContext struct {
 	GetQueryVarFunc  GetVarFunc `json:"getQueryVar"`
 	GetHeaderVarFunc GetVarFunc `json:"getHeaderVar"`
 	GetFormVarFunc   GetVarFunc `json:"getFormVar"`
-	LookupExprFunc   GetVarFunc `json:"lookupExpr"`
 	// Helper
 	RandomInt63Func func(max int64) int64    `json:"random"`
 	FastHashFunc    func(data string) uint64 `json:"hash"`
@@ -55,9 +53,6 @@ func NewScriptContext(webc flux.ServerWebContext, pattern string) ScriptContext 
 		},
 		GetFormVarFunc: func(key string) string {
 			return webc.FormVar(key)
-		},
-		LookupExprFunc: func(expr string) string {
-			return common.LookupWebValueByExpr(webc, expr)
 		},
 		RandomInt63Func: func(max int64) int64 {
 			return random.Int63n(max)

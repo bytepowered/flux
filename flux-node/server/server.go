@@ -470,7 +470,7 @@ func isAllowedHttpMethod(method string) bool {
 func initArguments(args []flux.Argument) {
 	for i := range args {
 		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
-		args[i].LookupFunc = ext.LookupFunc()
+		args[i].LookupFunc = ext.ArgumentLookupFunc()
 		initArguments(args[i].Fields)
 	}
 }

@@ -25,7 +25,7 @@ func TestScopeLookupParsePair(t *testing.T) {
 	}
 	assert := assert.New(t)
 	for _, tcase := range cases {
-		scope, key, ok := fluxpkg.ParseScopeExpr(tcase.lookup)
+		scope, key, ok := fluxpkg.LookupParseExpr(tcase.lookup)
 		assert.Equal(tcase.ok, ok, "ok: not match")
 		assert.Equal(tcase.scope, scope, "scope: not match")
 		assert.Equal(tcase.key, key, "key: not match")

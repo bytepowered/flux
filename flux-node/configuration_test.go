@@ -198,7 +198,7 @@ func TestConfiguration_WatchKey(t *testing.T) {
 			app.Set("year", i)
 		}
 	}()
-	<-time.After(time.Second * 10)
+	<-time.After(time.Second*10)
 	app.StopWatch()
 }
 

@@ -43,7 +43,7 @@ var (
 )
 
 func TestToGenericList_IntEmpty(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeInt, flux.NewStringMTValue(""))
+	a1, err := ToGenericListE(GenericTypeInt, flux.WrapStringMTValue(""))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -51,7 +51,7 @@ func TestToGenericList_IntEmpty(t *testing.T) {
 }
 
 func TestToGenericList_IntNil(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeInt, flux.NewObjectMTValue(nil))
+	a1, err := ToGenericListE(GenericTypeInt, flux.WrapObjectMTValue(nil))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -59,7 +59,7 @@ func TestToGenericList_IntNil(t *testing.T) {
 }
 
 func TestToGenericList_Int(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeInt, flux.NewStringMTValue("123"))
+	a1, err := ToGenericListE(GenericTypeInt, flux.WrapStringMTValue("123"))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -67,13 +67,13 @@ func TestToGenericList_Int(t *testing.T) {
 }
 
 func TestToGenericList_IntErr(t *testing.T) {
-	_, err := ToGenericListE(GenericTypeInt, flux.NewStringMTValue("abc"))
+	_, err := ToGenericListE(GenericTypeInt, flux.WrapStringMTValue("abc"))
 	assert := assert2.New(t)
 	assert.Error(err)
 }
 
 func TestToGenericList_String(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, flux.NewObjectMTValue(123))
+	a1, err := ToGenericListE(GenericTypeString, flux.WrapObjectMTValue(123))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -81,7 +81,7 @@ func TestToGenericList_String(t *testing.T) {
 }
 
 func TestToGenericList_Nil(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, flux.NewObjectMTValue(nil))
+	a1, err := ToGenericListE(GenericTypeString, flux.WrapObjectMTValue(nil))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -89,7 +89,7 @@ func TestToGenericList_Nil(t *testing.T) {
 }
 
 func TestToGenericList_EmptyString(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, flux.NewStringMTValue(""))
+	a1, err := ToGenericListE(GenericTypeString, flux.WrapStringMTValue(""))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -97,7 +97,7 @@ func TestToGenericList_EmptyString(t *testing.T) {
 }
 
 func TestToGenericList_ValuesToString(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, flux.NewObjectMTValue([]int{123}))
+	a1, err := ToGenericListE(GenericTypeString, flux.WrapObjectMTValue([]int{123}))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -105,7 +105,7 @@ func TestToGenericList_ValuesToString(t *testing.T) {
 }
 
 func TestToGenericList_ValuesToLong(t *testing.T) {
-	a1, err := ToGenericListE([]string{"long"}, flux.NewObjectMTValue([]string{"123456"}))
+	a1, err := ToGenericListE([]string{"long"}, flux.WrapObjectMTValue([]string{"123456"}))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -116,20 +116,20 @@ func TestToGenericList_ValuesToLong(t *testing.T) {
 
 func TestToStringMap_Err(t *testing.T) {
 	assert := assert2.New(t)
-	_, err1 := ToStringMapE(flux.NewStringMTValue("123"))
+	_, err1 := ToStringMapE(flux.WrapStringMTValue("123"))
 	assert.Error(err1)
 }
 
 func TestToStringMap_Empty(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err1 := ToStringMapE(flux.NewStringMTValue(""))
+	sm, err1 := ToStringMapE(flux.WrapStringMTValue(""))
 	assert.NoError(err1)
 	assert.True(0 == len(sm))
 }
 
 func TestCastToStringMap_TextEmpty(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.NewStringMTValue(""))
+	sm, err := ToStringMapE(flux.WrapStringMTValue(""))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.True(0 == len(sm))
@@ -137,7 +137,7 @@ func TestCastToStringMap_TextEmpty(t *testing.T) {
 
 func TestCastToStringMap_TextEmptyJSON(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.NewStringMTValue("{}"))
+	sm, err := ToStringMapE(flux.WrapStringMTValue("{}"))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.True(0 == len(sm))
@@ -145,7 +145,7 @@ func TestCastToStringMap_TextEmptyJSON(t *testing.T) {
 
 func TestCastToStringMap_Text(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.NewStringMTValue(`{"k":1,"e":"a"}`))
+	sm, err := ToStringMapE(flux.WrapStringMTValue(`{"k":1,"e":"a"}`))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -208,7 +208,7 @@ func TestCastToStringMap_QueryReader(t *testing.T) {
 
 func TestCastToStringMap_Object1(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := ToStringMapE(flux.MTValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MediaType: flux.MediaTypeGoObject})
+	sm, err := ToStringMapE(flux.MTValue{Value: map[string]interface{}{"a": 1, "b": "c"}, MediaType: flux.ValueMediaTypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])
@@ -216,7 +216,7 @@ func TestCastToStringMap_Object1(t *testing.T) {
 
 func TestCastToStringMap_Object2(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := ToStringMapE(flux.MTValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MediaType: flux.MediaTypeGoObject})
+	sm, err := ToStringMapE(flux.MTValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, MediaType: flux.ValueMediaTypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])

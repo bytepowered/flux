@@ -1,7 +1,5 @@
 package flux
 
-import "strings"
-
 const (
 	JavaLangStringClassName  = "java.lang.String"
 	JavaLangIntegerClassName = "java.lang.Integer"
@@ -13,50 +11,43 @@ const (
 	JavaUtilListClassName    = "java.util.List"
 )
 
-// Golang内置参数类型
-type MediaType string
-
-func (m MediaType) Contains(s string) bool {
-	return strings.Contains(string(m), s)
-}
-
 const (
-	MediaTypeGoObject        = MediaType("go:object")
-	MediaTypeGoString        = MediaType("go:string")
-	MediaTypeGoListString    = MediaType("go:[]string")
-	MediaTypeGoMapString     = MediaType("go:map[string]object")
-	MediaTypeGoMapStringList = MediaType("go:map[string][]string")
+	ValueMediaTypeGoObject          = "go:object"
+	ValueMediaTypeGoString          = "go:string"
+	ValueMediaTypeGoStringList      = "go:string-list"
+	ValueMediaTypeGoStringMap       = "go:string-map"
+	ValueMediaTypeGoStringValuesMap = "go:string-list-map"
 )
 
 // MTValue 包含指示值的媒体类型和Value结构
 type MTValue struct {
 	Valid     bool        // 是否有效
 	Value     interface{} // 原始值类型
-	MediaType MediaType   // 数据媒体类型
+	MediaType string      // 媒体类型
 }
 
 func NewInvalidMTValue() MTValue {
-	return NewObjectMTValue(nil)
+	return WrapObjectMTValue(nil)
 }
 
-func NewStringMTValue(value string) MTValue {
-	return MTValue{Valid: value != "", Value: value, MediaType: MediaTypeGoString}
+func WrapStringMTValue(value string) MTValue {
+	return MTValue{Valid: value != "", Value: value, MediaType: ValueMediaTypeGoString}
 }
 
-func NewObjectMTValue(value interface{}) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoObject}
+func WrapObjectMTValue(value interface{}) MTValue {
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoObject}
 }
 
-func NewMapStringMTValue(value map[string]interface{}) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoMapString}
+func WrapStrMapMTValue(value map[string]interface{}) MTValue {
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoStringMap}
 }
 
-func NewListStringMTValue(value []string) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoListString}
+func WrapStrListMTValue(value []string) MTValue {
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoStringList}
 }
 
-func NewMapStringListMTValue(value map[string][]string) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoMapStringList}
+func WrapStrValuesMapMTValue(value map[string][]string) MTValue {
+	return MTValue{Valid: value != nil, Value: value, MediaType: ValueMediaTypeGoStringValuesMap}
 }
 
 // MTValueResolver 将未定类型的值，按指定类型以及泛型类型转换为实际类型
