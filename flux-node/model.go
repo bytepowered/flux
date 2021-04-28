@@ -56,6 +56,8 @@ const (
 	ArgumentTypePrimitive = "PRIMITIVE"
 	// 复杂参数类型：POJO
 	ArgumentTypeComplex = "COMPLEX"
+	// JSONMap类型
+	ArgumentTypeJSONMap = "JSONMAP"
 )
 
 // Support protocols
@@ -242,6 +244,7 @@ func (b Service) ServiceID() string {
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
+	Kind               string   `json:"kind" yaml:"kind"`               // Endpoint类型
 	Application        string   `json:"application" yaml:"application"` // 所属应用名
 	Version            string   `json:"version" yaml:"version"`         // 端点版本号
 	HttpPattern        string   `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
