@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/spf13/cast"
 	"strings"
 )
@@ -12,7 +12,7 @@ func LookupWebValueByExpr(webc flux.ServerWebContext, expr string) string {
 	if "" == expr || nil == webc {
 		return ""
 	}
-	scope, key, ok := fluxkit.ParseScopeExpr(expr)
+	scope, key, ok := toolkit.ParseScopeExpr(expr)
 	if !ok {
 		return ""
 	}

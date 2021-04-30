@@ -2,7 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 )
 
 var (
@@ -10,7 +10,7 @@ var (
 )
 
 func AddEndpointSelector(s flux.EndpointSelector) {
-	fluxkit.MustNotNil(s, "FilterSelector is nil")
+	toolkit.MustNotNil(s, "FilterSelector is nil")
 	endpointSelectors = append(endpointSelectors, s)
 }
 

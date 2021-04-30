@@ -3,7 +3,7 @@ package ext
 import (
 	"context"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 )
 
 var (
@@ -11,7 +11,7 @@ var (
 )
 
 func SetLoggerFactory(f flux.LoggerFactory) {
-	fluxkit.AssertNotNil(f, "LoggerFactory must not nil")
+	toolkit.AssertNotNil(f, "LoggerFactory must not nil")
 	loggerFactory = f
 }
 

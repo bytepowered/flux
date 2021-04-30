@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/common"
-	fluxpkg "github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/spf13/cast"
@@ -55,7 +55,7 @@ func (f *JWTFilter) Init(config *flux.Configuration) error {
 	if "" == f.Config.AttKeyPrefix {
 		f.Config.AttKeyPrefix = cast.ToString(config.GetOrDefault(ConfigKeyAttachmentKey, "jwt"))
 	}
-	fluxpkg.AssertNotNil(f.Config.SecretKeyLoader, "<secret-loader> must not nil")
+	toolkit.AssertNotNil(f.Config.SecretKeyLoader, "<secret-loader> must not nil")
 	return nil
 }
 
@@ -134,11 +134,7 @@ func ExtractTokenByFeature(ctx *flux.Context) (string, error) {
 	if "" == expr {
 		return "", fmt.Errorf("<%s> not found in endpoint.attrs", FeatureJWT)
 	}
-	scope, key, ok := fluxpkg.ParseScopeExpr(expr)
-	if !ok {
-		return "", fmt.Errorf("<%s> value is not a valid expr: %s", FeatureJWT, expr)
-	}
-	return TokenStripBearerPrefix(common.LookupWebValue(ctx, scope, key))
+	return TokenStripBearerPrefix(common.LookupWebValueByExpr(ctx, expr))
 }
 
 // Strips 'Bearer ' prefix from bearer token string

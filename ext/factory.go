@@ -2,7 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"strings"
 )
 
@@ -11,13 +11,13 @@ var (
 )
 
 func RegisterFactory(typeName string, factory flux.Factory) {
-	typeName = fluxkit.MustNotEmpty(typeName, "typeName is empty")
+	typeName = toolkit.MustNotEmpty(typeName, "typeName is empty")
 	typeName = strings.ToLower(typeName)
-	typedFactories[typeName] = fluxkit.MustNotNil(factory, "Factory is nil").(flux.Factory)
+	typedFactories[typeName] = toolkit.MustNotNil(factory, "Factory is nil").(flux.Factory)
 }
 
 func FactoryByType(typeName string) (flux.Factory, bool) {
-	typeName = fluxkit.MustNotEmpty(typeName, "typeName is empty")
+	typeName = toolkit.MustNotEmpty(typeName, "typeName is empty")
 	typeName = strings.ToLower(typeName)
 	f, o := typedFactories[typeName]
 	return f, o

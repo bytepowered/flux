@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	fluxpkg "github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/spf13/cast"
 	"strings"
 )
@@ -23,23 +23,23 @@ func TraceContext(ctx *flux.Context) flux.Logger {
 }
 
 func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger {
-	fluxpkg.AssertNotNil(ctx, "<flux.context> must not nil in log trace")
+	toolkit.AssertNotNil(ctx, "<flux.context> must not nil in log trace")
 	fields := map[string]string{
-		"request-method": ctx.Method(),
-		"request-uri":    ctx.URI(),
+		"request.method": ctx.Method(),
+		"request.uri":    ctx.URI(),
 	}
 	for k, v := range extras {
 		fields[k] = v
 	}
 	endpoint := ctx.Endpoint()
 	if nil != endpoint && endpoint.IsValid() {
-		fields["appid"] = endpoint.Application
-		fields["bizid"] = endpoint.GetAttr(flux.EndpointAttrTagBizId).GetString()
-		fields["transporter-service"] = endpoint.Service.ServiceID()
-		fields["transporter-permission"] = strings.Join(endpoint.PermissionIds(), ",")
-		fields["transporter-authorize"] = cast.ToString(endpoint.Authorize())
-		fields["endpoint-version"] = endpoint.Version
-		fields["endpoint-pattern"] = endpoint.HttpPattern
+		fields["endpoint.appid"] = endpoint.Application
+		fields["endpoint.bizid"] = endpoint.GetAttr(flux.EndpointAttrTagBizId).GetString()
+		fields["endpoint.version"] = endpoint.Version
+		fields["endpoint.pattern"] = endpoint.HttpPattern
+		fields["authorize"] = cast.ToString(endpoint.Authorize())
+		fields["service"] = endpoint.Service.ServiceID()
+		fields["service.permission"] = strings.Join(endpoint.PermissionIds(), ",")
 	}
 	return TraceExtras(ctx.RequestId(), fields)
 }

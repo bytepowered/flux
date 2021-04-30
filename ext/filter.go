@@ -2,7 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"sort"
 )
 
@@ -36,7 +36,7 @@ func AddSelectiveFilter(v interface{}) {
 }
 
 func _checkedAppendFilter(v interface{}, in []filterWrapper) (out []filterWrapper) {
-	f := fluxkit.MustNotNil(v, "Not a valid Filter").(flux.Filter)
+	f := toolkit.MustNotNil(v, "Not a valid Filter").(flux.Filter)
 	return append(in, filterWrapper{filter: f, order: orderOf(v)})
 }
 
@@ -51,7 +51,7 @@ func GlobalFilters() []flux.Filter {
 }
 
 func AddFilterSelector(s flux.FilterSelector) {
-	fluxkit.MustNotNil(s, "FilterSelector is nil")
+	toolkit.MustNotNil(s, "FilterSelector is nil")
 	filterSelectors = append(filterSelectors, s)
 }
 
@@ -63,7 +63,7 @@ func FilterSelectors() []flux.FilterSelector {
 
 // SelectiveFilterById 获取已排序的可选Filter列表
 func SelectiveFilterById(filterId string) (flux.Filter, bool) {
-	filterId = fluxkit.MustNotEmpty(filterId, "filterId is empty")
+	filterId = toolkit.MustNotEmpty(filterId, "filterId is empty")
 	for _, f := range selectiveFilter {
 		if filterId == f.filter.FilterId() {
 			return f.filter, true

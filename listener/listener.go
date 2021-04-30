@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"net/http"
@@ -37,7 +37,7 @@ func NewAdaptWebListener(listenerId string, config *flux.Configuration) flux.Web
 }
 
 func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentifier, mws *AdaptMiddleware) flux.WebListener {
-	fluxkit.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
+	toolkit.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
 	server.Pre(RepeatableReader)
 	server.HideBanner = true
@@ -51,11 +51,11 @@ func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, ide
 	server.Pre(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoc echo.Context) error {
 			id := identifier(echoc)
-			fluxkit.Assert("" != id, "<request-id> is empty, return by id lookup func")
+			toolkit.Assert("" != id, "<request-id> is empty, return by id lookup func")
 			swc := NewServeWebContext(echoc, id, webListener)
 			// Note: 不要修改echo.context.request对象引用，echo路由绑定了函数入口的request对象，从而导致
 			// 后续基于request修改路由时，会导致Http路由失败。
-			fluxkit.AssertNil(echoc.Get(string(internal.CtxkeyWebContext)), "<web-context> must be nil")
+			toolkit.AssertNil(echoc.Get(string(internal.CtxkeyWebContext)), "<web-context> must be nil")
 			echoc.Set(string(internal.CtxkeyWebContext), swc)
 			defer func() {
 				if rvr := recover(); rvr != nil && rvr != http.ErrAbortHandler {
@@ -129,7 +129,7 @@ func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
 	if s.address == ":" {
 		return errors.New("web server config.address is required, was empty, listener-id: " + s.id)
 	}
-	fluxkit.AssertNotNil(s.bodyResolver, "<body-resolver> is required, listener-id: "+s.id)
+	toolkit.AssertNotNil(s.bodyResolver, "<body-resolver> is required, listener-id: "+s.id)
 	return nil
 }
 
@@ -144,12 +144,12 @@ func (s *AdaptWebListener) Listen() error {
 }
 
 func (s *AdaptWebListener) SetBodyResolver(r flux.WebBodyResolver) {
-	fluxkit.AssertNotNil(r, "WebBodyResolver must not nil, listener-id: "+s.id)
+	toolkit.AssertNotNil(r, "WebBodyResolver must not nil, listener-id: "+s.id)
 	s.mustNotStarted().bodyResolver = r
 }
 
 func (s *AdaptWebListener) SetNotfoundHandler(f flux.WebHandler) {
-	fluxkit.AssertNotNil(f, "NotfoundHandler must not nil, listener-id: "+s.id)
+	toolkit.AssertNotNil(f, "NotfoundHandler must not nil, listener-id: "+s.id)
 	s.mustNotStarted()
 	echo.NotFoundHandler = AdaptWebHandler(f).AdaptFunc
 }
@@ -160,14 +160,14 @@ func (s *AdaptWebListener) HandleNotfound(webex flux.ServerWebContext) error {
 
 func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
-	fluxkit.AssertNotNil(handler, "ErrorHandler must not nil, listener-id: "+s.id)
+	toolkit.AssertNotNil(handler, "ErrorHandler must not nil, listener-id: "+s.id)
 	s.mustNotStarted().server.HTTPErrorHandler = func(err error, c echo.Context) {
 		// 修正Error未判定为nil的问题问题
-		if fluxkit.IsNil(err) {
+		if toolkit.IsNil(err) {
 			return
 		}
 		webex, ok := c.Get(string(internal.CtxkeyWebContext)).(flux.ServerWebContext)
-		fluxkit.Assert(ok, "<web-context> is invalid in http-error-handler")
+		toolkit.Assert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webex, err)
 	}
 }
@@ -177,19 +177,19 @@ func (s *AdaptWebListener) HandleError(webex flux.ServerWebContext, err error) {
 }
 
 func (s *AdaptWebListener) AddInterceptor(i flux.WebInterceptor) {
-	fluxkit.AssertNotNil(i, "Interceptor must not nil, listener-id: "+s.id)
+	toolkit.AssertNotNil(i, "Interceptor must not nil, listener-id: "+s.id)
 	s.server.Pre(AdaptWebInterceptor(i).AdaptFunc)
 }
 
 func (s *AdaptWebListener) AddMiddleware(m flux.WebInterceptor) {
-	fluxkit.AssertNotNil(m, "Middleware must not nil, listener-id: "+s.id)
+	toolkit.AssertNotNil(m, "Middleware must not nil, listener-id: "+s.id)
 	s.server.Use(AdaptWebInterceptor(m).AdaptFunc)
 }
 
 func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandler, is ...flux.WebInterceptor) {
-	fluxkit.AssertNotNil(h, "Handler must not nil, listener-id: "+s.id)
-	fluxkit.Assert(method != "", "Method must not empty")
-	fluxkit.Assert(pattern != "", "Pattern must not empty")
+	toolkit.AssertNotNil(h, "Handler must not nil, listener-id: "+s.id)
+	toolkit.Assert(method != "", "Method must not empty")
+	toolkit.Assert(pattern != "", "Pattern must not empty")
 	wms := make([]echo.MiddlewareFunc, len(is))
 	for i, mi := range is {
 		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
@@ -198,9 +198,9 @@ func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandler,
 }
 
 func (s *AdaptWebListener) AddHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
-	fluxkit.AssertNotNil(h, "Handler must not nil, listener-id: "+s.id)
-	fluxkit.Assert("" != method, "Method must not empty")
-	fluxkit.Assert("" != pattern, "Pattern must not empty")
+	toolkit.AssertNotNil(h, "Handler must not nil, listener-id: "+s.id)
+	toolkit.Assert("" != method, "Method must not empty")
+	toolkit.Assert("" != pattern, "Pattern must not empty")
 	wms := make([]echo.MiddlewareFunc, len(m))
 	for i, mf := range m {
 		wms[i] = echo.WrapMiddleware(mf)
@@ -226,7 +226,7 @@ func (s *AdaptWebListener) Close(ctx context.Context) error {
 }
 
 func (s *AdaptWebListener) mustNotStarted() *AdaptWebListener {
-	fluxkit.Assert(!s.started, "illegal state: web listener is started")
+	toolkit.Assert(!s.started, "illegal state: web listener is started")
 	return s
 }
 

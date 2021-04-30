@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/remoting"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/dubbogo/go-zookeeper/zk"
 	"go.uber.org/zap"
 	"path"
@@ -184,7 +184,7 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				// Add
 				for i, p := range newChildren {
 					newChildren[i] = path.Join(parentNodePath, p) // Update full path
-					if !fluxkit.StringContains(cachedChildren, newChildren[i]) {
+					if !toolkit.StringContains(cachedChildren, newChildren[i]) {
 						handleChildChanged(remoting.NodeEvent{
 							Path:      newChildren[i],
 							EventType: remoting.EventTypeChildAdd,
@@ -193,7 +193,7 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				}
 				// Deleted
 				for _, p := range cachedChildren {
-					if !fluxkit.StringContains(newChildren, p) {
+					if !toolkit.StringContains(newChildren, p) {
 						handleChildChanged(remoting.NodeEvent{
 							Path:      p,
 							EventType: remoting.EventTypeChildDelete,

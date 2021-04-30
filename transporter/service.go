@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/spf13/cast"
 )
 
@@ -21,7 +21,7 @@ func DoTransport(ctx *flux.Context, transport flux.Transporter) {
 		ctx.Logger().Errorw("TRANSPORTER:INVOKE/ERROR", "error", serr)
 		transport.Writer().WriteError(ctx, serr)
 	} else {
-		fluxkit.AssertNotNil(response, "exchange: <response> must-not nil, request-id: "+ctx.RequestId())
+		toolkit.AssertNotNil(response, "TRANSPORTER:INVOKE: <response> Must Not nil, request-id: "+ctx.RequestId())
 		for k, v := range response.Attachments {
 			ctx.SetAttribute(k, v)
 		}

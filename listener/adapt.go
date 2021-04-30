@@ -2,8 +2,8 @@ package listener
 
 import (
 	"github.com/bytepowered/flux"
-	fluxpkg "github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/internal"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/labstack/echo/v4"
 )
 
@@ -27,6 +27,6 @@ func (call AdaptWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFun
 
 func toServerWebContext(echoc echo.Context) flux.ServerWebContext {
 	webex, ok := echoc.Get(string(internal.CtxkeyWebContext)).(flux.ServerWebContext)
-	fluxpkg.Assert(ok == true && webex != nil, "<server-web-context> not found in echo.context")
+	toolkit.Assert(ok == true && webex != nil, "<server-web-context> not found in echo.context")
 	return webex
 }

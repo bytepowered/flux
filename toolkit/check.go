@@ -1,4 +1,4 @@
-package fluxkit
+package toolkit
 
 import (
 	"fmt"
@@ -35,6 +35,18 @@ func AssertNil(v interface{}, message string, args ...interface{}) {
 
 func AssertNotNil(v interface{}, message string, args ...interface{}) {
 	if IsNil(v) {
+		panic(AssertMessagePrefix + fmt.Sprintf(message, args...))
+	}
+}
+
+func AssertEmpty(v string, message string, args ...interface{}) {
+	if v != "" {
+		panic(AssertMessagePrefix + fmt.Sprintf(message, args...))
+	}
+}
+
+func AssertNotEmpty(v string, message string, args ...interface{}) {
+	if v == "" {
 		panic(AssertMessagePrefix + fmt.Sprintf(message, args...))
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	fluxpkg "github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
 	"io"
@@ -22,7 +22,7 @@ func DefaultRequestBodyResolver(webex flux.ServerWebContext) url.Values {
 
 func DefaultIdentifier(ctx interface{}) string {
 	echoc, ok := ctx.(echo.Context)
-	fluxpkg.Assert(ok, "<context> must be echo.context")
+	toolkit.Assert(ok, "<context> must be echo.context")
 	id := echoc.Request().Header.Get(flux.XRequestId)
 	if "" != id {
 		return id

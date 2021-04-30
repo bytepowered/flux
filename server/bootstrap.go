@@ -6,8 +6,8 @@ import (
 	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"golang.org/x/net/context"
 	"net/http"
 	_ "net/http/pprof"
@@ -131,8 +131,7 @@ func (s *BootstrapServer) Startup(build flux.Build) error {
 }
 
 func (s *BootstrapServer) start() error {
-	dl := s.defaultListener()
-	fluxkit.Assert(nil != dl, "<default listener> is required")
+	toolkit.AssertNotNil(s.defaultListener(), "<default-listener> MUST NOT nil")
 	// Dispatcher
 	logger.Info("SERVER:START:DISPATCHER:START")
 	if err := s.dispatcher.Startup(); nil != err {
@@ -156,12 +155,12 @@ func (s *BootstrapServer) start() error {
 	logger.Info("SERVER:START:DISCOVERY:OK")
 	// Listeners
 	var errch chan error
-	for lid, wl := range s.listener {
-		logger.Infow("SERVER:START:LISTENER:START", "listener-id", wl.ListenerId())
+	for id, web := range s.listener {
+		logger.Infow("SERVER:START:LISTENER:START", "listener-id", web.ListenerId())
 		go func(id string, server flux.WebListener) {
 			errch <- server.Listen()
 			logger.Infow("SERVER:START:LISTENER:STOP", "listener-id", id)
-		}(lid, wl)
+		}(id, web)
 	}
 	close(s.started)
 	return <-errch
@@ -226,7 +225,7 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
 		return server.HandleNotfound(webex)
 	} else {
-		fluxkit.Assert(endpoint.IsValid(), "<endpoint> must valid when routing")
+		toolkit.Assert(endpoint.IsValid(), "<endpoint> must valid when routing")
 	}
 	ctxw := s.pooled.Get().(*flux.Context)
 	defer s.pooled.Put(ctxw)
@@ -372,8 +371,10 @@ func (s *BootstrapServer) SetWebNotfoundHandler(nfh flux.WebHandler) {
 }
 
 // AddWebListener 添加指定ID
-func (s *BootstrapServer) AddWebListener(listenerID string, server flux.WebListener) {
-	s.listener[strings.ToLower(listenerID)] = fluxkit.MustNotNil(server, "WebListener is nil").(flux.WebListener)
+func (s *BootstrapServer) AddWebListener(listenerID string, listener flux.WebListener) {
+	toolkit.AssertNotNil(listener, "WebListener Must Not nil")
+	toolkit.AssertNotEmpty(listenerID, "WebListener Id Must Not empty")
+	s.listener[strings.ToLower(listenerID)] = listener
 }
 
 // WebListenerById 返回ListenServer实例
