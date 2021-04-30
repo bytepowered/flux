@@ -67,7 +67,7 @@ func LookupMTValue(ctx *flux.Context, scope, key string) (value flux.MTValue, er
 		hct := ctx.HeaderVar(flux.HeaderContentType)
 		return flux.MTValue{Valid: err == nil, Value: reader, MediaType: flux.MediaType(hct)}, err
 	case flux.ScopeParam:
-		v, _ := fluxkit.LookupByProviders(key, ctx.QueryVars, ctx.FormVars)
+		v, _ := LookupValues(key, ctx.QueryVars, ctx.FormVars)
 		return flux.NewStringMTValue(v), nil
 	case flux.ScopeRequest:
 		switch strings.ToUpper(key) {
@@ -83,7 +83,7 @@ func LookupMTValue(ctx *flux.Context, scope, key string) (value flux.MTValue, er
 			return flux.NewInvalidMTValue(), nil
 		}
 	default:
-		if v, ok := fluxkit.LookupByProviders(key, ctx.PathVars, ctx.QueryVars, ctx.FormVars); ok {
+		if v, ok := LookupValues(key, ctx.PathVars, ctx.QueryVars, ctx.FormVars); ok {
 			return flux.NewStringMTValue(v), nil
 		}
 		if mtv := lookupValues(ctx.HeaderVars(), key); mtv.Valid {
@@ -109,6 +109,16 @@ func ToMTValue(v interface{}) flux.MTValue {
 	default:
 		return flux.NewObjectMTValue(v)
 	}
+}
+
+func LookupValues(key string, providers ...func() url.Values) (string, bool) {
+	for _, fun := range providers {
+		values := fun()
+		if v, ok := values[key]; ok {
+			return v[0], true
+		}
+	}
+	return "", false
 }
 
 func lookupValues(values interface{}, key string) flux.MTValue {

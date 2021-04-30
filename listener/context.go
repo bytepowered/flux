@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/internal"
 	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
@@ -13,19 +14,11 @@ import (
 
 var _ flux.ServerWebContext = new(AdaptWebContext)
 
-// 用于隐藏内部实现的Key
-type webContextKey string
-
-var (
-	keyRequestId  = webContextKey("inter.context.request.id/926820fa-7ad8-4444-9080-d690ce31c93a")
-	keyWebContext = webContextKey("inter.context.web.ctx/890b1fa9-93ad-4b44-af24-85bcbfe646b4")
-)
-
 func NewServeWebContext(ctx echo.Context, reqid string, listener flux.WebListener) flux.ServerWebContext {
 	return &AdaptWebContext{
 		echoc:     ctx,
 		listener:  listener,
-		context:   context.WithValue(ctx.Request().Context(), keyRequestId, reqid),
+		context:   context.WithValue(ctx.Request().Context(), internal.CtxkeyRequestId, reqid),
 		variables: make(map[interface{}]interface{}, 16),
 	}
 }
@@ -46,7 +39,7 @@ func (w *AdaptWebContext) ShadowContext() echo.Context {
 }
 
 func (w *AdaptWebContext) RequestId() string {
-	return w.context.Value(keyRequestId).(string)
+	return w.context.Value(internal.CtxkeyRequestId).(string)
 }
 
 func (w *AdaptWebContext) Context() context.Context {
