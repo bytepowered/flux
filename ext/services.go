@@ -8,11 +8,11 @@ import (
 
 var (
 	serviceNotFound flux.Service
-	servicesMap     = new(sync.Map)
+	services        = new(sync.Map)
 )
 
 func RegisterServiceByID(id string, service flux.Service) {
-	servicesMap.Store(id, service)
+	services.Store(id, service)
 }
 
 // RegisterService store transporter service
@@ -23,8 +23,8 @@ func RegisterService(service flux.Service) {
 
 // Services 返回全部注册的Service
 func Services() map[string]flux.Service {
-	out := make(map[string]flux.Service, 512)
-	endpoints.Range(func(key, value interface{}) bool {
+	out := make(map[string]flux.Service, 128)
+	services.Range(func(key, value interface{}) bool {
 		out[key.(string)] = value.(flux.Service)
 		return true
 	})
@@ -33,7 +33,7 @@ func Services() map[string]flux.Service {
 
 // ServiceByID load transporter service by serviceId
 func ServiceByID(serviceID string) (flux.Service, bool) {
-	v, ok := servicesMap.Load(serviceID)
+	v, ok := services.Load(serviceID)
 	if ok {
 		return v.(flux.Service), true
 	}
@@ -42,12 +42,12 @@ func ServiceByID(serviceID string) (flux.Service, bool) {
 
 // RemoveServiceByID remove transporter service by serviceId
 func RemoveServiceByID(serviceID string) {
-	servicesMap.Delete(serviceID)
+	services.Delete(serviceID)
 }
 
 // HasServiceByID check service exists by service id
 func HasServiceByID(serviceID string) bool {
-	_, ok := servicesMap.Load(serviceID)
+	_, ok := services.Load(serviceID)
 	return ok
 }
 

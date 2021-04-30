@@ -29,7 +29,7 @@ func EndpointByKey(key string) (*flux.MVCEndpoint, bool) {
 }
 
 func Endpoints() map[string]*flux.MVCEndpoint {
-	out := make(map[string]*flux.MVCEndpoint, 32)
+	out := make(map[string]*flux.MVCEndpoint, 128)
 	endpoints.Range(func(key, value interface{}) bool {
 		out[key.(string)] = value.(*flux.MVCEndpoint)
 		return true
