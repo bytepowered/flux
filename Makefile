@@ -1,6 +1,6 @@
 # Binary name
 BINARY=flux
-VERSION=0.0.12
+VERSION=0.18
 GITCOMMIT=`git rev-parse --short HEAD`
 BUILD_DATE=`date +%FT%T%z`
 

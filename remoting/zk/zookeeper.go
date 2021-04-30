@@ -184,7 +184,7 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				// Add
 				for i, p := range newChildren {
 					newChildren[i] = path.Join(parentNodePath, p) // Update full path
-					if !fluxkit.StringSliceContains(cachedChildren, newChildren[i]) {
+					if !fluxkit.StringContains(cachedChildren, newChildren[i]) {
 						handleChildChanged(remoting.NodeEvent{
 							Path:      newChildren[i],
 							EventType: remoting.EventTypeChildAdd,
@@ -193,7 +193,7 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				}
 				// Deleted
 				for _, p := range cachedChildren {
-					if !fluxkit.StringSliceContains(newChildren, p) {
+					if !fluxkit.StringContains(newChildren, p) {
 						handleChildChanged(remoting.NodeEvent{
 							Path:      p,
 							EventType: remoting.EventTypeChildDelete,

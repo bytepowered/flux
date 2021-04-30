@@ -1,7 +1,6 @@
 package fluxkit
 
 import (
-	"net/url"
 	"strings"
 )
 
@@ -21,17 +20,7 @@ func ParseExprBySep(expr, sep string) (scope, key string, ok bool) {
 	}
 	kv := strings.Split(expr, sep)
 	if len(kv) == 1 {
-		return expr, "", false
+		return "", "", false
 	}
-	return kv[0], kv[1], true
-}
-
-func LookupByProviders(key string, providers ...func() url.Values) (string, bool) {
-	for _, fun := range providers {
-		values := fun()
-		if v, ok := values[key]; ok {
-			return v[0], true
-		}
-	}
-	return "", false
+	return strings.TrimSpace(kv[0]), strings.TrimSpace(kv[1]), true
 }

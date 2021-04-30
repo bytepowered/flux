@@ -6,6 +6,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -52,10 +53,10 @@ func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, ide
 			id := identifier(echoc)
 			fluxkit.Assert("" != id, "<request-id> is empty, return by id lookup func")
 			swc := NewServeWebContext(echoc, id, webListener)
-			// Mark: 不要修改echo.context.request对象引用，echo路由绑定了函数入口的request对象，从而导致
-			// 后续基于request修改路由时，会导致失败。
-			fluxkit.AssertNil(echoc.Get(string(keyWebContext)), "<web-context> must be nil")
-			echoc.Set(string(keyWebContext), swc)
+			// Note: 不要修改echo.context.request对象引用，echo路由绑定了函数入口的request对象，从而导致
+			// 后续基于request修改路由时，会导致Http路由失败。
+			fluxkit.AssertNil(echoc.Get(string(internal.CtxkeyWebContext)), "<web-context> must be nil")
+			echoc.Set(string(internal.CtxkeyWebContext), swc)
 			defer func() {
 				if rvr := recover(); rvr != nil && rvr != http.ErrAbortHandler {
 					logger.Trace(id).Errorw("SERVER:CRITICAL:PANIC", "error", rvr, "error.trace", string(debug.Stack()))
@@ -165,7 +166,7 @@ func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 		if fluxkit.IsNil(err) {
 			return
 		}
-		webex, ok := c.Get(string(keyWebContext)).(flux.ServerWebContext)
+		webex, ok := c.Get(string(internal.CtxkeyWebContext)).(flux.ServerWebContext)
 		fluxkit.Assert(ok, "<web-context> is invalid in http-error-handler")
 		handler(webex, err)
 	}

@@ -44,11 +44,11 @@ func LookupWebValue(webc flux.ServerWebContext, scope, key string) string {
 			return ""
 		}
 	case flux.ScopeParam:
-		v, _ := fluxkit.LookupByProviders(key, webc.QueryVars, webc.FormVars)
+		v, _ := LookupValues(key, webc.QueryVars, webc.FormVars)
 		return v
 	case flux.ScopeAuto:
 		// Post args
-		if v, ok := fluxkit.LookupByProviders(key, webc.PathVars, webc.QueryVars, webc.FormVars); ok {
+		if v, ok := LookupValues(key, webc.PathVars, webc.QueryVars, webc.FormVars); ok {
 			return v
 		}
 		// Header: key case insensitive
