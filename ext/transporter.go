@@ -2,7 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 )
 
 var (
@@ -10,12 +10,12 @@ var (
 )
 
 func RegisterTransporter(proto string, transporter flux.Transporter) {
-	proto = fluxkit.MustNotEmpty(proto, "protoName is empty")
-	transporters[proto] = fluxkit.MustNotNil(transporter, "Transporter is nil").(flux.Transporter)
+	proto = toolkit.MustNotEmpty(proto, "protoName is empty")
+	transporters[proto] = toolkit.MustNotNil(transporter, "Transporter is nil").(flux.Transporter)
 }
 
 func TransporterByProto(proto string) (flux.Transporter, bool) {
-	proto = fluxkit.MustNotEmpty(proto, "protoName is empty")
+	proto = toolkit.MustNotEmpty(proto, "protoName is empty")
 	transporter, ok := transporters[proto]
 	return transporter, ok
 }

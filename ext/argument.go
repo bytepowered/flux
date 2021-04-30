@@ -2,7 +2,7 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 )
 
 // 提供一种可扩展的参数查找实现。
@@ -12,7 +12,7 @@ var (
 )
 
 func SetLookupFunc(f flux.LookupFunc) {
-	lookupFunc = fluxkit.MustNotNil(f, "LookupFunc is nil").(flux.LookupFunc)
+	lookupFunc = toolkit.MustNotNil(f, "LookupFunc is nil").(flux.LookupFunc)
 }
 
 func LookupFunc() flux.LookupFunc {
@@ -27,9 +27,9 @@ func NewPrimitiveArgument(typeClass, argName string) flux.Argument {
 
 func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() flux.MTValue) flux.Argument {
 	return flux.Argument{
-		Class:         fluxkit.MustNotEmpty(typeClass, "typeClass is empty"),
+		Class:         toolkit.MustNotEmpty(typeClass, "typeClass is empty"),
 		Type:          flux.ArgumentTypePrimitive,
-		Name:          fluxkit.MustNotEmpty(argName, "argName is empty"),
+		Name:          toolkit.MustNotEmpty(argName, "argName is empty"),
 		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
 		ValueLoader:   valLoader,
@@ -40,9 +40,9 @@ func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() 
 
 func NewComplexArgument(typeClass, argName string) flux.Argument {
 	return flux.Argument{
-		Class:         fluxkit.MustNotEmpty(typeClass, "typeClass is empty"),
+		Class:         toolkit.MustNotEmpty(typeClass, "typeClass is empty"),
 		Type:          flux.ArgumentTypeComplex,
-		Name:          fluxkit.MustNotEmpty(argName, "argName is empty"),
+		Name:          toolkit.MustNotEmpty(argName, "argName is empty"),
 		HttpName:      argName,
 		HttpScope:     flux.ScopeAuto,
 		LookupFunc:    LookupFunc(),

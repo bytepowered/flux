@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/logger"
 	"github.com/spf13/cast"
 	"net/http"
@@ -83,7 +82,7 @@ func (r *HystrixFilter) Init(c *flux.Configuration) error {
 	r.HystrixConfig.sleepWindow = int(c.GetInt64(ConfigKeySleepWindow))
 	r.HystrixConfig.errorPercentThreshold = int(c.GetInt64(ConfigKeyErrorPercentThreshold))
 	// 默认实现
-	if fluxkit.IsNil(r.HystrixConfig.ServiceNameFunc) {
+	if r.HystrixConfig.ServiceNameFunc == nil {
 		r.HystrixConfig.ServiceNameFunc = func(ctx *flux.Context) (name string) {
 			return ctx.ServiceID()
 		}

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -23,13 +23,13 @@ var (
 ////
 
 func RegisterSerializer(typeName string, serializer flux.Serializer) {
-	typeName = fluxkit.MustNotEmpty(typeName, "typeName is empty")
+	typeName = toolkit.MustNotEmpty(typeName, "typeName is empty")
 	typeName = strings.ToLower(typeName)
-	typedSerializers[typeName] = fluxkit.MustNotNil(serializer, "Serializer is nil").(flux.Serializer)
+	typedSerializers[typeName] = toolkit.MustNotNil(serializer, "Serializer is nil").(flux.Serializer)
 }
 
 func SerializerByType(typeName string) flux.Serializer {
-	typeName = fluxkit.MustNotEmpty(typeName, "typeName is empty")
+	typeName = toolkit.MustNotEmpty(typeName, "typeName is empty")
 	typeName = strings.ToLower(typeName)
 	return typedSerializers[typeName]
 }

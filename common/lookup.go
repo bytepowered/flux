@@ -3,7 +3,7 @@ package common
 import (
 	"errors"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/fluxkit"
+	"github.com/bytepowered/flux/toolkit"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -15,7 +15,7 @@ func LookupMTValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
 	if expr == "" || nil == ctx {
 		return nil, errors.New("empty lookup expr, or context is nil")
 	}
-	scope, key, ok := fluxkit.ParseScopeExpr(expr)
+	scope, key, ok := toolkit.ParseScopeExpr(expr)
 	if !ok {
 		return "", errors.New("illegal lookup expr: " + expr)
 	}

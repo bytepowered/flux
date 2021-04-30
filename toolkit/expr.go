@@ -1,4 +1,4 @@
-package fluxkit
+package toolkit
 
 import (
 	"strings"

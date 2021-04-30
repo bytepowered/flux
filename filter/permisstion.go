@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/bytepowered/flux/transporter"
 	"net/http"
 	"time"
@@ -66,12 +66,12 @@ func (p *PermissionFilter) Init(config *flux.Configuration) error {
 		logger.Info("Endpoint PermissionFilter was DISABLED!!")
 		return nil
 	}
-	if fluxkit.IsNil(p.Configs.SkipFunc) {
+	if toolkit.IsNil(p.Configs.SkipFunc) {
 		p.Configs.SkipFunc = func(_ *flux.Context) bool {
 			return false
 		}
 	}
-	if fluxkit.IsNil(p.Configs.VerifyFunc) {
+	if toolkit.IsNil(p.Configs.VerifyFunc) {
 		return fmt.Errorf("PermissionFilter.PermissionVerifyFunc is nil")
 	}
 	return nil

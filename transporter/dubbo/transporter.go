@@ -13,8 +13,8 @@ import (
 
 import (
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/fluxkit"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/bytepowered/flux/transporter"
 )
 
@@ -49,7 +49,7 @@ var (
 
 var (
 	_     flux.Transporter = new(RpcTransporter)
-	_json                   = jsoniter.ConfigCompatibleWithStandardLibrary
+	_json                  = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 type (
@@ -80,8 +80,8 @@ type RpcTransporter struct {
 	invokeFunc       GenericInvokeFunc       // 执行Dubbo泛调用的函数
 	argsAssemblyFunc ArgumentsAssemblyFunc   // Dubbo参数封装函数
 	attrAssemblyFunc AttachmentsAssemblyFunc // Attachment封装函数
-	codec            flux.TransportCodec    // 解析响应结果的函数
-	writer           flux.TransportWriter   // Writer
+	codec            flux.TransportCodec     // 解析响应结果的函数
+	writer           flux.TransportWriter    // Writer
 	// 内部私有
 	trace         bool
 	configuration *flux.Configuration
@@ -219,7 +219,7 @@ func (b *RpcTransporter) Init(config *flux.Configuration) error {
 	if nil == b.optionsFunc {
 		b.optionsFunc = make([]GenericOptionsFunc, 0)
 	}
-	if fluxkit.IsNil(b.argsAssemblyFunc) {
+	if toolkit.IsNil(b.argsAssemblyFunc) {
 		b.argsAssemblyFunc = DefaultArgumentsAssemblyFunc
 	}
 	// 修改默认Consumer配置
@@ -291,7 +291,7 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
 		}
 	}
-	fluxkit.AssertNotNil(result, "dubbo: <result> must not nil, request.id: "+ctx.RequestId())
+	toolkit.AssertNotNil(result, "dubbo: <result> must not nil, request-id: "+ctx.RequestId())
 	return result, nil
 }
 
@@ -350,7 +350,7 @@ func (b *RpcTransporter) LoadGenericService(service *flux.Service) common.RPCSer
 	const msg = "Dubbo option-func return nil reference"
 	for _, optsFunc := range b.optionsFunc {
 		if nil != optsFunc {
-			newRef = fluxkit.MustNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
+			newRef = toolkit.MustNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", service.Interface)
