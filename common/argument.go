@@ -1,9 +1,12 @@
-package flux
+package common
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/bytepowered/flux"
+)
 
 // Resolve 解析Argument参数值
-func (a Argument) Resolve(ctx *Context) (interface{}, error) {
+func ResolveArgumentValue(ctx *flux.Context, a flux.Argument) (interface{}, error) {
 	if nil == a.ValueResolver {
 		return nil, fmt.Errorf("ValueResolver is nil, name: %s", a.Name)
 	}
@@ -23,8 +26,8 @@ func (a Argument) Resolve(ctx *Context) (interface{}, error) {
 			return nil, err
 		}
 		if !mtv.Valid {
-			if attr, ok := a.GetAttrEx(ArgumentAttributeTagDefault); ok {
-				mtv = NewStringMTValue(attr.GetString())
+			if attr, ok := a.GetAttrEx(flux.ArgumentAttributeTagDefault); ok {
+				mtv = flux.NewStringMTValue(attr.GetString())
 			}
 		}
 		return a.ValueResolver(mtv, a.Class, a.Generic)
@@ -33,7 +36,7 @@ func (a Argument) Resolve(ctx *Context) (interface{}, error) {
 	sm := make(map[string]interface{}, len(a.Fields))
 	sm["class"] = a.Class
 	for _, field := range a.Fields {
-		if fv, err := field.Resolve(ctx); nil != err {
+		if fv, err := ResolveArgumentValue(ctx, field); nil != err {
 			return nil, err
 		} else {
 			sm[field.Name] = fv
