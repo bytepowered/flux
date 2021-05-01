@@ -26,8 +26,8 @@ func ResolveArgumentValue(ctx *flux.Context, a flux.Argument) (interface{}, erro
 			return nil, err
 		}
 		if !mtv.Valid {
-			if attr, ok := a.GetAttrEx(flux.ArgumentAttributeTagDefault); ok {
-				mtv = flux.NewStringMTValue(attr.GetString())
+			if attr, ok := a.Attributes.SingleEx(flux.ArgumentAttributeTagDefault); ok {
+				mtv = flux.NewStringMTValue(attr.ToString())
 			}
 		}
 		return a.ValueResolver(mtv, a.Class, a.Generic)

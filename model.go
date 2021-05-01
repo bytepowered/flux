@@ -93,35 +93,33 @@ const (
 type (
 	// LookupFunc 参数值查找函数
 	LookupFunc func(ctx *Context, scope, key string) (MTValue, error)
-
-	// ContextHookFunc 用于WebContext与Context的交互勾子；
-	// 在每个请求被路由执行时，在创建Context后被调用。
-	ContextHookFunc func(ServerWebContext, *Context)
 )
 
-// Argument 定义Endpoint的参数结构元数据
-type Argument struct {
-	Name               string     `json:"name" yaml:"name"`           // 参数名称
-	Type               string     `json:"type" yaml:"type"`           // 参数结构类型
-	Class              string     `json:"class" yaml:"class"`         // 参数类型
-	Generic            []string   `json:"generic" yaml:"generic"`     // 泛型类型
-	HttpName           string     `json:"httpName" yaml:"httpName"`   // 映射Http的参数Key
-	HttpScope          string     `json:"httpScope" yaml:"httpScope"` // 映射Http参数值域
-	Fields             []Argument `json:"fields" yaml:"fields"`       // 子结构字段
-	EmbeddedAttributes `yaml:",inline"`                               // 属性列表
-	// helper func
-	ValueLoader   func() MTValue  `json:"-"`
-	LookupFunc    LookupFunc      `json:"-"`
-	ValueResolver MTValueResolver `json:"-"`
-}
+type (
+	// Argument 定义Endpoint的参数结构元数据
+	Argument struct {
+		Name       string     `json:"name" yaml:"name"`             // 参数名称
+		Type       string     `json:"type" yaml:"type"`             // 参数结构类型
+		Class      string     `json:"class" yaml:"class"`           // 参数类型
+		Generic    []string   `json:"generic" yaml:"generic"`       // 泛型类型
+		HttpName   string     `json:"httpName" yaml:"httpName"`     // 映射Http的参数Key
+		HttpScope  string     `json:"httpScope" yaml:"httpScope"`   // 映射Http参数值域
+		Fields     []Argument `json:"fields" yaml:"fields"`         // 子结构字段
+		Attributes Attributes `json:"attributes" yaml:"attributes"` // 属性列表
+		// helper func
+		ValueLoader   func() MTValue  `json:"-"`
+		LookupFunc    LookupFunc      `json:"-"`
+		ValueResolver MTValueResolver `json:"-"`
+	}
+)
 
 // Attribute 定义服务的属性信息
 type Attribute struct {
-	Name  string      `json:"name" yaml:"name"`
-	Value interface{} `json:"value" yaml:"value"`
+	Name  string      `json:"name" yaml:"name"`   // 属性名
+	Value interface{} `json:"value" yaml:"value"` // 属性值
 }
 
-func (a Attribute) GetString() string {
+func (a Attribute) ToString() string {
 	if values, ok := a.Value.([]interface{}); ok {
 		if len(values) > 0 {
 			return cast.ToString(values[0])
@@ -133,30 +131,33 @@ func (a Attribute) GetString() string {
 	}
 }
 
-func (a Attribute) GetStringSlice() []string {
+func (a Attribute) ToStringSlice() []string {
 	return cast.ToStringSlice(a.Value)
 }
 
-func (a Attribute) GetInt() int {
+func (a Attribute) ToInt() int {
 	return cast.ToInt(a.Value)
 }
 
-func (a Attribute) GetBool() bool {
+func (a Attribute) ToBool() bool {
 	return cast.ToBool(a.Value)
 }
 
-// EmbeddedAttributes
-type EmbeddedAttributes struct {
-	Attributes []Attribute `json:"attributes" yaml:"attributes"`
+func (a Attribute) IsValid() bool {
+	return a.Name != "" && a.Value != nil
 }
 
-func (c EmbeddedAttributes) GetAttr(name string) Attribute {
-	v, _ := c.GetAttrEx(name)
+// Attributes 定义属性列表
+type Attributes []Attribute
+
+// Single 查询单个属性
+func (attrs Attributes) Single(name string) Attribute {
+	v, _ := attrs.SingleEx(name)
 	return v
 }
 
-func (c EmbeddedAttributes) GetAttrEx(name string) (Attribute, bool) {
-	for _, attr := range c.Attributes {
+func (attrs Attributes) SingleEx(name string) (Attribute, bool) {
+	for _, attr := range attrs {
 		if strings.EqualFold(attr.Name, name) {
 			return attr, true
 		}
@@ -164,18 +165,18 @@ func (c EmbeddedAttributes) GetAttrEx(name string) (Attribute, bool) {
 	return Attribute{}, false
 }
 
-func (c EmbeddedAttributes) GetAttrs(name string) []Attribute {
-	attrs := make([]Attribute, 0, 2)
-	for _, attr := range c.Attributes {
+func (attrs Attributes) Multiple(name string) []Attribute {
+	out := make([]Attribute, 0, 2)
+	for _, attr := range attrs {
 		if strings.EqualFold(attr.Name, name) {
-			attrs = append(attrs, attr)
+			out = append(out, attr)
 		}
 	}
-	return attrs
+	return out
 }
 
-func (c EmbeddedAttributes) HasAttr(name string) bool {
-	for _, attr := range c.Attributes {
+func (attrs Attributes) Exists(name string) bool {
+	for _, attr := range attrs {
 		if strings.EqualFold(attr.Name, name) {
 			return true
 		}
@@ -185,15 +186,15 @@ func (c EmbeddedAttributes) HasAttr(name string) bool {
 
 // Service 定义连接上游目标服务的信息
 type Service struct {
-	Kind               string     `json:"kind" yaml:"kind"`           // Service类型
-	AliasId            string     `json:"aliasId" yaml:"aliasId"`     // Service别名
-	ServiceId          string     `json:"serviceId" yaml:"serviceId"` // Service的标识ID
-	Scheme             string     `json:"scheme" yaml:"scheme"`       // Service侧URL的Scheme
-	Url                string     `json:"url" yaml:"url"`             // Service侧的Host
-	Interface          string     `json:"interface" yaml:"interface"` // Service侧的URL/Interface
-	Method             string     `json:"method" yaml:"method"`       // Service侧的方法
-	Arguments          []Argument `json:"arguments" yaml:"arguments"` // Service侧的参数结构
-	EmbeddedAttributes `yaml:",inline"`
+	Kind       string     `json:"kind" yaml:"kind"`             // Service类型
+	AliasId    string     `json:"aliasId" yaml:"aliasId"`       // Service别名
+	ServiceId  string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
+	Scheme     string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
+	Url        string     `json:"url" yaml:"url"`               // Service侧的Host
+	Interface  string     `json:"interface" yaml:"interface"`   // Service侧的URL/Interface
+	Method     string     `json:"method" yaml:"method"`         // Service侧的方法
+	Arguments  []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
+	Attributes Attributes `json:"attributes" yaml:"attributes"` // Service侧的属性列表
 	// Deprecated
 	AttrRpcProto string `json:"rpcProto" yaml:"rpcProto"`
 	// Deprecated
@@ -207,23 +208,23 @@ type Service struct {
 }
 
 func (b Service) RpcProto() string {
-	return b.GetAttr(ServiceAttrTagRpcProto).GetString()
+	return b.Attributes.Single(ServiceAttrTagRpcProto).ToString()
 }
 
 func (b Service) RpcTimeout() string {
-	return b.GetAttr(ServiceAttrTagRpcTimeout).GetString()
+	return b.Attributes.Single(ServiceAttrTagRpcTimeout).ToString()
 }
 
 func (b Service) RpcGroup() string {
-	return b.GetAttr(ServiceAttrTagRpcGroup).GetString()
+	return b.Attributes.Single(ServiceAttrTagRpcGroup).ToString()
 }
 
 func (b Service) RpcVersion() string {
-	return b.GetAttr(ServiceAttrTagRpcVersion).GetString()
+	return b.Attributes.Single(ServiceAttrTagRpcVersion).ToString()
 }
 
 func (b Service) RpcRetries() string {
-	return b.GetAttr(ServiceAttrTagRpcRetries).GetString()
+	return b.Attributes.Single(ServiceAttrTagRpcRetries).ToString()
 }
 
 // IsValid 判断服务配置是否有效；Interface+Method不能为空；
@@ -231,8 +232,8 @@ func (b Service) IsValid() bool {
 	return b.Interface != "" && "" != b.Method
 }
 
-// HasArgs 判定是否有参数
-func (b Service) HasArgs() bool {
+// HasArguments 判定是否有参数
+func (b Service) HasArguments() bool {
 	return len(b.Arguments) > 0
 }
 
@@ -243,14 +244,14 @@ func (b Service) ServiceID() string {
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
-	Kind               string   `json:"kind" yaml:"kind"`               // Endpoint类型
-	Application        string   `json:"application" yaml:"application"` // 所属应用名
-	Version            string   `json:"version" yaml:"version"`         // 端点版本号
-	HttpPattern        string   `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
-	HttpMethod         string   `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
-	Service            Service  `json:"service" yaml:"service"`         // 上游/后端服务
-	Permissions        []string `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
-	EmbeddedAttributes `yaml:",inline"`
+	Kind        string     `json:"kind" yaml:"kind"`               // Endpoint类型
+	Application string     `json:"application" yaml:"application"` // 所属应用名
+	Version     string     `json:"version" yaml:"version"`         // 端点版本号
+	HttpPattern string     `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
+	HttpMethod  string     `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
+	Service     Service    `json:"service" yaml:"service"`         // 上游/后端服务
+	Permissions []string   `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
+	Attributes  Attributes `json:"attributes" yaml:"attributes"`   // 属性列表
 	// Deprecated 权限验证定义
 	PermissionService Service `json:"permission" yaml:"permission"`
 }
@@ -269,10 +270,10 @@ func (e *Endpoint) IsValid() bool {
 }
 
 func (e *Endpoint) Authorize() bool {
-	return e.GetAttr(EndpointAttrTagAuthorize).GetBool()
+	return e.Attributes.Single(EndpointAttrTagAuthorize).ToBool()
 }
 
-// Multi version control Endpoint
+// MVCEndpoint Multi version control Endpoint
 type MVCEndpoint struct {
 	versions      map[string]*Endpoint // 各版本数据
 	*sync.RWMutex                      // 读写锁

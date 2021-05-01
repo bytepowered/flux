@@ -59,9 +59,11 @@ func NewDefaultBootstrapServer(options ...server.Option) *server.BootstrapServer
 			return webex.HeaderVar(server.DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
-		server.WithWebListener(listener.New(server.ListenerIdDefault, server.LoadWebListenerConfig(server.ListenerIdDefault), nil)),
+		server.WithWebListener(listener.New(server.ListenerIdDefault,
+			server.NewWebListenerOptions(server.ListenerIdDefault), nil)),
 		// Admin WebListener
-		server.WithWebListener(listener.New(server.ListenServerIdAdmin, server.LoadWebListenerConfig(server.ListenServerIdAdmin), nil,
+		server.WithWebListener(listener.New(server.ListenServerIdAdmin,
+			server.NewWebListenerOptions(server.ListenServerIdAdmin), nil,
 			// 内部元数据查询
 			listener.WithWebHandlers([]listener.WebHandlerTuple{
 				// Metrics

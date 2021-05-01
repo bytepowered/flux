@@ -12,15 +12,20 @@ const (
 	XRequestAgent = "X-Request-Agent"
 )
 
-// Context 定义每个请求的上下文环境
-type Context struct {
-	ServerWebContext
-	endpoint   *Endpoint
-	attributes map[string]interface{}
-	metrics    []Metric
-	startTime  time.Time
-	ctxLogger  Logger
-}
+type (
+	// Context 定义每个请求的上下文环境。包含当前请求的Endpoint、属性、请求Context等。
+	Context struct {
+		ServerWebContext
+		endpoint   *Endpoint
+		attributes map[string]interface{}
+		metrics    []Metric
+		startTime  time.Time
+		ctxLogger  Logger
+	}
+	// ContextHookFunc 用于WebContext与Context的交互勾子；
+	// 在每个请求被路由执行时，在创建Context后被调用。
+	ContextHookFunc func(ServerWebContext, *Context)
+)
 
 func NewContext() *Context {
 	return &Context{
@@ -91,7 +96,7 @@ func (c *Context) Attributes() map[string]interface{} {
 func (c *Context) GetAttribute(key string) (interface{}, bool) {
 	v, ok := c.attributes[key]
 	if !ok {
-		if attr, aok := c.endpoint.GetAttrEx(key); aok {
+		if attr, aok := c.endpoint.Attributes.SingleEx(key); aok {
 			return attr.Value, true
 		}
 	}
