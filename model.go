@@ -273,6 +273,29 @@ func (e *Endpoint) Authorize() bool {
 	return e.Attributes.Single(EndpointAttrTagAuthorize).ToBool()
 }
 
+func (e *Endpoint) Attr(name string) Attribute {
+	return e.attrs().Single(name)
+}
+
+func (e *Endpoint) AttrEx(name string) (Attribute, bool) {
+	return e.attrs().SingleEx(name)
+}
+
+func (e *Endpoint) AttrExists(name string) bool {
+	return e.attrs().Exists(name)
+}
+
+func (e *Endpoint) MultiAttrs(name string) Attributes {
+	return e.attrs().Multiple(name)
+}
+
+func (e *Endpoint) attrs() Attributes {
+	if e.Attributes == nil {
+		return make(Attributes, 0)
+	}
+	return e.Attributes
+}
+
 // MVCEndpoint Multi version control Endpoint
 type MVCEndpoint struct {
 	versions      map[string]*Endpoint // 各版本数据
