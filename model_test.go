@@ -127,15 +127,17 @@ func TestParseEndpointModelV2(t *testing.T) {
 		},
 		{
 			Expected: ":superadmin",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("roles").GetString() },
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Attributes.Single("roles").ToString() },
 		},
 		{
 			Expected: []string{"key=query:etag", "ttl=3600"},
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("feature:cache").GetStringSlice() },
+			Actual: func(endpoint *Endpoint) interface{} {
+				return endpoint.Attributes.Single("feature:cache").ToStringSlice()
+			},
 		},
 		{
 			Expected: true,
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.GetAttr("Authorize").GetBool() },
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Attributes.Single("Authorize").ToBool() },
 		},
 		{
 			Expected: "DubboService",

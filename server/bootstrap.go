@@ -109,13 +109,16 @@ func (s *BootstrapServer) Prepare() error {
 func (s *BootstrapServer) Initial() error {
 	// Listen Server
 	for id, webListener := range s.listener {
-		if err := webListener.Init(LoadWebListenerConfig(id)); nil != err {
+		config := NewWebListenerConfig(id)
+		if err := webListener.Init(config); nil != err {
 			return err
 		}
 	}
 	// Discovery
 	for _, dis := range ext.EndpointDiscoveries() {
-		if err := s.dispatcher.AddInitHook(dis, LoadDiscoveryConfig(dis.Id())); nil != err {
+		config := flux.NewConfigurationByKeys(flux.NamespaceDiscoveries, dis.Id())
+		err := s.dispatcher.AddInitHook(dis, config)
+		if nil != err {
 			return err
 		}
 	}
@@ -250,11 +253,11 @@ func (s *BootstrapServer) route(webex flux.ServerWebContext, server flux.WebList
 
 func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
-	initArguments(service.Arguments)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:SERVICE:ADD",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
+		s.bindArguments(service.Arguments)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
@@ -262,6 +265,7 @@ func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
 			"service-id", service.ServiceId, "alias-id", service.AliasId)
+		s.bindArguments(service.Arguments)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
@@ -279,22 +283,21 @@ func (s *BootstrapServer) onServiceEvent(event flux.ServiceEvent) {
 func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	// Check http method
-	if !isAllowedHttpMethod(method) {
+	if !isAllowMethod(method) {
 		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", "method", method, "pattern", event.Endpoint.HttpPattern)
 		return
 	}
 	endpoint := event.Endpoint
-	initArguments(endpoint.Service.Arguments)
-	initArguments(endpoint.PermissionService.Arguments)
 	pattern := event.Endpoint.HttpPattern
 	mvce, register := s.selectMVCEndpoint(&endpoint)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
+		s.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
 		mvce.Update(endpoint.Version, &endpoint)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if register {
-			id := endpoint.GetAttr(flux.EndpointAttrTagListenerId).GetString()
+			id := endpoint.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
 			if id == "" {
 				id = ListenerIdDefault
 			}
@@ -308,6 +311,7 @@ func (s *BootstrapServer) onEndpointEvent(event flux.EndpointEvent) {
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
+		s.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
 		mvce.Update(endpoint.Version, &endpoint)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
@@ -419,15 +423,25 @@ func (s *BootstrapServer) defaultListener() flux.WebListener {
 	return nil
 }
 
-func LoadWebListenerConfig(id string) *flux.Configuration {
-	return flux.NewConfiguration(flux.MakeConfigurationKey(flux.NamespaceWebListeners, id))
+func (s *BootstrapServer) bindArguments(args []flux.Argument) {
+	for i := range args {
+		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
+		args[i].LookupFunc = ext.LookupFunc()
+		s.bindArguments(args[i].Fields)
+	}
 }
 
-func LoadDiscoveryConfig(id string) *flux.Configuration {
-	return flux.NewConfiguration(flux.MakeConfigurationKey(flux.NamespaceDiscoveries, id))
+// NewWebListenerOptions 根据WebListenerID，返回初始化WebListener实例时的配置
+func NewWebListenerConfig(id string) *flux.Configuration {
+	return flux.NewConfigurationByKeys(flux.NamespaceWebListeners, id)
 }
 
-func isAllowedHttpMethod(method string) bool {
+// NewWebListenerOptions 根据WebListenerID，返回构建WebListener实例时的选项参数
+func NewWebListenerOptions(id string) *flux.Configuration {
+	return flux.NewConfigurationByKeys(flux.NamespaceWebListeners, id)
+}
+
+func isAllowMethod(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut,
 		http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace:
@@ -435,13 +449,5 @@ func isAllowedHttpMethod(method string) bool {
 	default:
 		logger.Errorw("Ignore unsupported http method:", "method", method)
 		return false
-	}
-}
-
-func initArguments(args []flux.Argument) {
-	for i := range args {
-		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
-		args[i].LookupFunc = ext.LookupFunc()
-		initArguments(args[i].Fields)
 	}
 }

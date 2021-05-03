@@ -32,8 +32,8 @@ func init() {
 	ext.SetWebListenerFactory(NewAdaptWebListener)
 }
 
-func NewAdaptWebListener(listenerId string, config *flux.Configuration) flux.WebListener {
-	return NewAdaptWebListenerWith(listenerId, config, DefaultIdentifier, nil)
+func NewAdaptWebListener(listenerId string, options *flux.Configuration) flux.WebListener {
+	return NewAdaptWebListenerWith(listenerId, options, DefaultIdentifier, nil)
 }
 
 func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentifier, mws *AdaptMiddleware) flux.WebListener {

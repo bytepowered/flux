@@ -29,6 +29,10 @@ func MakeConfigurationKey(keys ...string) string {
 	return strings.Join(keys, ".")
 }
 
+func NewConfigurationByKeys(namespaceAndKeys ...string) *Configuration {
+	return NewConfiguration(MakeConfigurationKey(namespaceAndKeys...))
+}
+
 // NewConfiguration 根据指定Namespace的配置
 func NewConfiguration(namespace string) *Configuration {
 	if namespace == "" {
