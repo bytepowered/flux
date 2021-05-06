@@ -343,7 +343,7 @@ func (gs *GenericServer) Shutdown(ctx goctx.Context) error {
 }
 
 // GracefulShutdown
-func (gs *GenericServer) OnSignalShutdown(quit chan os.Signal, to time.Duration) {
+func (gs *GenericServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	// 接收停止信号
 	signal.Notify(quit, dubgo.ShutdownSignals...)
 	<-quit
