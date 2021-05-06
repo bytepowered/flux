@@ -30,29 +30,26 @@ var (
 // 或者导入 _ "github.com/bytepowered/flux/webecho" 自动注册WebServer；
 func main() {
 	server.InitLogger()
-	Bootstrap(flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate})
-}
-
-func Bootstrap(build flux.Build) {
+	build := flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate}
 	server.InitAppConfig(server.EnvKeyDeployEnv)
-	bootstrap := NewDefaultBootstrapServer()
-	if err := bootstrap.Prepare(); nil != err {
-		logger.Panic("BootstrapServer prepare:", err)
+	server := NewDefaultGenericServer()
+	if err := server.Prepare(); nil != err {
+		logger.Panic("GenericServer prepare:", err)
 	}
-	if err := bootstrap.Initial(); nil != err {
-		logger.Panic("BootstrapServer init:", err)
+	if err := server.Initial(); nil != err {
+		logger.Panic("GenericServer init:", err)
 	}
 	go func() {
-		if err := bootstrap.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
+		if err := server.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error(err)
 		}
 	}()
 	quit := make(chan os.Signal, 1)
-	bootstrap.OnSignalShutdown(quit, 10*time.Second)
+	server.OnSignalShutdown(quit, 10*time.Second)
 }
 
-func NewDefaultBootstrapServer(options ...server.Option) *server.BootstrapServer {
-	opts := []server.Option{
+func NewDefaultGenericServer(options ...server.GenericOptionFunc) *server.GenericServer {
+	opts := []server.GenericOptionFunc{
 		server.WithServerBanner("Flux.go"),
 		// Lookup version
 		server.WithVersionLookupFunc(func(webex flux.ServerWebContext) string {
@@ -71,5 +68,5 @@ func NewDefaultBootstrapServer(options ...server.Option) *server.BootstrapServer
 			}),
 		)),
 	}
-	return server.NewBootstrapServerWith(append(opts, options...)...)
+	return server.NewGenericServer(append(opts, options...)...)
 }

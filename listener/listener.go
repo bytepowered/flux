@@ -118,6 +118,7 @@ func (s *AdaptWebListener) ListenerId() string {
 }
 
 func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
+	logger.Info("SERVER:EVENT:WEBLISTENER:INIT")
 	s.tlsCertFile = opts.GetString(ConfigKeyTLSCertFile)
 	s.tlsKeyFile = opts.GetString(ConfigKeyTLSKeyFile)
 	addr, port := opts.GetString(ConfigKeyAddress), opts.GetString(ConfigKeyBindPort)
