@@ -32,20 +32,20 @@ func main() {
 	server.InitLogger()
 	build := flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate}
 	server.InitAppConfig(server.EnvKeyDeployEnv)
-	server := NewDefaultGenericServer()
-	if err := server.Prepare(); nil != err {
+	generic := NewDefaultGenericServer()
+	if err := generic.Prepare(); nil != err {
 		logger.Panic("GenericServer prepare:", err)
 	}
-	if err := server.Initial(); nil != err {
+	if err := generic.Initial(); nil != err {
 		logger.Panic("GenericServer init:", err)
 	}
 	go func() {
-		if err := server.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
+		if err := generic.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error(err)
 		}
 	}()
 	quit := make(chan os.Signal, 1)
-	server.OnSignalShutdown(quit, 10*time.Second)
+	generic.AwaitSignal(quit, 10*time.Second)
 }
 
 func NewDefaultGenericServer(options ...server.GenericOptionFunc) *server.GenericServer {
