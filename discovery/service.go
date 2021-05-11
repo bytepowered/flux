@@ -29,7 +29,16 @@ func NewServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt
 		logger.Warnw("DISCOVERY:SERVICE:INVALID_VALUES", "service", service, "node", node)
 		return invalidServiceEvent, false
 	}
-	EnsureServiceAttrs(&service)
+	// 兼容旧结构: before V0.10
+	if len(service.Attributes) == 0 && service.Kind == "" {
+		service.Attributes = []flux.Attribute{
+			{Name: flux.ServiceAttrTagRpcProto, Value: flux.ProtoDubbo},
+			{Name: flux.ServiceAttrTagRpcGroup, Value: ""},
+			{Name: flux.ServiceAttrTagRpcVersion, Value: ""},
+			{Name: flux.ServiceAttrTagRpcRetries, Value: "0"},
+			{Name: flux.ServiceAttrTagRpcTimeout, Value: "10s"},
+		}
+	}
 
 	event := flux.ServiceEvent{Service: service}
 	switch etype {
@@ -44,18 +53,4 @@ func NewServiceEvent(bytes []byte, etype remoting.EventType, node string) (fxEvt
 	}
 
 	return event, true
-}
-
-// EnsureServiceAttrs 兼容旧协议数据格式
-func EnsureServiceAttrs(service *flux.Service) *flux.Service {
-	if len(service.Attributes) == 0 {
-		service.Attributes = []flux.Attribute{
-			{Name: flux.ServiceAttrTagRpcProto, Value: service.AttrRpcProto},
-			{Name: flux.ServiceAttrTagRpcGroup, Value: service.AttrRpcGroup},
-			{Name: flux.ServiceAttrTagRpcVersion, Value: service.AttrRpcVersion},
-			{Name: flux.ServiceAttrTagRpcRetries, Value: service.AttrRpcRetries},
-			{Name: flux.ServiceAttrTagRpcTimeout, Value: service.AttrRpcTimeout},
-		}
-	}
-	return service
 }

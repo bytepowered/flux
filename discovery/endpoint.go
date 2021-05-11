@@ -14,10 +14,10 @@ var (
 
 type CompatibleEndpoint struct {
 	flux.Endpoint
-	// Deprecated
-	Authorize bool `json:"authorize"`
-	// Deprecated
-	Extensions map[string]interface{} `json:"extensions"`
+	RefService        flux.Service           `json:"service"`
+	Authorize         bool                   `json:"authorize"`
+	Extensions        map[string]interface{} `json:"extensions"`
+	PermissionService flux.Service           `json:"permission" yaml:"permission"`
 }
 
 func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.EndpointEvent, err error) {
@@ -34,24 +34,31 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.Endpoi
 	if err := ext.JSONUnmarshal(bytes, &comp); nil != err {
 		return emptyEndpointEvent, fmt.Errorf("ILLEGAL_JSONFORMAT: err: %w", err)
 	}
-	// 检查有效性
-	if !comp.IsValid() {
-		return emptyEndpointEvent, fmt.Errorf("INVALID_VALUES: data=%s", string(bytes))
-	}
-	// 兼容旧结构
-	// 旧版本没有Attribute结构
-	if len(comp.Attributes) == 0 {
+	// 兼容旧结构: before V0.10
+	if len(comp.Attributes) == 0 && comp.Kind == "" {
 		// 1. Authorize
 		comp.Attributes = []flux.Attribute{
 			{Name: flux.EndpointAttrTagAuthorize, Value: comp.Authorize},
 		}
-		// 2. Extension
+		// 2. Extension to attributes
 		for k, v := range comp.Extensions {
 			comp.Attributes = append(comp.Attributes, flux.Attribute{Name: k, Value: v})
 		}
 	}
-	EnsureServiceAttrs(&comp.Service)
-	EnsureServiceAttrs(&comp.PermissionService)
+
+	// 兼容旧结构: before v0.18
+	// Remove Endpoint.Service, use Endpoint.ServiceId instead
+	if comp.Kind == "" {
+		// 1. Service id
+		if comp.ServiceId == "" {
+			comp.ServiceId = comp.RefService.ServiceId
+		}
+	}
+
+	// 检查有效性
+	if !comp.IsValid() {
+		return emptyEndpointEvent, fmt.Errorf("INVALID_VALUES: data=%s", string(bytes))
+	}
 
 	event := flux.EndpointEvent{Endpoint: comp.Endpoint}
 	switch etype {

@@ -186,25 +186,16 @@ func (attrs Attributes) Exists(name string) bool {
 
 // Service 定义连接上游目标服务的信息
 type Service struct {
-	Kind       string     `json:"kind" yaml:"kind"`             // Service类型
-	AliasId    string     `json:"aliasId" yaml:"aliasId"`       // Service别名
-	ServiceId  string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
-	Scheme     string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
-	Url        string     `json:"url" yaml:"url"`               // Service侧的Host
-	Interface  string     `json:"interface" yaml:"interface"`   // Service侧的URL/Interface
-	Method     string     `json:"method" yaml:"method"`         // Service侧的方法
-	Arguments  []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
-	Attributes Attributes `json:"attributes" yaml:"attributes"` // Service侧的属性列表
-	// Deprecated
-	AttrRpcProto string `json:"rpcProto" yaml:"rpcProto"`
-	// Deprecated
-	AttrRpcGroup string `json:"rpcGroup" yaml:"rpcGroup"`
-	// Deprecated
-	AttrRpcVersion string `json:"rpcVersion" yaml:"rpcVersion"`
-	// Deprecated
-	AttrRpcTimeout string `json:"rpcTimeout" yaml:"rpcTimeout"`
-	// Deprecated
-	AttrRpcRetries string `json:"rpcRetries" yaml:"rpcRetries"`
+	Kind        string     `json:"kind" yaml:"kind"`               // Service类型
+	Application string     `json:"application" yaml:"application"` // 所属应用名
+	AliasId     string     `json:"aliasId" yaml:"aliasId"`         // Service别名
+	ServiceId   string     `json:"serviceId" yaml:"serviceId"`     // Service的标识ID
+	Scheme      string     `json:"scheme" yaml:"scheme"`           // Service侧URL的Scheme
+	Url         string     `json:"url" yaml:"url"`                 // Service侧的Host
+	Interface   string     `json:"interface" yaml:"interface"`     // Service侧的URL/Interface
+	Method      string     `json:"method" yaml:"method"`           // Service侧的方法
+	Arguments   []Argument `json:"arguments" yaml:"arguments"`     // Service侧的参数结构
+	Attributes  Attributes `json:"attributes" yaml:"attributes"`   // Service侧的属性列表
 }
 
 func (b Service) RpcProto() string {
@@ -249,24 +240,20 @@ type Endpoint struct {
 	Version     string     `json:"version" yaml:"version"`         // 端点版本号
 	HttpPattern string     `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
 	HttpMethod  string     `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
-	Service     Service    `json:"service" yaml:"service"`         // 上游/后端服务
+	ServiceId   string     `json:"serviceId" yaml:"serviceId"`     // Service Id refer to Service
 	Permissions []string   `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
 	Attributes  Attributes `json:"attributes" yaml:"attributes"`   // 属性列表
-	// Deprecated 权限验证定义
-	PermissionService Service `json:"permission" yaml:"permission"`
+	Service     Service    `json:"-"`
 }
 
 func (e *Endpoint) PermissionIds() []string {
-	ids := make([]string, 0, 1+len(e.Permissions))
-	if e.PermissionService.IsValid() {
-		ids = append(ids, e.PermissionService.ServiceId)
-	}
-	ids = append(ids, e.Permissions...)
+	ids := make([]string, len(e.Permissions))
+	copy(ids, e.Permissions)
 	return ids
 }
 
 func (e *Endpoint) IsValid() bool {
-	return e.HttpMethod != "" && "" != e.HttpPattern && e.Service.IsValid()
+	return e.HttpMethod != "" && e.HttpPattern != "" && e.ServiceId != ""
 }
 
 func (e *Endpoint) Authorize() bool {

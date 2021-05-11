@@ -20,59 +20,6 @@ func TestParseEndpointModelV1(t *testing.T) {
     "httpPattern": "/v1/api/seller.adm.activity.list",
     "permissions": [],
     "service": {
-        "arguments": [
-            {
-                "class": "java.lang.String",
-                "generic": [],
-                "httpName": "input",
-                "httpScope": "AUTO",
-                "name": "input",
-                "type": "PRIMITIVE"
-            },
-            {
-                "class": "com.foo.bar.adm.AppContext",
-                "fields": [
-                    {
-                        "class": "java.lang.String",
-                        "generic": [],
-                        "httpName": "envtag",
-                        "httpScope": "QUERY",
-                        "name": "envTag",
-                        "type": "PRIMITIVE"
-                    },
-                    {
-                        "class": "java.lang.String",
-                        "generic": [],
-                        "httpName": "bizData",
-                        "httpScope": "FORM",
-                        "name": "bizData",
-                        "type": "PRIMITIVE"
-                    },
-                    {
-                        "class": "java.lang.String",
-                        "generic": [],
-                        "httpName": "$body",
-                        "httpScope": "BODY",
-                        "name": "body",
-                        "type": "PRIMITIVE"
-                    },
-                    {
-                        "class": "java.util.Map",
-                        "generic": [
-                            "java.lang.String",
-                            "java.io.Serializable"
-                        ],
-                        "httpName": "$attrs",
-                        "httpScope": "ATTRS",
-                        "name": "attrs",
-                        "type": "PRIMITIVE"
-                    }
-                ],
-                "generic": [],
-                "name": "appContext",
-                "type": "COMPLEX"
-            }
-        ],
         "interface": "com.foo.bar.act.IActivityService",
         "method": "list",
         "rpcGroup": "",
@@ -112,48 +59,20 @@ func TestParseEndpointModelV1(t *testing.T) {
 			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.HttpMethod },
 		},
 		{
-			Expected: false,
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.PermissionService.IsValid() },
-		},
-		{
 			Expected: 0,
 			Actual:   func(endpoint *flux.Endpoint) interface{} { return len(endpoint.Permissions) },
 		},
 		{
 			Expected: "",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("roles").GetString() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("roles").ToString() },
 		},
 		{
 			Expected: true,
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("Authorize").GetBool() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("Authorize").ToBool() },
 		},
 		{
-			Expected: 2,
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return len(endpoint.Service.Arguments) },
-		},
-		{
-			Expected: "input",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Service.Arguments[0].Name },
-		},
-		{
-			Expected: "PRIMITIVE",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Service.Arguments[0].Type },
-		},
-		{
-			Expected: "appContext",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Service.Arguments[1].Name },
-		},
-		{
-			Expected: "COMPLEX",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Service.Arguments[1].Type },
-		},
-		{
-			Expected: "DUBBO",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Service.RpcProto() },
-		},
-		{
-			Expected: "list",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Service.Method },
+			Expected: "com.foo.bar.act.IActivityService:list",
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.ServiceId },
 		},
 	})
 }
@@ -176,59 +95,6 @@ func TestParseEndpointModelV1_0(t *testing.T) {
     "httpPattern": "/v1/api/seller.adm.activity.list",
     "permissions": [],
     "service": {
-        "arguments": [
-            {
-                "class": "java.lang.String",
-                "generic": [],
-                "httpName": "input",
-                "httpScope": "AUTO",
-                "name": "input",
-                "type": "PRIMITIVE"
-            },
-            {
-                "class": "com.foo.bar.adm.AppContext",
-                "fields": [
-                    {
-                        "class": "java.lang.String",
-                        "generic": [],
-                        "httpName": "envtag",
-                        "httpScope": "QUERY",
-                        "name": "envTag",
-                        "type": "PRIMITIVE"
-                    },
-                    {
-                        "class": "java.lang.String",
-                        "generic": [],
-                        "httpName": "bizData",
-                        "httpScope": "FORM",
-                        "name": "bizData",
-                        "type": "PRIMITIVE"
-                    },
-                    {
-                        "class": "java.lang.String",
-                        "generic": [],
-                        "httpName": "$body",
-                        "httpScope": "BODY",
-                        "name": "body",
-                        "type": "PRIMITIVE"
-                    },
-                    {
-                        "class": "java.util.Map",
-                        "generic": [
-                            "java.lang.String",
-                            "java.io.Serializable"
-                        ],
-                        "httpName": "$attrs",
-                        "httpScope": "ATTRS",
-                        "name": "attrs",
-                        "type": "PRIMITIVE"
-                    }
-                ],
-                "generic": [],
-                "name": "appContext",
-                "type": "COMPLEX"
-            }
-        ],
         "interface": "com.foo.bar.act.IActivityService",
         "method": "list",
         "rpcGroup": "",
@@ -253,11 +119,11 @@ func TestParseEndpointModelV1_0(t *testing.T) {
 		},
 		{
 			Expected: "MALL",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("biz").GetString() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("biz").ToString() },
 		},
 		{
 			Expected: []string{"APP_USER"},
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("role").GetStringSlice() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("role").ToStringSlice() },
 		},
 	})
 }
