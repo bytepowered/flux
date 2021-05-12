@@ -60,7 +60,7 @@ func TestParseEndpointModelV1(t *testing.T) {
 		},
 		{
 			Expected: 0,
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return len(endpoint.Permissions) },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return len(endpoint.AttrPermissions()) },
 		},
 		{
 			Expected: "",
@@ -93,7 +93,7 @@ func TestParseEndpointModelV1_0(t *testing.T) {
     },
     "httpMethod": "POST",
     "httpPattern": "/v1/api/seller.adm.activity.list",
-    "permissions": [],
+    "permissions": ["com.foo.bar.act.IActivityService:list"],
     "service": {
         "interface": "com.foo.bar.act.IActivityService",
         "method": "list",
@@ -124,6 +124,10 @@ func TestParseEndpointModelV1_0(t *testing.T) {
 		{
 			Expected: []string{"APP_USER"},
 			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("role").ToStringSlice() },
+		},
+		{
+			Expected: []string{"com.foo.bar.act.IActivityService:list"},
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.AttrPermissions() },
 		},
 	})
 }

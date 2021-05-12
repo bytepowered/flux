@@ -91,16 +91,9 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 		}
 		// 没有任何权限校验定义
 		endpoint := ctx.Endpoint()
-		size := len(endpoint.Permissions)
-		if size == 0 && !endpoint.PermissionService.IsValid() {
-			return next(ctx)
-		}
-		services := make([]flux.Service, 0, 1+size)
-		// Define permission first
-		if endpoint.PermissionService.IsValid() {
-			services = append(services, endpoint.PermissionService)
-		}
-		for _, id := range endpoint.Permissions {
+		permissions := endpoint.AttrPermissions()
+		services := make([]flux.Service, 0, len(permissions))
+		for _, id := range permissions {
 			if srv, ok := ext.ServiceByID(id); ok {
 				services = append(services, srv)
 			} else {

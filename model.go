@@ -90,6 +90,11 @@ const (
 	ArgumentAttributeTagDefault = "default" // 参数的默认值属性
 )
 
+const (
+	FeaturePrefix     = "feature:"
+	FeaturePermission = FeaturePrefix + "permission"
+)
+
 type (
 	// LookupFunc 参数值查找函数
 	LookupFunc func(ctx *Context, scope, key string) (MTValue, error)
@@ -241,22 +246,29 @@ type Endpoint struct {
 	HttpPattern string     `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
 	HttpMethod  string     `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
 	ServiceId   string     `json:"serviceId" yaml:"serviceId"`     // Service Id refer to Service
-	Permissions []string   `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
 	Attributes  Attributes `json:"attributes" yaml:"attributes"`   // 属性列表
 	Service     Service    `json:"-"`
-}
-
-func (e *Endpoint) PermissionIds() []string {
-	ids := make([]string, len(e.Permissions))
-	copy(ids, e.Permissions)
-	return ids
 }
 
 func (e *Endpoint) IsValid() bool {
 	return e.HttpMethod != "" && e.HttpPattern != "" && e.ServiceId != ""
 }
 
-func (e *Endpoint) Authorize() bool {
+// Deprecated
+func (e *Endpoint) PermissionIds() []string {
+	return e.AttrPermissions()
+}
+
+func (e *Endpoint) AttrPermissions() []string {
+	perm := e.MultiAttrs(FeaturePermission)
+	ids := make([]string, len(perm))
+	for i, p := range perm {
+		ids[i] = p.Value.(string)
+	}
+	return ids
+}
+
+func (e *Endpoint) AttrAuthorize() bool {
 	return e.Attributes.Single(EndpointAttrTagAuthorize).ToBool()
 }
 

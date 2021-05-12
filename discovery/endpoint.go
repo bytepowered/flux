@@ -14,10 +14,11 @@ var (
 
 type CompatibleEndpoint struct {
 	flux.Endpoint
-	RefService        flux.Service           `json:"service"`
-	Authorize         bool                   `json:"authorize"`
-	Extensions        map[string]interface{} `json:"extensions"`
-	PermissionService flux.Service           `json:"permission" yaml:"permission"`
+	RefService  flux.Service           `json:"service"`
+	Authorize   bool                   `json:"authorize"`
+	Extensions  map[string]interface{} `json:"extensions"`
+	Permission  flux.Service           `json:"permission" yaml:"permission"`   // 权限服务定义
+	Permissions []string               `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
 }
 
 func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.EndpointEvent, err error) {
@@ -52,6 +53,18 @@ func NewEndpointEvent(bytes []byte, etype remoting.EventType) (fxEvt flux.Endpoi
 		// 1. Service id
 		if comp.ServiceId == "" {
 			comp.ServiceId = comp.RefService.ServiceId
+		}
+		// 2. Permission service id
+		if comp.Permission.IsValid() {
+			comp.Attributes = append(comp.Attributes, flux.Attribute{
+				Name: flux.FeaturePermission, Value: comp.Permission.ServiceID(),
+			})
+		}
+		// 3. PermissionIds
+		for _, id := range comp.Permissions {
+			comp.Attributes = append(comp.Attributes, flux.Attribute{
+				Name: flux.FeaturePermission, Value: id,
+			})
 		}
 	}
 

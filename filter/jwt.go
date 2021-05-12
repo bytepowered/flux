@@ -62,7 +62,7 @@ func (f *JWTFilter) Init(config *flux.Configuration) error {
 func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 	return func(ctx *flux.Context) *flux.ServeError {
 		// Endpoint指定不需要授权
-		if !ctx.Endpoint().Authorize() {
+		if !ctx.Endpoint().AttrAuthorize() {
 			return next(ctx)
 		}
 		tokenStr, err := f.Config.TokenExtractor(ctx)

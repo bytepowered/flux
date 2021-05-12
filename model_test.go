@@ -123,7 +123,7 @@ func TestParseEndpointModelV2(t *testing.T) {
 		},
 		{
 			Expected: 0,
-			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Permissions) },
+			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.AttrPermissions) },
 		},
 		{
 			Expected: ":superadmin",

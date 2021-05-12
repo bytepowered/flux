@@ -239,7 +239,10 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
 		return server.HandleNotfound(webex)
 	} else {
-		toolkit.Assert(endpoint.IsValid(), "<endpoint> must valid when routing")
+		toolkit.Assert(endpoint.IsValid(), "<endpoint> is invalid")
+		srv, ok := ext.ServiceByID(endpoint.ServiceId)
+		toolkit.Assert(ok, "<service> not found")
+		endpoint.Service = srv
 	}
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
@@ -304,7 +307,6 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
-		gs.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
 		mvce.Update(endpoint.Version, &endpoint)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if register {
@@ -322,7 +324,6 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
-		gs.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
 		mvce.Update(endpoint.Version, &endpoint)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
