@@ -35,7 +35,7 @@ func SugaredFactory(sugar *zap.SugaredLogger) flux.LoggerFactory {
 		}
 		newLogger := sugar
 		if traceId := values.Value(ContextKeyTraceId); nil != traceId {
-			newLogger = newLogger.With(zap.String(ContextKeyTraceId, cast.ToString(traceId)))
+			newLogger = newLogger.With(zap.String("trace-id", cast.ToString(traceId)))
 		}
 		if extras, ok := values.Value(ContextKeyExtras).(map[string]string); ok && len(extras) > 0 {
 			fields := make([]interface{}, 0, len(extras))

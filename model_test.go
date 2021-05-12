@@ -118,12 +118,8 @@ func TestParseEndpointModelV2(t *testing.T) {
 			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpMethod },
 		},
 		{
-			Expected: false,
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.PermissionService.IsValid() },
-		},
-		{
 			Expected: 0,
-			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.AttrPermissions) },
+			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.AttrPermissions()) },
 		},
 		{
 			Expected: ":superadmin",
