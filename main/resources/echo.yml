@@ -1,39 +1,43 @@
 # 配置Endpoint节点列表
 version: 1.0
 
+# 定义Endpoint列表
 endpoints:
-    -   application: "flux"
+    -   application: "maxwell"
         version: "1.0"
         httpPattern: "/debug/flux/echo/get"
         httpMethod: "GET"
+        serviceId: "flux.debug.echo:get"
         attributes:
-            -   name: "listenerId"
-                value: "admin"
-        # 后端服务配置
-        service:
-            serviceId: "flux.debug.echo.get"
-            interface: "flux.debug.echo"
-            method: "get"
-            attributes:
-                -   name: "RpcProto"
-                    value: "ECHO"
-                -   name: "Authorize"
-                    value: false
+            -   name: "Authorize"
+                value: false
 
-    -   application: "flux"
+    -   application: "maxwell"
         version: "1.0"
         httpPattern: "/debug/flux/echo/post"
         httpMethod: "POST"
-        # 后端服务配置
-        service:
-            serviceId: "flux.debug.echo.post"
-            interface: "flux.debug.echo"
-            method: "post"
-            attributes:
-                -   name: "RpcProto"
-                    value: "ECHO"
-                -   name: "Authorize"
-                    value: false
+        serviceId: "flux.debug.echo:post"
+        attributes:
+            -   name: "Authorize"
+                value: false
 
-# Service 配置服务列表
-services: [ ]
+# 定义Service列表
+services:
+    -   serviceId: "flux.debug.echo:get"
+        interface: "flux.debug.echo"
+        method: "get"
+        attributes:
+            -   name: "RpcProto"
+                value: "ECHO"
+            -   name: "Authorize"
+                value: false
+
+    -   serviceId: "flux.debug.echo:post"
+        interface: "flux.debug.echo"
+        method: "post"
+        attributes:
+            -   name: "RpcProto"
+                value: "ECHO"
+            -   name: "Authorize"
+                value: false
+

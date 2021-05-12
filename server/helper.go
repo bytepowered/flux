@@ -27,8 +27,8 @@ func InitLogger() {
 		if nil == values {
 			return sugar
 		}
-		if traceId := values.Value(logger.TraceId); nil != traceId {
-			return sugar.With(zap.String(logger.TraceId, cast.ToString(traceId)))
+		if traceId := values.Value(logger.ContextKeyTraceId); nil != traceId {
+			return sugar.With(zap.String(logger.ContextKeyTraceId, cast.ToString(traceId)))
 		}
 		return sugar
 	})

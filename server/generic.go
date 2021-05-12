@@ -233,30 +233,35 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		}
 	}
 	if !found {
-		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:NOT_FOUND",
+		logger.TraceId(webex).Infow("SERVER:EVEN:ROUTE:NOT_FOUND",
 			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 		)
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
 		return server.HandleNotfound(webex)
 	} else {
 		toolkit.Assert(endpoint.IsValid(), "<endpoint> is invalid")
-		srv, ok := ext.ServiceByID(endpoint.ServiceId)
-		toolkit.Assert(ok, "<service> not found")
-		endpoint.Service = srv
 	}
+	// Setup context/endpoint
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
-	trace := logger.TraceContext(ctxw)
-	trace.Infow("SERVER:EVEN:ROUTE:START")
+	// Lookup Service
+	srv, ok := ext.ServiceByID(endpoint.ServiceId)
+	if !ok {
+		logger.TraceId(webex).Errorw("SERVER:EVEN:ROUTE:SERVICE_NOT_FOUND", "service-id", endpoint.ServiceId)
+	}
+	toolkit.Assert(ok, "SERVICE_NOT_FOUND")
+	endpoint.Service = srv
+
+	logger.TraceContext(ctxw).Infow("SERVER:EVEN:ROUTE:START")
 	// hook
 	for _, hook := range gs.contextHooks {
 		hook(webex, ctxw)
 	}
 	defer func(start time.Time) {
-		trace.Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
+		logger.TraceId(webex).Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
 	// route
 	if serr := gs.dispatcher.Route(ctxw); nil != serr {

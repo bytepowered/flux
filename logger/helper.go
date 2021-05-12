@@ -4,18 +4,23 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
+	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/toolkit"
 	"github.com/spf13/cast"
 	"strings"
 )
 
 const (
-	TraceId = "trace-id"
-	Extras  = "extras"
+	ContextKeyTraceId = internal.ContextKey("trace-id")
+	ContextKeyExtras  = internal.ContextKey("extras")
 )
 
+func TraceId(webc flux.ServerWebContext) flux.Logger {
+	return Trace(webc.RequestId())
+}
+
 func Trace(id string) flux.Logger {
-	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, id))
+	return ext.NewLoggerWith(context.WithValue(context.Background(), ContextKeyTraceId, id))
 }
 
 func TraceContext(ctx *flux.Context) flux.Logger {
@@ -45,6 +50,6 @@ func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger
 }
 
 func TraceExtras(traceId string, extras map[string]string) flux.Logger {
-	p := context.WithValue(context.Background(), TraceId, traceId)
-	return ext.NewLoggerWith(context.WithValue(p, Extras, extras))
+	p := context.WithValue(context.Background(), ContextKeyTraceId, traceId)
+	return ext.NewLoggerWith(context.WithValue(p, ContextKeyExtras, extras))
 }

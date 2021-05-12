@@ -270,14 +270,14 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*
 	raw, serr := b.Invoke(ctx, service)
 	select {
 	case <-ctx.Context().Done():
-		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:RPC_CANCELED",
+		logger.TraceId(ctx).Infow("TRANSPORTER:DUBBO:RPC_CANCELED",
 			"transporter-service", service.ServiceID(), "error", ctx.Context().Err())
 		return nil, serr
 	default:
 		break
 	}
 	if nil != serr {
-		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:RPC_ERROR",
+		logger.TraceId(ctx).Errorw("TRANSPORTER:DUBBO:RPC_ERROR",
 			"transporter-service", service.ServiceID(), "error", serr.CauseError)
 		return nil, serr
 	}
@@ -299,7 +299,7 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*
 func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
 	att, err := b.attrAssemblyFunc(ctx)
 	if nil != err {
-		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
+		logger.TraceId(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
 			"transporter-service", service.ServiceID(), "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -309,7 +309,7 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 		}
 	}
 	if b.trace {
-		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:INVOKE",
+		logger.TraceId(ctx).Infow("TRANSPORTER:DUBBO:INVOKE",
 			"transporter-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", att)
 	}
 	generic := b.LoadGenericService(&service)
@@ -326,11 +326,10 @@ func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service fl
 		if b.trace {
 			data := resultW.Result()
 			text, err := _json.MarshalToString(data)
-			ctxLogger := logger.TraceContext(ctx)
 			if nil == err {
-				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED", "transporter-service", service.ServiceID(), "response.json", text)
+				logger.TraceId(ctx).Infow("TRANSPORTER:DUBBO:RECEIVED", "transporter-service", service.ServiceID(), "response.json", text)
 			} else {
-				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED",
+				logger.TraceId(ctx).Infow("TRANSPORTER:DUBBO:RECEIVED",
 					"transporter-service", service.ServiceID(), "response.type", reflect.TypeOf(data), "response.data", fmt.Sprintf("%+v", data))
 			}
 		}

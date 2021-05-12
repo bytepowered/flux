@@ -136,7 +136,7 @@ func (d *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
 		proto := ctx.Service().RpcProto()
 		transporter, ok := ext.TransporterByProto(proto)
 		if !ok {
-			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
+			logger.TraceId(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", proto, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
