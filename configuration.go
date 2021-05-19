@@ -33,35 +33,44 @@ func NewConfigurationByKeys(namespaceAndKeys ...string) *Configuration {
 	return NewConfiguration(MakeConfigurationKey(namespaceAndKeys...))
 }
 
+func NewRootConfiguration() *Configuration {
+	return newConfiguration("")
+}
+
 // NewConfiguration 根据指定Namespace的配置
 func NewConfiguration(namespace string) *Configuration {
 	if namespace == "" {
 		panic("configuration: not allow empty namespace")
 	}
+	return newConfiguration(namespace)
+}
+
+// NewConfiguration 根据指定Namespace的配置
+func newConfiguration(namespace string) *Configuration {
 	return &Configuration{
-		nspath:   namespace,
-		dataID:   namespace,
-		registry: viper.GetViper(), // 持有Viper全局实例，通过Namespace来控制查询的Key
-		reglocal: false,
-		alias:    make(map[string]string),
+		namespace: namespace,
+		dataID:    namespace,
+		registry:  viper.GetViper(), // 持有Viper全局实例，通过Namespace来控制查询的Key
+		local:     false,
+		alias:     make(map[string]string),
 	}
 }
 
 // Configuration 封装Viper实例访问接口的配置类
 type Configuration struct {
-	dataID   string            // 数据ID
-	nspath   string            // 配置所属命名空间
-	registry *viper.Viper      // 实际的配置实例
-	reglocal bool              // 是否使用本地Viper实例
-	alias    map[string]string // 本地Key别名
-	wstop    chan struct{}
+	dataID    string            // 数据ID
+	namespace string            // 配置所属命名空间
+	registry  *viper.Viper      // 实际的配置实例
+	local     bool              // 是否使用本地Viper实例
+	alias     map[string]string // 本地Key别名
+	watchStop chan struct{}
 }
 
 func (c *Configuration) makeKey(key string) string {
-	if c.reglocal || c.nspath == "" {
+	if c.local || c.namespace == "" {
 		return key
 	}
-	return MakeConfigurationKey(c.nspath, key)
+	return MakeConfigurationKey(c.namespace, key)
 }
 
 func (c *Configuration) SetDataId(dataID string) {
@@ -73,11 +82,11 @@ func (c *Configuration) DataId() string {
 }
 
 func (c *Configuration) ToStringMap() map[string]interface{} {
-	return cast.ToStringMap(c.registry.Get(c.nspath))
+	return cast.ToStringMap(c.registry.Get(c.namespace))
 }
 
 func (c *Configuration) Keys() []string {
-	v := c.registry.Sub(c.nspath)
+	v := c.registry.Sub(c.namespace)
 	if v != nil {
 		return v.AllKeys()
 	}
@@ -85,7 +94,7 @@ func (c *Configuration) Keys() []string {
 }
 
 func (c *Configuration) ToConfigurations() []*Configuration {
-	return ToConfigurations(c.nspath, c.registry.Get(c.nspath))
+	return ToConfigurations(c.namespace, c.registry.Get(c.namespace))
 }
 
 func (c *Configuration) Sub(subNamespace string) *Configuration {
@@ -291,10 +300,10 @@ func (c *Configuration) GetStructTag(key, structTag string, outptr interface{}) 
 }
 
 func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
-	if c.wstop != nil {
+	if c.watchStop != nil {
 		return
 	}
-	c.wstop = make(chan struct{}, 1)
+	c.watchStop = make(chan struct{}, 1)
 	values := make(map[string]interface{}, 16)
 	for _, k := range c.Keys() {
 		values[k] = c.Get(k)
@@ -303,7 +312,7 @@ func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
 		watch := time.NewTicker(time.Second)
 		defer func() {
 			watch.Stop()
-			c.wstop = nil
+			c.watchStop = nil
 		}()
 		for {
 			select {
@@ -316,7 +325,7 @@ func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
 					}
 				}
 
-			case <-c.wstop:
+			case <-c.watchStop:
 				return
 			}
 		}
@@ -324,11 +333,11 @@ func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
 }
 
 func (c *Configuration) StopWatch() {
-	if c.wstop == nil {
+	if c.watchStop == nil {
 		return
 	}
 	select {
-	case c.wstop <- struct{}{}:
+	case c.watchStop <- struct{}{}:
 	default:
 		return
 	}
@@ -344,8 +353,8 @@ func ToConfigurations(namespace string, v interface{}) []*Configuration {
 		sm := cast.ToStringMap(sliceV.Index(i).Interface())
 		if len(sm) > 0 {
 			out = append(out, &Configuration{
-				nspath:   namespace + fmt.Sprintf("[%d]", i),
-				reglocal: true,
+				namespace: namespace + fmt.Sprintf("[%d]", i),
+				local:     true,
 				registry: func() *viper.Viper {
 					r := viper.New()
 					for k, v := range sm {
