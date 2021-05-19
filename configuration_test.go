@@ -201,3 +201,19 @@ func TestConfiguration_WatchKey(t *testing.T) {
 	<-time.After(time.Second * 10)
 	app.StopWatch()
 }
+
+func TestConfiguration_RootNamespace(t *testing.T) {
+	viper.Set("app.year", "${app.year:2020}")
+	viper.Set("app.no", "9999")
+	root := NewRootConfiguration()
+	assert := assert2.New(t)
+	assert.Equal(map[string]interface{}{
+		"app": map[string]interface{}{
+			"no":   "9999",
+			"year": "${app.year:2020}",
+		},
+	}, root.ToStringMap())
+	confs := root.ToConfigurations()
+	assert.Equal(1, len(confs))
+	assert.Equal("2020", confs[0].GetString("app.year"))
+}
