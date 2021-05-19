@@ -102,13 +102,13 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		expected interface{}
 	}{
 		{
-			config:   NewGlobalConfig(),
+			config:   NewRootConfiguration(),
 			lookup:   "myuserid",
 			expected: nil,
 		},
 		{
 			config: func() *Configuration {
-				c := NewGlobalConfig()
+				c := NewRootConfiguration()
 				c.Set("userE", "chen")
 				return c
 			}(),
@@ -117,7 +117,7 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		},
 		{
 			config: func() *Configuration {
-				c := NewGlobalConfig()
+				c := NewRootConfiguration()
 				c.Set("userX", "${username}")
 				return c
 			}(),
@@ -126,7 +126,7 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		},
 		{
 			config: func() *Configuration {
-				c := NewGlobalConfig()
+				c := NewRootConfiguration()
 				c.Set("usernameA", "${usernameX:haha}")
 				return c
 			}(),
@@ -135,7 +135,7 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 		},
 		{
 			config: func() *Configuration {
-				c := NewGlobalConfig()
+				c := NewRootConfiguration()
 				c.Set("userA", "${user.year}")
 				return c
 			}(),
@@ -200,8 +200,4 @@ func TestConfiguration_WatchKey(t *testing.T) {
 	}()
 	<-time.After(time.Second * 10)
 	app.StopWatch()
-}
-
-func NewGlobalConfig() *Configuration {
-	return &Configuration{nspath: "", registry: viper.GetViper()}
 }
