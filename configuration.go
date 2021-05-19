@@ -82,6 +82,9 @@ func (c *Configuration) DataId() string {
 }
 
 func (c *Configuration) ToStringMap() map[string]interface{} {
+	if "" == c.namespace {
+		return c.registry.AllSettings()
+	}
 	return cast.ToStringMap(c.registry.Get(c.namespace))
 }
 
@@ -94,6 +97,9 @@ func (c *Configuration) Keys() []string {
 }
 
 func (c *Configuration) ToConfigurations() []*Configuration {
+	if "" == c.namespace {
+		return ToConfigurations("", []interface{}{c.registry.AllSettings()})
+	}
 	return ToConfigurations(c.namespace, c.registry.Get(c.namespace))
 }
 
