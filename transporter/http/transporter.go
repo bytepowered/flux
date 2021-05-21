@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/transporter"
 	"github.com/spf13/cast"
 	"io"
 	"net/http"
@@ -27,13 +26,8 @@ type (
 
 type RpcTransporter struct {
 	httpClient  *http.Client
-	codec       flux.TransportCodec
-	writer      flux.TransportWriter
+	codec       flux.TransportCodecFunc
 	argResolver ArgumentResolver
-}
-
-func (b *RpcTransporter) Writer() flux.TransportWriter {
-	return b.writer
 }
 
 func NewRpcHttpTransporter() *RpcTransporter {
@@ -41,8 +35,7 @@ func NewRpcHttpTransporter() *RpcTransporter {
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		codec:  NewTransportCodecFunc(),
-		writer: new(transporter.DefaultTransportWriter),
+		codec: NewTransportCodecFunc(),
 	}
 }
 
@@ -67,7 +60,7 @@ func WithHttpClient(client *http.Client) Option {
 }
 
 // WithTransportCodec 用于配置响应数据解析实现函数
-func WithTransportCodec(fun flux.TransportCodec) Option {
+func WithTransportCodec(fun flux.TransportCodecFunc) Option {
 	return func(service *RpcTransporter) {
 		service.codec = fun
 	}
@@ -80,19 +73,8 @@ func WithArgumentResolver(fun ArgumentResolver) Option {
 	}
 }
 
-// WithTransportWriter 用于配置响应数据解析实现函数
-func WithTransportWriter(fun flux.TransportWriter) Option {
-	return func(service *RpcTransporter) {
-		service.writer = fun
-	}
-}
-
-func (b *RpcTransporter) Transport(ctx *flux.Context) {
-	transporter.DoTransport(ctx, b)
-}
-
-func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
-	raw, serr := b.Invoke(ctx, service)
+func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
+	raw, serr := b.invoke0(ctx, service)
 	if nil != serr {
 		return nil, serr
 	}
@@ -102,36 +84,36 @@ func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageTransportDecodeResponse,
+			Message:    flux.ErrorMessageTransportDecodeError,
 			CauseError: fmt.Errorf("decode http response, err: %w", err),
 		}
 	}
 	return result, nil
 }
 
-func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
 	body, _ := ctx.BodyReader()
 	newRequest, err := b.argResolver(&service, ctx.URL(), body, ctx)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageHttpAssembleFailed,
+			Message:    flux.ErrorMessageTransportHttpAssembleFailed,
 			CauseError: err,
 		}
 	}
-	return b.ExecuteRequest(newRequest, service, ctx)
+	return b.request(newRequest, service, ctx)
 }
 
-func (b *RpcTransporter) ExecuteRequest(newRequest *http.Request, _ flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) request(request *http.Request, _ flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
 	// Header透传以及传递AttrValues
-	newRequest.Header = ctx.HeaderVars()
+	request.Header = ctx.HeaderVars()
 	for k, v := range ctx.Attributes() {
-		newRequest.Header.Set(k, cast.ToString(v))
+		request.Header.Set(k, cast.ToString(v))
 	}
-	resp, err := b.httpClient.Do(newRequest)
+	resp, err := b.httpClient.Do(request)
 	if nil != err {
-		msg := flux.ErrorMessageHttpInvokeFailed
+		msg := flux.ErrorMessageTransportHttpInvokeFailed
 		if uErr, ok := err.(*url.Error); ok {
 			msg = fmt.Sprintf("HTTPEX:REMOTE_ERROR:%s", uErr.Error())
 		}

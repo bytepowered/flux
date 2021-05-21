@@ -15,7 +15,6 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/toolkit"
-	"github.com/bytepowered/flux/transporter"
 )
 
 import (
@@ -43,8 +42,8 @@ func init() {
 }
 
 var (
-	ErrDecodeInvalidHeaders = errors.New(flux.ErrorMessageDubboDecodeInvalidHeader)
-	ErrDecodeInvalidStatus  = errors.New(flux.ErrorMessageDubboDecodeInvalidStatus)
+	ErrDecodeInvalidHeaders = errors.New(flux.ErrorMessageTransportDubboDecodeInvalidHeader)
+	ErrDecodeInvalidStatus  = errors.New(flux.ErrorMessageTransportDubboDecodeInvalidStatus)
 )
 
 var (
@@ -80,8 +79,7 @@ type RpcTransporter struct {
 	invokeFunc       GenericInvokeFunc       // 执行Dubbo泛调用的函数
 	argsAssemblyFunc ArgumentsAssemblyFunc   // Dubbo参数封装函数
 	attrAssemblyFunc AttachmentsAssemblyFunc // Attachment封装函数
-	codec            flux.TransportCodec     // 解析响应结果的函数
-	writer           flux.TransportWriter    // Writer
+	codec            flux.TransportCodecFunc // 解析响应结果的函数
 	// 内部私有
 	trace         bool
 	configuration *flux.Configuration
@@ -102,17 +100,10 @@ func WithAttachmentsAssemblyFunc(fun AttachmentsAssemblyFunc) Option {
 	}
 }
 
-// WithTransportCodec 用于配置响应数据解析实现函数
-func WithTransportCodec(fun flux.TransportCodec) Option {
+// WithTransportCodecFunc 用于配置响应数据解析实现函数
+func WithTransportCodecFunc(fun flux.TransportCodecFunc) Option {
 	return func(service *RpcTransporter) {
 		service.codec = fun
-	}
-}
-
-// WithTransportWriter 用于配置响应数据解析实现函数
-func WithTransportWriter(fun flux.TransportWriter) Option {
-	return func(service *RpcTransporter) {
-		service.writer = fun
 	}
 }
 
@@ -198,14 +189,9 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 		}),
 		WithArgumentsAssemblyFunc(DefaultArgumentsAssemblyFunc),
 		WithAttachmentsAssemblyFunc(DefaultAttachmentAssemblyFunc),
-		WithTransportCodec(NewTransportCodecFunc()),
-		WithTransportWriter(new(transporter.DefaultTransportWriter)),
+		WithTransportCodecFunc(NewTransportCodecFunc()),
 	}
 	return NewTransporterWith(append(opts, overrides...)...)
-}
-
-func (b *RpcTransporter) Writer() flux.TransportWriter {
-	return b.writer
 }
 
 // Init init transporter
@@ -246,96 +232,87 @@ func (b *RpcTransporter) Shutdown(_ context.Context) error {
 	return nil
 }
 
-// Transport do exchange with context
-func (b *RpcTransporter) Transport(ctx *flux.Context) {
-	transporter.DoTransport(ctx, b)
-}
-
-// Invoke invoke transporter service with context
-func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
+	trace := logger.TraceExtras(ctx.RequestId(), map[string]string{
+		"transport-service": service.ServiceID(),
+	})
 	types, values, err := b.argsAssemblyFunc(service.Arguments, ctx)
 	if nil != err {
+		trace.Errorw("TRANSPORTER:DUBBO:ASSEMBLE/arguments", "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageDubboAssembleFailed,
+			Message:    flux.ErrorMessageTransportDubboAssembleFailed,
 			CauseError: err,
 		}
-	} else {
-		return b.DoInvoke(types, values, service, ctx)
 	}
-}
-
-func (b *RpcTransporter) InvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
-	raw, serr := b.Invoke(ctx, service)
+	attachments, err := b.attrAssemblyFunc(ctx)
+	if nil != err {
+		trace.Errorw("TRANSPORTER:DUBBO:ASSEMBLE/attachments", "error", err)
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageTransportDubboAssembleFailed,
+			CauseError: err,
+		}
+	}
+	// Invoke
+	if b.trace {
+		trace.Infow("TRANSPORTER:DUBBO:INVOKE/args", "arg-values", values, "arg-types", types, "attachments", attachments)
+	}
+	invret, inverr := b.invoke0(ctx, service, types, values, attachments)
+	if b.trace && inverr == nil && invret != nil {
+		data := invret.Result()
+		if text, err := _json.MarshalToString(data); nil == err {
+			trace.Infow("TRANSPORTER:DUBBO:INVOKE/recv", "response.json", text)
+		} else {
+			trace.Infow("TRANSPORTER:DUBBO:INVOKE/recv", "response.type", reflect.TypeOf(data), "response.data", fmt.Sprintf("%+v", data))
+		}
+	}
 	select {
 	case <-ctx.Context().Done():
-		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:RPC_CANCELED",
-			"transporter-service", service.ServiceID(), "error", ctx.Context().Err())
-		return nil, serr
+		trace.Info("TRANSPORTER:DUBBO:INVOKE/canceled")
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusBadRequest,
+			ErrorCode:  flux.ErrorCodeGatewayCanceled,
+			Message:    flux.ErrorMessageTransportDubboClientCanceled,
+			CauseError: ctx.Context().Err(),
+		}
 	default:
 		break
 	}
-	if nil != serr {
-		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:RPC_ERROR",
-			"transporter-service", service.ServiceID(), "error", serr.CauseError)
-		return nil, serr
+	if nil != inverr {
+		trace.Errorw("TRANSPORTER:DUBBO:INVOKE/error", "error", inverr.CauseError)
+		return nil, inverr
 	}
-	// decode response
-	result, err := b.codec(ctx, raw)
-	if nil != err {
+	// Codec
+	if encoded, coderr := b.codec(ctx, invret); nil != coderr {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageTransportDecodeResponse,
-			CauseError: fmt.Errorf("decode dubbo response, err: %w", err),
+			Message:    flux.ErrorMessageTransportDecodeError,
+			CauseError: fmt.Errorf("decode dubbo response, err: %w", coderr),
 		}
+	} else {
+		toolkit.AssertNotNil(encoded, "dubbo: <result> must not nil, request-id: "+ctx.RequestId())
+		return encoded, nil
 	}
-	toolkit.AssertNotNil(result, "dubbo: <result> must not nil, request-id: "+ctx.RequestId())
-	return result, nil
 }
 
-// DoInvoke execute transporter service with arguments
-func (b *RpcTransporter) DoInvoke(types []string, values interface{}, service flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
-	att, err := b.attrAssemblyFunc(ctx)
-	if nil != err {
-		logger.TraceContext(ctx).Errorw("TRANSPORTER:DUBBO:ATTACHMENT",
-			"transporter-service", service.ServiceID(), "error", err)
-		return nil, &flux.ServeError{
-			StatusCode: flux.StatusServerError,
-			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageDubboAssembleFailed,
-			CauseError: err,
-		}
-	}
-	if b.trace {
-		logger.TraceContext(ctx).Infow("TRANSPORTER:DUBBO:INVOKE",
-			"transporter-service", service.ServiceID(), "arg-values", values, "arg-types", types, "attrs", att)
-	}
+func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service,
+	types []string, values, attachments interface{}) (protocol.Result, *flux.ServeError) {
 	generic := b.LoadGenericService(&service)
-	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, att)
+	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
 	resultW := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
 	if cause := resultW.Error(); cause != nil {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayTransporter,
-			Message:    flux.ErrorMessageDubboInvokeFailed,
+			Message:    flux.ErrorMessageTransportDubboInvokeFailed,
 			CauseError: cause,
 		}
-	} else {
-		if b.trace {
-			data := resultW.Result()
-			text, err := _json.MarshalToString(data)
-			ctxLogger := logger.TraceContext(ctx)
-			if nil == err {
-				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED", "transporter-service", service.ServiceID(), "response.json", text)
-			} else {
-				ctxLogger.Infow("TRANSPORTER:DUBBO:RECEIVED",
-					"transporter-service", service.ServiceID(), "response.type", reflect.TypeOf(data), "response.data", fmt.Sprintf("%+v", data))
-			}
-		}
-		return resultW, nil
 	}
+	return resultW, nil
 }
 
 // LoadGenericService create and cache dubbo generic service

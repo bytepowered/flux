@@ -72,16 +72,24 @@ func WithVersionLookupFunc(fun VersionLookupFunc) GenericOptionFunc {
 	}
 }
 
-// WithBanner 配置服务Banner
+// WithServerBanner 配置服务Banner
 func WithServerBanner(banner string) GenericOptionFunc {
 	return func(bs *GenericServer) {
 		bs.banner = banner
 	}
 }
 
+// WithWebListener 配置WebListener
 func WithWebListener(server flux.WebListener) GenericOptionFunc {
 	return func(bs *GenericServer) {
 		bs.AddWebListener(server.ListenerId(), server)
+	}
+}
+
+// WithResponseWriter 配置ResponseWriter
+func WithResponseWriter(writer flux.ServeResponseWriter) GenericOptionFunc {
+	return func(bs *GenericServer) {
+		bs.dispatcher.setResponseWriter(writer)
 	}
 }
 
@@ -256,10 +264,10 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		trace.Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
 	// route
-	if serr := gs.dispatcher.Route(ctxw); nil != serr {
-		server.HandleError(webex, serr)
+	if rouerr := gs.dispatcher.dispatch(ctxw); nil != rouerr {
+		server.HandleError(webex, rouerr)
 	}
-	return nil
+	return
 }
 
 func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
