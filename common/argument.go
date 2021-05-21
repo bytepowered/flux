@@ -17,7 +17,7 @@ func ResolveArgumentValue(ctx *flux.Context, a flux.Argument) (interface{}, erro
 	}
 	// Then: Lookup
 	if nil == a.LookupFunc {
-		return nil, fmt.Errorf("LookupFunc is nil, name: %s", a.Name)
+		return nil, fmt.Errorf("MTValueLookupFunc is nil, name: %s", a.Name)
 	}
 	// Single value
 	if len(a.Fields) == 0 {
