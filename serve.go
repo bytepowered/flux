@@ -2,7 +2,6 @@ package flux
 
 import (
 	"fmt"
-	"github.com/spf13/cast"
 	"net/http"
 )
 
@@ -26,16 +25,15 @@ const (
 const (
 	ErrorMessageProtocolUnknown = "GATEWAY:PROTOCOL:UNKNOWN"
 
-	ErrorMessageTransportDecodeResponse = "TRANSPORT:DECODE_RESPONSE"
-	ErrorMessageTransportWriteResponse  = "TRANSPORT:WRITE_RESPONSE"
-
-	ErrorMessageDubboInvokeFailed        = "TRANSPORT:DU:INVOKE"
-	ErrorMessageDubboAssembleFailed      = "TRANSPORT:DU:ASSEMBLE"
-	ErrorMessageDubboDecodeInvalidHeader = "TRANSPORT:DU:DECODE:INVALID_HEADERS"
-	ErrorMessageDubboDecodeInvalidStatus = "TRANSPORT:DU:DECODE:INVALID_STATUS"
-
-	ErrorMessageHttpInvokeFailed   = "TRANSPORT:HT:INVOKE"
-	ErrorMessageHttpAssembleFailed = "TRANSPORT:HT:ASSEMBLE"
+	// Transport errors
+	ErrorMessageTransportDubboInvokeFailed        = "TRANSPORT:DU:INVOKE/error"
+	ErrorMessageTransportDubboAssembleFailed      = "TRANSPORT:DU:ASSEMBLE/error"
+	ErrorMessageTransportDubboClientCanceled      = "TRANSPORT:DU:CANCELED/client"
+	ErrorMessageTransportDubboDecodeInvalidHeader = "TRANSPORT:DU:DECODE:INVALID/headers"
+	ErrorMessageTransportDubboDecodeInvalidStatus = "TRANSPORT:DU:DECODE:INVALID/status"
+	ErrorMessageTransportHttpInvokeFailed         = "TRANSPORT:HT:INVOKE/error"
+	ErrorMessageTransportHttpAssembleFailed       = "TRANSPORT:HT:ASSEMBLE/error"
+	ErrorMessageTransportDecodeError              = "TRANSPORT:CODEC/error"
 
 	ErrorMessagePermissionAccessDenied    = "PERMISSION:ACCESS_DENIED"
 	ErrorMessagePermissionServiceNotFound = "PERMISSION:SERVICE:NOT_FOUND"
@@ -45,6 +43,8 @@ const (
 
 	ErrorMessageRequestPrepare = "REQUEST:BODY:PREPARE"
 )
+
+var _ error = new(ServeError)
 
 // ServeError 定义网关处理请求的服务错误；
 // 它包含：错误定义的状态码、错误消息、内部错误等元数据
@@ -65,11 +65,7 @@ func (e *ServeError) Error() string {
 	}
 }
 
-func (e *ServeError) GetErrorCode() string {
-	return cast.ToString(e.ErrorCode)
-}
-
-func (e *ServeError) ExtraByKey(key string) interface{} {
+func (e *ServeError) GetExtra(key string) interface{} {
 	return e.Extras[key]
 }
 
@@ -80,7 +76,7 @@ func (e *ServeError) SetExtra(key string, value interface{}) {
 	e.Extras[key] = value
 }
 
-func (e *ServeError) Merge(header http.Header) *ServeError {
+func (e *ServeError) MergeHeader(header http.Header) *ServeError {
 	if e.Header == nil {
 		e.Header = header.Clone()
 	} else {
@@ -91,4 +87,31 @@ func (e *ServeError) Merge(header http.Header) *ServeError {
 		}
 	}
 	return e
+}
+
+type (
+	// ServeResponseWriter 用于解析和序列化响应数据结构的接口，并将序列化后的数据写入Http响应流。
+	ServeResponseWriter interface {
+		// Write 写入正常响应数据
+		Write(ctx *Context, response *ServeResponse)
+		// WriteError 写入发生错误响应数据
+		WriteError(ctx *Context, err *ServeError)
+	}
+	// ServeResponse 表示后端服务(Dubbo/Http/gRPC/Echo)返回响应数据结构，
+	// 包含后端期望透传的状态码、Header和Attachment等数据
+	ServeResponse struct {
+		StatusCode  int                    // Http状态码
+		Headers     http.Header            // Http Header
+		Attachments map[string]interface{} // Attachment
+		Body        interface{}            // 响应数据体
+	}
+)
+
+func NewServeResponse(status int, body interface{}) *ServeResponse {
+	return &ServeResponse{
+		StatusCode:  status,
+		Headers:     make(http.Header, 0),
+		Attachments: make(map[string]interface{}, 0),
+		Body:        body,
+	}
 }

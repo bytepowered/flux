@@ -68,7 +68,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		tokenStr, err := f.Config.TokenExtractor(ctx)
 		ctx.Logger().Infow("AUTHORIZATION:JWT:TOKEN_VERIFY", "token", tokenStr)
 		// 启用JWT特性，但没有传Token参数
-		if ctx.Endpoint().AttrExists(FeatureJWT) && (tokenStr == "" || err == request.ErrNoTokenInRequest) {
+		if ctx.Endpoint().AttributeExists(FeatureJWT) && (tokenStr == "" || err == request.ErrNoTokenInRequest) {
 			return &flux.ServeError{
 				StatusCode: http.StatusUnauthorized,
 				ErrorCode:  flux.ErrorCodeJwtNotFound,
@@ -130,7 +130,7 @@ func ExtractTokenOAuth2(ctx *flux.Context) (string, error) {
 
 // ExtractTokenByFeature 根据Endpoint属性配置抓取Token的值
 func ExtractTokenByFeature(ctx *flux.Context) (string, error) {
-	expr := ctx.Endpoint().Attr(FeatureJWT).ToString()
+	expr := ctx.Endpoint().Attribute(FeatureJWT).ToString()
 	if "" == expr {
 		return "", fmt.Errorf("<%s> not found in endpoint.attrs", FeatureJWT)
 	}

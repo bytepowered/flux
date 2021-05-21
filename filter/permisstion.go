@@ -7,7 +7,6 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/toolkit"
-	"github.com/bytepowered/flux/transporter"
 	"net/http"
 	"time"
 )
@@ -137,8 +136,18 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 }
 
 // InvokeCodec 执行权限验证的后端服务，获取响应结果；
-func (p *PermissionFilter) InvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
-	return transporter.DoInvokeCodec(ctx, service)
+func (p *PermissionFilter) InvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
+	proto := service.RpcProto()
+	transporter, ok := ext.TransporterByProto(proto)
+	if !ok {
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageProtocolUnknown,
+			CauseError: fmt.Errorf("unknown rpc protocol:%s", proto),
+		}
+	}
+	return transporter.DoInvoke(ctx, service)
 }
 
 func EnsurePermissionStatusCode(status int) int {

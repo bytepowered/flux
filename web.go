@@ -176,7 +176,7 @@ type ServerWebContext interface {
 	// SetResponseWriter 设置HttpWeb服务器的ResponseWriter
 	SetResponseWriter(rw http.ResponseWriter)
 
-	// ResponseWriter 返回HttpWeb服务器的ResponseWriter对象。
+	// ServeResponseWriter 返回HttpWeb服务器的ResponseWriter对象。
 	ResponseWriter() http.ResponseWriter
 
 	// Variable 获取WebValue域键值；作用域与请求生命周期相同；

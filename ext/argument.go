@@ -8,14 +8,14 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义参数值查找逻辑。
 var (
-	lookupFunc flux.LookupFunc
+	lookupFunc flux.MTValueLookupFunc
 )
 
-func SetLookupFunc(f flux.LookupFunc) {
-	lookupFunc = toolkit.MustNotNil(f, "LookupFunc is nil").(flux.LookupFunc)
+func SetLookupFunc(f flux.MTValueLookupFunc) {
+	lookupFunc = toolkit.MustNotNil(f, "MTValueLookupFunc is nil").(flux.MTValueLookupFunc)
 }
 
-func LookupFunc() flux.LookupFunc {
+func LookupFunc() flux.MTValueLookupFunc {
 	return lookupFunc
 }
 

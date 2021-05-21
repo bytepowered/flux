@@ -96,7 +96,7 @@ func (c *Context) Attributes() map[string]interface{} {
 func (c *Context) GetAttribute(key string) (interface{}, bool) {
 	v, ok := c.attributes[key]
 	if !ok {
-		if attr, aok := c.endpoint.AttrEx(key); aok {
+		if attr, aok := c.endpoint.AttributeEx(key); aok {
 			return attr.Value, true
 		}
 	}

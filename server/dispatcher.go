@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
+	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cast"
 	"reflect"
 	"time"
 )
@@ -14,11 +16,13 @@ import (
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
 		metrics: NewMetrics(),
+		writer:  new(internal.JSONServeResponseWriter),
 	}
 }
 
 type Dispatcher struct {
 	metrics *Metrics
+	writer  flux.ServeResponseWriter
 }
 
 func (d *Dispatcher) Init() error {
@@ -94,7 +98,11 @@ func (d *Dispatcher) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (d *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
+func (d *Dispatcher) setResponseWriter(w flux.ServeResponseWriter) {
+	d.writer = w
+}
+
+func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
@@ -103,13 +111,13 @@ func (d *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
 		d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
-			d.metrics.EndpointError.WithLabelValues(proto, uri, method, err.GetErrorCode()).Inc()
+			d.metrics.EndpointError.WithLabelValues(proto, uri, method, cast.ToString(err.ErrorCode)).Inc()
 		}
 		return err
 	}
 	// Metric: Route
 	defer func() {
-		ctx.AddMetric("route", time.Since(ctx.StartAt()))
+		ctx.AddMetric("dispatch", time.Since(ctx.StartAt()))
 	}()
 	// Select filters
 	selective := make([]flux.Filter, 0, 16)
@@ -119,13 +127,11 @@ func (d *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
 		}
 	}
 	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
-	transport := func(ctx *flux.Context) *flux.ServeError {
+	transport := func(ctx *flux.Context) (serr *flux.ServeError) {
 		select {
 		case <-ctx.Context().Done():
-			return &flux.ServeError{
-				StatusCode: flux.StatusOK,
-				ErrorCode:  "ROUTE:TRANSPORT/B:CANCELED",
-				CauseError: ctx.Context().Err(),
+			return &flux.ServeError{StatusCode: flux.StatusBadRequest,
+				ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/100", CauseError: ctx.Context().Err(),
 			}
 		default:
 			break
@@ -141,14 +147,31 @@ func (d *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
 			return &flux.ServeError{
 				StatusCode: flux.StatusNotFound,
 				ErrorCode:  flux.ErrorCodeRequestNotFound,
-				Message:    fmt.Sprintf("ROUTE:UNKNOWN_PROTOCOL:%s", proto),
+				Message:    fmt.Sprintf("SERVER:ROUTE:ILLEGAL_PROTOCOL/%s", proto),
 			}
 		}
-		// Transporter exchange
+		// Transporter invoke
 		timer := prometheus.NewTimer(d.metrics.RouteDuration.WithLabelValues("Transporter", proto))
-		transporter.Transport(ctx)
+		response, serr := transporter.DoInvoke(ctx, ctx.Service())
 		timer.ObserveDuration()
-		return nil
+		select {
+		case <-ctx.Context().Done():
+			return &flux.ServeError{StatusCode: flux.StatusBadRequest,
+				ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/200", CauseError: ctx.Context().Err(),
+			}
+		default:
+			break
+		}
+		// Write response
+		if serr != nil {
+			d.writer.WriteError(ctx, serr)
+		} else {
+			for k, v := range response.Attachments {
+				ctx.SetAttribute(k, v)
+			}
+			d.writer.Write(ctx, response)
+		}
+		return
 	}
 	// Walk filters
 	filters := append(ext.GlobalFilters(), selective...)

@@ -3,7 +3,6 @@ package echo
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/transporter"
 	"io/ioutil"
 	"net/http"
 )
@@ -17,27 +16,17 @@ var (
 )
 
 type RpcTransporter struct {
-	codec  flux.TransportCodec
-	writer flux.TransportWriter
-}
-
-func (b *RpcTransporter) Writer() flux.TransportWriter {
-	return b.writer
+	codec flux.TransportCodecFunc
 }
 
 func NewTransporter() flux.Transporter {
 	return &RpcTransporter{
-		codec:  NewTransportCodecFunc(),
-		writer: new(transporter.DefaultTransportWriter),
+		codec: NewTransportCodecFunc(),
 	}
 }
 
-func (b *RpcTransporter) Transport(ctx *flux.Context) {
-	transporter.DoTransport(ctx, b)
-}
-
-func (b *RpcTransporter) InvokeCodec(context *flux.Context, service flux.Service) (*flux.ResponseBody, *flux.ServeError) {
-	resp, err := b.Invoke(context, service)
+func (b *RpcTransporter) DoInvoke(context *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
+	resp, err := b.invoke0(context, service)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +34,7 @@ func (b *RpcTransporter) InvokeCodec(context *flux.Context, service flux.Service
 	return codec, nil
 }
 
-func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
+func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
 	var data []byte
 	if r, err := ctx.BodyReader(); nil == err {
 		data, _ = ioutil.ReadAll(r)
@@ -65,9 +54,9 @@ func (b *RpcTransporter) Invoke(ctx *flux.Context, service flux.Service) (interf
 	}, nil
 }
 
-func NewTransportCodecFunc() flux.TransportCodec {
-	return func(ctx *flux.Context, value interface{}) (*flux.ResponseBody, error) {
-		return &flux.ResponseBody{
+func NewTransportCodecFunc() flux.TransportCodecFunc {
+	return func(ctx *flux.Context, value interface{}) (*flux.ServeResponse, error) {
+		return &flux.ServeResponse{
 			StatusCode: http.StatusOK,
 			Headers:    make(http.Header, 0),
 			Body:       value,

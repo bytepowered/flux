@@ -10,17 +10,17 @@ var (
 	ErrUnknownHttpResponse = errors.New("TRANSPORTER:HTTP:UNKNOWN_RESPONSE")
 )
 
-func NewTransportCodecFunc() flux.TransportCodec {
-	return func(ctx *flux.Context, value interface{}) (*flux.ResponseBody, error) {
+func NewTransportCodecFunc() flux.TransportCodecFunc {
+	return func(ctx *flux.Context, value interface{}) (*flux.ServeResponse, error) {
 		resp, ok := value.(*http.Response)
 		if !ok {
-			return &flux.ResponseBody{
+			return &flux.ServeResponse{
 				StatusCode: http.StatusBadGateway,
 				Headers:    make(http.Header, 0),
 				Body:       nil,
 			}, ErrUnknownHttpResponse
 		}
-		return &flux.ResponseBody{
+		return &flux.ServeResponse{
 			StatusCode: resp.StatusCode,
 			Headers:    resp.Header,
 			Body:       resp.Body,
