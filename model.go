@@ -273,23 +273,43 @@ func (e *Endpoint) Authorize() bool {
 	return e.Attributes.Single(EndpointAttrTagAuthorize).ToBool()
 }
 
+// Deprecated Use Attribute instead
 func (e *Endpoint) Attr(name string) Attribute {
-	return e.attrs().Single(name)
+	return e.Attribute(name)
 }
 
+func (e *Endpoint) Attribute(name string) Attribute {
+	return e.attributes().Single(name)
+}
+
+// Deprecated Use AttributeEx instead
 func (e *Endpoint) AttrEx(name string) (Attribute, bool) {
-	return e.attrs().SingleEx(name)
+	return e.AttributeEx(name)
 }
 
+func (e *Endpoint) AttributeEx(name string) (Attribute, bool) {
+	return e.attributes().SingleEx(name)
+}
+
+// Deprecated Use AttributeExists instead
 func (e *Endpoint) AttrExists(name string) bool {
-	return e.attrs().Exists(name)
+	return e.AttributeExists(name)
 }
 
+func (e *Endpoint) AttributeExists(name string) bool {
+	return e.attributes().Exists(name)
+}
+
+// Deprecated Use MultiAttributes instead
 func (e *Endpoint) MultiAttrs(name string) Attributes {
-	return e.attrs().Multiple(name)
+	return e.MultiAttributes(name)
 }
 
-func (e *Endpoint) attrs() Attributes {
+func (e *Endpoint) MultiAttributes(name string) Attributes {
+	return e.attributes().Multiple(name)
+}
+
+func (e *Endpoint) attributes() Attributes {
 	if e.Attributes == nil {
 		return make(Attributes, 0)
 	}
@@ -360,7 +380,7 @@ func (m *MVCEndpoint) Random() Endpoint {
 	for _, ep := range m.versions {
 		return *ep
 	}
-	panic("SERVER:CRITICAL:ASSERT: <multi-endpoint> must not empty, on query random")
+	panic("SERVER:CRITICAL:ASSERT: <multi-endpoint> must not empty, call by random query func")
 }
 
 func (m *MVCEndpoint) Endpoints() []*Endpoint {

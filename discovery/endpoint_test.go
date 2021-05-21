@@ -121,11 +121,11 @@ func TestParseEndpointModelV1(t *testing.T) {
 		},
 		{
 			Expected: "",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("roles").GetString() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attribute("roles").ToString() },
 		},
 		{
 			Expected: true,
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("Authorize").GetBool() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attribute("Authorize").ToBool() },
 		},
 		{
 			Expected: 2,
@@ -253,11 +253,11 @@ func TestParseEndpointModelV1_0(t *testing.T) {
 		},
 		{
 			Expected: "MALL",
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("biz").GetString() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attribute("biz").ToString() },
 		},
 		{
 			Expected: []string{"APP_USER"},
-			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attr("role").GetStringSlice() },
+			Actual:   func(endpoint *flux.Endpoint) interface{} { return endpoint.Attribute("role").ToStringSlice() },
 		},
 	})
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cast"
 	"reflect"
 	"time"
 )
@@ -103,7 +104,7 @@ func (d *Dispatcher) Route(ctx *flux.Context) *flux.ServeError {
 		d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if nil != err {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
-			d.metrics.EndpointError.WithLabelValues(proto, uri, method, err.GetErrorCode()).Inc()
+			d.metrics.EndpointError.WithLabelValues(proto, uri, method, cast.ToString(err.ErrorCode)).Inc()
 		}
 		return err
 	}

@@ -2,7 +2,6 @@ package flux
 
 import (
 	"fmt"
-	"github.com/spf13/cast"
 	"net/http"
 )
 
@@ -46,6 +45,8 @@ const (
 	ErrorMessageRequestPrepare = "REQUEST:BODY:PREPARE"
 )
 
+var _ error = new(ServeError)
+
 // ServeError 定义网关处理请求的服务错误；
 // 它包含：错误定义的状态码、错误消息、内部错误等元数据
 type ServeError struct {
@@ -65,11 +66,7 @@ func (e *ServeError) Error() string {
 	}
 }
 
-func (e *ServeError) GetErrorCode() string {
-	return cast.ToString(e.ErrorCode)
-}
-
-func (e *ServeError) ExtraByKey(key string) interface{} {
+func (e *ServeError) GetExtra(key string) interface{} {
 	return e.Extras[key]
 }
 
@@ -80,7 +77,7 @@ func (e *ServeError) SetExtra(key string, value interface{}) {
 	e.Extras[key] = value
 }
 
-func (e *ServeError) Merge(header http.Header) *ServeError {
+func (e *ServeError) MergeHeader(header http.Header) *ServeError {
 	if e.Header == nil {
 		e.Header = header.Clone()
 	} else {
