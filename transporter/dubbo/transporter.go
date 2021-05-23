@@ -274,7 +274,7 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 		trace.Info("TRANSPORTER:DUBBO:INVOKE/canceled")
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusBadRequest,
-			ErrorCode:  flux.ErrorCodeGatewayCanceled,
+			ErrorCode:  flux.ErrorCodeRequestCanceled,
 			Message:    flux.ErrorMessageTransportDubboClientCanceled,
 			CauseError: ctx.Context().Err(),
 		}

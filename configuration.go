@@ -17,6 +17,8 @@ const (
 	NamespaceDiscoveries  = "discoveries"
 )
 
+// MakeConfigurationKey 根据Key列表，构建Configuration的查询Key。
+// Note: Key列表任意单个Key不允许为空字符。
 func MakeConfigurationKey(keys ...string) string {
 	if len(keys) == 0 {
 		return ""
@@ -29,10 +31,16 @@ func MakeConfigurationKey(keys ...string) string {
 	return strings.Join(keys, ".")
 }
 
+// NewConfigurationByKeys 根据命名空间和Key列表，构建Configuration实例
+// Note：构建参数必须指定Namespace和Keys，否则报错Panic。
 func NewConfigurationByKeys(namespaceAndKeys ...string) *Configuration {
+	if len(namespaceAndKeys) == 0 {
+		panic("namespace and keys is require")
+	}
 	return NewConfiguration(MakeConfigurationKey(namespaceAndKeys...))
 }
 
+// NewRootConfiguration 构建获取根配置对象。
 func NewRootConfiguration() *Configuration {
 	return newConfiguration("")
 }
@@ -57,6 +65,7 @@ func newConfiguration(namespace string) *Configuration {
 }
 
 // Configuration 封装Viper实例访问接口的配置类
+// 根据Namespace指向不同的配置路径，可以从全局配置中读取指定域的配置数据
 type Configuration struct {
 	dataID    string            // 数据ID
 	namespace string            // 配置所属命名空间
@@ -64,13 +73,6 @@ type Configuration struct {
 	local     bool              // 是否使用本地Viper实例
 	alias     map[string]string // 本地Key别名
 	watchStop chan struct{}
-}
-
-func (c *Configuration) makeKey(key string) string {
-	if c.local || c.namespace == "" {
-		return key
-	}
-	return MakeConfigurationKey(c.namespace, key)
 }
 
 func (c *Configuration) SetDataId(dataID string) {
@@ -113,55 +115,6 @@ func (c *Configuration) Get(key string) interface{} {
 
 func (c *Configuration) GetOrDefault(key string, def interface{}) interface{} {
 	return c.doget(c.makeKey(key), def)
-}
-
-func (c *Configuration) doget(key string, indef interface{}) interface{} {
-	val := c.registry.Get(key)
-	if expr, ok := val.(string); ok {
-		// 动态全局Key和默认值： ${username:yongjia}
-		pkey, pdef, ptype := ParseDynamicKey(expr)
-		var usedef interface{}
-		if indef != nil {
-			usedef = indef
-		} else {
-			usedef = pdef
-		}
-		switch ptype {
-		case DynamicTypeConfig:
-			// check circle key
-			if key == pkey {
-				return usedef
-			}
-			if c.registry.IsSet(pkey) {
-				return c.doget(pkey, usedef)
-			} else {
-				return usedef
-			}
-
-		case DynamicTypeEnv:
-			if ev, ok := os.LookupEnv(pkey); ok {
-				return ev
-			} else {
-				return usedef
-			}
-
-		case DynamicTypeValue:
-			return val
-
-		default:
-			return val
-		}
-	}
-	// check local alias
-	if nil == val {
-		if alias, ok := c.alias[key]; ok {
-			val = c.registry.Get(alias)
-		}
-	}
-	if nil == val {
-		return indef
-	}
-	return val
 }
 
 // Set 向当前配置实例以覆盖的方式设置Key-Value键值。
@@ -318,8 +271,8 @@ func (c *Configuration) StartWatch(notify func(key string, value interface{})) {
 		watch := time.NewTicker(time.Second)
 		defer func() {
 			watch.Stop()
-			c.watchStop = nil
 		}()
+		c.watchStop = nil
 		for {
 			select {
 			case <-watch.C:
@@ -347,6 +300,62 @@ func (c *Configuration) StopWatch() {
 	default:
 		return
 	}
+}
+
+func (c *Configuration) makeKey(key string) string {
+	if c.local || c.namespace == "" {
+		return key
+	}
+	return MakeConfigurationKey(c.namespace, key)
+}
+
+func (c *Configuration) doget(key string, indef interface{}) interface{} {
+	val := c.registry.Get(key)
+	if expr, ok := val.(string); ok {
+		// 动态全局Key和默认值： ${username:yongjia}
+		pkey, pdef, ptype := ParseDynamicKey(expr)
+		var usedef interface{}
+		if indef != nil {
+			usedef = indef
+		} else {
+			usedef = pdef
+		}
+		switch ptype {
+		case DynamicTypeConfig:
+			// check circle key
+			if key == pkey {
+				return usedef
+			}
+			if c.registry.IsSet(pkey) {
+				return c.doget(pkey, usedef)
+			} else {
+				return usedef
+			}
+
+		case DynamicTypeEnv:
+			if ev, ok := os.LookupEnv(pkey); ok {
+				return ev
+			} else {
+				return usedef
+			}
+
+		case DynamicTypeValue:
+			return val
+
+		default:
+			return val
+		}
+	}
+	// check local alias
+	if nil == val {
+		if alias, ok := c.alias[key]; ok {
+			val = c.registry.Get(alias)
+		}
+	}
+	if nil == val {
+		return indef
+	}
+	return val
 }
 
 func ToConfigurations(namespace string, v interface{}) []*Configuration {

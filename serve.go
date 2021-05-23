@@ -9,17 +9,23 @@ const (
 	ErrorCodeGatewayInternal    = "GATEWAY:INTERNAL"
 	ErrorCodeGatewayTransporter = "GATEWAY:TRANSPORTER"
 	ErrorCodeGatewayEndpoint    = "GATEWAY:ENDPOINT"
-	ErrorCodeGatewayCircuited   = "GATEWAY:CIRCUITED"
-	ErrorCodeGatewayCanceled    = "GATEWAY:CANCELED"
-	ErrorCodeRequestInvalid     = "REQUEST:INVALID"
-	ErrorCodeRequestNotFound    = "REQUEST:NOT_FOUND"
-	ErrorCodePermissionDenied   = "PERMISSION:ACCESS_DENIED"
 )
 
 const (
-	ErrorCodeJwtMalformed = "AUTHORIZATION:JWT:MALFORMED"
-	ErrorCodeJwtExpired   = "AUTHORIZATION:JWT:EXPIRED"
-	ErrorCodeJwtNotFound  = "AUTHORIZATION:JWT:NOTFOUND"
+	ErrorCodeRequestInvalid   = "GATEWAY:REQUEST:INVALID"
+	ErrorCodeRequestNotFound  = "GATEWAY:REQUEST:NOT_FOUND"
+	ErrorCodeRequestCircuited = "GATEWAY:REQUEST:CIRCUITED"
+	ErrorCodeRequestCanceled  = "GATEWAY:REQUEST:CANCELED"
+)
+
+const (
+	ErrorCodePermissionDenied = "GATEWAY:PERMISSION:ACCESS_DENIED"
+)
+
+const (
+	ErrorCodeJwtMalformed = "GATEWAY:AUTHORIZATION:JWT:MALFORMED"
+	ErrorCodeJwtExpired   = "GATEWAY:AUTHORIZATION:JWT:EXPIRED"
+	ErrorCodeJwtNotFound  = "GATEWAY:AUTHORIZATION:JWT:NOTFOUND"
 )
 
 const (

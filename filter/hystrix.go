@@ -131,7 +131,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			} else if strings.Contains(err.Error(), context.Canceled.Error()) {
 				reterr = &flux.ServeError{
 					StatusCode: flux.StatusOK,
-					ErrorCode:  flux.ErrorCodeGatewayCanceled,
+					ErrorCode:  flux.ErrorCodeRequestCanceled,
 					Message:    "CIRCUITED:CANCELED:BYCLIENT",
 					CauseError: err,
 				}
@@ -153,7 +153,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 func DefaultDowngradeFunc(ctx *flux.Context, next flux.FilterInvoker, err error) *flux.ServeError {
 	return &flux.ServeError{
 		StatusCode: http.StatusServiceUnavailable,
-		ErrorCode:  flux.ErrorCodeGatewayCircuited,
+		ErrorCode:  flux.ErrorCodeRequestCircuited,
 		Message:    "CIRCUITED:SERVER_BUSY:DOWNGRADE",
 		CauseError: err,
 	}
