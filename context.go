@@ -14,6 +14,8 @@ const (
 
 type (
 	// Context 定义每个请求的上下文环境。包含当前请求的Endpoint、属性、请求Context等。
+	// Context是一个与请求生命周期相同的临时上下文容器，它在请求被接受处理时创建，在请求被处理完成时销毁。
+	// Attributes是Context的属性参数，它可以在多个组件之间传递，并且可以传递到后端Dubbo/Http/gRPC等服务。
 	Context struct {
 		ServerWebContext
 		endpoint   *Endpoint
@@ -27,6 +29,7 @@ type (
 	ContextHookFunc func(ServerWebContext, *Context)
 )
 
+// NewContext 构建新的Context实例。
 func NewContext() *Context {
 	return &Context{
 		attributes: make(map[string]interface{}, 16),
@@ -34,6 +37,8 @@ func NewContext() *Context {
 	}
 }
 
+// Reset 重置Context，重新与 ServerWebContext 关联，绑定新的 Endpoint
+// Note：此函数由内部框架调用，一般不作为业务使用。
 func (c *Context) Reset(webex ServerWebContext, endpoint *Endpoint) {
 	c.ServerWebContext = webex
 	c.endpoint = endpoint
