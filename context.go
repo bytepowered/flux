@@ -72,7 +72,7 @@ func (c *Context) ServiceID() string {
 
 // Attribute 获取指定key的Attribute。如果不存在，返回默认值；
 func (c *Context) Attribute(key string, defval interface{}) interface{} {
-	if v, ok := c.GetVariable(key); ok {
+	if v, ok := c.GetAttribute(key); ok {
 		return v
 	} else {
 		return defval
