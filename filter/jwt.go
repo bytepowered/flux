@@ -61,20 +61,16 @@ func (f *JWTFilter) Init(config *flux.Configuration) error {
 
 func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 	return func(ctx *flux.Context) *flux.ServeError {
-		// Endpoint指定不需要授权
-		if !ctx.Endpoint().Authorize() {
-			return next(ctx)
-		}
 		tokenStr, err := f.Config.TokenExtractor(ctx)
-		ctx.Logger().Infow("AUTHORIZATION:JWT:TOKEN_VERIFY", "token", tokenStr)
 		// 启用JWT特性，但没有传Token参数
-		if ctx.Endpoint().AttributeExists(FeatureJWT) && (tokenStr == "" || err == request.ErrNoTokenInRequest) {
+		if tokenStr == "" || err == request.ErrNoTokenInRequest {
 			return &flux.ServeError{
 				StatusCode: http.StatusUnauthorized,
 				ErrorCode:  flux.ErrorCodeJwtNotFound,
 				Message:    "JWT:VALIDATE: token not found",
 			}
 		}
+		ctx.Logger().Infow("AUTHORIZATION:JWT:TOKEN_VERIFY", "token", tokenStr)
 		// 解析和校验
 		claims := jwt.MapClaims{}
 		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
@@ -82,13 +78,13 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		})
 		if token != nil && token.Valid {
 			// set claims to attributes
-			ctx.Logger().Infow("JWT:VALIDATE:PASSED", "jwt.claims", claims)
+			ctx.Logger().Infow("AUTHORIZATION:JWT:VALIDATE:PASSED", "jwt.claims", claims)
 			for k, v := range claims {
 				ctx.SetAttribute(f.Config.AttKeyPrefix+"."+k, v)
 			}
 			return next(ctx)
 		} else {
-			ctx.Logger().Infow("JWT:VALIDATE:REJECTED", "error", err)
+			ctx.Logger().Infow("AUTHORIZATION:JWT:VALIDATE:REJECTED", "error", err)
 		}
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
@@ -108,7 +104,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 				return &flux.ServeError{
 					StatusCode: http.StatusBadRequest,
 					ErrorCode:  flux.ErrorCodeJwtMalformed,
-					Message:    "JWT:VALIDATE: Couldn't handle",
+					Message:    "JWT:VALIDATE: Couldn't handle(002)",
 					CauseError: err,
 				}
 			}
@@ -116,7 +112,7 @@ func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			return &flux.ServeError{
 				StatusCode: http.StatusBadRequest,
 				ErrorCode:  flux.ErrorCodeJwtMalformed,
-				Message:    "JWT:VALIDATE: Couldn't handle",
+				Message:    "JWT:VALIDATE: Couldn't handle(001)",
 				CauseError: err,
 			}
 		}
