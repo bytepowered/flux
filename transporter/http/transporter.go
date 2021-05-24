@@ -84,7 +84,7 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageTransportDecodeError,
+			Message:    flux.ErrorMessageTransportCodecError,
 			CauseError: fmt.Errorf("decode http response, err: %w", err),
 		}
 	}

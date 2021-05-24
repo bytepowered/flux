@@ -39,7 +39,7 @@ const (
 	ErrorMessageTransportDubboDecodeInvalidStatus = "TRANSPORT:DU:DECODE:INVALID/status"
 	ErrorMessageTransportHttpInvokeFailed         = "TRANSPORT:HT:INVOKE/error"
 	ErrorMessageTransportHttpAssembleFailed       = "TRANSPORT:HT:ASSEMBLE/error"
-	ErrorMessageTransportDecodeError              = "TRANSPORT:CODEC/error"
+	ErrorMessageTransportCodecError               = "TRANSPORT:CODEC/error"
 
 	ErrorMessagePermissionAccessDenied    = "PERMISSION:ACCESS_DENIED"
 	ErrorMessagePermissionServiceNotFound = "PERMISSION:SERVICE:NOT_FOUND"
