@@ -44,7 +44,7 @@ func TestJsonMapStandard(t *testing.T) {
 	t.Logf("Marshal: %s", string(b))
 
 	var out interface{}
-	if err = serializer.Unmarshal([]byte(`{1:false}`), &out); nil != err {
+	if err = serializer.Unmarshal([]byte(`{"1":false}`), &out); nil != err {
 		t.Fatal(err)
 	}
 	t.Log(out)
