@@ -14,13 +14,17 @@ func ParseScopeExpr(expr string) (scope, key string, ok bool) {
 	return ParseExprBySep(expr, ":")
 }
 
-func ParseExprBySep(expr, sep string) (scope, key string, ok bool) {
-	if "" == expr {
+func ParseExprBySep(expr, sep string) (first, second string, ok bool) {
+	if "" == expr || len(expr) < len("a:b") {
 		return
 	}
-	kv := strings.Split(expr, sep)
-	if len(kv) == 1 {
+	pair := strings.Split(expr, sep)
+	if len(pair) != 2 {
 		return "", "", false
 	}
-	return strings.TrimSpace(kv[0]), strings.TrimSpace(kv[1]), true
+	f, s := strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1])
+	if f != "" && s != "" {
+		return f, s, true
+	}
+	return "", "", false
 }
