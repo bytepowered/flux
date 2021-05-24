@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cast"
 	"reflect"
@@ -109,7 +110,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		service := ctx.Service()
 		proto, uri, method := service.RpcProto(), service.Interface, service.Method
 		d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
-		if nil != err {
+		if toolkit.IsNotNil(err) {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
 			d.metrics.EndpointError.WithLabelValues(proto, uri, method, cast.ToString(err.ErrorCode)).Inc()
 		}
@@ -127,7 +128,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		}
 	}
 	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
-	transport := func(ctx *flux.Context) (serr *flux.ServeError) {
+	transport := func(ctx *flux.Context) *flux.ServeError {
 		select {
 		case <-ctx.Context().Done():
 			return &flux.ServeError{StatusCode: flux.StatusBadRequest,
@@ -144,15 +145,14 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		if !ok {
 			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", proto, "service", ctx.Endpoint().Service)
-			return &flux.ServeError{
-				StatusCode: flux.StatusNotFound,
-				ErrorCode:  flux.ErrorCodeRequestNotFound,
-				Message:    fmt.Sprintf("SERVER:ROUTE:ILLEGAL_PROTOCOL/%s", proto),
+			return &flux.ServeError{StatusCode: flux.StatusNotFound,
+				ErrorCode: flux.ErrorCodeRequestNotFound,
+				Message:   fmt.Sprintf("SERVER:ROUTE:ILLEGAL_PROTOCOL/%s", proto),
 			}
 		}
 		// Transporter invoke
 		timer := prometheus.NewTimer(d.metrics.RouteDuration.WithLabelValues("Transporter", proto))
-		response, serr := transporter.DoInvoke(ctx, ctx.Service())
+		invret, inverr := transporter.DoInvoke(ctx, ctx.Service())
 		timer.ObserveDuration()
 		select {
 		case <-ctx.Context().Done():
@@ -163,15 +163,15 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 			break
 		}
 		// Write response
-		if serr != nil {
-			d.writer.WriteError(ctx, serr)
+		if toolkit.IsNotNil(inverr) {
+			d.writer.WriteError(ctx, inverr)
 		} else {
-			for k, v := range response.Attachments {
+			for k, v := range invret.Attachments {
 				ctx.SetAttribute(k, v)
 			}
-			d.writer.Write(ctx, response)
+			d.writer.Write(ctx, invret)
 		}
-		return
+		return nil
 	}
 	// Walk filters
 	filters := append(ext.GlobalFilters(), selective...)

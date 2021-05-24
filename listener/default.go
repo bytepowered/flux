@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"reflect"
 )
 
 // 默认对RequestBody的表单数据进行解析
@@ -64,7 +63,7 @@ func DefaultNotfoundHandler(_ flux.ServerWebContext) error {
 }
 
 func DefaultErrorHandler(webex flux.ServerWebContext, error error) {
-	if nil == error || (*flux.ServeError)(nil) == error || reflect.ValueOf(error).IsNil() {
+	if toolkit.IsNil(error) {
 		return
 	}
 	serr, ok := error.(*flux.ServeError)
