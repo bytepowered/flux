@@ -188,15 +188,15 @@ func (attrs Attributes) Exists(name string) bool {
 
 // Service 定义连接上游目标服务的信息
 type Service struct {
-	Kind       string     `json:"kind" yaml:"kind"`                         // Service类型
-	AliasId    string     `json:"aliasId" yaml:"aliasId"`                   // Service别名
-	ServiceId  string     `json:"serviceId" yaml:"serviceId"`               // Service的标识ID
-	Scheme     string     `json:"scheme" yaml:"scheme"`                     // Service侧URL的Scheme
-	Url        string     `json:"url" yaml:"url"`                           // Service侧的Host
-	Interface  string     `json:"interface" yaml:"interface"`               // Service侧的URL/Interface
-	Method     string     `json:"method" yaml:"method"`                     // Service侧的方法
-	Arguments  []Argument `json:"arguments" yaml:"arguments"`               // Service侧的参数结构
-	Attributes Attributes `json:"ensureAttributes" yaml:"ensureAttributes"` // Service侧的属性列表
+	Kind       string     `json:"kind" yaml:"kind"`             // Service类型
+	AliasId    string     `json:"aliasId" yaml:"aliasId"`       // Service别名
+	ServiceId  string     `json:"serviceId" yaml:"serviceId"`   // Service的标识ID
+	Scheme     string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
+	Url        string     `json:"url" yaml:"url"`               // Service侧的Host
+	Interface  string     `json:"interface" yaml:"interface"`   // Service侧的URL/Interface
+	Method     string     `json:"method" yaml:"method"`         // Service侧的方法
+	Arguments  []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
+	Attributes Attributes `json:"attributes" yaml:"attributes"` // Service侧的属性列表
 	// Deprecated
 	AttrRpcProto string `json:"rpcProto" yaml:"rpcProto"`
 	// Deprecated
