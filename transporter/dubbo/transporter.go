@@ -286,17 +286,23 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 		return nil, inverr
 	}
 	// Codec
-	if encoded, coderr := b.codec(ctx, invret); nil != coderr {
+	// check if disable codec
+	if disable, ok := ctx.Variable("disable.codec").(bool); ok && disable {
+		return &flux.ServeResponse{
+			StatusCode: flux.StatusOK, Attachments: invret.Attachments(), Body: invret.Result(),
+		}, nil
+	}
+	codecd, coderr := b.codec(ctx, invret)
+	if nil != coderr {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
-			Message:    flux.ErrorMessageTransportDecodeError,
+			Message:    flux.ErrorMessageTransportCodecError,
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", coderr),
 		}
-	} else {
-		toolkit.AssertNotNil(encoded, "dubbo: <result> must not nil, request-id: "+ctx.RequestId())
-		return encoded, nil
 	}
+	toolkit.AssertNotNil(codecd, "dubbo: <result> must not nil, request-id: "+ctx.RequestId())
+	return codecd, nil
 }
 
 func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service,
