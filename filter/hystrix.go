@@ -2,12 +2,12 @@ package filter
 
 import (
 	"context"
+	"errors"
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/logger"
 	"github.com/spf13/cast"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 )
@@ -128,7 +128,7 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 				logger.Trace(c.Value(hystrixRequestId).(string)).Infow("HYSTRIX:CIRCUITED/DOWNGRADE",
 					"is-circuited", ok, "service-name", serviceName, "circuit-error", cerr)
 				reterr = r.HystrixConfig.ServiceDowngradeFunc(ctx, next, cerr)
-			} else if strings.Contains(err.Error(), context.Canceled.Error()) {
+			} else if errors.Is(err, context.Canceled) {
 				reterr = &flux.ServeError{
 					StatusCode: flux.StatusOK,
 					ErrorCode:  flux.ErrorCodeRequestCanceled,
