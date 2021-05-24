@@ -23,9 +23,9 @@ func MockContext(id string) *flux.Context {
 
 func MockContextVars(id string, vars map[string]interface{}) *flux.Context {
 	ctx := flux.NewContext()
+	ctx.Reset(MockWebContext(id), &flux.Endpoint{})
 	for k, v := range vars {
 		ctx.SetVariable(k, v)
 	}
-	ctx.Reset(MockWebContext(id), &flux.Endpoint{})
 	return ctx
 }
