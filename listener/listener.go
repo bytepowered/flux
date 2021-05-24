@@ -163,7 +163,6 @@ func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandler) {
 	// Route请求返回的Error，全部经由此函数处理
 	toolkit.AssertNotNil(handler, "ErrorHandler must not nil, listener-id: "+s.id)
 	s.mustNotStarted().server.HTTPErrorHandler = func(err error, c echo.Context) {
-		// 修正Error未判定为nil的问题问题
 		if toolkit.IsNil(err) {
 			return
 		}

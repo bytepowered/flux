@@ -1,6 +1,9 @@
 package flux
 
-import "strings"
+import (
+	"github.com/bytepowered/flux/toolkit"
+	"strings"
+)
 
 const (
 	JavaLangStringClassName  = "java.lang.String"
@@ -44,7 +47,7 @@ func NewStringMTValue(value string) MTValue {
 }
 
 func NewObjectMTValue(value interface{}) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoObject}
+	return MTValue{Valid: toolkit.IsNil(value), Value: value, MediaType: MediaTypeGoObject}
 }
 
 func NewMapStringMTValue(value map[string]interface{}) MTValue {
