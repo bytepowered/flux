@@ -1,7 +1,6 @@
 package flux
 
 import (
-	"github.com/bytepowered/flux/toolkit"
 	"strings"
 )
 
@@ -47,7 +46,7 @@ func NewStringMTValue(value string) MTValue {
 }
 
 func NewObjectMTValue(value interface{}) MTValue {
-	return MTValue{Valid: toolkit.IsNil(value), Value: value, MediaType: MediaTypeGoObject}
+	return MTValue{Valid: IsNil(value), Value: value, MediaType: MediaTypeGoObject}
 }
 
 func NewMapStringMTValue(value map[string]interface{}) MTValue {

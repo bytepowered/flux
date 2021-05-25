@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/toolkit"
 	"github.com/spf13/cast"
 	"strings"
 )
@@ -23,7 +22,7 @@ func TraceContext(ctx *flux.Context) flux.Logger {
 }
 
 func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger {
-	toolkit.AssertNotNil(ctx, "<flux.context> must not nil in log trace")
+	flux.AssertNotNil(ctx, "<flux.context> must not nil in log trace")
 	fields := map[string]string{
 		"request.method": ctx.Method(),
 		"request.uri":    ctx.URI(),

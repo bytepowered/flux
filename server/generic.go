@@ -7,7 +7,6 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/toolkit"
 	"golang.org/x/net/context"
 	"net/http"
 	_ "net/http/pprof"
@@ -153,7 +152,7 @@ func (gs *GenericServer) Startup(build flux.Build) error {
 }
 
 func (gs *GenericServer) start() error {
-	toolkit.AssertNotNil(gs.defaultListener(), "<default-listener> MUST NOT nil")
+	flux.AssertNotNil(gs.defaultListener(), "<default-listener> MUST NOT nil")
 	// Dispatcher
 	logger.Info("SERVER:EVEN:STARTUP")
 	if err := gs.dispatcher.Startup(); nil != err {
@@ -247,21 +246,20 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
 		return server.HandleNotfound(webex)
 	} else {
-		toolkit.Assert(endpoint.IsValid(), "<endpoint> must valid when routing")
+		flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
 	}
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
-	trace := logger.TraceContext(ctxw)
-	trace.Infow("SERVER:EVEN:ROUTE:START")
+	logger.TraceContext(ctxw).Infow("SERVER:EVEN:ROUTE:START")
 	// hook
 	for _, hook := range gs.contextHooks {
 		hook(webex, ctxw)
 	}
 	defer func(start time.Time) {
-		trace.Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
+		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
 	}(ctxw.StartAt())
 	// route
 	if rouerr := gs.dispatcher.dispatch(ctxw); nil != rouerr {
@@ -302,7 +300,7 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	// Check http method
-	if !isAllowMethod(method) {
+	if !SupportedHttpMethod(method) {
 		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", "method", method, "pattern", event.Endpoint.HttpPattern)
 		return
 	}
@@ -395,8 +393,8 @@ func (gs *GenericServer) SetWebNotfoundHandler(nfh flux.WebHandler) {
 
 // AddWebListener 添加指定ID
 func (gs *GenericServer) AddWebListener(listenerID string, listener flux.WebListener) {
-	toolkit.AssertNotNil(listener, "WebListener Must Not nil")
-	toolkit.AssertNotEmpty(listenerID, "WebListener Id Must Not empty")
+	flux.AssertNotNil(listener, "WebListener Must Not nil")
+	flux.AssertNotEmpty(listenerID, "WebListener Id Must Not empty")
 	gs.listener[strings.ToLower(listenerID)] = listener
 }
 
@@ -460,7 +458,7 @@ func NewWebListenerOptions(id string) *flux.Configuration {
 	return flux.NewConfigurationByKeys(flux.NamespaceWebListeners, id)
 }
 
-func isAllowMethod(method string) bool {
+func SupportedHttpMethod(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut,
 		http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodTrace:

@@ -7,7 +7,6 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/toolkit"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cast"
 	"reflect"
@@ -110,7 +109,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		service := ctx.Service()
 		proto, uri, method := service.RpcProto(), service.Interface, service.Method
 		d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
-		if toolkit.IsNotNil(err) {
+		if flux.NotNil(err) {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
 			d.metrics.EndpointError.WithLabelValues(proto, uri, method, cast.ToString(err.ErrorCode)).Inc()
 		}
@@ -163,7 +162,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 			break
 		}
 		// Write response
-		if toolkit.IsNotNil(inverr) {
+		if flux.NotNil(inverr) {
 			d.writer.WriteError(ctx, inverr)
 		} else {
 			for k, v := range invret.Attachments {

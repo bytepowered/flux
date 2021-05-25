@@ -3,7 +3,6 @@ package listener
 import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/bytepowered/flux/toolkit"
 	"net/http"
 )
 
@@ -21,7 +20,7 @@ func New(id string, config *flux.Configuration, wis []flux.WebInterceptor, opts 
 }
 
 func NewWith(id string, config *flux.Configuration, opts ...Option) flux.WebListener {
-	toolkit.AssertNotNil(config, "<configuration> of web listener must not nil")
+	flux.AssertNotNil(config, "<configuration> of web listener must not nil")
 	// 通过Factory创建特定Web框架的Listener
 	// 默认为labstack.echo框架：github.com/labstack/echo
 	webListener := ext.WebListenerFactory()(id, config)

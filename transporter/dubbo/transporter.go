@@ -14,7 +14,6 @@ import (
 import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/toolkit"
 )
 
 import (
@@ -205,7 +204,7 @@ func (b *RpcTransporter) Init(config *flux.Configuration) error {
 	if nil == b.optionsFunc {
 		b.optionsFunc = make([]GenericOptionsFunc, 0)
 	}
-	if toolkit.IsNil(b.argsAssemblyFunc) {
+	if flux.IsNil(b.argsAssemblyFunc) {
 		b.argsAssemblyFunc = DefaultArgumentsAssemblyFunc
 	}
 	// 修改默认Consumer配置
@@ -301,7 +300,7 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 			CauseError: fmt.Errorf("decode dubbo response, err: %w", coderr),
 		}
 	}
-	toolkit.AssertNotNil(codecd, "dubbo: <result> must not nil, request-id: "+ctx.RequestId())
+	flux.AssertNotNil(codecd, "dubbo: <result> must not nil, request-id: "+ctx.RequestId())
 	return codecd, nil
 }
 
@@ -333,7 +332,7 @@ func (b *RpcTransporter) LoadGenericService(service *flux.Service) common.RPCSer
 	const msg = "Dubbo option-func return nil reference"
 	for _, optsFunc := range b.optionsFunc {
 		if nil != optsFunc {
-			newRef = toolkit.MustNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
+			newRef = flux.MustNotNil(optsFunc(service, b.configuration, newRef), msg).(*dubgo.ReferenceConfig)
 		}
 	}
 	logger.Infow("DUBBO:GENERIC:CREATE: PREPARE", "interface", service.Interface)
