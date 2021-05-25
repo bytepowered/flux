@@ -1,4 +1,4 @@
-package toolkit
+package flux
 
 import (
 	"fmt"
@@ -6,48 +6,52 @@ import (
 )
 
 const (
-	AssertMessagePrefix = "SERVER:CRITICAL:ASSERT:"
+	assertPrefix = "SERVER:CRITICAL:ASSERT:"
 )
 
 func AssertT(tester func() bool, message string) {
 	if !tester() {
-		panic(AssertMessagePrefix + message)
+		panic(assertPrefix + message)
 	}
 }
 
-func AssertL(true bool, lazyMessage func() string) {
+func AssertM(true bool, lazyMessage func() string) {
 	if !true {
-		panic(AssertMessagePrefix + lazyMessage())
+		panic(assertPrefix + lazyMessage())
 	}
 }
 
 func Assert(true bool, message string) {
+	AssertTrue(true, message)
+}
+
+func AssertTrue(true bool, message string) {
 	if !true {
-		panic(AssertMessagePrefix + message)
+		panic(assertPrefix + message)
 	}
 }
 
 func AssertNil(v interface{}, message string, args ...interface{}) {
-	if IsNotNil(v) {
-		panic(AssertMessagePrefix + fmt.Sprintf(message, args...))
+	if NotNil(v) {
+		panic(assertPrefix + fmt.Sprintf(message, args...))
 	}
 }
 
 func AssertNotNil(v interface{}, message string, args ...interface{}) {
 	if IsNil(v) {
-		panic(AssertMessagePrefix + fmt.Sprintf(message, args...))
+		panic(assertPrefix + fmt.Sprintf(message, args...))
 	}
 }
 
-func AssertEmpty(v string, message string, args ...interface{}) {
+func AssertIsEmpty(v string, message string, args ...interface{}) {
 	if v != "" {
-		panic(AssertMessagePrefix + fmt.Sprintf(message, args...))
+		panic(assertPrefix + fmt.Sprintf(message, args...))
 	}
 }
 
 func AssertNotEmpty(v string, message string, args ...interface{}) {
 	if v == "" {
-		panic(AssertMessagePrefix + fmt.Sprintf(message, args...))
+		panic(assertPrefix + fmt.Sprintf(message, args...))
 	}
 }
 
@@ -67,15 +71,16 @@ func IsNil(i interface{}) bool {
 	if nil == i {
 		return true
 	}
-	switch reflect.TypeOf(i).Kind() {
+	value := reflect.ValueOf(i)
+	switch value.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Map,
 		reflect.Interface, reflect.Slice,
 		reflect.Ptr, reflect.UnsafePointer:
-		return reflect.ValueOf(i).IsNil()
+		return value.IsNil()
 	}
 	return false
 }
 
-func IsNotNil(v interface{}) bool {
+func NotNil(v interface{}) bool {
 	return !IsNil(v)
 }

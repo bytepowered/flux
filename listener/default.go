@@ -6,7 +6,6 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/toolkit"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/random"
 	"io"
@@ -21,7 +20,7 @@ func DefaultRequestBodyResolver(webex flux.ServerWebContext) url.Values {
 
 func DefaultIdentifier(ctx interface{}) string {
 	echoc, ok := ctx.(echo.Context)
-	toolkit.Assert(ok, "<context> must be echo.context")
+	flux.Assert(ok, "<context> must be echo.context")
 	id := echoc.Request().Header.Get(flux.XRequestId)
 	if "" != id {
 		return id
@@ -63,7 +62,7 @@ func DefaultNotfoundHandler(_ flux.ServerWebContext) error {
 }
 
 func DefaultErrorHandler(webex flux.ServerWebContext, error error) {
-	if toolkit.IsNil(error) {
+	if flux.IsNil(error) {
 		return
 	}
 	serr, ok := error.(*flux.ServeError)

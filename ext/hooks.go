@@ -2,7 +2,6 @@ package ext
 
 import (
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/toolkit"
 )
 
 var (
@@ -13,7 +12,7 @@ var (
 
 // AddHookFunc 添加生命周期启动与停止的钩子接口
 func AddHookFunc(hook interface{}) {
-	toolkit.MustNotNil(hook, "Hook is nil")
+	flux.MustNotNil(hook, "Hook is nil")
 	if startup, ok := hook.(flux.Startuper); ok {
 		hooksStartup = append(hooksStartup, startup)
 	}
@@ -24,7 +23,7 @@ func AddHookFunc(hook interface{}) {
 
 // AddPrepareHook 添加预备阶段钩子函数
 func AddPrepareHook(pf flux.PrepareHookFunc) {
-	hooksPrepare = append(hooksPrepare, toolkit.MustNotNil(pf, "PrepareHookFunc is nil").(flux.PrepareHookFunc))
+	hooksPrepare = append(hooksPrepare, flux.MustNotNil(pf, "PrepareHookFunc is nil").(flux.PrepareHookFunc))
 }
 
 func PrepareHooks() []flux.PrepareHookFunc {

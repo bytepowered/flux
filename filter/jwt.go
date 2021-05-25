@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/common"
-	"github.com/bytepowered/flux/toolkit"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/spf13/cast"
@@ -55,7 +54,7 @@ func (f *JWTFilter) Init(config *flux.Configuration) error {
 	if "" == f.Config.AttKeyPrefix {
 		f.Config.AttKeyPrefix = cast.ToString(config.GetOrDefault(ConfigKeyAttachmentKey, "jwt"))
 	}
-	toolkit.AssertNotNil(f.Config.SecretKeyLoader, "<secret-loader> must not nil")
+	flux.AssertNotNil(f.Config.SecretKeyLoader, "<secret-loader> must not nil")
 	return nil
 }
 
