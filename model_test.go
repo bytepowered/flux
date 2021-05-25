@@ -56,7 +56,7 @@ func TestParseEndpointModelV2(t *testing.T) {
                 "httpScope": "ATTR"
             }
         ],
-        "ensureAttributes": [
+        "attributes": [
             {
                 "name": "RpcProto",
                 "value": "DUBBO"
@@ -72,7 +72,7 @@ func TestParseEndpointModelV2(t *testing.T) {
         ]
     },
     "permissions": [],
-    "ensureAttributes": [
+    "attributes": [
         {
             "name": "feature:cache",
             "value": [

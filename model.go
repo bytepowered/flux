@@ -93,14 +93,14 @@ const (
 type (
 	// Argument 定义Endpoint的参数结构元数据
 	Argument struct {
-		Name       string     `json:"name" yaml:"name"`                         // 参数名称
-		Type       string     `json:"type" yaml:"type"`                         // 参数结构类型
-		Class      string     `json:"class" yaml:"class"`                       // 参数类型
-		Generic    []string   `json:"generic" yaml:"generic"`                   // 泛型类型
-		HttpName   string     `json:"httpName" yaml:"httpName"`                 // 映射Http的参数Key
-		HttpScope  string     `json:"httpScope" yaml:"httpScope"`               // 映射Http参数值域
-		Fields     []Argument `json:"fields" yaml:"fields"`                     // 子结构字段
-		Attributes Attributes `json:"ensureAttributes" yaml:"ensureAttributes"` // 属性列表
+		Name       string     `json:"name" yaml:"name"`             // 参数名称
+		Type       string     `json:"type" yaml:"type"`             // 参数结构类型
+		Class      string     `json:"class" yaml:"class"`           // 参数类型
+		Generic    []string   `json:"generic" yaml:"generic"`       // 泛型类型
+		HttpName   string     `json:"httpName" yaml:"httpName"`     // 映射Http的参数Key
+		HttpScope  string     `json:"httpScope" yaml:"httpScope"`   // 映射Http参数值域
+		Fields     []Argument `json:"fields" yaml:"fields"`         // 子结构字段
+		Attributes Attributes `json:"attributes" yaml:"attributes"` // 属性列表
 		// helper func
 		ValueLoader   MTValueLoaderFunc `json:"-"`
 		LookupFunc    MTValueLookupFunc `json:"-"`
@@ -246,14 +246,14 @@ func (b Service) ServiceID() string {
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
 type Endpoint struct {
-	Kind        string     `json:"kind" yaml:"kind"`                         // Endpoint类型
-	Application string     `json:"application" yaml:"application"`           // 所属应用名
-	Version     string     `json:"version" yaml:"version"`                   // 端点版本号
-	HttpPattern string     `json:"httpPattern" yaml:"httpPattern"`           // 映射Http侧的UriPattern
-	HttpMethod  string     `json:"httpMethod" yaml:"httpMethod"`             // 映射Http侧的Method
-	Service     Service    `json:"service" yaml:"service"`                   // 上游/后端服务
-	Permissions []string   `json:"permissions" yaml:"permissions"`           // 多组权限验证服务ID列表
-	Attributes  Attributes `json:"ensureAttributes" yaml:"ensureAttributes"` // 属性列表
+	Kind        string     `json:"kind" yaml:"kind"`               // Endpoint类型
+	Application string     `json:"application" yaml:"application"` // 所属应用名
+	Version     string     `json:"version" yaml:"version"`         // 端点版本号
+	HttpPattern string     `json:"httpPattern" yaml:"httpPattern"` // 映射Http侧的UriPattern
+	HttpMethod  string     `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
+	Service     Service    `json:"service" yaml:"service"`         // 上游/后端服务
+	Permissions []string   `json:"permissions" yaml:"permissions"` // 多组权限验证服务ID列表
+	Attributes  Attributes `json:"attributes" yaml:"attributes"`   // 属性列表
 	// Deprecated 权限验证定义
 	PermissionService Service `json:"permission" yaml:"permission"`
 }
