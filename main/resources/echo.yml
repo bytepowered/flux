@@ -35,5 +35,20 @@ endpoints:
                 -   name: "Authorize"
                     value: false
 
+    -   application: "flux"
+        version: "1.0"
+        httpPattern: "/debug/flux/inapp/echo"
+        httpMethod: "POST"
+        # 后端服务配置
+        service:
+            serviceId: "flux.debug.inapp.Test:echo"
+            interface: "flux.debug.inapp.Test"
+            method: "echo"
+            attributes:
+                -   name: "RpcProto"
+                    value: "INAPP"
+                -   name: "Authorize"
+                    value: false
+
 # Service 配置服务列表
 services: [ ]

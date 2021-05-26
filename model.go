@@ -65,6 +65,7 @@ const (
 	ProtoGRPC  = "GRPC"
 	ProtoHttp  = "HTTP"
 	ProtoEcho  = "ECHO"
+	ProtoInApp = "INAPP"
 )
 
 // ServiceAttributes
