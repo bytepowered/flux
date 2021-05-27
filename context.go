@@ -1,7 +1,11 @@
 package flux
 
 import (
+	"context"
+	"github.com/bytepowered/flux/listener"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
+	"net/http/httptest"
 	"time"
 )
 
@@ -20,7 +24,7 @@ type (
 		ServerWebContext
 		endpoint   *Endpoint
 		attributes map[string]interface{}
-		metrics    []Metric
+		metrics    []TraceMetric
 		startTime  time.Time
 		ctxLogger  Logger
 	}
@@ -40,7 +44,7 @@ type (
 func NewContext() *Context {
 	return &Context{
 		attributes: make(map[string]interface{}, 16),
-		metrics:    make([]Metric, 0, 16),
+		metrics:    make([]TraceMetric, 0, 16),
 	}
 }
 
@@ -127,14 +131,14 @@ func (c *Context) StartAt() time.Time {
 
 // AddMetric 添加路由耗时统计节点
 func (c *Context) AddMetric(name string, elapsed time.Duration) {
-	c.metrics = append(c.metrics, Metric{
-		Name: name, Elapsed: elapsed, Elapses: elapsed.String(),
+	c.metrics = append(c.metrics, TraceMetric{
+		Name: name, Elapses: elapsed.String(),
 	})
 }
 
 // LoadMetrics 返回请求路由的的统计数据
-func (c *Context) Metrics() []Metric {
-	dist := make([]Metric, len(c.metrics))
+func (c *Context) Metrics() []TraceMetric {
+	dist := make([]TraceMetric, len(c.metrics))
 	copy(dist, c.metrics)
 	return dist
 }
@@ -151,8 +155,32 @@ func (c *Context) Logger() Logger {
 }
 
 // Metrics 请求路由的的统计数据
-type Metric struct {
-	Name    string        `json:"name"`
-	Elapsed time.Duration `json:"elapsed"`
-	Elapses string        `json:"elapses"`
+type TraceMetric struct {
+	Name    string `json:"name"`
+	Elapses string `json:"elapses"`
+}
+
+var _slim = echo.New()
+
+func NewSlimContextTODO(id string) *Context {
+	return NewSlimContext(context.TODO(), id)
+}
+
+func NewSlimContext(ctx context.Context, id string, vars ...map[string]interface{}) *Context {
+	fxctx := NewContext()
+	fxctx.Reset(newSlimWithID(ctx, id), &Endpoint{Application: "slim"})
+	fxctx.SetVariable("is.slim.ctx", true)
+	if len(vars) > 0 {
+		for k, v := range vars[0] {
+			fxctx.SetVariable(k, v)
+		}
+	}
+	return fxctx
+}
+
+func newSlimWithID(ctx context.Context, id string) ServerWebContext {
+	req := httptest.NewRequest("GET", "http://slimctx/"+id, nil)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+	return listener.NewServeWebContext(_slim.NewContext(req, rec), id, nil)
 }
