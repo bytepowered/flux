@@ -27,6 +27,7 @@ const (
 	DefaultHttpHeaderVersion = "X-Version"
 
 	ListenerIdDefault   = "default"
+	ListenerIdWebapi    = ListenerIdDefault
 	ListenServerIdAdmin = "admin"
 )
 
@@ -39,28 +40,28 @@ type (
 
 // GenericServer
 type GenericServer struct {
-	listener     map[string]flux.WebListener
-	contextHooks []flux.ContextHookFunc
-	prepareHooks []flux.PrepareHookFunc
-	versionFunc  VersionLookupFunc
-	dispatcher   *Dispatcher
-	pooled       *sync.Pool
-	started      chan struct{}
-	stopped      chan struct{}
-	banner       string
+	listener       map[string]flux.WebListener
+	onPrepareHooks []flux.OnPrepareHookFunc
+	onContextHooks []flux.OnContextHookFunc
+	versionFunc    VersionLookupFunc
+	dispatcher     *Dispatcher
+	pooled         *sync.Pool
+	started        chan struct{}
+	stopped        chan struct{}
+	banner         string
 }
 
-// WithContextHooks 配置请求Hook函数列表
-func WithContextHooks(hooks ...flux.ContextHookFunc) GenericOptionFunc {
+// WithOnContextHooks 配置请求Hook函数列表
+func WithOnContextHooks(hooks ...flux.OnContextHookFunc) GenericOptionFunc {
 	return func(bs *GenericServer) {
-		bs.contextHooks = append(bs.contextHooks, hooks...)
+		bs.onContextHooks = append(bs.onContextHooks, hooks...)
 	}
 }
 
-// WithPrepareHooks 配置服务启动预备阶段Hook函数列表
-func WithPrepareHooks(hooks ...flux.PrepareHookFunc) GenericOptionFunc {
+// WithOnPrepareHooks 配置服务启动预备阶段Hook函数列表
+func WithOnPrepareHooks(hooks ...flux.OnPrepareHookFunc) GenericOptionFunc {
 	return func(bs *GenericServer) {
-		bs.prepareHooks = append(bs.prepareHooks, hooks...)
+		bs.onPrepareHooks = append(bs.onPrepareHooks, hooks...)
 	}
 }
 
@@ -78,30 +79,46 @@ func WithServerBanner(banner string) GenericOptionFunc {
 	}
 }
 
-// WithWebListener 配置WebListener
-func WithWebListener(server flux.WebListener) GenericOptionFunc {
+// WithNewWebListener 配置WebListener
+func WithNewWebListener(server flux.WebListener) GenericOptionFunc {
 	return func(bs *GenericServer) {
 		bs.AddWebListener(server.ListenerId(), server)
 	}
 }
 
-// WithResponseWriter 配置ResponseWriter
-func WithResponseWriter(writer flux.ServeResponseWriter) GenericOptionFunc {
+// WithServeResponseWriter 配置ResponseWriter
+func WithServeResponseWriter(writer flux.ServeResponseWriter) GenericOptionFunc {
 	return func(bs *GenericServer) {
 		bs.dispatcher.setResponseWriter(writer)
 	}
 }
 
+func WithOnBeforeFilterHookFunc(hooks ...flux.OnBeforeFilterHookFunc) GenericOptionFunc {
+	return func(bs *GenericServer) {
+		for _, h := range hooks {
+			bs.dispatcher.addOnBeforeFilterHook(h)
+		}
+	}
+}
+
+func WithOnBeforeTransportHookFunc(hooks ...flux.OnBeforeTransportHookFunc) GenericOptionFunc {
+	return func(bs *GenericServer) {
+		for _, h := range hooks {
+			bs.dispatcher.addOnBeforeTransportHook(h)
+		}
+	}
+}
+
 func NewGenericServer(opts ...GenericOptionFunc) *GenericServer {
 	server := &GenericServer{
-		dispatcher:   NewDispatcher(),
-		listener:     make(map[string]flux.WebListener, 2),
-		contextHooks: make([]flux.ContextHookFunc, 0, 4),
-		prepareHooks: make([]flux.PrepareHookFunc, 0, 4),
-		pooled:       &sync.Pool{New: func() interface{} { return flux.NewContext() }},
-		started:      make(chan struct{}),
-		stopped:      make(chan struct{}),
-		banner:       defaultBanner,
+		dispatcher:     NewDispatcher(),
+		listener:       make(map[string]flux.WebListener, 2),
+		onContextHooks: make([]flux.OnContextHookFunc, 0, 4),
+		onPrepareHooks: make([]flux.OnPrepareHookFunc, 0, 4),
+		pooled:         &sync.Pool{New: func() interface{} { return flux.NewContext() }},
+		started:        make(chan struct{}),
+		stopped:        make(chan struct{}),
+		banner:         defaultBanner,
 	}
 	for _, opt := range opts {
 		opt(server)
@@ -112,7 +129,7 @@ func NewGenericServer(opts ...GenericOptionFunc) *GenericServer {
 // Prepare Call before init and startup
 func (gs *GenericServer) Prepare() error {
 	logger.Info("SERVER:EVEN:PREPARE")
-	for _, hook := range append(ext.PrepareHooks(), gs.prepareHooks...) {
+	for _, hook := range append(ext.PrepareHooks(), gs.onPrepareHooks...) {
 		if err := hook(); nil != err {
 			return err
 		}
@@ -144,9 +161,9 @@ func (gs *GenericServer) Initial() error {
 }
 
 func (gs *GenericServer) Startup(build flux.Build) error {
-	logger.Infof(VersionFormat, build.CommitId, build.Version, build.Date)
+	fmt.Printf(VersionFormat, build.CommitId, build.Version, build.Date)
 	if gs.banner != "" {
-		logger.Info(gs.banner)
+		fmt.Println(gs.banner)
 	}
 	return gs.start()
 }
@@ -255,7 +272,7 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
 	logger.TraceContext(ctxw).Infow("SERVER:EVEN:ROUTE:START")
 	// hook
-	for _, hook := range gs.contextHooks {
+	for _, hook := range gs.onContextHooks {
 		hook(webex, ctxw)
 	}
 	defer func(start time.Time) {
@@ -405,8 +422,8 @@ func (gs *GenericServer) WebListenerById(listenerID string) (flux.WebListener, b
 }
 
 // AddContextHookFunc 添加Http与Flux的Context桥接函数
-func (gs *GenericServer) AddContextHookFunc(f flux.ContextHookFunc) {
-	gs.contextHooks = append(gs.contextHooks, f)
+func (gs *GenericServer) AddContextHookFunc(f flux.OnContextHookFunc) {
+	gs.onContextHooks = append(gs.onContextHooks, f)
 }
 
 func (gs *GenericServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MVCEndpoint) flux.WebHandler {
