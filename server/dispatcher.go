@@ -13,16 +13,20 @@ import (
 	"time"
 )
 
-func NewDispatcher() *Dispatcher {
-	return &Dispatcher{
-		metrics: NewMetrics(),
-		writer:  new(internal.JSONServeResponseWriter),
-	}
+type Dispatcher struct {
+	metrics                *Metrics
+	writer                 flux.ServeResponseWriter
+	onBeforeFilterHooks    []flux.OnBeforeFilterHookFunc
+	onBeforeTransportHooks []flux.OnBeforeTransportHookFunc
 }
 
-type Dispatcher struct {
-	metrics *Metrics
-	writer  flux.ServeResponseWriter
+func NewDispatcher() *Dispatcher {
+	return &Dispatcher{
+		metrics:                NewMetrics(),
+		writer:                 new(internal.JSONServeResponseWriter),
+		onBeforeFilterHooks:    make([]flux.OnBeforeFilterHookFunc, 0, 4),
+		onBeforeTransportHooks: make([]flux.OnBeforeTransportHookFunc, 0, 4),
+	}
 }
 
 func (d *Dispatcher) Init() error {
@@ -98,10 +102,6 @@ func (d *Dispatcher) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func (d *Dispatcher) setResponseWriter(w flux.ServeResponseWriter) {
-	d.writer = w
-}
-
 func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
@@ -150,6 +150,9 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 			}
 		}
 		// Transporter invoke
+		for _, hook := range d.onBeforeTransportHooks {
+			hook(ctx, transporter)
+		}
 		timer := prometheus.NewTimer(d.metrics.RouteDuration.WithLabelValues("Transporter", proto))
 		invret, inverr := transporter.DoInvoke(ctx, ctx.Service())
 		timer.ObserveDuration()
@@ -174,6 +177,9 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	}
 	// Walk filters
 	filters := append(ext.GlobalFilters(), selective...)
+	for _, hook := range d.onBeforeFilterHooks {
+		hook(ctx, filters)
+	}
 	return doMetricEndpointFunc(d.walk(transport, filters)(ctx))
 }
 
@@ -182,4 +188,16 @@ func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.F
 		next = filters[i].DoFilter(next)
 	}
 	return next
+}
+
+func (d *Dispatcher) setResponseWriter(w flux.ServeResponseWriter) {
+	d.writer = w
+}
+
+func (d *Dispatcher) addOnBeforeFilterHook(h flux.OnBeforeFilterHookFunc) {
+	d.onBeforeFilterHooks = append(d.onBeforeFilterHooks, h)
+}
+
+func (d *Dispatcher) addOnBeforeTransportHook(h flux.OnBeforeTransportHookFunc) {
+	d.onBeforeTransportHooks = append(d.onBeforeTransportHooks, h)
 }

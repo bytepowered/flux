@@ -54,10 +54,10 @@ func NewDefaultGenericServer(options ...server.GenericOptionFunc) *server.Generi
 			return webex.HeaderVar(server.DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
-		server.WithWebListener(listener.New(server.ListenerIdDefault,
+		server.WithNewWebListener(listener.New(server.ListenerIdDefault,
 			server.NewWebListenerOptions(server.ListenerIdDefault), nil)),
 		// Admin WebListener
-		server.WithWebListener(listener.New(server.ListenServerIdAdmin,
+		server.WithNewWebListener(listener.New(server.ListenServerIdAdmin,
 			server.NewWebListenerOptions(server.ListenServerIdAdmin), nil,
 			// 内部元数据查询
 			listener.WithWebHandlers([]listener.WebHandlerTuple{

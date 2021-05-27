@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	hooksPrepare  = make([]flux.PrepareHookFunc, 0, 16)
+	hooksPrepare  = make([]flux.OnPrepareHookFunc, 0, 16)
 	hooksStartup  = make([]flux.Startuper, 0, 16)
 	hooksShutdown = make([]flux.Shutdowner, 0, 16)
 )
@@ -22,12 +22,12 @@ func AddHookFunc(hook interface{}) {
 }
 
 // AddPrepareHook 添加预备阶段钩子函数
-func AddPrepareHook(pf flux.PrepareHookFunc) {
-	hooksPrepare = append(hooksPrepare, flux.MustNotNil(pf, "PrepareHookFunc is nil").(flux.PrepareHookFunc))
+func AddPrepareHook(pf flux.OnPrepareHookFunc) {
+	hooksPrepare = append(hooksPrepare, flux.MustNotNil(pf, "PrepareHookFunc is nil").(flux.OnPrepareHookFunc))
 }
 
-func PrepareHooks() []flux.PrepareHookFunc {
-	dst := make([]flux.PrepareHookFunc, len(hooksPrepare))
+func PrepareHooks() []flux.OnPrepareHookFunc {
+	dst := make([]flux.OnPrepareHookFunc, len(hooksPrepare))
 	copy(dst, hooksPrepare)
 	return dst
 }

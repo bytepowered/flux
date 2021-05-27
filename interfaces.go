@@ -13,8 +13,8 @@ type (
 	// Factory 工厂函数，用于动态初始化某些组件实例。
 	Factory func() interface{}
 
-	// PrepareHookFunc 在初始化调用前的预备函数
-	PrepareHookFunc func() error
+	// OnPrepareHookFunc 在初始化调用前的预备函数
+	OnPrepareHookFunc func() error
 
 	// Startuper 用于介入服务启动生命周期的Hook，通常与 Orderer 接口一起使用。
 	Startuper interface {

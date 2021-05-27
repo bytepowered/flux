@@ -24,9 +24,16 @@ type (
 		startTime  time.Time
 		ctxLogger  Logger
 	}
-	// ContextHookFunc 用于WebContext与Context的交互勾子；
+
+	// OnContextHookFunc 用于WebContext与Context的交互勾子；
 	// 在每个请求被路由执行时，在创建Context后被调用。
-	ContextHookFunc func(ServerWebContext, *Context)
+	OnContextHookFunc func(ServerWebContext, *Context)
+
+	// OnBeforeFilterHookFunc 在Filter执行前被调用的勾子函数
+	OnBeforeFilterHookFunc func(*Context, []Filter)
+
+	// OnBeforeTransportHookFunc 在Transporter执行前被调用的勾子函数
+	OnBeforeTransportHookFunc func(*Context, Transporter)
 )
 
 // NewContext 构建新的Context实例。
