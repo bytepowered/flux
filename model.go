@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"fmt"
 	"github.com/spf13/cast"
 	"strings"
 	"sync"
@@ -92,6 +93,13 @@ const (
 )
 
 type (
+	// MTValueLoaderFunc 参值直接加载函数
+	MTValueLoaderFunc func() MTValue
+	// MTValueLookupFunc 参数值查找函数
+	MTValueLookupFunc func(ctx *Context, scope, key string) (MTValue, error)
+)
+
+type (
 	// Argument 定义Endpoint的参数结构元数据
 	Argument struct {
 		Name       string     `json:"name" yaml:"name"`             // 参数名称
@@ -107,11 +115,57 @@ type (
 		LookupFunc    MTValueLookupFunc `json:"-"`
 		ValueResolver MTValueResolver   `json:"-"`
 	}
-	// MTValueLoaderFunc 参值直接加载函数
-	MTValueLoaderFunc func() MTValue
-	// MTValueLookupFunc 参数值查找函数
-	MTValueLookupFunc func(ctx *Context, scope, key string) (MTValue, error)
 )
+
+// Resolve 解析Argument参数值
+func (a Argument) Resolve(ctx *Context) (interface{}, error) {
+	return resolve(ctx, &a)
+}
+
+// Resolve 解析Argument参数值
+func (a *Argument) Resolvep(ctx *Context) (interface{}, error) {
+	return resolve(ctx, a)
+}
+
+// Resolve 解析Argument参数值
+func resolve(ctx *Context, a *Argument) (interface{}, error) {
+	if nil == a.ValueResolver {
+		return nil, fmt.Errorf("ValueResolver is nil, name: %s", a.Name)
+	}
+	// 1: Value loader
+	if nil != a.ValueLoader {
+		mtv := a.ValueLoader()
+		return a.ValueResolver(mtv, a.Class, a.Generic)
+	}
+	// 2: Lookup
+	if nil == a.LookupFunc {
+		return nil, fmt.Errorf("MTValueLookupFunc is nil, name: %s", a.Name)
+	}
+	// 3: Single value
+	if len(a.Fields) == 0 {
+		mtv, err := a.LookupFunc(ctx, a.HttpScope, a.HttpName)
+		if nil != err {
+			return nil, err
+		}
+		if !mtv.Valid && a.Attributes != nil {
+			if attr, ok := a.Attributes.SingleEx(ArgumentAttributeTagDefault); ok {
+				mtv = NewStringMTValue(attr.ToString())
+			}
+		}
+		return a.ValueResolver(mtv, a.Class, a.Generic)
+	}
+	// 4: POJO Values
+	sm := make(map[string]interface{}, len(a.Fields))
+	sm["class"] = a.Class
+	for _, field := range a.Fields {
+		if fv, err := field.Resolve(ctx); nil != err {
+			return nil, err
+		} else {
+			sm[field.Name] = fv
+		}
+	}
+	return sm, nil
+}
 
 // Attribute 定义服务的属性信息
 type Attribute struct {

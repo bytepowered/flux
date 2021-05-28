@@ -3,7 +3,6 @@ package dubbo
 import (
 	hessian "github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/common"
 )
 
 // Dubbo默认参数封装处理：转换成hession协议对象。
@@ -16,7 +15,7 @@ func DefaultArgumentsAssemblyFunc(arguments []flux.Argument, ctx *flux.Context) 
 	outputs := make([]hessian.Object, size)
 	for i, arg := range arguments {
 		types[i] = arg.Class
-		if val, err := common.ResolveArgumentValue(ctx, arg); nil != err {
+		if val, err := arg.Resolve(ctx); nil != err {
 			return nil, nil, err
 		} else {
 			outputs[i] = val
