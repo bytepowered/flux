@@ -149,7 +149,7 @@ func (gs *GenericServer) Init() error {
 		ext.AddStartupHook(eds)
 		ext.AddShutdownHook(eds)
 		err := onInitializer(eds, func(initable flux.Initializer) error {
-			logger.Infow("SERVER:EVENT:INIT:DISCOVERY", "eds-id", eds, "eds-type", reflect.TypeOf(eds))
+			logger.Infow("SERVER:EVENT:INIT:DISCOVERY", "eds-id", eds.Id(), "eds-type", reflect.TypeOf(eds))
 			edsc := flux.NewConfigurationByKeys(flux.NamespaceDiscoveries, eds.Id())
 			return initable.OnInit(edsc)
 		})
