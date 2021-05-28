@@ -66,7 +66,7 @@ func (r *ZookeeperDiscoveryService) Id() string {
 }
 
 // Init init discovery
-func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
+func (r *ZookeeperDiscoveryService) OnInit(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		zkConfigRootpathEndpoint: zkDiscoveryEndpointPath,
 		zkConfigRootpathService:  zkDiscoveryServicePath,
@@ -96,7 +96,7 @@ func (r *ZookeeperDiscoveryService) Init(config *flux.Configuration) error {
 			zkconf.SetKeyAlias(r.globalAlias)
 		}
 		logger.Infow("ZkEndpointDiscovery start zk discovery", "discovery-id", id)
-		if err := r.retrievers[i].Init(zkconf); nil != err {
+		if err := r.retrievers[i].OnInit(zkconf); nil != err {
 			return err
 		}
 	}
@@ -186,10 +186,10 @@ func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, root
 }
 
 // Startup startup discovery service
-func (r *ZookeeperDiscoveryService) Startup() error {
+func (r *ZookeeperDiscoveryService) OnStartup() error {
 	logger.Info("ZkEndpointDiscovery startup")
 	for _, retriever := range r.retrievers {
-		if err := retriever.Startup(); nil != err {
+		if err := retriever.OnStartup(); nil != err {
 			return err
 		}
 	}
@@ -197,10 +197,10 @@ func (r *ZookeeperDiscoveryService) Startup() error {
 }
 
 // Shutdown shutdown discovery service
-func (r *ZookeeperDiscoveryService) Shutdown(ctx context.Context) error {
+func (r *ZookeeperDiscoveryService) OnShutdown(ctx context.Context) error {
 	logger.Info("ZkEndpointDiscovery shutdown")
 	for _, retriever := range r.retrievers {
-		if err := retriever.Shutdown(ctx); nil != err {
+		if err := retriever.OnShutdown(ctx); nil != err {
 			return err
 		}
 	}

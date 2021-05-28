@@ -47,7 +47,7 @@ func (r *ResourceDiscoveryService) Id() string {
 	return r.id
 }
 
-func (r *ResourceDiscoveryService) Init(config *flux.Configuration) error {
+func (r *ResourceDiscoveryService) OnInit(config *flux.Configuration) error {
 	// 加载指定路径的配置
 	files := config.GetStringSlice("includes")
 	logger.Infow("Resource discovery, load resources", "includes", files)

@@ -5,29 +5,37 @@ import (
 )
 
 var (
-	hooksPrepare  = make([]flux.OnPrepareHookFunc, 0, 16)
+	hooksPrepare  = make([]flux.Preparable, 0, 16)
 	hooksStartup  = make([]flux.Startuper, 0, 16)
 	hooksShutdown = make([]flux.Shutdowner, 0, 16)
 )
 
-// AddHookFunc 添加生命周期启动与停止的钩子接口
-func AddHookFunc(hook interface{}) {
-	flux.MustNotNil(hook, "Hook is nil")
-	if startup, ok := hook.(flux.Startuper); ok {
-		hooksStartup = append(hooksStartup, startup)
+// AddPrepareHook 添加预备阶段钩子函数
+func AddPrepareHook(hook interface{}) {
+	flux.MustNotNil(hook, "Prepare hook is nil")
+	if prepare, ok := hook.(flux.Preparable); ok {
+		hooksPrepare = append(hooksPrepare, prepare)
 	}
+}
+
+// AddStartuper 添加生命周期启动钩子接口
+func AddShutdownHook(hook interface{}) {
+	flux.MustNotNil(hook, "Shutdown hook is nil")
 	if shutdown, ok := hook.(flux.Shutdowner); ok {
 		hooksShutdown = append(hooksShutdown, shutdown)
 	}
 }
 
-// AddPrepareHook 添加预备阶段钩子函数
-func AddPrepareHook(pf flux.OnPrepareHookFunc) {
-	hooksPrepare = append(hooksPrepare, flux.MustNotNil(pf, "PrepareHookFunc is nil").(flux.OnPrepareHookFunc))
+// AddStartuper 添加生命周期停止的钩子接口
+func AddStartupHook(hook interface{}) {
+	flux.MustNotNil(hook, "Startup hook is nil")
+	if startup, ok := hook.(flux.Startuper); ok {
+		hooksStartup = append(hooksStartup, startup)
+	}
 }
 
-func PrepareHooks() []flux.OnPrepareHookFunc {
-	dst := make([]flux.OnPrepareHookFunc, len(hooksPrepare))
+func PrepareHooks() []flux.Preparable {
+	dst := make([]flux.Preparable, len(hooksPrepare))
 	copy(dst, hooksPrepare)
 	return dst
 }

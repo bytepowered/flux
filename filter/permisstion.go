@@ -55,7 +55,7 @@ type PermissionFilter struct {
 	Configs  PermissionConfig
 }
 
-func (p *PermissionFilter) Init(config *flux.Configuration) error {
+func (p *PermissionFilter) OnInit(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		ConfigKeyDisabled: false,
 	})

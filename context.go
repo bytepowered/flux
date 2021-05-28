@@ -1,11 +1,7 @@
 package flux
 
 import (
-	"context"
-	"github.com/bytepowered/flux/listener"
-	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"net/http/httptest"
 	"time"
 )
 
@@ -158,29 +154,4 @@ func (c *Context) Logger() Logger {
 type TraceMetric struct {
 	Name    string `json:"name"`
 	Elapses string `json:"elapses"`
-}
-
-var _slim = echo.New()
-
-func NewSlimContextTODO(id string) *Context {
-	return NewSlimContext(context.TODO(), id)
-}
-
-func NewSlimContext(ctx context.Context, id string, vars ...map[string]interface{}) *Context {
-	fxctx := NewContext()
-	fxctx.Reset(newSlimWithID(ctx, id), &Endpoint{Application: "slim"})
-	fxctx.SetVariable("is.slim.ctx", true)
-	if len(vars) > 0 {
-		for k, v := range vars[0] {
-			fxctx.SetVariable(k, v)
-		}
-	}
-	return fxctx
-}
-
-func newSlimWithID(ctx context.Context, id string) ServerWebContext {
-	req := httptest.NewRequest("GET", "http://slimctx/"+id, nil)
-	req = req.WithContext(ctx)
-	rec := httptest.NewRecorder()
-	return listener.NewServeWebContext(_slim.NewContext(req, rec), id, nil)
 }

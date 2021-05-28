@@ -194,7 +194,7 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 }
 
 // Init init transporter
-func (b *RpcTransporter) Init(config *flux.Configuration) error {
+func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
 	logger.Info("Dubbo transporter transporter initializing")
 	config.SetDefaults(b.defaults)
 	b.configuration = config
@@ -221,12 +221,12 @@ func (b *RpcTransporter) Init(config *flux.Configuration) error {
 }
 
 // Startup startup service
-func (b *RpcTransporter) Startup() error {
+func (b *RpcTransporter) OnStartup() error {
 	return nil
 }
 
 // Shutdown shutdown service
-func (b *RpcTransporter) Shutdown(_ context.Context) error {
+func (b *RpcTransporter) OnShutdown(_ context.Context) error {
 	dubgo.BeforeShutdown()
 	return nil
 }

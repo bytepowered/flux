@@ -197,18 +197,14 @@ type ServerWebContext interface {
 // 例如默认Web框架为 labstack.echo；
 // 可以支持git, fasthttp等框架。
 type WebListener interface {
+	Initializer
+	Shutdowner
 
 	// Id 返回服务器的ID
 	ListenerId() string
 
-	// Init 初始化服务
-	Init(opts *Configuration) error
-
 	// Listen 启动服务，监听端口
 	Listen() error
-
-	// Close 停止服务
-	Close(ctx context.Context) error
 
 	// SetErrorHandler 设置Web请求错误处理函数
 	SetErrorHandler(h WebErrorHandler)

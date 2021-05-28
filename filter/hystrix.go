@@ -65,7 +65,7 @@ type HystrixFilter struct {
 	applications *flux.Configuration
 }
 
-func (r *HystrixFilter) Init(c *flux.Configuration) error {
+func (r *HystrixFilter) OnInit(c *flux.Configuration) error {
 	logger.Info("Hystrix filter initializing")
 	r.applications = c.Sub(ConfigApplication)
 	r.services = c.Sub(ConfigService)

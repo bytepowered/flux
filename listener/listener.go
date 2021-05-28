@@ -116,7 +116,7 @@ func (s *AdaptWebListener) ListenerId() string {
 	return s.id
 }
 
-func (s *AdaptWebListener) Init(opts *flux.Configuration) error {
+func (s *AdaptWebListener) OnInit(opts *flux.Configuration) error {
 	logger.Info("SERVER:EVENT:WEBLISTENER:INIT")
 	s.tlsCertFile = opts.GetString(ConfigKeyTLSCertFile)
 	s.tlsKeyFile = opts.GetString(ConfigKeyTLSKeyFile)
@@ -219,7 +219,7 @@ func (s *AdaptWebListener) ShadowServer() interface{} {
 	return s.server
 }
 
-func (s *AdaptWebListener) Close(ctx context.Context) error {
+func (s *AdaptWebListener) OnShutdown(ctx context.Context) error {
 	s.started = false
 	return s.server.Shutdown(ctx)
 }

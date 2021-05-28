@@ -44,7 +44,7 @@ func (f *JWTFilter) FilterId() string {
 	return TypeIdJWTFilter
 }
 
-func (f *JWTFilter) Init(config *flux.Configuration) error {
+func (f *JWTFilter) OnInit(config *flux.Configuration) error {
 	if f.Config.TokenExtractor == nil {
 		f.Config.TokenExtractor = func(ctx *flux.Context) (string, error) {
 			return ExtractTokenOAuth2(ctx)

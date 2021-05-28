@@ -12,6 +12,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"reflect"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -40,8 +41,7 @@ type (
 
 // GenericServer
 type GenericServer struct {
-	listener       map[string]flux.WebListener
-	onPrepareHooks []flux.OnPrepareHookFunc
+	listeners      map[string]flux.WebListener
 	onContextHooks []flux.OnContextHookFunc
 	versionFunc    VersionLookupFunc
 	dispatcher     *Dispatcher
@@ -55,13 +55,6 @@ type GenericServer struct {
 func WithOnContextHooks(hooks ...flux.OnContextHookFunc) GenericOptionFunc {
 	return func(bs *GenericServer) {
 		bs.onContextHooks = append(bs.onContextHooks, hooks...)
-	}
-}
-
-// WithOnPrepareHooks 配置服务启动预备阶段Hook函数列表
-func WithOnPrepareHooks(hooks ...flux.OnPrepareHookFunc) GenericOptionFunc {
-	return func(bs *GenericServer) {
-		bs.onPrepareHooks = append(bs.onPrepareHooks, hooks...)
 	}
 }
 
@@ -112,9 +105,8 @@ func WithOnBeforeTransportHookFunc(hooks ...flux.OnBeforeTransportHookFunc) Gene
 func NewGenericServer(opts ...GenericOptionFunc) *GenericServer {
 	server := &GenericServer{
 		dispatcher:     NewDispatcher(),
-		listener:       make(map[string]flux.WebListener, 2),
+		listeners:      make(map[string]flux.WebListener, 2),
 		onContextHooks: make([]flux.OnContextHookFunc, 0, 4),
-		onPrepareHooks: make([]flux.OnPrepareHookFunc, 0, 4),
 		pooled:         &sync.Pool{New: func() interface{} { return flux.NewContext() }},
 		started:        make(chan struct{}),
 		stopped:        make(chan struct{}),
@@ -129,8 +121,8 @@ func NewGenericServer(opts ...GenericOptionFunc) *GenericServer {
 // Prepare Call before init and startup
 func (gs *GenericServer) Prepare() error {
 	logger.Info("SERVER:EVEN:PREPARE")
-	for _, hook := range append(ext.PrepareHooks(), gs.onPrepareHooks...) {
-		if err := hook(); nil != err {
+	for _, hook := range ext.PrepareHooks() {
+		if err := hook.OnPrepare(); nil != err {
 			return err
 		}
 	}
@@ -138,26 +130,93 @@ func (gs *GenericServer) Prepare() error {
 	return nil
 }
 
-// Initial
-func (gs *GenericServer) Initial() error {
+// Init Call components init
+func (gs *GenericServer) Init() error {
 	logger.Info("SERVER:EVEN:INIT")
 	defer logger.Info("SERVER:EVEN:INIT:OK")
-	// Listen Server
-	for id, webListener := range gs.listener {
+	// 1. WebListen Server
+	for id, webListener := range gs.listeners {
 		config := NewWebListenerConfig(id)
-		if err := webListener.Init(config); nil != err {
+		ext.AddStartupHook(webListener)
+		ext.AddShutdownHook(webListener)
+		logger.Infow("SERVER:EVENT:INIT:WEBLISTENER", "webl-id", id, "webl-type", reflect.TypeOf(webListener))
+		if err := webListener.OnInit(config); nil != err {
 			return err
 		}
 	}
-	// Discovery
-	for _, dis := range ext.EndpointDiscoveries() {
-		config := flux.NewConfigurationByKeys(flux.NamespaceDiscoveries, dis.Id())
-		err := gs.dispatcher.AddInitHook(dis, config)
+	// 2. EDS
+	for _, eds := range ext.EndpointDiscoveries() {
+		ext.AddStartupHook(eds)
+		ext.AddShutdownHook(eds)
+		err := onInitializer(eds, func(initable flux.Initializer) error {
+			logger.Infow("SERVER:EVENT:INIT:DISCOVERY", "eds-id", eds, "eds-type", reflect.TypeOf(eds))
+			edsc := flux.NewConfigurationByKeys(flux.NamespaceDiscoveries, eds.Id())
+			return initable.OnInit(edsc)
+		})
 		if nil != err {
 			return err
 		}
 	}
-	return gs.dispatcher.Init()
+	// 3. Transporter
+	for proto, transporter := range ext.Transporters() {
+		ext.AddStartupHook(transporter)
+		ext.AddShutdownHook(transporter)
+		err := onInitializer(transporter, func(initable flux.Initializer) error {
+			trc := flux.NewConfigurationByKeys(flux.NamespaceTransporters, proto)
+			logger.Infow("SERVER:EVENT:INIT:TRANSPORT", "t-proto", proto, "t-type", reflect.TypeOf(transporter))
+			return initable.OnInit(trc)
+		})
+		if nil != err {
+			return err
+		}
+	}
+	// 4. Static Filters
+	for _, filter := range append(ext.GlobalFilters(), ext.SelectiveFilters()...) {
+		err := onInitializer(filter, func(initable flux.Initializer) error {
+			fic := flux.NewConfiguration(filter.FilterId())
+			if IsDisabled(fic) {
+				logger.Infow("SERVER:EVENT:INIT:FILTER/disabled", "f-id", filter.FilterId())
+				return nil
+			}
+			ext.AddStartupHook(filter)
+			ext.AddShutdownHook(filter)
+			logger.Infow("SERVER:EVENT:INIT:FILTER", "f-id", filter.FilterId(), "f-type", reflect.TypeOf(filter))
+			return initable.OnInit(fic)
+		})
+		if nil != err {
+			return err
+		}
+	}
+	// 5. Dynamic Filters
+	dynFilters, err := dynamicFilters()
+	if nil != err {
+		return err
+	}
+	for _, dynf := range dynFilters {
+		inst := dynf.Factory()
+		dynfilter, ok := inst.(flux.Filter)
+		var msgs = []interface{}{"dynf-id", dynf.Id, "dynf-type-id", dynf.TypeId, "dynf-type", reflect.TypeOf(inst)}
+		if !ok {
+			logger.Infow("SERVER:EVENT:INIT:DYNFILTER/malformed", msgs...)
+			continue
+		}
+		logger.Infow("SERVER:EVENT:INIT:DYNFILTER/new", msgs)
+		if IsDisabled(dynf.Config) {
+			logger.Infow("SERVER:EVENT:INIT:DYNFILTER/disable", "dynf-id", dynf.Id)
+			continue
+		}
+		ext.AddSelectiveFilter(dynfilter)
+		ext.AddStartupHook(dynfilter)
+		ext.AddShutdownHook(dynfilter)
+		err := onInitializer(dynfilter, func(initable flux.Initializer) error {
+			logger.Infow("SERVER:EVENT:INIT:FILTER", "dynf-id", dynfilter.FilterId())
+			return initable.OnInit(dynf.Config)
+		})
+		if nil != err {
+			return err
+		}
+	}
+	return nil
 }
 
 func (gs *GenericServer) Startup(build flux.Build) error {
@@ -170,10 +229,11 @@ func (gs *GenericServer) Startup(build flux.Build) error {
 
 func (gs *GenericServer) start() error {
 	flux.AssertNotNil(gs.defaultListener(), "<default-listener> MUST NOT nil")
-	// Dispatcher
 	logger.Info("SERVER:EVEN:STARTUP")
-	if err := gs.dispatcher.Startup(); nil != err {
-		return err
+	for _, startup := range sortedStartup(ext.StartupHooks()) {
+		if err := startup.OnStartup(); nil != err {
+			return err
+		}
 	}
 	logger.Info("SERVER:EVEN:STARTUP:OK")
 	// Discovery
@@ -192,8 +252,8 @@ func (gs *GenericServer) start() error {
 	}
 	logger.Info("SERVER:EVEN:DISCOVERY:OK")
 	// Listeners
-	var errch chan error
-	for id, web := range gs.listener {
+	errch := make(chan error, 1)
+	for id, web := range gs.listeners {
 		logger.Infow("SERVER:EVEN:LISTENER:START", "listener-id", web.ListenerId())
 		go func(id string, server flux.WebListener) {
 			errch <- server.Listen()
@@ -285,6 +345,28 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 	return
 }
 
+// Shutdown to cleanup resources
+func (gs *GenericServer) Shutdown(ctx goctx.Context) error {
+	logger.Info("SERVER:EVENT:SHUTDOWN")
+	defer func() {
+		logger.Info("SERVER:EVENT:SHUTDOWN/ok")
+		close(gs.stopped)
+	}()
+	// WebListener
+	for id, server := range gs.listeners {
+		if err := server.OnShutdown(ctx); nil != err {
+			logger.Warnw("Server["+id+"] shutdown http server", "error", err)
+		}
+	}
+	// Components
+	for _, shutdown := range sortedShutdown(ext.ShutdownHooks()) {
+		if err := shutdown.OnShutdown(ctx); nil != err {
+			logger.Warnw("Component shutdown failed", "c-type", reflect.TypeOf(shutdown), "error", err)
+		}
+	}
+	return nil
+}
+
 func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
 	switch event.EventType {
@@ -353,18 +435,6 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 	}
 }
 
-// Shutdown to cleanup resources
-func (gs *GenericServer) Shutdown(ctx goctx.Context) error {
-	logger.Info("SERVER:EVENT:SHUTDOWN")
-	defer close(gs.stopped)
-	for id, server := range gs.listener {
-		if err := server.Close(ctx); nil != err {
-			logger.Warnw("Server["+id+"] shutdown http server", "error", err)
-		}
-	}
-	return gs.dispatcher.Shutdown(ctx)
-}
-
 // GracefulShutdown
 func (gs *GenericServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	// 接收停止信号
@@ -412,12 +482,12 @@ func (gs *GenericServer) SetWebNotfoundHandler(nfh flux.WebHandler) {
 func (gs *GenericServer) AddWebListener(listenerID string, listener flux.WebListener) {
 	flux.AssertNotNil(listener, "WebListener Must Not nil")
 	flux.AssertNotEmpty(listenerID, "WebListener Id Must Not empty")
-	gs.listener[strings.ToLower(listenerID)] = listener
+	gs.listeners[strings.ToLower(listenerID)] = listener
 }
 
 // WebListenerById 返回ListenServer实例
 func (gs *GenericServer) WebListenerById(listenerID string) (flux.WebListener, bool) {
-	ls, ok := gs.listener[strings.ToLower(listenerID)]
+	ls, ok := gs.listeners[strings.ToLower(listenerID)]
 	return ls, ok
 }
 
@@ -442,15 +512,15 @@ func (gs *GenericServer) selectMVCEndpoint(endpoint *flux.Endpoint) (*flux.MVCEn
 }
 
 func (gs *GenericServer) defaultListener() flux.WebListener {
-	count := len(gs.listener)
+	count := len(gs.listeners)
 	if count == 0 {
 		return nil
 	} else if count == 1 {
-		for _, server := range gs.listener {
+		for _, server := range gs.listeners {
 			return server
 		}
 	}
-	server, ok := gs.listener[ListenerIdDefault]
+	server, ok := gs.listeners[ListenerIdDefault]
 	if ok {
 		return server
 	}
@@ -463,6 +533,13 @@ func (gs *GenericServer) bindArguments(args []flux.Argument) {
 		args[i].LookupFunc = ext.LookupFunc()
 		gs.bindArguments(args[i].Fields)
 	}
+}
+
+func onInitializer(v interface{}, f func(initable flux.Initializer) error) error {
+	if init, ok := v.(flux.Initializer); ok {
+		return f(init)
+	}
+	return nil
 }
 
 // NewWebListenerOptions 根据WebListenerID，返回初始化WebListener实例时的配置

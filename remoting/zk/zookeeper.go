@@ -41,7 +41,7 @@ type ZookeeperRetriever struct {
 }
 
 // Init 初始化
-func (r *ZookeeperRetriever) Init(config *flux.Configuration) error {
+func (r *ZookeeperRetriever) OnInit(config *flux.Configuration) error {
 	addr := config.GetString("address")
 	r.address = strings.Split(addr, ",")
 	if len(r.address) == 0 {
@@ -59,7 +59,7 @@ func (r *ZookeeperRetriever) Init(config *flux.Configuration) error {
 }
 
 // Startup 启动ZK客户端
-func (r *ZookeeperRetriever) Startup() error {
+func (r *ZookeeperRetriever) OnStartup() error {
 	r.newLogger().Info("Zookeeper retriever startup")
 	conn, _, err := zk.Connect(r.address, r.config.ConnTimeout,
 		zk.WithLogger(new(zkLogger)),
@@ -72,7 +72,7 @@ func (r *ZookeeperRetriever) Startup() error {
 }
 
 // Shutdown 关闭客户端
-func (r *ZookeeperRetriever) Shutdown(ctx context.Context) error {
+func (r *ZookeeperRetriever) OnShutdown(ctx context.Context) error {
 	select {
 	case <-r.quit:
 		return nil

@@ -2,13 +2,6 @@ package main
 
 import (
 	"errors"
-	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/listener"
-	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/server"
-	_ "github.com/bytepowered/flux/transporter/dubbo"
-	_ "github.com/bytepowered/flux/transporter/echo"
-	_ "github.com/bytepowered/flux/transporter/http"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"os"
@@ -18,6 +11,16 @@ import (
 import (
 	_ "github.com/apache/dubbo-go/filter/filter_impl"
 	_ "github.com/apache/dubbo-go/registry/zookeeper"
+)
+
+import (
+	"github.com/bytepowered/flux"
+	"github.com/bytepowered/flux/listener"
+	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/server"
+	_ "github.com/bytepowered/flux/transporter/dubbo"
+	_ "github.com/bytepowered/flux/transporter/echo"
+	_ "github.com/bytepowered/flux/transporter/http"
 )
 
 var (
@@ -34,7 +37,7 @@ func main() {
 	if err := generic.Prepare(); nil != err {
 		logger.Panic("GenericServer prepare:", err)
 	}
-	if err := generic.Initial(); nil != err {
+	if err := generic.Init(); nil != err {
 		logger.Panic("GenericServer init:", err)
 	}
 	go func() {
