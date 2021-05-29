@@ -19,16 +19,16 @@ func DecodeServiceFunc(bytes []byte) (flux.Service, error) {
 	}
 	service := flux.Service{}
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
-		return emptyService, fmt.Errorf("DECODE/MALFORMED/JSON: err: %w", err)
+		return emptyService, fmt.Errorf("DECODE:UNMARSHAL:JSON/err: %w", err)
 	}
 	// 检查有效性
 	if !service.IsValid() {
-		return emptyService, errors.New("DECODE/MALFORMED/SERVICE")
+		return emptyService, errors.New("DECODE:VERIFY:SERVICE/invalid")
 	}
 	return service, nil
 }
 
-func WrapServiceEvent(srv *flux.Service, etype remoting.EventType) (fxEvt flux.ServiceEvent, err error) {
+func ToServiceEvent(srv *flux.Service, etype remoting.NoteEventType) (fxEvt flux.ServiceEvent, err error) {
 	event := flux.ServiceEvent{Service: *srv}
 	switch etype {
 	case remoting.EventTypeNodeAdd:

@@ -316,7 +316,7 @@ type Endpoint struct {
 	HttpMethod  string     `json:"httpMethod" yaml:"httpMethod"`   // 映射Http侧的Method
 	Attributes  Attributes `json:"attributes" yaml:"attributes"`   // 属性列表
 	ServiceId   string     `json:"serviceId" yaml:"serviceId"`     // 上游/后端服务ServiceId
-	Service     Service    `json:"service"`                        // 上游/后端服务
+	Service     Service    `json:"-"`                              // 上游/后端服务
 }
 
 func (e *Endpoint) IsValid() bool {

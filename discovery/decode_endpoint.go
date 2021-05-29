@@ -19,16 +19,19 @@ func DecodeEndpointFunc(bytes []byte) (flux.Endpoint, error) {
 	}
 	ep := flux.Endpoint{}
 	if err := ext.JSONUnmarshal(bytes, &ep); nil != err {
-		return emptyEndpoint, fmt.Errorf("DECODE/MALFORMED/JSON: err: %w", err)
+		return emptyEndpoint, fmt.Errorf("DECODE:UNMARSHAL:JSON/err: %w", err)
 	}
 	// 检查Endpoint有效性
 	if ep.HttpPattern == "" || ep.HttpMethod == "" {
-		return emptyEndpoint, errors.New("DECODE/MALFORMED/ENDPOINT")
+		return emptyEndpoint, errors.New("DECODE:VERIFY:ENDPOINT/method-pattern")
+	}
+	if ep.ServiceId == "" || len(ep.ServiceId) < len("a:b") {
+		return emptyEndpoint, errors.New("DECODE:VERIFY:ENDPOINT:service-id")
 	}
 	return ep, nil
 }
 
-func WrapEndpointEvent(ep *flux.Endpoint, etype remoting.EventType) (fxEvt flux.EndpointEvent, err error) {
+func ToEndpointEvent(ep *flux.Endpoint, etype remoting.NoteEventType) (fxEvt flux.EndpointEvent, err error) {
 	event := flux.EndpointEvent{Endpoint: *ep}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
@@ -38,7 +41,7 @@ func WrapEndpointEvent(ep *flux.Endpoint, etype remoting.EventType) (fxEvt flux.
 	case remoting.EventTypeNodeUpdate:
 		event.EventType = flux.EventTypeUpdated
 	default:
-		return emptyEndpointEvent, fmt.Errorf("ENDPOINT:UNKNOWN_EVT_TYPE: type=%d", etype)
+		return emptyEndpointEvent, fmt.Errorf("ENDPOINT:UNKNOWN_EVT_TYPE: type=%s", etype)
 	}
 	return event, nil
 }

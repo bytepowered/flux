@@ -74,9 +74,16 @@ func (r *ResourceDiscoveryService) OnInit(config *flux.Configuration) error {
 
 func (r *ResourceDiscoveryService) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	for _, res := range r.resources {
-		for _, ep := range res.Endpoints {
-			if ep.IsValid() {
-				events <- flux.EndpointEvent{EventType: flux.EventTypeAdded, Endpoint: ep}
+		for _, el := range res.Endpoints {
+			if el.IsValid() {
+				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/invalid", "endpoint", el)
+				continue
+			}
+			dup := el
+			if evt, err := ToEndpointEvent(&dup, flux.EventTypeAdded); err == nil {
+				events <- evt
+			} else {
+				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/event", "endpoint", el, "error", el)
 			}
 		}
 	}
@@ -85,9 +92,16 @@ func (r *ResourceDiscoveryService) WatchEndpoints(ctx context.Context, events ch
 
 func (r *ResourceDiscoveryService) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	for _, res := range r.resources {
-		for _, srv := range res.Services {
-			if srv.IsValid() {
-				events <- flux.ServiceEvent{EventType: flux.EventTypeAdded, Service: srv}
+		for _, el := range res.Services {
+			if el.IsValid() {
+				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/invalid", "service", el)
+				continue
+			}
+			dup := el
+			if evt, err := ToServiceEvent(&dup, flux.EventTypeAdded); err == nil {
+				events <- evt
+			} else {
+				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/event", "service", el, "error", el)
 			}
 		}
 	}

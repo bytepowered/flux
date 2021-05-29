@@ -117,7 +117,7 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(ctx context.Context, events c
 			logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT/decode", "endpoint-event", event, "error", err)
 			return
 		}
-		if evt, err := WrapEndpointEvent(&ep, event.EventType); nil == err {
+		if evt, err := ToEndpointEvent(&ep, event.Event); nil == err {
 			events <- evt
 		} else {
 			logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT/wrap-evt", "endpoint-event", event, "error", err)
@@ -141,7 +141,7 @@ func (r *ZookeeperDiscoveryService) WatchServices(ctx context.Context, events ch
 			logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE/decode", "service-event", event, "error", err)
 			return
 		}
-		if evt, err := WrapServiceEvent(&srv, event.EventType); nil == err {
+		if evt, err := ToServiceEvent(&srv, event.Event); nil == err {
 			events <- evt
 		} else {
 			logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE/wrap-ent", "service-event", event, "error", err)
@@ -155,9 +155,9 @@ func (r *ZookeeperDiscoveryService) onRetrievers(ctx context.Context, path strin
 	for _, retriever := range r.retrievers {
 		watcher := func(ret *zk.ZookeeperRetriever, notify chan<- struct{}) {
 			if err := r.watch(ret, path, callback); err != nil {
-				logger.Errorw("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/Error", "watch-path", path, "error", err)
+				logger.Errorw("DISCOVERY:ZOOKEEPER:WATCH/error", "watch-path", path, "error", err)
 			} else {
-				logger.Infow("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/Success", "watch-path", path)
+				logger.Infow("DISCOVERY:ZOOKEEPER:WATCH/success", "watch-path", path)
 			}
 			notify <- struct{}{}
 		}
@@ -165,10 +165,10 @@ func (r *ZookeeperDiscoveryService) onRetrievers(ctx context.Context, path strin
 		go watcher(retriever, notify)
 		select {
 		case <-ctx.Done():
-			logger.Infow("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/CANCELED", "watch-path", path)
+			logger.Infow("DISCOVERY:ZOOKEEPER:WATCH/canceled", "watch-path", path)
 			return nil
 		case <-time.After(time.Minute):
-			logger.Warnw("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH/TIMEOUT", "watch-path", path)
+			logger.Warnw("DISCOVERY:ZOOKEEPER:WATCH/timeout", "watch-path", path)
 		case <-notify:
 			continue
 		}
@@ -186,11 +186,11 @@ func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, root
 			return fmt.Errorf("init metadata node: %w", err)
 		}
 	}
-	return retriever.AddChildrenNodeChangedListener("", rootpath, func(event remoting.NodeEvent) {
-		logger.Infow("DISCOVERY:ZOOKEEPER:RETRIEVERS:WATCH:RECV", "event", event)
-		if event.EventType == remoting.EventTypeChildAdd {
-			if err := retriever.AddNodeChangedListener("", event.Path, nodeListener); nil != err {
-				logger.Warnw("Watch child node data", "error", err)
+	return retriever.AddChildChangedListener("", rootpath, func(event remoting.NodeEvent) {
+		logger.Infow("DISCOVERY:ZOOKEEPER:WATCH/recv", "event", event)
+		if event.Event == remoting.EventTypeChildAdd {
+			if err := retriever.AddChangedListener("", event.Path, nodeListener); nil != err {
+				logger.Warnw("DISCOVERY:ZOOKEEPER:WATCH/node", "path", event.Path, "error", err)
 			}
 		}
 	})
@@ -198,7 +198,7 @@ func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, root
 
 // Startup startup discovery service
 func (r *ZookeeperDiscoveryService) OnStartup() error {
-	logger.Info("ZkEndpointDiscovery startup")
+	logger.Info("DISCOVERY:ZOOKEEPER:STARTUP")
 	for _, retriever := range r.retrievers {
 		if err := retriever.OnStartup(); nil != err {
 			return err
@@ -209,7 +209,7 @@ func (r *ZookeeperDiscoveryService) OnStartup() error {
 
 // Shutdown shutdown discovery service
 func (r *ZookeeperDiscoveryService) OnShutdown(ctx context.Context) error {
-	logger.Info("ZkEndpointDiscovery shutdown")
+	logger.Info("DISCOVERY:ZOOKEEPER:SHUTDOWN")
 	for _, retriever := range r.retrievers {
 		if err := retriever.OnShutdown(ctx); nil != err {
 			return err
