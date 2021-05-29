@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"golang.org/x/net/context"
 	"net/http"
 	_ "net/http/pprof"
@@ -288,10 +289,10 @@ func (gs *GenericServer) startEventLoop(ctx context.Context, endpoints chan flux
 func (gs *GenericServer) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
 	for _, discovery := range ext.EndpointDiscoveries() {
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH", "discovery-id", discovery.Id())
-		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
+		if err := discovery.WatchServices(ctx, services); nil != err {
 			return err
 		}
-		if err := discovery.WatchServices(ctx, services); nil != err {
+		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
 			return err
 		}
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH/OK", "discovery-id", discovery.Id())
@@ -306,8 +307,9 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 			err = fmt.Errorf("SERVER:EVEN:ROUTE:%gs", rvr)
 		}
 	}(webex.RequestId())
+	// 注意：Lookup返回的endpoint是一个复制副本，用以防止用户组件修改元数据污染基础数据；
 	endpoint, found := endpoints.Lookup(gs.versionFunc(webex))
-	// 实现动态Endpoint版本选择
+	// 动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
 		if selector.Active(webex, server.ListenerId()) {
 			endpoint, found = selector.DoSelect(webex, server.ListenerId(), endpoints)
@@ -317,14 +319,15 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		}
 	}
 	if !found {
-		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:NOT_FOUND",
+		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:ENDPOINT/NOT_FOUND",
 			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 		)
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
 		return server.HandleNotfound(webex)
-	} else {
-		flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
 	}
+	// 检查Endpoint/Service绑定
+	flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
+	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
@@ -372,24 +375,26 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:SERVICE:ADD",
-			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		gs.bindArguments(service.Arguments)
+			"service-id", service.ServiceID(), "alias-id", service.AliasId)
+		gs.mapargument(service.Arguments)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
+		gs.mapendpoint(&service)
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
-			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		gs.bindArguments(service.Arguments)
+			"service-id", service.ServiceID(), "alias-id", service.AliasId)
+		gs.mapargument(service.Arguments)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
+		gs.mapendpoint(&service)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:SERVICE:REMOVE",
-			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RemoveServiceByID(service.ServiceId)
+			"service-id", service.ServiceID(), "alias-id", service.AliasId)
+		ext.RemoveServiceByID(service.ServiceID())
 		if service.AliasId != "" {
 			ext.RemoveServiceByID(service.AliasId)
 		}
@@ -397,41 +402,41 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 }
 
 func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
-	method := strings.ToUpper(event.Endpoint.HttpMethod)
+	ep := event.Endpoint
+	var epvars = []interface{}{"ep-app", ep.Application, "ep-version", ep.Version, "ep-method", ep.HttpMethod, "ep-pattern", ep.HttpPattern}
 	// Check http method
+	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	if !SupportedHttpMethod(method) {
-		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", "method", method, "pattern", event.Endpoint.HttpPattern)
+		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", epvars...)
 		return
 	}
-	endpoint := event.Endpoint
-	pattern := event.Endpoint.HttpPattern
-	mvce, register := gs.selectMVCEndpoint(&endpoint)
+	mvce, register := gs.selectMVCEndpoint(&ep)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
-		gs.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
-		mvce.Update(endpoint.Version, &endpoint)
+		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", epvars...)
+		mvce.Update(ep.Version, &ep)
+		gs.mapservice(&ep)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if register {
-			id := endpoint.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
+			id := ep.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
 			if id == "" {
 				id = ListenerIdDefault
 			}
 			server, ok := gs.WebListenerById(id)
 			if ok {
-				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+id, "method", method, "pattern", pattern)
-				server.AddHandler(method, pattern, gs.newEndpointHandler(server, mvce))
+				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+id, epvars...)
+				server.AddHandler(ep.HttpMethod, ep.HttpPattern, gs.newEndpointHandler(server, mvce))
 			} else {
-				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+id, "method", method, "pattern", pattern)
+				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+id, epvars...)
 			}
 		}
 	case flux.EventTypeUpdated:
-		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
-		gs.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
-		mvce.Update(endpoint.Version, &endpoint)
+		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", epvars...)
+		mvce.Update(ep.Version, &ep)
+		gs.mapservice(&ep)
 	case flux.EventTypeRemoved:
-		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
-		mvce.Delete(endpoint.Version)
+		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", epvars...)
+		mvce.Delete(ep.Version)
 	}
 }
 
@@ -527,11 +532,36 @@ func (gs *GenericServer) defaultListener() flux.WebListener {
 	return nil
 }
 
-func (gs *GenericServer) bindArguments(args []flux.Argument) {
+// mapargument 绑定参数处理函数
+func (gs *GenericServer) mapargument(args []flux.Argument) {
 	for i := range args {
 		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
 		args[i].LookupFunc = ext.LookupFunc()
-		gs.bindArguments(args[i].Fields)
+		gs.mapargument(args[i].Fields)
+	}
+}
+
+// mapservice 将Endpoint与Service建立绑定映射；
+// 此处绑定的为原始元数据的引用；
+func (gs *GenericServer) mapservice(ep *flux.Endpoint) {
+	service, ok := ext.ServiceByID(ep.ServiceId)
+	if !ok {
+		return
+	}
+	logger.Infow("SERVER:EVENT:MAPMETA/endpoint-to-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+	ep.Service = service
+}
+
+// mapendpoint 将Endpoint与Service建立绑定映射；
+// 此处绑定的为原始元数据的引用；
+func (gs *GenericServer) mapendpoint(srv *flux.Service) {
+	for _, mvce := range ext.Endpoints() {
+		for _, ep := range mvce.Endpoints() {
+			if toolkit.StringContains([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
+				logger.Infow("SERVER:EVENT:MAPMETA/service-to-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				ep.Service = *srv
+			}
+		}
 	}
 }
 

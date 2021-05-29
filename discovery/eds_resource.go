@@ -76,7 +76,6 @@ func (r *ResourceDiscoveryService) WatchEndpoints(ctx context.Context, events ch
 	for _, res := range r.resources {
 		for _, ep := range res.Endpoints {
 			if ep.IsValid() {
-				EnsureServiceAttrs(&ep.Service)
 				events <- flux.EndpointEvent{EventType: flux.EventTypeAdded, Endpoint: ep}
 			}
 		}
@@ -88,7 +87,6 @@ func (r *ResourceDiscoveryService) WatchServices(ctx context.Context, events cha
 	for _, res := range r.resources {
 		for _, srv := range res.Services {
 			if srv.IsValid() {
-				EnsureServiceAttrs(&srv)
 				events <- flux.ServiceEvent{EventType: flux.EventTypeAdded, Service: srv}
 			}
 		}
