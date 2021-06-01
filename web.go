@@ -152,13 +152,13 @@ type ServerWebContext interface {
 	// QueryVar 查询指定Name的Query参数值
 	QueryVar(name string) string
 
-	// PathValue 查询指定Name的动态路径参数值
+	// PathVar 查询指定Name的动态路径参数值
 	PathVar(name string) string
 
-	// FormValue 查询指定Name的表单参数值
+	// FormVar 查询指定Name的表单参数值
 	FormVar(name string) string
 
-	// CookieValue 查询指定Name的Cookie对象，并返回是否存在标识
+	// CookieVar 查询指定Name的Cookie对象，并返回是否存在标识
 	CookieVar(name string) (*http.Cookie, error)
 
 	// BodyReader 返回可重复读取的Reader接口；
@@ -176,7 +176,7 @@ type ServerWebContext interface {
 	// SetResponseWriter 设置HttpWeb服务器的ResponseWriter
 	SetResponseWriter(rw http.ResponseWriter)
 
-	// ServeResponseWriter 返回HttpWeb服务器的ResponseWriter对象。
+	// ResponseWriter 返回HttpWeb服务器的ResponseWriter对象。
 	ResponseWriter() http.ResponseWriter
 
 	// Variable 获取WebValue域键值；作用域与请求生命周期相同；
@@ -185,7 +185,7 @@ type ServerWebContext interface {
 	// SetVariable 设置Context域键值；作用域与请求生命周期相同；
 	SetVariable(key string, value interface{})
 
-	// SetVariable 设置Context域键值；作用域与请求生命周期相同；
+	// GetVariable 设置Context域键值；作用域与请求生命周期相同；
 	GetVariable(key string) (interface{}, bool)
 
 	// WebListener 返回当前请求所属的WebListener
@@ -215,7 +215,7 @@ type WebListener interface {
 	// SetNotfoundHandler 设置Web路由不存在处理函数
 	SetNotfoundHandler(h WebHandler)
 
-	// NotfoundHandle 调用NotFound处理函数
+	// HandleNotfound 调用NotFound处理函数
 	HandleNotfound(webex ServerWebContext) error
 
 	// SetBodyResolver 设置Body体解析接口

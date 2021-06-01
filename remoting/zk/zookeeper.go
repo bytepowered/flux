@@ -184,7 +184,7 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				// Add
 				for i, p := range newChildren {
 					newChildren[i] = path.Join(parentNodePath, p) // Update full path
-					if !toolkit.StringContains(cachedChildren, newChildren[i]) {
+					if !toolkit.MatchEqual(cachedChildren, newChildren[i]) {
 						handleChildChanged(remoting.NodeEvent{
 							Path:  newChildren[i],
 							Event: remoting.EventTypeChildAdd,
@@ -193,7 +193,7 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				}
 				// Deleted
 				for _, p := range cachedChildren {
-					if !toolkit.StringContains(newChildren, p) {
+					if !toolkit.MatchEqual(newChildren, p) {
 						handleChildChanged(remoting.NodeEvent{
 							Path:  p,
 							Event: remoting.EventTypeChildDelete,

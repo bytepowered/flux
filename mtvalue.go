@@ -15,7 +15,7 @@ const (
 	JavaUtilListClassName    = "java.util.List"
 )
 
-// Golang内置参数类型
+// MediaType Golang内置参数类型
 type MediaType string
 
 func (m MediaType) Contains(s string) bool {

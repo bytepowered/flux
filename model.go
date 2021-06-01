@@ -19,44 +19,44 @@ const (
 )
 
 const (
-	// 从动态Path参数中获取
+	// ScopePath 从动态Path参数中获取
 	ScopePath = "PATH"
-	// 查询所有Path参数
+	// ScopePathMap 查询所有Path参数
 	ScopePathMap = "PATH_MAP"
-	// 从Query参数中获取
+	// ScopeQuery 从Query参数中获取
 	ScopeQuery      = "QUERY"
 	ScopeQueryMulti = "QUERY_MUL"
-	// 获取全部Query参数
+	// ScopeQueryMap 获取全部Query参数
 	ScopeQueryMap = "QUERY_MAP"
-	// 只从Form表单参数参数列表中读取
+	// ScopeForm 只从Form表单参数参数列表中读取
 	ScopeForm      = "FORM"
 	ScopeFormMulti = "FORM_MUL"
-	// 获取Form全部参数
+	// ScopeFormMap 获取Form全部参数
 	ScopeFormMap = "FORM_MAP"
-	// 只从Query和Form表单参数参数列表中读取
+	// ScopeParam 只从Query和Form表单参数参数列表中读取
 	ScopeParam = "PARAM"
-	// 只从Header参数中读取
+	// ScopeHeader 只从Header参数中读取
 	ScopeHeader = "HEADER"
-	// 获取Header全部参数
+	// ScopeHeaderMap 获取Header全部参数
 	ScopeHeaderMap = "HEADER_MAP"
-	// 获取Http Attributes的单个参数
+	// ScopeAttr 获取Http Attributes的单个参数
 	ScopeAttr = "ATTR"
-	// 获取Http Attributes的Map结果
+	// ScopeAttrs 获取Http Attributes的Map结果
 	ScopeAttrs = "ATTRS"
-	// 获取Body数据
+	// ScopeBody 获取Body数据
 	ScopeBody = "BODY"
-	// 获取Request元数据
+	// ScopeRequest 获取Request元数据
 	ScopeRequest = "REQUEST"
-	// 自动查找数据源
+	// ScopeAuto 自动查找数据源
 	ScopeAuto = "AUTO"
 )
 
 const (
-	// 原始参数类型：int,long...
+	// ArgumentTypePrimitive 原始参数类型：int,long...
 	ArgumentTypePrimitive = "PRIMITIVE"
-	// 复杂参数类型：POJO
+	// ArgumentTypeComplex 复杂参数类型：POJO
 	ArgumentTypeComplex = "COMPLEX"
-	// JSONMap类型
+	// ArgumentTypeJSONMap JSONMap类型
 	ArgumentTypeJSONMap = "JSONMAP"
 )
 
@@ -88,8 +88,8 @@ const (
 	EndpointAttrTagPermission = "tag:permission"
 )
 
-// ArgumentAttributes
 const (
+	// ArgumentAttributeTagDefault ArgumentAttributes
 	ArgumentAttributeTagDefault = "default" // 参数的默认值属性
 )
 
@@ -123,7 +123,7 @@ func (a Argument) Resolve(ctx *Context) (interface{}, error) {
 	return resolve(ctx, &a)
 }
 
-// Resolve 解析Argument参数值
+// Resolvep 解析Argument参数值
 func (a *Argument) Resolvep(ctx *Context) (interface{}, error) {
 	return resolve(ctx, a)
 }

@@ -557,7 +557,7 @@ func (gs *GenericServer) mapservice(ep *flux.Endpoint) {
 func (gs *GenericServer) mapendpoint(srv *flux.Service) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
-			if toolkit.StringContains([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
+			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
 				logger.Infow("SERVER:EVENT:MAPMETA/service-to-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				ep.Service = *srv
 			}

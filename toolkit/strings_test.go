@@ -19,7 +19,7 @@ func TestStringSliceContains(t *testing.T) {
 	}
 	assert := assert.New(t)
 	for _, tcase := range cases {
-		has := StringContains(tcase.elements, tcase.ele)
+		has := MatchEqual(tcase.elements, tcase.ele)
 		assert.Equal(tcase.has, has, "has: not match")
 	}
 }
