@@ -14,11 +14,11 @@ const (
 	ResourceId = "resource"
 )
 
-var _ flux.EndpointDiscovery = new(ResourceDiscoveryService)
+var _ flux.EndpointDiscovery = new(ResourceEndpointDiscovery)
 
 type (
 	// ResourceOption 配置函数
-	ResourceOption func(discovery *ResourceDiscoveryService)
+	ResourceOption func(discovery *ResourceEndpointDiscovery)
 )
 
 type Resources struct {
@@ -26,9 +26,9 @@ type Resources struct {
 	Services  []flux.Service  `yaml:"services"`
 }
 
-// NewResourceServiceWith returns new a resource based discovery service
-func NewResourceServiceWith(id string, opts ...ResourceOption) *ResourceDiscoveryService {
-	r := &ResourceDiscoveryService{
+// NewResourceEndpointDiscovery returns new a resource based discovery service
+func NewResourceEndpointDiscovery(id string, opts ...ResourceOption) *ResourceEndpointDiscovery {
+	r := &ResourceEndpointDiscovery{
 		id:        id,
 		resources: make([]Resources, 0, 8),
 	}
@@ -38,26 +38,28 @@ func NewResourceServiceWith(id string, opts ...ResourceOption) *ResourceDiscover
 	return r
 }
 
-type ResourceDiscoveryService struct {
+type ResourceEndpointDiscovery struct {
 	id        string
 	resources []Resources
 }
 
-func (r *ResourceDiscoveryService) Id() string {
-	return r.id
+func (d *ResourceEndpointDiscovery) Id() string {
+	return d.id
 }
 
-func (r *ResourceDiscoveryService) OnInit(config *flux.Configuration) error {
+func (d *ResourceEndpointDiscovery) OnInit(config *flux.Configuration) error {
 	// 加载指定路径的配置
 	files := config.GetStringSlice("includes")
 	logger.Infow("DISCOVERY:RESOURCE:LOAD/resource", "includes", files)
-	if err := r.includes(files); nil != err {
+	if err := d.includes(files); nil != err {
 		return err
 	}
 	// 本地指定
+	const segEndpoint = "endpoints"
+	const segService = "services"
 	define := map[string]interface{}{
-		"endpoints": config.GetOrDefault("endpoints", make([]interface{}, 0)),
-		"services":  config.GetOrDefault("services", make([]interface{}, 0)),
+		segEndpoint: config.GetOrDefault(segEndpoint, make([]interface{}, 0)),
+		segService:  config.GetOrDefault(segService, make([]interface{}, 0)),
 	}
 	if bytes, err := ext.JSONMarshal(define); nil != err {
 		return fmt.Errorf("response discovery, redecode config, error: %w", err)
@@ -66,14 +68,14 @@ func (r *ResourceDiscoveryService) OnInit(config *flux.Configuration) error {
 		if err := yaml.Unmarshal(bytes, &out); nil != err {
 			return fmt.Errorf("discovery service decode config, err: %w", err)
 		} else if len(out.Endpoints) > 0 || len(out.Services) > 0 {
-			r.resources = append(r.resources, out)
+			d.resources = append(d.resources, out)
 		}
 	}
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
-	for _, res := range r.resources {
+func (d *ResourceEndpointDiscovery) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
+	for _, res := range d.resources {
 		for _, el := range res.Endpoints {
 			if !el.IsValid() {
 				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/verify", "endpoint", el)
@@ -90,8 +92,8 @@ func (r *ResourceDiscoveryService) WatchEndpoints(ctx context.Context, events ch
 	return nil
 }
 
-func (r *ResourceDiscoveryService) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
-	for _, res := range r.resources {
+func (d *ResourceEndpointDiscovery) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
+	for _, res := range d.resources {
 		for _, el := range res.Services {
 			if !el.IsValid() {
 				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/invalid", "service", el)
@@ -108,7 +110,7 @@ func (r *ResourceDiscoveryService) WatchServices(ctx context.Context, events cha
 	return nil
 }
 
-func (r *ResourceDiscoveryService) includes(files []string) error {
+func (d *ResourceEndpointDiscovery) includes(files []string) error {
 	for _, file := range files {
 		bytes, err := ioutil.ReadFile(file)
 		if nil != err {
@@ -118,7 +120,7 @@ func (r *ResourceDiscoveryService) includes(files []string) error {
 		if err := yaml.Unmarshal(bytes, &out); nil != err {
 			return fmt.Errorf("discovery service decode config, path: %s, err: %w", file, err)
 		} else {
-			r.resources = append(r.resources, out)
+			d.resources = append(d.resources, out)
 		}
 	}
 	return nil

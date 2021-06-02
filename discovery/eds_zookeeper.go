@@ -27,15 +27,15 @@ const (
 	zkConfigRegistrySelector = "registry_selector"
 )
 
-var _ flux.EndpointDiscovery = new(ZookeeperDiscoveryService)
+var _ flux.EndpointDiscovery = new(ZookeeperEndpointDiscovery)
 
 type (
 	// ZookeeperOption 配置函数
-	ZookeeperOption func(discovery *ZookeeperDiscoveryService)
+	ZookeeperOption func(discovery *ZookeeperEndpointDiscovery)
 )
 
-// ZookeeperDiscoveryService 基于ZK节点树实现的Endpoint元数据注册中心
-type ZookeeperDiscoveryService struct {
+// ZookeeperEndpointDiscovery 基于ZK节点树实现的Endpoint元数据注册中心
+type ZookeeperEndpointDiscovery struct {
 	id                 string
 	endpointPath       string
 	servicePath        string
@@ -45,36 +45,36 @@ type ZookeeperDiscoveryService struct {
 }
 
 func WithZookeeperDecodeServiceFunc(f flux.DiscoveryDecodeServiceFunc) ZookeeperOption {
-	return func(discovery *ZookeeperDiscoveryService) {
+	return func(discovery *ZookeeperEndpointDiscovery) {
 		discovery.decodeServiceFunc = f
 	}
 }
 
 func WithZookeeperDecodeEndpointFunc(f flux.DiscoveryDecodeEndpointFunc) ZookeeperOption {
-	return func(discovery *ZookeeperDiscoveryService) {
+	return func(discovery *ZookeeperEndpointDiscovery) {
 		discovery.decodeEndpointFunc = f
 	}
 }
 
-// NewZookeeperServiceWith returns new a zookeeper discovery factory
-func NewZookeeperServiceWith(id string, opts ...ZookeeperOption) *ZookeeperDiscoveryService {
-	r := &ZookeeperDiscoveryService{
+// NewZookeeperEndpointDiscovery returns new a zookeeper discovery factory
+func NewZookeeperEndpointDiscovery(id string, opts ...ZookeeperOption) *ZookeeperEndpointDiscovery {
+	d := &ZookeeperEndpointDiscovery{
 		id:                 id,
 		decodeEndpointFunc: DecodeEndpointFunc,
 		decodeServiceFunc:  DecodeServiceFunc,
 	}
 	for _, opt := range opts {
-		opt(r)
+		opt(d)
 	}
-	return r
+	return d
 }
 
-func (r *ZookeeperDiscoveryService) Id() string {
-	return r.id
+func (d *ZookeeperEndpointDiscovery) Id() string {
+	return d.id
 }
 
 // OnInit init discovery
-func (r *ZookeeperDiscoveryService) OnInit(config *flux.Configuration) error {
+func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		zkConfigRootpathEndpoint: zkDiscoveryEndpointPath,
 		zkConfigRootpathService:  zkDiscoveryServicePath,
@@ -84,19 +84,19 @@ func (r *ZookeeperDiscoveryService) OnInit(config *flux.Configuration) error {
 		selected = []string{"default"}
 	}
 	logger.Infow("ZkEndpointDiscovery selected discovery", "selected-ids", selected)
-	r.endpointPath = config.GetString(zkConfigRootpathEndpoint)
-	r.servicePath = config.GetString(zkConfigRootpathService)
-	if r.endpointPath == "" || r.servicePath == "" {
+	d.endpointPath = config.GetString(zkConfigRootpathEndpoint)
+	d.servicePath = config.GetString(zkConfigRootpathService)
+	if d.endpointPath == "" || d.servicePath == "" {
 		return errors.New("config(rootpath_endpoint, rootpath_service) is empty")
 	}
-	r.retrievers = make([]*zk.ZookeeperRetriever, len(selected))
+	d.retrievers = make([]*zk.ZookeeperRetriever, len(selected))
 	registries := config.Sub("registry_centers")
 	for i := range selected {
 		id := selected[i]
-		r.retrievers[i] = zk.NewZookeeperRetriever(id)
+		d.retrievers[i] = zk.NewZookeeperRetriever(id)
 		zkconf := registries.Sub(id)
 		logger.Infow("ZkEndpointDiscovery start zk discovery", "discovery-id", id)
-		if err := r.retrievers[i].OnInit(zkconf); nil != err {
+		if err := d.retrievers[i].OnInit(zkconf); nil != err {
 			return err
 		}
 	}
@@ -104,7 +104,7 @@ func (r *ZookeeperDiscoveryService) OnInit(config *flux.Configuration) error {
 }
 
 // WatchEndpoints Listen http endpoints events
-func (r *ZookeeperDiscoveryService) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
+func (d *ZookeeperEndpointDiscovery) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	// Watch回调函数
 	callback := func(event remoting.NodeEvent) {
 		defer func() {
@@ -112,7 +112,7 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(ctx context.Context, events c
 				logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT:PANIC", "endpoint-event", event, "error", r)
 			}
 		}()
-		ep, err := r.decodeEndpointFunc(event.Data)
+		ep, err := d.decodeEndpointFunc(event.Data)
 		if nil != err {
 			logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT/decode", "endpoint-event", event, "error", err)
 			return
@@ -123,12 +123,12 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(ctx context.Context, events c
 			logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT/wrap-evt", "endpoint-event", event, "error", err)
 		}
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:ENDPOINT/watch", "endpoint-path", r.endpointPath)
-	return r.onRetrievers(ctx, r.endpointPath, callback)
+	logger.Infow("DISCOVERY:ZOOKEEPER:ENDPOINT/watch", "endpoint-path", d.endpointPath)
+	return d.onRetrievers(ctx, d.endpointPath, callback)
 }
 
 // WatchServices Listen gateway services events
-func (r *ZookeeperDiscoveryService) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
+func (d *ZookeeperEndpointDiscovery) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	// Watch回调函数
 	callback := func(event remoting.NodeEvent) {
 		defer func() {
@@ -136,7 +136,7 @@ func (r *ZookeeperDiscoveryService) WatchServices(ctx context.Context, events ch
 				logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE:PANIC", "service-event", event, "error", r)
 			}
 		}()
-		srv, err := r.decodeServiceFunc(event.Data)
+		srv, err := d.decodeServiceFunc(event.Data)
 		if nil != err {
 			logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE/decode", "service-event", event, "error", err)
 			return
@@ -147,14 +147,14 @@ func (r *ZookeeperDiscoveryService) WatchServices(ctx context.Context, events ch
 			logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE/wrap-ent", "service-event", event, "error", err)
 		}
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:SERVICE/watch", "service-path", r.servicePath)
-	return r.onRetrievers(ctx, r.servicePath, callback)
+	logger.Infow("DISCOVERY:ZOOKEEPER:SERVICE/watch", "service-path", d.servicePath)
+	return d.onRetrievers(ctx, d.servicePath, callback)
 }
 
-func (r *ZookeeperDiscoveryService) onRetrievers(ctx context.Context, path string, callback func(remoting.NodeEvent)) error {
-	for _, retriever := range r.retrievers {
+func (d *ZookeeperEndpointDiscovery) onRetrievers(ctx context.Context, path string, callback func(remoting.NodeEvent)) error {
+	for _, retriever := range d.retrievers {
 		watcher := func(ret *zk.ZookeeperRetriever, notify chan<- struct{}) {
-			if err := r.watch(ret, path, callback); err != nil {
+			if err := d.watch(ret, path, callback); err != nil {
 				logger.Errorw("DISCOVERY:ZOOKEEPER:WATCH/error", "watch-path", path, "error", err)
 			} else {
 				logger.Infow("DISCOVERY:ZOOKEEPER:WATCH/success", "watch-path", path)
@@ -176,7 +176,7 @@ func (r *ZookeeperDiscoveryService) onRetrievers(ctx context.Context, path strin
 	return nil
 }
 
-func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
+func (d *ZookeeperEndpointDiscovery) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
 	exist, err := retriever.Exists(rootpath)
 	if nil != err {
 		return fmt.Errorf("check path exists, path: %s, error: %w", rootpath, err)
@@ -197,9 +197,9 @@ func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, root
 }
 
 // OnStartup startup discovery service
-func (r *ZookeeperDiscoveryService) OnStartup() error {
+func (d *ZookeeperEndpointDiscovery) OnStartup() error {
 	logger.Info("DISCOVERY:ZOOKEEPER:STARTUP")
-	for _, retriever := range r.retrievers {
+	for _, retriever := range d.retrievers {
 		if err := retriever.OnStartup(); nil != err {
 			return err
 		}
@@ -208,9 +208,9 @@ func (r *ZookeeperDiscoveryService) OnStartup() error {
 }
 
 // OnShutdown shutdown discovery service
-func (r *ZookeeperDiscoveryService) OnShutdown(ctx context.Context) error {
+func (d *ZookeeperEndpointDiscovery) OnShutdown(ctx context.Context) error {
 	logger.Info("DISCOVERY:ZOOKEEPER:SHUTDOWN")
-	for _, retriever := range r.retrievers {
+	for _, retriever := range d.retrievers {
 		if err := retriever.OnShutdown(ctx); nil != err {
 			return err
 		}

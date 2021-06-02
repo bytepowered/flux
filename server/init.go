@@ -19,6 +19,6 @@ func init() {
 	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint discovery
-	ext.RegisterEndpointDiscovery(discovery.NewZookeeperServiceWith(discovery.ZookeeperId))
-	ext.RegisterEndpointDiscovery(discovery.NewResourceServiceWith(discovery.ResourceId))
+	ext.RegisterEndpointDiscovery(discovery.NewZookeeperEndpointDiscovery(discovery.ZookeeperId))
+	ext.RegisterEndpointDiscovery(discovery.NewResourceEndpointDiscovery(discovery.ResourceId))
 }
