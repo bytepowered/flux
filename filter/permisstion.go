@@ -87,18 +87,15 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 		if p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
-		// 没有任何权限校验定义
 		endpoint := ctx.Endpoint()
-		size := len(endpoint.Permissions)
-		if size == 0 && !endpoint.PermissionService.IsValid() {
+		permissions := endpoint.MultiAttributes(flux.EndpointAttrTagPermission).Strings()
+		// 没有任何权限校验定义
+		size := len(permissions)
+		if size == 0 {
 			return next(ctx)
 		}
 		services := make([]flux.Service, 0, 1+size)
-		// Define permission first
-		if endpoint.PermissionService.IsValid() {
-			services = append(services, endpoint.PermissionService)
-		}
-		for _, id := range endpoint.Permissions {
+		for _, id := range permissions {
 			if srv, ok := ext.ServiceByID(id); ok {
 				services = append(services, srv)
 			} else {
