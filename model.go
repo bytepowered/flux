@@ -320,7 +320,8 @@ type Endpoint struct {
 }
 
 func (e *Endpoint) IsValid() bool {
-	return e.HttpMethod != "" && "" != e.HttpPattern
+	return e.HttpMethod != "" && e.HttpPattern != "" &&
+		e.AttrExists(ServiceAttrTagRpcProto)
 }
 
 // Deprecated Use Attribute instead

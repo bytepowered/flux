@@ -14,7 +14,7 @@ var (
 )
 
 func DecodeServiceFunc(bytes []byte) (flux.Service, error) {
-	if err := VerifyJSON(bytes); err != err {
+	if err := VerifyJSON(bytes); err != nil {
 		return emptyService, err
 	}
 	service := flux.Service{}
@@ -28,7 +28,7 @@ func DecodeServiceFunc(bytes []byte) (flux.Service, error) {
 	return service, nil
 }
 
-func ToServiceEvent(srv *flux.Service, etype remoting.NoteEventType) (fxEvt flux.ServiceEvent, err error) {
+func ToServiceEvent(srv *flux.Service, etype remoting.NodeEventType) (fxEvt flux.ServiceEvent, err error) {
 	event := flux.ServiceEvent{Service: *srv}
 	switch etype {
 	case remoting.EventTypeNodeAdd:

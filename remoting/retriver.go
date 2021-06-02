@@ -2,7 +2,7 @@ package remoting
 
 import "fmt"
 
-type NoteEventType int
+type NodeEventType int
 
 const (
 	EventTypeNodeAdd = iota
@@ -22,7 +22,7 @@ var nodeEventNames = [...]string{
 	"Undefined",
 }
 
-func (t NoteEventType) String() string {
+func (t NodeEventType) String() string {
 	if t > eventTypeUndefined {
 		return nodeEventNames[eventTypeUndefined]
 	}
@@ -31,7 +31,7 @@ func (t NoteEventType) String() string {
 
 type NodeEvent struct {
 	Path  string
-	Event NoteEventType
+	Event NodeEventType
 	Data  []byte
 }
 
@@ -45,6 +45,6 @@ type NodeRetriever interface {
 	// AddChangedListener 监听数据节点的数据变更
 	AddChangedListener(groupId, dataNodeKey string, dataListener NodeChangedListener) error
 
-	// AddChildrenNodeChangedListener 监听目录节点的子节点变更
+	// AddChildChangedListener 监听目录节点的子节点变更
 	AddChildChangedListener(groupId, dirNodeKey string, childListener NodeChangedListener) error
 }

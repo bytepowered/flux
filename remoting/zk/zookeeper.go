@@ -237,7 +237,7 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 		case zkEvent := <-w.EvtCh:
 			r.newLogger().Debugw("Zookeeper retriever receive data event", "event", zkEvent)
 			var (
-				eventType remoting.NoteEventType
+				eventType remoting.NodeEventType
 				eventData []byte
 			)
 			r.listenerMu.RLock()

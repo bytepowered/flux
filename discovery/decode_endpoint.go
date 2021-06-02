@@ -14,7 +14,7 @@ var (
 )
 
 func DecodeEndpointFunc(bytes []byte) (flux.Endpoint, error) {
-	if err := VerifyJSON(bytes); err != err {
+	if err := VerifyJSON(bytes); err != nil {
 		return emptyEndpoint, err
 	}
 	ep := flux.Endpoint{}
@@ -31,7 +31,7 @@ func DecodeEndpointFunc(bytes []byte) (flux.Endpoint, error) {
 	return ep, nil
 }
 
-func ToEndpointEvent(ep *flux.Endpoint, etype remoting.NoteEventType) (fxEvt flux.EndpointEvent, err error) {
+func ToEndpointEvent(ep *flux.Endpoint, etype remoting.NodeEventType) (fxEvt flux.EndpointEvent, err error) {
 	event := flux.EndpointEvent{Endpoint: *ep}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
