@@ -292,9 +292,12 @@ func (b Service) RpcRetries() string {
 	return b.Attributes.Single(ServiceAttrTagRpcRetries).ToString()
 }
 
-// IsValid 判断服务配置是否有效；Interface+Method不能为空；
+// IsValid 判断服务配置是否有效；
+// 1. Interface, Method 不能为空；
+// 2. 包含Proto协议；
 func (b Service) IsValid() bool {
-	return b.Interface != "" && "" != b.Method
+	return b.Interface != "" && "" != b.Method &&
+		b.Attributes.Exists(ServiceAttrTagRpcProto)
 }
 
 // HasArguments 判定是否有参数
@@ -304,6 +307,9 @@ func (b Service) HasArguments() bool {
 
 // ServiceID 构建标识当前服务的ID
 func (b Service) ServiceID() string {
+	if b.Interface == "" || b.Method == "" {
+		return ""
+	}
 	return b.Interface + ":" + b.Method
 }
 
@@ -319,9 +325,11 @@ type Endpoint struct {
 	Service     Service    `json:"-"`                              // 上游/后端服务
 }
 
+// IsValid 判断Endpoint配置是否有效；
+// 1. HttpMethod, HttpPattern 不能为空；
+// 2. 包含ServiceId；
 func (e *Endpoint) IsValid() bool {
-	return e.HttpMethod != "" && e.HttpPattern != "" &&
-		e.AttrExists(ServiceAttrTagRpcProto)
+	return e.HttpMethod != "" && e.HttpPattern != "" && e.ServiceId != ""
 }
 
 // Deprecated Use Attribute instead
