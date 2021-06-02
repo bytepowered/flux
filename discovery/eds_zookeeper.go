@@ -196,7 +196,7 @@ func (r *ZookeeperDiscoveryService) watch(retriever *zk.ZookeeperRetriever, root
 	})
 }
 
-// Startup startup discovery service
+// OnStartup startup discovery service
 func (r *ZookeeperDiscoveryService) OnStartup() error {
 	logger.Info("DISCOVERY:ZOOKEEPER:STARTUP")
 	for _, retriever := range r.retrievers {
@@ -207,7 +207,7 @@ func (r *ZookeeperDiscoveryService) OnStartup() error {
 	return nil
 }
 
-// Shutdown shutdown discovery service
+// OnShutdown shutdown discovery service
 func (r *ZookeeperDiscoveryService) OnShutdown(ctx context.Context) error {
 	logger.Info("DISCOVERY:ZOOKEEPER:SHUTDOWN")
 	for _, retriever := range r.retrievers {

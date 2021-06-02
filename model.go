@@ -72,11 +72,11 @@ const (
 // ServiceAttributes
 const (
 	ServiceAttrTagNotDefined = ""
-	ServiceAttrTagRpcProto   = "rpcProto"
-	ServiceAttrTagRpcGroup   = "rpcGroup"
-	ServiceAttrTagRpcVersion = "rpcVersion"
-	ServiceAttrTagRpcTimeout = "rpcTimeout"
-	ServiceAttrTagRpcRetries = "rpcRetries"
+	ServiceAttrTagRpcProto   = "rpc:proto"
+	ServiceAttrTagRpcGroup   = "rpc:group"
+	ServiceAttrTagRpcVersion = "rpc:version"
+	ServiceAttrTagRpcTimeout = "rpc:timeout"
+	ServiceAttrTagRpcRetries = "rpc:retries"
 )
 
 // EndpointAttributes
