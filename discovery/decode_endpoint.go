@@ -14,7 +14,7 @@ var (
 )
 
 func DecodeEndpointFunc(bytes []byte) (flux.Endpoint, error) {
-	if err := checkjson(bytes); err != err {
+	if err := VerifyJSON(bytes); err != err {
 		return emptyEndpoint, err
 	}
 	ep := flux.Endpoint{}

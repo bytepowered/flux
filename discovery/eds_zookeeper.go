@@ -73,7 +73,7 @@ func (r *ZookeeperDiscoveryService) Id() string {
 	return r.id
 }
 
-// Init init discovery
+// OnInit init discovery
 func (r *ZookeeperDiscoveryService) OnInit(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		zkConfigRootpathEndpoint: zkDiscoveryEndpointPath,
@@ -103,7 +103,7 @@ func (r *ZookeeperDiscoveryService) OnInit(config *flux.Configuration) error {
 	return nil
 }
 
-// OnEndpointChanged Listen http endpoints events
+// WatchEndpoints Listen http endpoints events
 func (r *ZookeeperDiscoveryService) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	// Watch回调函数
 	callback := func(event remoting.NodeEvent) {
@@ -127,7 +127,7 @@ func (r *ZookeeperDiscoveryService) WatchEndpoints(ctx context.Context, events c
 	return r.onRetrievers(ctx, r.endpointPath, callback)
 }
 
-// OnServiceChanged Listen gateway services events
+// WatchServices Listen gateway services events
 func (r *ZookeeperDiscoveryService) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	// Watch回调函数
 	callback := func(event remoting.NodeEvent) {

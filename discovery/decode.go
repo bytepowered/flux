@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func checkjson(bytes []byte) error {
+func VerifyJSON(bytes []byte) error {
 	size := len(bytes)
 	if size < len("{\"k\":0}") {
 		return fmt.Errorf("CHECK/JSON/MALFORMED/size: %d", size)

@@ -14,7 +14,7 @@ var (
 )
 
 func DecodeServiceFunc(bytes []byte) (flux.Service, error) {
-	if err := checkjson(bytes); err != err {
+	if err := VerifyJSON(bytes); err != err {
 		return emptyService, err
 	}
 	service := flux.Service{}

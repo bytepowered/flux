@@ -17,7 +17,7 @@ const (
 var _ flux.EndpointDiscovery = new(ResourceDiscoveryService)
 
 type (
-	// ZookeeperOption 配置函数
+	// ResourceOption 配置函数
 	ResourceOption func(discovery *ResourceDiscoveryService)
 )
 
@@ -50,7 +50,7 @@ func (r *ResourceDiscoveryService) Id() string {
 func (r *ResourceDiscoveryService) OnInit(config *flux.Configuration) error {
 	// 加载指定路径的配置
 	files := config.GetStringSlice("includes")
-	logger.Infow("Resource discovery, load resources", "includes", files)
+	logger.Infow("DISCOVERY:RESOURCE:LOAD/resource", "includes", files)
 	if err := r.includes(files); nil != err {
 		return err
 	}
@@ -76,7 +76,7 @@ func (r *ResourceDiscoveryService) WatchEndpoints(ctx context.Context, events ch
 	for _, res := range r.resources {
 		for _, el := range res.Endpoints {
 			if !el.IsValid() {
-				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/invalid", "endpoint", el)
+				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/verify", "endpoint", el)
 				continue
 			}
 			dup := el

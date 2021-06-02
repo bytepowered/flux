@@ -40,7 +40,7 @@ type (
 	VersionLookupFunc func(webex flux.ServerWebContext) (version string)
 )
 
-// GenericServer
+// GenericServer Server
 type GenericServer struct {
 	listeners      map[string]flux.WebListener
 	onContextHooks []flux.OnContextHookFunc
@@ -440,7 +440,7 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 	}
 }
 
-// GracefulShutdown
+// AwaitSignal GracefulShutdown
 func (gs *GenericServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	// 接收停止信号
 	signal.Notify(quit, dubgo.ShutdownSignals...)
@@ -449,7 +449,7 @@ func (gs *GenericServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	ctx, cancel := goctx.WithTimeout(goctx.Background(), to)
 	defer cancel()
 	if err := gs.Shutdown(ctx); nil != err {
-		logger.Errorw("SERVER:EVENT:SHUTDOWN:ERROR", "error", err)
+		logger.Errorw("SERVER:EVENT:SHUTDOWN/error", "error", err)
 	}
 }
 
@@ -548,7 +548,7 @@ func (gs *GenericServer) mapservice(ep *flux.Endpoint) {
 	if !ok {
 		return
 	}
-	logger.Infow("SERVER:EVENT:MAPMETA/endpoint-to-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+	logger.Infow("SERVER:EVENT:MAPMETA/bind-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 	ep.Service = service
 }
 
@@ -558,7 +558,7 @@ func (gs *GenericServer) mapendpoint(srv *flux.Service) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
 			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
-				logger.Infow("SERVER:EVENT:MAPMETA/service-to-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				logger.Infow("SERVER:EVENT:MAPMETA/bind-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				ep.Service = *srv
 			}
 		}
@@ -572,7 +572,7 @@ func onInitializer(v interface{}, f func(initable flux.Initializer) error) error
 	return nil
 }
 
-// NewWebListenerOptions 根据WebListenerID，返回初始化WebListener实例时的配置
+// NewWebListenerConfig 根据WebListenerID，返回初始化WebListener实例时的配置
 func NewWebListenerConfig(id string) *flux.Configuration {
 	return flux.NewConfigurationByKeys(flux.NamespaceWebListeners, id)
 }
