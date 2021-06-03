@@ -104,7 +104,7 @@ func init() {
 	ext.RegisterMTValueResolver(ext.DefaultMTValueResolverName, complexObjectResolver)
 }
 
-// CastDecodeToString 最大努力地将值转换成String类型。
+// CastDecodeMTValueToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
 func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
 	if isEmptyOrNil(mtValue.Value) {

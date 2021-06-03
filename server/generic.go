@@ -230,6 +230,7 @@ func (gs *GenericServer) Startup(build flux.Build) error {
 
 func (gs *GenericServer) start() error {
 	flux.AssertNotNil(gs.defaultListener(), "<default-listener> MUST NOT nil")
+	flux.AssertNotNil(ext.LookupFunc(), "<lookup-func> MUST NOT nil")
 	logger.Info("SERVER:EVEN:STARTUP")
 	for _, startup := range sortedStartup(ext.StartupHooks()) {
 		if err := startup.OnStartup(); nil != err {
@@ -374,26 +375,22 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("SERVER:EVENT:SERVICE:ADD",
-			"service-id", service.ServiceID(), "alias-id", service.AliasId)
-		gs.mapargument(service.Arguments)
+		logger.Infow("SERVER:EVENT:SERVICE:ADD", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		gs.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
-		gs.dynConnectEndpoint(&service)
+
 	case flux.EventTypeUpdated:
-		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
-			"service-id", service.ServiceID(), "alias-id", service.AliasId)
-		gs.mapargument(service.Arguments)
+		logger.Infow("SERVER:EVENT:SERVICE:UPDATE", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		gs.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
-		gs.dynConnectEndpoint(&service)
 	case flux.EventTypeRemoved:
-		logger.Infow("SERVER:EVENT:SERVICE:REMOVE",
-			"service-id", service.ServiceID(), "alias-id", service.AliasId)
+		logger.Infow("SERVER:EVENT:SERVICE:REMOVE", "service-id", service.ServiceID(), "alias-id", service.AliasId)
 		ext.RemoveServiceByID(service.ServiceID())
 		if service.AliasId != "" {
 			ext.RemoveServiceByID(service.AliasId)
@@ -414,8 +411,8 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", epvars...)
+		gs.syncService(&ep)
 		mvce.Update(ep.Version, &ep)
-		gs.dynConnectService(&ep)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if register {
 			id := ep.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
@@ -432,8 +429,8 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", epvars...)
+		gs.syncService(&ep)
 		mvce.Update(ep.Version, &ep)
-		gs.dynConnectService(&ep)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", epvars...)
 		mvce.Delete(ep.Version)
@@ -532,18 +529,9 @@ func (gs *GenericServer) defaultListener() flux.WebListener {
 	return nil
 }
 
-// mapargument 绑定参数处理函数
-func (gs *GenericServer) mapargument(args []flux.Argument) {
-	for i := range args {
-		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
-		args[i].LookupFunc = ext.LookupFunc()
-		gs.mapargument(args[i].Fields)
-	}
-}
-
-// dynConnectService 将Endpoint与Service建立绑定映射；
+// syncService 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) dynConnectService(ep *flux.Endpoint) {
+func (gs *GenericServer) syncService(ep *flux.Endpoint) {
 	// Endpoint为静态模型，不支持动态更新
 	if ep.AttributeExists(flux.EndpointAttrTagStaticModel) {
 		return
@@ -552,13 +540,13 @@ func (gs *GenericServer) dynConnectService(ep *flux.Endpoint) {
 	if !ok {
 		return
 	}
-	logger.Infow("SERVER:EVENT:MAPMETA/bind-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+	logger.Infow("SERVER:EVENT:MAPMETA/sync-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 	ep.Service = service
 }
 
-// dynConnectEndpoint 将Endpoint与Service建立绑定映射；
+// syncEndpoint 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) dynConnectEndpoint(srv *flux.Service) {
+func (gs *GenericServer) syncEndpoint(srv *flux.Service) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新
@@ -566,7 +554,7 @@ func (gs *GenericServer) dynConnectEndpoint(srv *flux.Service) {
 				continue
 			}
 			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
-				logger.Infow("SERVER:EVENT:MAPMETA/bind-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				logger.Infow("SERVER:EVENT:MAPMETA/sync-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				ep.Service = *srv
 			}
 		}

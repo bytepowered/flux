@@ -1,7 +1,6 @@
 package flux
 
 import (
-	"fmt"
 	"github.com/spf13/cast"
 	"strings"
 	"sync"
@@ -101,72 +100,18 @@ type (
 	MTValueLookupFunc func(ctx *Context, scope, key string) (MTValue, error)
 )
 
-type (
-	// Argument 定义Endpoint的参数结构元数据
-	Argument struct {
-		Name       string     `json:"name" yaml:"name"`             // 参数名称
-		Type       string     `json:"type" yaml:"type"`             // 参数结构类型
-		Class      string     `json:"class" yaml:"class"`           // 参数类型
-		Generic    []string   `json:"generic" yaml:"generic"`       // 泛型类型
-		HttpName   string     `json:"httpName" yaml:"httpName"`     // 映射Http的参数Key
-		HttpScope  string     `json:"httpScope" yaml:"httpScope"`   // 映射Http参数值域
-		Fields     []Argument `json:"fields" yaml:"fields"`         // 子结构字段
-		Attributes Attributes `json:"attributes" yaml:"attributes"` // 属性列表
-		// helper func
-		ValueLoader   MTValueLoaderFunc `json:"-"`
-		LookupFunc    MTValueLookupFunc `json:"-"`
-		ValueResolver MTValueResolver   `json:"-"`
-	}
-)
-
-// Resolve 解析Argument参数值
-func (a Argument) Resolve(ctx *Context) (interface{}, error) {
-	return resolve(ctx, &a)
-}
-
-// Resolvep 解析Argument参数值
-func (a *Argument) Resolvep(ctx *Context) (interface{}, error) {
-	return resolve(ctx, a)
-}
-
-// Resolve 解析Argument参数值
-func resolve(ctx *Context, a *Argument) (interface{}, error) {
-	if nil == a.ValueResolver {
-		return nil, fmt.Errorf("ValueResolver is nil, name: %s", a.Name)
-	}
-	// 1: Value loader
-	if nil != a.ValueLoader {
-		mtv := a.ValueLoader()
-		return a.ValueResolver(mtv, a.Class, a.Generic)
-	}
-	// 2: Lookup
-	if nil == a.LookupFunc {
-		return nil, fmt.Errorf("MTValueLookupFunc is nil, name: %s", a.Name)
-	}
-	// 3: Single value
-	if len(a.Fields) == 0 {
-		mtv, err := a.LookupFunc(ctx, a.HttpScope, a.HttpName)
-		if nil != err {
-			return nil, err
-		}
-		if !mtv.Valid && a.Attributes != nil {
-			if attr, ok := a.Attributes.SingleEx(ArgumentAttributeTagDefault); ok {
-				mtv = NewStringMTValue(attr.ToString())
-			}
-		}
-		return a.ValueResolver(mtv, a.Class, a.Generic)
-	}
-	// 4: POJO Values
-	sm := make(map[string]interface{}, len(a.Fields))
-	sm["class"] = a.Class
-	for _, field := range a.Fields {
-		if fv, err := field.Resolve(ctx); nil != err {
-			return nil, err
-		} else {
-			sm[field.Name] = fv
-		}
-	}
-	return sm, nil
+// Argument 定义Endpoint的参数结构元数据
+type Argument struct {
+	Name       string     `json:"name" yaml:"name"`             // 参数名称
+	Type       string     `json:"type" yaml:"type"`             // 参数结构类型
+	Class      string     `json:"class" yaml:"class"`           // 参数类型
+	Generic    []string   `json:"generic" yaml:"generic"`       // 泛型类型
+	HttpName   string     `json:"httpName" yaml:"httpName"`     // 映射Http的参数Key
+	HttpScope  string     `json:"httpScope" yaml:"httpScope"`   // 映射Http参数值域
+	Fields     []Argument `json:"fields" yaml:"fields"`         // 子结构字段
+	Attributes Attributes `json:"attributes" yaml:"attributes"` // 属性列表
+	// helper func
+	ValueLoader MTValueLoaderFunc `json:"-"` // 注册时绑定
 }
 
 // Attribute 定义服务的属性信息
