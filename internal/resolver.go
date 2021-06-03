@@ -19,6 +19,9 @@ var (
 )
 
 var (
+	objectResolver = flux.MTValueResolver(func(mtValue flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
+		return mtValue.Value, nil
+	})
 	stringResolver = flux.MTValueResolver(func(mtValue flux.MTValue, _ string, genericTypes []string) (interface{}, error) {
 		return CastDecodeMTValueToString(mtValue)
 	})
@@ -100,6 +103,9 @@ func init() {
 	ext.RegisterMTValueResolver("slice", listResolver)
 	ext.RegisterMTValueResolver("list", listResolver)
 	ext.RegisterMTValueResolver(flux.JavaUtilListClassName, listResolver)
+
+	ext.RegisterMTValueResolver(flux.JavaIOSerializable, objectResolver)
+	ext.RegisterMTValueResolver(flux.JavaLangObjectClassName, objectResolver)
 
 	ext.RegisterMTValueResolver(ext.DefaultMTValueResolverName, complexObjectResolver)
 }

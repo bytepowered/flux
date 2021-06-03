@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	JavaLangObjectClassName  = "java.lang.Object"
 	JavaLangStringClassName  = "java.lang.String"
 	JavaLangIntegerClassName = "java.lang.Integer"
 	JavaLangLongClassName    = "java.lang.Long"
@@ -13,6 +14,7 @@ const (
 	JavaLangBooleanClassName = "java.lang.Boolean"
 	JavaUtilMapClassName     = "java.util.Map"
 	JavaUtilListClassName    = "java.util.List"
+	JavaIOSerializable       = "java.io.Serializable"
 )
 
 // MediaType Golang内置参数类型
