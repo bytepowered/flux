@@ -81,11 +81,12 @@ const (
 
 // EndpointAttributes
 const (
-	EndpointAttrTagNotDefined = ""               // 默认的，未定义的属性
-	EndpointAttrTagAuthorize  = "tag:authorize"  // 标识Endpoint访问是否需要授权
-	EndpointAttrTagListenerId = "tag:listenerId" // 标识Endpoint绑定到哪个ListenServer服务
-	EndpointAttrTagBizId      = "tag:bizId"      // 标识Endpoint绑定到业务标识
-	EndpointAttrTagPermission = "tag:permission"
+	EndpointAttrTagNotDefined  = ""                // 默认的，未定义的属性
+	EndpointAttrTagAuthorize   = "tag:authorize"   // 标识Endpoint访问是否需要授权
+	EndpointAttrTagListenerId  = "tag:listenerId"  // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAttrTagBizId       = "tag:bizId"       // 标识Endpoint绑定到业务标识
+	EndpointAttrTagPermission  = "tag:permission"  // 权限权限声明
+	EndpointAttrTagStaticModel = "tag:staticModel" // 标识此Endpoint为固定数据模型，不支持动态更新
 )
 
 const (

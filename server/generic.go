@@ -381,7 +381,7 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
-		gs.mapendpoint(&service)
+		gs.dynConnectEndpoint(&service)
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
 			"service-id", service.ServiceID(), "alias-id", service.AliasId)
@@ -390,7 +390,7 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
-		gs.mapendpoint(&service)
+		gs.dynConnectEndpoint(&service)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:SERVICE:REMOVE",
 			"service-id", service.ServiceID(), "alias-id", service.AliasId)
@@ -415,7 +415,7 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", epvars...)
 		mvce.Update(ep.Version, &ep)
-		gs.mapservice(&ep)
+		gs.dynConnectService(&ep)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if register {
 			id := ep.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
@@ -433,7 +433,7 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", epvars...)
 		mvce.Update(ep.Version, &ep)
-		gs.mapservice(&ep)
+		gs.dynConnectService(&ep)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", epvars...)
 		mvce.Delete(ep.Version)
@@ -541,9 +541,13 @@ func (gs *GenericServer) mapargument(args []flux.Argument) {
 	}
 }
 
-// mapservice 将Endpoint与Service建立绑定映射；
+// dynConnectService 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) mapservice(ep *flux.Endpoint) {
+func (gs *GenericServer) dynConnectService(ep *flux.Endpoint) {
+	// Endpoint为静态模型，不支持动态更新
+	if ep.AttributeExists(flux.EndpointAttrTagStaticModel) {
+		return
+	}
 	service, ok := ext.ServiceByID(ep.ServiceId)
 	if !ok {
 		return
@@ -552,11 +556,15 @@ func (gs *GenericServer) mapservice(ep *flux.Endpoint) {
 	ep.Service = service
 }
 
-// mapendpoint 将Endpoint与Service建立绑定映射；
+// dynConnectEndpoint 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) mapendpoint(srv *flux.Service) {
+func (gs *GenericServer) dynConnectEndpoint(srv *flux.Service) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
+			// Endpoint为静态模型，不支持动态更新
+			if ep.AttributeExists(flux.EndpointAttrTagStaticModel) {
+				continue
+			}
 			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
 				logger.Infow("SERVER:EVENT:MAPMETA/bind-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				ep.Service = *srv
