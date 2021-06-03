@@ -1,6 +1,9 @@
 package flux
 
-import "context"
+import (
+	"context"
+	"github.com/bytepowered/flux/remoting"
+)
 
 // EndpointDiscovery Endpoint注册元数据事件监听
 // 监听接收元数据中心的配置变化
@@ -20,5 +23,11 @@ type (
 	DiscoveryDecodeServiceFunc func(bytes []byte) (service Service, err error)
 
 	// DiscoveryDecodeEndpointFunc 将原始数据解码为Service事件
-	DiscoveryDecodeEndpointFunc func(bytes []byte) (service Endpoint, err error)
+	DiscoveryDecodeEndpointFunc func(bytes []byte) (endpoint Endpoint, err error)
+
+	// DiscoveryServiceFilter 过滤和处理Service
+	DiscoveryServiceFilter func(event remoting.NodeEvent, data *Service) bool
+
+	// DiscoveryEndpointFilter 过滤和重Endpoint
+	DiscoveryEndpointFilter func(event remoting.NodeEvent, data *Endpoint) bool
 )

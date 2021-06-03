@@ -39,10 +39,12 @@ type ZookeeperEndpointDiscovery struct {
 	id                 string
 	endpointPath       string
 	servicePath        string
-	globalAlias  map[string]string
+	globalAlias        map[string]string
 	retrievers         []*zk.ZookeeperRetriever
 	decodeServiceFunc  flux.DiscoveryDecodeServiceFunc
 	decodeEndpointFunc flux.DiscoveryDecodeEndpointFunc
+	serviceFilter      flux.DiscoveryServiceFilter
+	endpointFilter     flux.DiscoveryEndpointFilter
 }
 
 func WithZookeeperDecodeServiceFunc(f flux.DiscoveryDecodeServiceFunc) ZookeeperOption {
@@ -57,12 +59,30 @@ func WithZookeeperDecodeEndpointFunc(f flux.DiscoveryDecodeEndpointFunc) Zookeep
 	}
 }
 
+func WithZookeeperEndpointFilter(f flux.DiscoveryEndpointFilter) ZookeeperOption {
+	return func(discovery *ZookeeperEndpointDiscovery) {
+		discovery.endpointFilter = f
+	}
+}
+
+func WithZookeeperServiceFilter(f flux.DiscoveryServiceFilter) ZookeeperOption {
+	return func(discovery *ZookeeperEndpointDiscovery) {
+		discovery.serviceFilter = f
+	}
+}
+
 // NewZookeeperEndpointDiscovery returns new a zookeeper discovery factory
 func NewZookeeperEndpointDiscovery(id string, opts ...ZookeeperOption) *ZookeeperEndpointDiscovery {
 	d := &ZookeeperEndpointDiscovery{
 		id:                 id,
 		decodeEndpointFunc: DecodeEndpointFunc,
 		decodeServiceFunc:  DecodeServiceFunc,
+		endpointFilter: func(event remoting.NodeEvent, data *flux.Endpoint) bool {
+			return true
+		},
+		serviceFilter: func(event remoting.NodeEvent, data *flux.Service) bool {
+			return true
+		},
 	}
 	for _, opt := range opts {
 		opt(d)
@@ -114,50 +134,60 @@ func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
 
 // WatchEndpoints Listen http endpoints events
 func (d *ZookeeperEndpointDiscovery) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
-	// Watch回调函数
-	callback := func(event remoting.NodeEvent) {
+	callback := func(event *remoting.NodeEvent) (err error) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT:PANIC", "endpoint-event", event, "error", r)
+				err = fmt.Errorf("discovery(zk.endpoint) callback panic: %+v", r)
 			}
 		}()
-		ep, err := d.decodeEndpointFunc(event.Data)
+		srv, err := d.decodeEndpointFunc(event.Data)
 		if nil != err {
-			logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT/decode", "endpoint-event", event, "error", err)
-			return
+			return err
 		}
-		if evt, err := ToEndpointEvent(&ep, event.Event); nil == err {
+		evt, err := ToEndpointEvent(&srv, event.Event)
+		if nil == err {
+			if !d.endpointFilter(*event, &evt.Endpoint) {
+				return fmt.Errorf("skip by filter")
+			}
 			events <- evt
-		} else {
-			logger.Errorw("DISCOVERY:ZOOKEEPER:ENDPOINT/wrap-evt", "endpoint-event", event, "error", err)
 		}
+		return err
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:ENDPOINT/watch", "endpoint-path", d.endpointPath)
-	return d.onRetrievers(ctx, d.endpointPath, callback)
+	logger.Infow("DISCOVERY:ZOOKEEPER:ENDPOINT/watch", "ep-path", d.servicePath)
+	return d.onRetrievers(ctx, d.servicePath, func(event remoting.NodeEvent) {
+		if err := callback(&event); err != nil {
+			logger.Warnw("DISCOVERY:ZOOKEEPER:ENDPOINT/failed", "ep-event", event, "error", err)
+		}
+	})
 }
 
 // WatchServices Listen gateway services events
 func (d *ZookeeperEndpointDiscovery) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
-	// Watch回调函数
-	callback := func(event remoting.NodeEvent) {
+	callback := func(event *remoting.NodeEvent) (err error) {
 		defer func() {
 			if r := recover(); nil != r {
-				logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE:PANIC", "service-event", event, "error", r)
+				err = fmt.Errorf("discovery(zk.service) callback panic: %+v", r)
 			}
 		}()
 		srv, err := d.decodeServiceFunc(event.Data)
 		if nil != err {
-			logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE/decode", "service-event", event, "error", err)
-			return
+			return err
 		}
-		if evt, err := ToServiceEvent(&srv, event.Event); nil == err {
+		evt, err := ToServiceEvent(&srv, event.Event)
+		if nil == err {
+			if !d.serviceFilter(*event, &evt.Service) {
+				return fmt.Errorf("skip by filter")
+			}
 			events <- evt
-		} else {
-			logger.Errorw("DISCOVERY:ZOOKEEPER:SERVICE/wrap-ent", "service-event", event, "error", err)
 		}
+		return err
 	}
 	logger.Infow("DISCOVERY:ZOOKEEPER:SERVICE/watch", "service-path", d.servicePath)
-	return d.onRetrievers(ctx, d.servicePath, callback)
+	return d.onRetrievers(ctx, d.servicePath, func(event remoting.NodeEvent) {
+		if err := callback(&event); err != nil {
+			logger.Warnw("DISCOVERY:ZOOKEEPER:SERVICE/failed", "service-event", event, "error", err)
+		}
+	})
 }
 
 func (d *ZookeeperEndpointDiscovery) onRetrievers(ctx context.Context, path string, callback func(remoting.NodeEvent)) error {

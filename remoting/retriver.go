@@ -30,13 +30,14 @@ func (t NodeEventType) String() string {
 }
 
 type NodeEvent struct {
-	Path  string
-	Event NodeEventType
-	Data  []byte
+	SourceId string
+	Path     string
+	Event    NodeEventType
+	Data     []byte
 }
 
 func (e NodeEvent) String() string {
-	return fmt.Sprintf("Event{Type{%s}, Path{%s} Body{%s}}", e.Event, e.Path, string(e.Data))
+	return fmt.Sprintf("Event{Type=%s, Path=%s, Body=%s, SourceId=%s}", e.Event, e.Path, string(e.Data), e.SourceId)
 }
 
 type NodeChangedListener func(event NodeEvent)

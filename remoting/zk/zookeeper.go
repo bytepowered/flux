@@ -162,8 +162,9 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				newChild := path.Join(parentNodePath, p)
 				cachedChildren = append(cachedChildren, newChild)
 				handleChildChanged(remoting.NodeEvent{
-					Path:  newChild,
-					Event: remoting.EventTypeChildAdd,
+					SourceId: r.Id,
+					Path:     newChild,
+					Event:    remoting.EventTypeChildAdd,
 				})
 			}
 		}
@@ -186,8 +187,9 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 					newChildren[i] = path.Join(parentNodePath, p) // Update full path
 					if !toolkit.MatchEqual(cachedChildren, newChildren[i]) {
 						handleChildChanged(remoting.NodeEvent{
-							Path:  newChildren[i],
-							Event: remoting.EventTypeChildAdd,
+							SourceId: r.Id,
+							Path:     newChildren[i],
+							Event:    remoting.EventTypeChildAdd,
 						})
 					}
 				}
@@ -195,8 +197,9 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				for _, p := range cachedChildren {
 					if !toolkit.MatchEqual(newChildren, p) {
 						handleChildChanged(remoting.NodeEvent{
-							Path:  p,
-							Event: remoting.EventTypeChildDelete,
+							SourceId: r.Id,
+							Path:     p,
+							Event:    remoting.EventTypeChildDelete,
 						})
 					}
 				}
@@ -270,9 +273,10 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 				continue
 			}
 			event := remoting.NodeEvent{
-				Path:  zkEvent.Path,
-				Event: eventType,
-				Data:  eventData,
+				SourceId: r.Id,
+				Path:     zkEvent.Path,
+				Event:    eventType,
+				Data:     eventData,
 			}
 			for _, listener := range listeners {
 				listener(event)
