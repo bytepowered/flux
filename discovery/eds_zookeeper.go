@@ -39,7 +39,6 @@ type ZookeeperEndpointDiscovery struct {
 	id                 string
 	endpointPath       string
 	servicePath        string
-	globalAlias        map[string]string
 	retrievers         []*zk.ZookeeperRetriever
 	decodeServiceFunc  flux.DiscoveryDecodeServiceFunc
 	decodeEndpointFunc flux.DiscoveryDecodeEndpointFunc
@@ -104,7 +103,7 @@ func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
 	if len(selected) == 0 {
 		selected = []string{"default"}
 	}
-	logger.Infow("ZkEndpointDiscovery selected discovery", "selected-ids", selected)
+	logger.Infow("DISCOVERY:ZOOKEEPER:INIT", "selected-registry", selected)
 	d.endpointPath = config.GetString(zkConfigRootpathEndpoint)
 	d.servicePath = config.GetString(zkConfigRootpathService)
 	if d.endpointPath == "" || d.servicePath == "" {
@@ -116,15 +115,7 @@ func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
 		id := selected[i]
 		d.retrievers[i] = zk.NewZookeeperRetriever(id)
 		zkconf := registries.Sub(id)
-		zkconf.SetKeyAlias(map[string]string{
-			"address":  "zookeeper.address",
-			"password": "zookeeper.password",
-			"timeout":  "zookeeper.timeout",
-		})
-		if len(d.globalAlias) != 0 {
-			zkconf.SetKeyAlias(d.globalAlias)
-		}
-		logger.Infow("ZkEndpointDiscovery start zk discovery", "discovery-id", id)
+		logger.Infow("DISCOVERY:ZOOKEEPER:INIT/start-eds", "discovery-id", id)
 		if err := d.retrievers[i].OnInit(zkconf); nil != err {
 			return err
 		}

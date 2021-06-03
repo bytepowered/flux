@@ -78,14 +78,14 @@ func (d *ResourceEndpointDiscovery) WatchEndpoints(ctx context.Context, events c
 	for _, res := range d.resources {
 		for _, el := range res.Endpoints {
 			if !el.IsValid() {
-				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/verify", "endpoint", el)
+				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/verify:invalid", "endpoint", el)
 				continue
 			}
 			dup := el
 			if evt, err := ToEndpointEvent(&dup, flux.EventTypeAdded); err == nil {
 				events <- evt
 			} else {
-				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/event", "endpoint", el, "error", el)
+				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/wrap:error", "endpoint", el, "error", el)
 			}
 		}
 	}
@@ -96,14 +96,14 @@ func (d *ResourceEndpointDiscovery) WatchServices(ctx context.Context, events ch
 	for _, res := range d.resources {
 		for _, el := range res.Services {
 			if !el.IsValid() {
-				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/invalid", "service", el)
+				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/verify:invalid", "service", el)
 				continue
 			}
 			dup := el
 			if evt, err := ToServiceEvent(&dup, flux.EventTypeAdded); err == nil {
 				events <- evt
 			} else {
-				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/event", "service", el, "error", el)
+				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/wrap:error", "service", el, "error", el)
 			}
 		}
 	}
