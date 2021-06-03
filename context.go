@@ -132,25 +132,25 @@ func (c *Context) AddMetric(name string, elapsed time.Duration) {
 	})
 }
 
-// LoadMetrics 返回请求路由的的统计数据
+// Metrics 返回请求路由的的统计数据
 func (c *Context) Metrics() []TraceMetric {
 	dist := make([]TraceMetric, len(c.metrics))
 	copy(dist, c.metrics)
 	return dist
 }
 
-// GetLogger 添加Context范围的Logger。
+// SetLogger 添加Context范围的Logger。
 // 通常是将关联一些追踪字段的Logger设置为ContextLogger
 func (c *Context) SetLogger(logger Logger) {
 	c.ctxLogger = logger
 }
 
-// GetLogger 返回Context范围的Logger。
+// Logger 返回Context范围的Logger。
 func (c *Context) Logger() Logger {
 	return c.ctxLogger
 }
 
-// Metrics 请求路由的的统计数据
+// TraceMetric 请求路由的的统计数据
 type TraceMetric struct {
 	Name    string `json:"name"`
 	Elapses string `json:"elapses"`

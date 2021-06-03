@@ -135,7 +135,7 @@ func (c *Configuration) SetDefault(key string, value interface{}) {
 	c.registry.SetDefault(c.makeKey(key), value)
 }
 
-// SetDefault 为当前配置实例设置一组默认值。与Viper的SetDefault一致，作用于当前配置实例。
+// SetDefaults 为当前配置实例设置一组默认值。与Viper的SetDefault一致，作用于当前配置实例。
 func (c *Configuration) SetDefaults(defaults map[string]interface{}) {
 	for key, val := range defaults {
 		c.registry.SetDefault(c.makeKey(key), val)

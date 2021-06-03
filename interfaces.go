@@ -20,25 +20,26 @@ type (
 
 	// Startuper 用于介入服务启动生命周期的Hook，通常与 Orderer 接口一起使用。
 	Startuper interface {
-		// 当服务启动时，调用此函数
+		// OnStartup 当服务启动时，调用此函数
 		OnStartup() error
 	}
 
 	// Shutdowner 用于介入服务停止生命周期的Hook，通常与 Orderer 接口一起使用。
 	Shutdowner interface {
-		// 当服务停止时，调用此函数
+		// OnShutdown 当服务停止时，调用此函数
 		OnShutdown(ctx context.Context) error
 	}
 
 	// Initializer 用于介入服务停止生命周期的Hook。
 	Initializer interface {
-		// 当服务初始化时，调用此函数
+		// OnInit 当服务初始化时，调用此函数
 		OnInit(configuration *Configuration) error
 	}
 
 	// Orderer 用于定义顺序
 	Orderer interface {
-		Order() int // 返回排序顺序
+		// Order 返回排序顺序
+		Order() int
 	}
 )
 
@@ -75,7 +76,7 @@ func WrapShutdown(f func(context.Context) error) Shutdowner {
 // LoggerFactory 构建Logger实例
 type LoggerFactory func(values context.Context) Logger
 
-// 日志Logger接口定义
+// Logger 日志Logger接口定义
 type Logger interface {
 	// uses fmt.Sprint to construct and log a message.
 	Info(args ...interface{})

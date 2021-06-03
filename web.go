@@ -200,7 +200,7 @@ type WebListener interface {
 	Initializer
 	Shutdowner
 
-	// Id 返回服务器的ID
+	// ListenerId 返回服务器的ID
 	ListenerId() string
 
 	// Listen 启动服务，监听端口

@@ -5,7 +5,7 @@ import (
 	"github.com/json-iterator/go/extra"
 )
 
-// 序列化接口
+// Serializer 序列化接口
 type Serializer interface {
 	// Marshal 将对象序列化为字节数组
 	Marshal(any interface{}) (bytes []byte, err error)
@@ -15,7 +15,7 @@ type Serializer interface {
 	Unmarshal(bytes []byte, obj interface{}) error
 }
 
-// 默认JSON序列化实现
+// JSONSerializer 默认JSON序列化实现
 type JSONSerializer struct {
 	json jsoniter.API
 }

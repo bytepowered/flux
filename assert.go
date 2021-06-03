@@ -55,7 +55,7 @@ func AssertNotEmpty(v string, message string, args ...interface{}) {
 	}
 }
 
-// 检查非Nil值。当为Nil时，Panic报错
+// MustNotNil 检查非Nil值。当为Nil时，Panic报错
 func MustNotNil(v interface{}, msg string) interface{} {
 	AssertNotNil(v, msg)
 	return v
