@@ -153,8 +153,8 @@ func (d *ZookeeperEndpointDiscovery) WatchEndpoints(ctx context.Context, events 
 		}
 		return err
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:ENDPOINT/watch", "ep-path", d.servicePath)
-	return d.onRetrievers(ctx, d.servicePath, func(event remoting.NodeEvent) {
+	logger.Infow("DISCOVERY:ZOOKEEPER:ENDPOINT/watch", "ep-path", d.endpointPath)
+	return d.onRetrievers(ctx, d.endpointPath, func(event remoting.NodeEvent) {
 		if err := callback(&event); err != nil {
 			logger.Warnw("DISCOVERY:ZOOKEEPER:ENDPOINT/failed", "ep-event", event, "error", err)
 		}
