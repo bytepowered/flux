@@ -24,7 +24,7 @@ func resolvepojo(ctx *flux.Context, a *flux.Argument) (interface{}, error) {
 	sm := make(map[string]interface{}, len(a.Fields))
 	sm["class"] = a.Class
 	for _, field := range a.Fields {
-		if fv, err := Resolve(ctx, a); nil != err {
+		if fv, err := Resolve(ctx, &field); nil != err {
 			return nil, err
 		} else {
 			sm[field.Name] = fv
