@@ -145,7 +145,7 @@ func TestParseEndpointModelV2(t *testing.T) {
 		},
 		{
 			Expected: "COMPLEX",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Type },
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Category },
 		},
 		{
 			Expected: "$body",

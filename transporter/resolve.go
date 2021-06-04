@@ -7,7 +7,7 @@ import (
 
 // Resolve 解析Argument参数值
 func Resolve(ctx *flux.Context, a *flux.Argument) (interface{}, error) {
-	switch a.Type {
+	switch a.Category {
 	case flux.ArgumentTypeComplex:
 		return resolvepojo(ctx, a)
 

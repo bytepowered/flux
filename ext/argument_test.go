@@ -71,7 +71,7 @@ func TestArgumentDefinition(t *testing.T) {
 	assert := assert2.New(t)
 	for _, tcase := range cases {
 		assert.Equal(tcase.class, tcase.definition.Class, "type class", tcase.name)
-		assert.Equal(tcase.argType, tcase.definition.Type, "arg type", tcase.name)
+		assert.Equal(tcase.argType, tcase.definition.Category, "arg type", tcase.name)
 		assert.Equal(tcase.name, tcase.definition.Name, "name")
 	}
 }
