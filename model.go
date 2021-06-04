@@ -102,29 +102,29 @@ type (
 
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
-	Name       string                      `json:"name" yaml:"name"`             // 参数名称
-	Type       string                      `json:"type" yaml:"type"`             // 参数结构类型
-	Class      string                      `json:"class" yaml:"class"`           // 参数类型
-	Generic    []string                    `json:"generic" yaml:"generic"`       // 泛型类型
-	HttpName   string                      `json:"httpName" yaml:"httpName"`     // 映射Http的参数Key
-	HttpScope  string                      `json:"httpScope" yaml:"httpScope"`   // 映射Http参数值域
-	Fields     []Argument                  `json:"fields" yaml:"fields"`         // 子结构字段
-	Attributes Attributes                  `json:"attributes" yaml:"attributes"` // 属性列表
-	extends    map[interface{}]interface{} `json:"-"`
+	Name       string     `json:"name" yaml:"name"`             // 参数名称
+	Category   string     `json:"type" yaml:"type"`             // 参数结构类型
+	Class      string     `json:"class" yaml:"class"`           // 参数类型
+	Generic    []string   `json:"generic" yaml:"generic"`       // 泛型类型
+	HttpName   string     `json:"httpName" yaml:"httpName"`     // 映射Http的参数Key
+	HttpScope  string     `json:"httpScope" yaml:"httpScope"`   // 映射Http参数值域
+	Fields     []Argument `json:"fields" yaml:"fields"`         // 子结构字段
+	Attributes Attributes `json:"attributes" yaml:"attributes"` // 属性列表
+	extends    map[interface{}]interface{}
 }
 
-func (a Argument) SetExtends(key, val interface{}) {
-	if a.extends == nil {
-		a.extends = make(map[interface{}]interface{}, 4)
+func (ptr *Argument) SetExtends(key, val interface{}) {
+	if ptr.extends == nil {
+		ptr.extends = make(map[interface{}]interface{}, 4)
 	}
-	a.extends[key] = val
+	ptr.extends[key] = val
 }
 
-func (a Argument) GetExtends(key interface{}) (interface{}, bool) {
-	if a.extends == nil {
+func (ptr *Argument) GetExtends(key interface{}) (interface{}, bool) {
+	if ptr.extends == nil {
 		return nil, false
 	}
-	v, ok := a.extends[key]
+	v, ok := ptr.extends[key]
 	return v, ok
 }
 
