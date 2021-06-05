@@ -8,6 +8,7 @@ import (
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/toolkit"
+	"github.com/jinzhu/copier"
 	"golang.org/x/net/context"
 	"net/http"
 	_ "net/http/pprof"
@@ -308,8 +309,18 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 			err = fmt.Errorf("SERVER:EVEN:ROUTE:%gs", rvr)
 		}
 	}(webex.RequestId())
-	// 注意：Lookup返回的endpoint是一个复制副本，用以防止用户组件修改元数据污染基础数据；
-	endpoint, found := endpoints.Lookup(gs.versionFunc(webex))
+	// 查找匹配版本的Endpoint
+	var endpoint flux.Endpoint
+	epv, found := endpoints.Lookup(gs.versionFunc(webex))
+	if found {
+		coperr := copier.CopyWithOption(&endpoint, epv, copier.Option{
+			DeepCopy:    true,
+			IgnoreEmpty: true,
+		})
+		flux.AssertM(coperr == nil, func() string {
+			return fmt.Sprintf("duplicate endpoint error: %s", err.Error())
+		})
+	}
 	// 动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
 		if selector.Active(webex, server.ListenerId()) {

@@ -363,23 +363,23 @@ func (m *MVCEndpoint) IsEmpty() bool {
 
 // Lookup 按指定版本事情查找Endpoint。返回Endpoint的复制数据。
 // 如果有且仅有一个版本，则直接返回此Endpoint，不比较版本号是否匹配。
-func (m *MVCEndpoint) Lookup(version string) (Endpoint, bool) {
+func (m *MVCEndpoint) Lookup(version string) (*Endpoint, bool) {
 	m.RLock()
 	defer m.RUnlock()
 	size := len(m.versions)
 	if 0 == size {
-		return Endpoint{}, false
+		return nil, false
 	}
 	if "" == version || 1 == size {
-		for _, ep := range m.versions {
-			return m.dup(ep), true
+		for _, epv := range m.versions {
+			return epv, true
 		}
 	}
 	epv, ok := m.versions[version]
 	if !ok {
-		return Endpoint{}, false
+		return nil, false
 	}
-	return m.dup(epv), true
+	return epv, true
 }
 
 // Update 更新指定版本号的Endpoint元数据
@@ -407,7 +407,7 @@ func (m *MVCEndpoint) Random() Endpoint {
 	panic("SERVER:CRITICAL:ASSERT: <multi-endpoint> must not empty, call by random query func")
 }
 
-// Endpoint 获取当前多版本控制器的全部Endpoint元数据列表
+// Endpoints 获取当前多版本控制器的全部Endpoint元数据列表
 func (m *MVCEndpoint) Endpoints() []*Endpoint {
 	m.RLock()
 	copies := make([]*Endpoint, 0, len(m.versions))
@@ -416,11 +416,6 @@ func (m *MVCEndpoint) Endpoints() []*Endpoint {
 	}
 	m.RUnlock()
 	return copies
-}
-
-func (m *MVCEndpoint) dup(src *Endpoint) Endpoint {
-	dup := *src
-	return dup
 }
 
 // EndpointEvent  定义从注册中心接收到的Endpoint数据变更
