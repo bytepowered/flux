@@ -309,28 +309,15 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 			err = fmt.Errorf("SERVER:EVEN:ROUTE:%gs", rvr)
 		}
 	}(webex.RequestId())
-	// 查找匹配版本的Endpoint
 	var endpoint flux.Endpoint
-	epv, found := endpoints.Lookup(gs.versionFunc(webex))
-	if found {
-		coperr := copier.CopyWithOption(&endpoint, epv, copier.Option{
-			DeepCopy:    true,
-			IgnoreEmpty: true,
+	// 查找匹配版本的Endpoint
+	if src, found := gs.lookup(webex, server, endpoints); found {
+		// dup to enforce metadata safe
+		cperr := gs.dup(&endpoint, src)
+		flux.AssertM(cperr == nil, func() string {
+			return fmt.Sprintf("duplicate endpoint metadata, error: %s", cperr.Error())
 		})
-		flux.AssertM(coperr == nil, func() string {
-			return fmt.Sprintf("duplicate endpoint error: %s", err.Error())
-		})
-	}
-	// 动态Endpoint版本选择
-	for _, selector := range ext.EndpointSelectors() {
-		if selector.Active(webex, server.ListenerId()) {
-			endpoint, found = selector.DoSelect(webex, server.ListenerId(), endpoints)
-			if found {
-				break
-			}
-		}
-	}
-	if !found {
+	} else {
 		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:ENDPOINT/NOT_FOUND",
 			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 		)
@@ -358,6 +345,19 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		server.HandleError(webex, rouerr)
 	}
 	return
+}
+
+func (gs *GenericServer) lookup(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.Endpoint, bool) {
+	// 动态Endpoint版本选择
+	for _, selector := range ext.EndpointSelectors() {
+		if selector.Active(webex, server.ListenerId()) {
+			if ep, ok := selector.DoSelect(webex, server.ListenerId(), endpoints); ok {
+				return ep, true
+			}
+		}
+	}
+	// 默认版本选择
+	return endpoints.Lookup(gs.versionFunc(webex))
 }
 
 // Shutdown to cleanup resources
@@ -570,6 +570,14 @@ func (gs *GenericServer) syncEndpoint(srv *flux.Service) {
 			}
 		}
 	}
+}
+
+var copierconf = copier.Option{
+	DeepCopy: true,
+}
+
+func (gs *GenericServer) dup(toep *flux.Endpoint, fromep *flux.Endpoint) error {
+	return copier.CopyWithOption(toep, fromep, copierconf)
 }
 
 func onInitializer(v interface{}, f func(initable flux.Initializer) error) error {
