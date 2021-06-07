@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/apache/dubbo-go/common/extension"
+	"github.com/apache/dubbo-go/common/proxy"
+	"github.com/apache/dubbo-go/common/proxy/proxy_factory"
 	"github.com/bytepowered/flux"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
@@ -35,10 +38,6 @@ const (
 	ConfigKeyReferenceDelay = "reference_delay"
 )
 
-func init() {
-	ext.RegisterTransporter(flux.ProtoDubbo, NewTransporter())
-}
-
 var (
 	ErrDecodeInvalidHeaders = errors.New(flux.ErrorMessageTransportDubboDecodeInvalidHeader)
 	ErrDecodeInvalidStatus  = errors.New(flux.ErrorMessageTransportDubboDecodeInvalidStatus)
@@ -48,6 +47,14 @@ var (
 	_     flux.Transporter = new(RpcTransporter)
 	_json                  = jsoniter.ConfigCompatibleWithStandardLibrary
 )
+
+func init() {
+	ext.RegisterTransporter(flux.ProtoDubbo, NewTransporter())
+	// 替换Dubbo泛调用默认实现
+	extension.SetProxyFactory("default", func(_ ...proxy.Option) proxy.ProxyFactory {
+		return new(proxy_factory.GenericProxyFactory)
+	})
+}
 
 type (
 	// Option func to set option

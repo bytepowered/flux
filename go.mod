@@ -23,4 +23,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-replace github.com/apache/dubbo-go => github.com/yongjiapro/dubbo-go v1.5.6-rc3
+replace github.com/apache/dubbo-go => github.com/yongjiapro/dubbo-go v1.5.6-rc4
