@@ -80,27 +80,15 @@ func (*PermissionFilter) FilterId() string {
 }
 
 func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
-	if p.Disabled {
-		return next
-	}
 	return func(ctx *flux.Context) *flux.ServeError {
-		if p.Configs.SkipFunc(ctx) {
+		if p.Disabled || p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
-		// 没有任何权限校验定义
-		endpoint := ctx.Endpoint()
-		size := len(endpoint.Permissions)
-		if size == 0 && !endpoint.PermissionService.IsValid() {
-			return next(ctx)
-		}
-		services := make([]flux.Service, 0, 1+size)
-		// Define permission first
-		if endpoint.PermissionService.IsValid() {
-			services = append(services, endpoint.PermissionService)
-		}
-		for _, id := range endpoint.Permissions {
+		ids := ctx.Endpoint().MultiAttributes(flux.EndpointAttrTagPermission).Strings()
+		workers := make([]flux.Service, 0, len(ids))
+		for _, id := range ids {
 			if srv, ok := ext.ServiceByID(id); ok {
-				services = append(services, srv)
+				workers = append(workers, srv)
 			} else {
 				return &flux.ServeError{
 					StatusCode: flux.StatusServerError,
@@ -110,7 +98,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 				}
 			}
 		}
-		report, err := p.Configs.VerifyFunc(services, ctx)
+		report, err := p.Configs.VerifyFunc(workers, ctx)
 		ctx.AddMetric(p.FilterId(), time.Since(ctx.StartAt()))
 		if nil != err {
 			if serr, ok := err.(*flux.ServeError); ok {

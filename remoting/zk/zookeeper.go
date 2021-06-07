@@ -95,7 +95,7 @@ func (r *ZookeeperRetriever) Create(path string) error {
 	return err
 }
 
-func (r *ZookeeperRetriever) AddChildrenNodeChangedListener(groupId, parentNodePath string, nodeChangedListener remoting.NodeChangedListener) error {
+func (r *ZookeeperRetriever) AddChildChangedListener(groupId, parentNodePath string, nodeChangedListener remoting.NodeChangedListener) error {
 	if init, err := r.setupListener(groupId, parentNodePath, nodeChangedListener); nil != err {
 		return err
 	} else if init {
@@ -105,7 +105,7 @@ func (r *ZookeeperRetriever) AddChildrenNodeChangedListener(groupId, parentNodeP
 }
 
 // AddNodeChangedListener 添加指定节点的数据变化监听接口
-func (r *ZookeeperRetriever) AddNodeChangedListener(groupId, nodePath string, dataChangedListener remoting.NodeChangedListener) error {
+func (r *ZookeeperRetriever) AddChangedListener(groupId, nodePath string, dataChangedListener remoting.NodeChangedListener) error {
 	if init, err := r.setupListener(groupId, nodePath, dataChangedListener); nil != err {
 		return err
 	} else if init {
@@ -162,8 +162,9 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				newChild := path.Join(parentNodePath, p)
 				cachedChildren = append(cachedChildren, newChild)
 				handleChildChanged(remoting.NodeEvent{
-					Path:      newChild,
-					EventType: remoting.EventTypeChildAdd,
+					SourceId: r.Id,
+					Path:     newChild,
+					Event:    remoting.EventTypeChildAdd,
 				})
 			}
 		}
@@ -184,19 +185,21 @@ func (r *ZookeeperRetriever) watchChildrenChanged(parentNodePath string) {
 				// Add
 				for i, p := range newChildren {
 					newChildren[i] = path.Join(parentNodePath, p) // Update full path
-					if !toolkit.StringContains(cachedChildren, newChildren[i]) {
+					if !toolkit.MatchEqual(cachedChildren, newChildren[i]) {
 						handleChildChanged(remoting.NodeEvent{
-							Path:      newChildren[i],
-							EventType: remoting.EventTypeChildAdd,
+							SourceId: r.Id,
+							Path:     newChildren[i],
+							Event:    remoting.EventTypeChildAdd,
 						})
 					}
 				}
 				// Deleted
 				for _, p := range cachedChildren {
-					if !toolkit.StringContains(newChildren, p) {
+					if !toolkit.MatchEqual(newChildren, p) {
 						handleChildChanged(remoting.NodeEvent{
-							Path:      p,
-							EventType: remoting.EventTypeChildDelete,
+							SourceId: r.Id,
+							Path:     p,
+							Event:    remoting.EventTypeChildDelete,
 						})
 					}
 				}
@@ -237,7 +240,7 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 		case zkEvent := <-w.EvtCh:
 			r.newLogger().Debugw("Zookeeper retriever receive data event", "event", zkEvent)
 			var (
-				eventType remoting.EventType
+				eventType remoting.NodeEventType
 				eventData []byte
 			)
 			r.listenerMu.RLock()
@@ -270,9 +273,10 @@ func (r *ZookeeperRetriever) watchDataNodeChanged(nodePath string) {
 				continue
 			}
 			event := remoting.NodeEvent{
-				Path:      zkEvent.Path,
-				EventType: eventType,
-				Data:      eventData,
+				SourceId: r.Id,
+				Path:     zkEvent.Path,
+				Event:    eventType,
+				Data:     eventData,
 			}
 			for _, listener := range listeners {
 				listener(event)

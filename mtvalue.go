@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	JavaLangObjectClassName  = "java.lang.Object"
 	JavaLangStringClassName  = "java.lang.String"
 	JavaLangIntegerClassName = "java.lang.Integer"
 	JavaLangLongClassName    = "java.lang.Long"
@@ -13,9 +14,10 @@ const (
 	JavaLangBooleanClassName = "java.lang.Boolean"
 	JavaUtilMapClassName     = "java.util.Map"
 	JavaUtilListClassName    = "java.util.List"
+	JavaIOSerializable       = "java.io.Serializable"
 )
 
-// Golang内置参数类型
+// MediaType Golang内置参数类型
 type MediaType string
 
 func (m MediaType) Contains(s string) bool {

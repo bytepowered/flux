@@ -2,53 +2,51 @@
 version: 1.0
 
 endpoints:
-    -   application: "flux"
+    -   kind: "flux.endpoint/v1"
+        application: "flux"
         version: "1.0"
         httpPattern: "/debug/flux/echo/get"
         httpMethod: "GET"
         attributes:
             -   name: "listenerId"
                 value: "admin"
-        # 后端服务配置
-        service:
-            serviceId: "flux.debug.echo.get"
-            interface: "flux.debug.echo"
-            method: "get"
-            attributes:
-                -   name: "RpcProto"
-                    value: "ECHO"
-                -   name: "Authorize"
-                    value: false
+        serviceId: "flux.debug.echo:get"
 
-    -   application: "flux"
+    -   kind: "flux.endpoint/v1"
+        application: "flux"
         version: "1.0"
         httpPattern: "/debug/flux/echo/post"
         httpMethod: "POST"
-        # 后端服务配置
-        service:
-            serviceId: "flux.debug.echo.post"
-            interface: "flux.debug.echo"
-            method: "post"
-            attributes:
-                -   name: "RpcProto"
-                    value: "ECHO"
-                -   name: "Authorize"
-                    value: false
+        serviceId: "flux.debug.echo:post"
 
     -   application: "flux"
         version: "1.0"
         httpPattern: "/debug/flux/inapp/echo"
         httpMethod: "POST"
-        # 后端服务配置
-        service:
-            serviceId: "flux.debug.inapp.Test:echo"
-            interface: "flux.debug.inapp.Test"
-            method: "echo"
-            attributes:
-                -   name: "RpcProto"
-                    value: "INAPP"
-                -   name: "Authorize"
-                    value: false
+        serviceId: "flux.debug.inapp.Test:echo"
 
 # Service 配置服务列表
-services: [ ]
+services:
+    -   interface: "flux.debug.echo"
+        method: "get"
+        attributes:
+            -   name: "rpc:proto"
+                value: "ECHO"
+            -   name: "tag:authorize"
+                value: false
+
+    -   interface: "flux.debug.echo"
+        method: "post"
+        attributes:
+            -   name: "rpc:proto"
+                value: "ECHO"
+            -   name: "tag:authorize"
+                value: false
+
+    -   interface: "flux.debug.inapp.Test"
+        method: "echo"
+        attributes:
+            -   name: "rpc:proto"
+                value: "INAPP"
+            -   name: "tag:authorize"
+                value: false

@@ -11,7 +11,7 @@ type (
 
 	// Filter 用于定义处理方法的顺序及内在业务逻辑
 	Filter interface {
-		// TypeId Filter的类型标识
+		// FilterId Filter的类型标识
 		FilterId() string
 		// DoFilter 执行Filter链
 		DoFilter(next FilterInvoker) FilterInvoker

@@ -2,7 +2,7 @@ package remoting
 
 import "fmt"
 
-type EventType int
+type NodeEventType int
 
 const (
 	EventTypeNodeAdd = iota
@@ -10,36 +10,42 @@ const (
 	EventTypeNodeUpdate
 	EventTypeChildAdd
 	EventTypeChildDelete
+	eventTypeUndefined
 )
 
-var _eventTypeNames = [...]string{
-	"nodeAdd",
-	"nodeDelete",
-	"nodeUpdate",
-	"childAdd",
-	"childDelete",
+var nodeEventNames = [...]string{
+	"NodeAdd",
+	"NodeDelete",
+	"NodeUpdate",
+	"ChildAdd",
+	"ChildDelete",
+	"Undefined",
 }
 
-func (t EventType) String() string {
-	return _eventTypeNames[t]
+func (t NodeEventType) String() string {
+	if t > eventTypeUndefined {
+		return nodeEventNames[eventTypeUndefined]
+	}
+	return nodeEventNames[t]
 }
 
 type NodeEvent struct {
-	Path      string
-	EventType EventType
-	Data      []byte
+	SourceId string
+	Path     string
+	Event    NodeEventType
+	Data     []byte
 }
 
 func (e NodeEvent) String() string {
-	return fmt.Sprintf("Event{Type{%s}, Path{%s} Body{%s}}", e.EventType, e.Path, string(e.Data))
+	return fmt.Sprintf("Event{Type=%s, Path=%s, Body=%s, SourceId=%s}", e.Event, e.Path, string(e.Data), e.SourceId)
 }
 
 type NodeChangedListener func(event NodeEvent)
 
 type NodeRetriever interface {
-	// AddNodeChangedListener 监听数据节点的数据变更
-	AddNodeChangedListener(groupId, dataNodeKey string, dataListener NodeChangedListener) error
+	// AddChangedListener 监听数据节点的数据变更
+	AddChangedListener(groupId, dataNodeKey string, dataListener NodeChangedListener) error
 
-	// AddChildrenNodeChangedListener 监听目录节点的子节点变更
-	AddChildrenNodeChangedListener(groupId, dirNodeKey string, childrenListener NodeChangedListener) error
+	// AddChildChangedListener 监听目录节点的子节点变更
+	AddChildChangedListener(groupId, dirNodeKey string, childListener NodeChangedListener) error
 }

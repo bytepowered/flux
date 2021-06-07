@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/spf13/cast"
 	"strings"
 )
 
@@ -36,9 +35,9 @@ func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger
 		fields["endpoint.bizid"] = endpoint.Attributes.Single(flux.EndpointAttrTagBizId).ToString()
 		fields["endpoint.version"] = endpoint.Version
 		fields["endpoint.pattern"] = endpoint.HttpPattern
-		fields["authorize"] = cast.ToString(endpoint.Authorize())
-		fields["service"] = endpoint.Service.ServiceID()
-		fields["service.permission"] = strings.Join(endpoint.PermissionIds(), ",")
+		fields["endpoint.authorize"] = endpoint.Attributes.Single(flux.EndpointAttrTagAuthorize).ToString()
+		fields["service.id"] = endpoint.ServiceId
+		fields["service.permission"] = strings.Join(endpoint.Attributes.Multiple(flux.EndpointAttrTagPermission).Strings(), ",")
 	}
 	return TraceExtras(ctx.RequestId(), fields)
 }

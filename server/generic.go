@@ -7,6 +7,8 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
+	"github.com/jinzhu/copier"
 	"golang.org/x/net/context"
 	"net/http"
 	_ "net/http/pprof"
@@ -39,7 +41,7 @@ type (
 	VersionLookupFunc func(webex flux.ServerWebContext) (version string)
 )
 
-// GenericServer
+// GenericServer Server
 type GenericServer struct {
 	listeners      map[string]flux.WebListener
 	onContextHooks []flux.OnContextHookFunc
@@ -229,6 +231,7 @@ func (gs *GenericServer) Startup(build flux.Build) error {
 
 func (gs *GenericServer) start() error {
 	flux.AssertNotNil(gs.defaultListener(), "<default-listener> MUST NOT nil")
+	flux.AssertNotNil(ext.LookupFunc(), "<lookup-func> MUST NOT nil")
 	logger.Info("SERVER:EVEN:STARTUP")
 	for _, startup := range sortedStartup(ext.StartupHooks()) {
 		if err := startup.OnStartup(); nil != err {
@@ -288,10 +291,10 @@ func (gs *GenericServer) startEventLoop(ctx context.Context, endpoints chan flux
 func (gs *GenericServer) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
 	for _, discovery := range ext.EndpointDiscoveries() {
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH", "discovery-id", discovery.Id())
-		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
+		if err := discovery.WatchServices(ctx, services); nil != err {
 			return err
 		}
-		if err := discovery.WatchServices(ctx, services); nil != err {
+		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
 			return err
 		}
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH/OK", "discovery-id", discovery.Id())
@@ -306,25 +309,24 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 			err = fmt.Errorf("SERVER:EVEN:ROUTE:%gs", rvr)
 		}
 	}(webex.RequestId())
-	endpoint, found := endpoints.Lookup(gs.versionFunc(webex))
-	// 实现动态Endpoint版本选择
-	for _, selector := range ext.EndpointSelectors() {
-		if selector.Active(webex, server.ListenerId()) {
-			endpoint, found = selector.DoSelect(webex, server.ListenerId(), endpoints)
-			if found {
-				break
-			}
-		}
-	}
-	if !found {
-		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:NOT_FOUND",
+	var endpoint flux.Endpoint
+	// 查找匹配版本的Endpoint
+	if src, found := gs.lookup(webex, server, endpoints); found {
+		// dup to enforce metadata safe
+		cperr := gs.dup(&endpoint, src)
+		flux.AssertM(cperr == nil, func() string {
+			return fmt.Sprintf("duplicate endpoint metadata, error: %s", cperr.Error())
+		})
+	} else {
+		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:ENDPOINT/NOT_FOUND",
 			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 		)
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
 		return server.HandleNotfound(webex)
-	} else {
-		flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
 	}
+	// 检查Endpoint/Service绑定
+	flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
+	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
@@ -343,6 +345,19 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		server.HandleError(webex, rouerr)
 	}
 	return
+}
+
+func (gs *GenericServer) lookup(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.Endpoint, bool) {
+	// 动态Endpoint版本选择
+	for _, selector := range ext.EndpointSelectors() {
+		if selector.Active(webex, server.ListenerId()) {
+			if ep, ok := selector.DoSelect(webex, server.ListenerId(), endpoints); ok {
+				return ep, true
+			}
+		}
+	}
+	// 默认版本选择
+	return endpoints.Lookup(gs.versionFunc(webex))
 }
 
 // Shutdown to cleanup resources
@@ -371,25 +386,23 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("SERVER:EVENT:SERVICE:ADD",
-			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		gs.bindArguments(service.Arguments)
+		logger.Infow("SERVER:EVENT:SERVICE:ADD", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		gs.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
+
 	case flux.EventTypeUpdated:
-		logger.Infow("SERVER:EVENT:SERVICE:UPDATE",
-			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		gs.bindArguments(service.Arguments)
+		logger.Infow("SERVER:EVENT:SERVICE:UPDATE", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		gs.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
-		logger.Infow("SERVER:EVENT:SERVICE:REMOVE",
-			"service-id", service.ServiceId, "alias-id", service.AliasId)
-		ext.RemoveServiceByID(service.ServiceId)
+		logger.Infow("SERVER:EVENT:SERVICE:REMOVE", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		ext.RemoveServiceByID(service.ServiceID())
 		if service.AliasId != "" {
 			ext.RemoveServiceByID(service.AliasId)
 		}
@@ -397,45 +410,45 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 }
 
 func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
-	method := strings.ToUpper(event.Endpoint.HttpMethod)
+	ep := event.Endpoint
+	var epvars = []interface{}{"ep-app", ep.Application, "ep-version", ep.Version, "ep-method", ep.HttpMethod, "ep-pattern", ep.HttpPattern}
 	// Check http method
+	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	if !SupportedHttpMethod(method) {
-		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", "method", method, "pattern", event.Endpoint.HttpPattern)
+		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", epvars...)
 		return
 	}
-	endpoint := event.Endpoint
-	pattern := event.Endpoint.HttpPattern
-	mvce, register := gs.selectMVCEndpoint(&endpoint)
+	mvce, register := gs.selectMVCEndpoint(&ep)
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", "version", endpoint.Version, "method", method, "pattern", pattern)
-		gs.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
-		mvce.Update(endpoint.Version, &endpoint)
+		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", epvars...)
+		gs.syncService(&ep)
+		mvce.Update(ep.Version, &ep)
 		// 根据Endpoint属性，选择ListenServer来绑定
 		if register {
-			id := endpoint.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
+			id := ep.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
 			if id == "" {
 				id = ListenerIdDefault
 			}
 			server, ok := gs.WebListenerById(id)
 			if ok {
-				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+id, "method", method, "pattern", pattern)
-				server.AddHandler(method, pattern, gs.newEndpointHandler(server, mvce))
+				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+id, epvars...)
+				server.AddHandler(ep.HttpMethod, ep.HttpPattern, gs.newEndpointHandler(server, mvce))
 			} else {
-				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+id, "method", method, "pattern", pattern)
+				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+id, epvars...)
 			}
 		}
 	case flux.EventTypeUpdated:
-		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", "version", endpoint.Version, "method", method, "pattern", pattern)
-		gs.bindArguments(append(endpoint.Service.Arguments, endpoint.PermissionService.Arguments...))
-		mvce.Update(endpoint.Version, &endpoint)
+		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", epvars...)
+		gs.syncService(&ep)
+		mvce.Update(ep.Version, &ep)
 	case flux.EventTypeRemoved:
-		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", "method", method, "pattern", pattern)
-		mvce.Delete(endpoint.Version)
+		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", epvars...)
+		mvce.Delete(ep.Version)
 	}
 }
 
-// GracefulShutdown
+// AwaitSignal GracefulShutdown
 func (gs *GenericServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	// 接收停止信号
 	signal.Notify(quit, dubgo.ShutdownSignals...)
@@ -444,7 +457,7 @@ func (gs *GenericServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	ctx, cancel := goctx.WithTimeout(goctx.Background(), to)
 	defer cancel()
 	if err := gs.Shutdown(ctx); nil != err {
-		logger.Errorw("SERVER:EVENT:SHUTDOWN:ERROR", "error", err)
+		logger.Errorw("SERVER:EVENT:SHUTDOWN/error", "error", err)
 	}
 }
 
@@ -527,12 +540,44 @@ func (gs *GenericServer) defaultListener() flux.WebListener {
 	return nil
 }
 
-func (gs *GenericServer) bindArguments(args []flux.Argument) {
-	for i := range args {
-		args[i].ValueResolver = ext.MTValueResolverByType(args[i].Class)
-		args[i].LookupFunc = ext.LookupFunc()
-		gs.bindArguments(args[i].Fields)
+// syncService 将Endpoint与Service建立绑定映射；
+// 此处绑定的为原始元数据的引用；
+func (gs *GenericServer) syncService(ep *flux.Endpoint) {
+	// Endpoint为静态模型，不支持动态更新
+	if ep.AttributeExists(flux.EndpointAttrTagStaticModel) {
+		return
 	}
+	service, ok := ext.ServiceByID(ep.ServiceId)
+	if !ok {
+		return
+	}
+	logger.Infow("SERVER:EVENT:MAPMETA/sync-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+	ep.Service = service
+}
+
+// syncEndpoint 将Endpoint与Service建立绑定映射；
+// 此处绑定的为原始元数据的引用；
+func (gs *GenericServer) syncEndpoint(srv *flux.Service) {
+	for _, mvce := range ext.Endpoints() {
+		for _, ep := range mvce.Endpoints() {
+			// Endpoint为静态模型，不支持动态更新
+			if ep.AttributeExists(flux.EndpointAttrTagStaticModel) {
+				continue
+			}
+			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
+				logger.Infow("SERVER:EVENT:MAPMETA/sync-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				ep.Service = *srv
+			}
+		}
+	}
+}
+
+var copierconf = copier.Option{
+	DeepCopy: true,
+}
+
+func (gs *GenericServer) dup(toep *flux.Endpoint, fromep *flux.Endpoint) error {
+	return copier.CopyWithOption(toep, fromep, copierconf)
 }
 
 func onInitializer(v interface{}, f func(initable flux.Initializer) error) error {
@@ -542,7 +587,7 @@ func onInitializer(v interface{}, f func(initable flux.Initializer) error) error
 	return nil
 }
 
-// NewWebListenerOptions 根据WebListenerID，返回初始化WebListener实例时的配置
+// NewWebListenerConfig 根据WebListenerID，返回初始化WebListener实例时的配置
 func NewWebListenerConfig(id string) *flux.Configuration {
 	return flux.NewConfigurationByKeys(flux.NamespaceWebListeners, id)
 }

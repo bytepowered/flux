@@ -118,14 +118,6 @@ func TestParseEndpointModelV2(t *testing.T) {
 			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpMethod },
 		},
 		{
-			Expected: false,
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.PermissionService.IsValid() },
-		},
-		{
-			Expected: 0,
-			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Permissions) },
-		},
-		{
 			Expected: ":superadmin",
 			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Attributes.Single("roles").ToString() },
 		},
@@ -153,7 +145,7 @@ func TestParseEndpointModelV2(t *testing.T) {
 		},
 		{
 			Expected: "COMPLEX",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Type },
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Category },
 		},
 		{
 			Expected: "$body",

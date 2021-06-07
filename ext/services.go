@@ -1,7 +1,6 @@
 package ext
 
 import (
-	"fmt"
 	"github.com/bytepowered/flux"
 	"sync"
 )
@@ -12,13 +11,13 @@ var (
 )
 
 func RegisterServiceByID(id string, service flux.Service) {
+	flux.AssertTrue(len(id) > len("a:b"), "<service-id> malformed")
 	services.Store(id, service)
 }
 
 // RegisterService store transporter service
 func RegisterService(service flux.Service) {
-	id := _ensureServiceID(&service)
-	RegisterServiceByID(id, service)
+	RegisterServiceByID(service.ServiceID(), service)
 }
 
 // Services 返回全部注册的Service
@@ -49,15 +48,4 @@ func RemoveServiceByID(serviceID string) {
 func HasServiceByID(serviceID string) bool {
 	_, ok := services.Load(serviceID)
 	return ok
-}
-
-func _ensureServiceID(service *flux.Service) string {
-	id := service.ServiceId
-	if id == "" {
-		id = service.Interface + ":" + service.Method
-	}
-	if len(id) < len("a:b") {
-		panic(fmt.Sprintf("Transporter must has an Id, service: %+v", service))
-	}
-	return id
 }

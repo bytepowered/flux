@@ -27,7 +27,7 @@ func NewTransporter() flux.Transporter {
 }
 
 func (b *Transporter) DoInvoke(context *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
-	fun, ok := LoadInvokeFunc(service.ServiceId)
+	fun, ok := LoadInvokeFunc(service.ServiceID())
 	if !ok {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
