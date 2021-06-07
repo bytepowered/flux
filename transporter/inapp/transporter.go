@@ -39,12 +39,12 @@ func (b *Transporter) DoInvoke(context *flux.Context, service flux.Service) (*fl
 	if err != nil {
 		return nil, err
 	}
-	codec, _ := b.codec(context, resp)
+	codec, _ := b.codec(context, resp, make(map[string]interface{}, 0))
 	return codec, nil
 }
 
 func NewTransportCodecFunc() flux.TransportCodecFunc {
-	return func(ctx *flux.Context, value interface{}) (*flux.ServeResponse, error) {
+	return func(ctx *flux.Context, value interface{}, _ map[string]interface{}) (*flux.ServeResponse, error) {
 		return &flux.ServeResponse{
 			StatusCode: http.StatusOK,
 			Headers:    make(http.Header, 0),
