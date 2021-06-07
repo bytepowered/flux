@@ -20,7 +20,6 @@ import (
 	"github.com/apache/dubbo-go/common"
 	"github.com/apache/dubbo-go/common/constant"
 	dubgo "github.com/apache/dubbo-go/config"
-	"github.com/apache/dubbo-go/protocol"
 	"github.com/apache/dubbo-go/protocol/dubbo"
 )
 
@@ -65,7 +64,7 @@ type (
 	// GenericServiceFunc 用于构建DubboGo泛型调用Service实例
 	GenericServiceFunc func(*flux.Service) common.RPCService
 	// GenericInvokeFunc 用于执行Dubbo泛调用方法，返回统一Result数据结构
-	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) protocol.Result
+	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) (interface{}, map[string]interface{}, error)
 )
 
 // RpcTransporter 集成DubboRPC框架的TransporterService
@@ -180,11 +179,11 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 		}),
 		// 使用带Result结果的RPCService实现
 		WithGenericServiceFunc(func(service *flux.Service) common.RPCService {
-			return NewResultRPCService(service.Interface)
+			return dubgo.NewGenericService2(service.Interface)
 		}),
-		// 转换为 ResultRPCService 的调用
-		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, service common.RPCService) protocol.Result {
-			return service.(*ResultRPCService).Invoke(ctx, args)
+		// 转换为 GenericService2 的调用
+		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, service common.RPCService) (interface{}, map[string]interface{}, error) {
+			return service.(*dubgo.GenericService2).Invoke(ctx, args)
 		}),
 		WithArgumentsAssemblyFunc(DefaultArgumentsAssemblyFunc),
 		WithAttachmentsAssemblyFunc(DefaultAttachmentAssemblyFunc),
@@ -193,7 +192,7 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 	return NewTransporterWith(append(opts, overrides...)...)
 }
 
-// Init init transporter
+// OnInit init transporter
 func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
 	logger.Info("Dubbo transporter transporter initializing")
 	config.SetDefaults(b.defaults)
@@ -220,12 +219,12 @@ func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
 	return nil
 }
 
-// Startup startup service
+// OnStartup startup service
 func (b *RpcTransporter) OnStartup() error {
 	return nil
 }
 
-// Shutdown shutdown service
+// OnShutdown shutdown service
 func (b *RpcTransporter) OnShutdown(_ context.Context) error {
 	dubgo.BeforeShutdown()
 	return nil
@@ -259,9 +258,9 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 	if b.trace {
 		trace.Infow("TRANSPORTER:DUBBO:INVOKE/args", "arg-values", values, "arg-types", types, "attachments", attachments)
 	}
-	invret, inverr := b.invoke0(ctx, service, types, values, attachments)
+	invret, invatt, inverr := b.invoke0(ctx, service, types, values, attachments)
 	if b.trace && inverr == nil && invret != nil {
-		data := invret.Result()
+		data := invret
 		if text, err := _json.MarshalToString(data); nil == err {
 			trace.Infow("TRANSPORTER:DUBBO:INVOKE/recv", "response.json", text)
 		} else {
@@ -288,10 +287,10 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 	// check if disable codec
 	if disable, ok := ctx.Variable("disable.codec").(bool); ok && disable {
 		return &flux.ServeResponse{
-			StatusCode: flux.StatusOK, Attachments: invret.Attachments(), Body: invret.Result(),
+			StatusCode: flux.StatusOK, Attachments: invatt, Body: invret,
 		}, nil
 	}
-	codecd, coderr := b.codec(ctx, invret)
+	codecd, coderr := b.codec(ctx, invret, invatt)
 	if nil != coderr {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
@@ -304,20 +303,19 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 	return codecd, nil
 }
 
-func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service,
-	types []string, values, attachments interface{}) (protocol.Result, *flux.ServeError) {
+func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service, types []string, values, attachments interface{}) (interface{}, map[string]interface{}, *flux.ServeError) {
 	generic := b.LoadGenericService(&service)
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
-	resultW := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
-	if cause := resultW.Error(); cause != nil {
-		return nil, &flux.ServeError{
+	ret, att, cause := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
+	if cause != nil {
+		return nil, nil, &flux.ServeError{
 			StatusCode: flux.StatusBadGateway,
 			ErrorCode:  flux.ErrorCodeGatewayTransporter,
 			Message:    flux.ErrorMessageTransportDubboInvokeFailed,
 			CauseError: cause,
 		}
 	}
-	return resultW, nil
+	return ret, att, nil
 }
 
 // LoadGenericService create and cache dubbo generic service

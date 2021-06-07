@@ -8,7 +8,7 @@ require (
 	github.com/apache/dubbo-go-hessian2 v1.9.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dubbogo/go-zookeeper v1.0.3
-	github.com/jinzhu/copier v0.3.2 // indirect
+	github.com/jinzhu/copier v0.3.2
 	github.com/json-iterator/go v1.1.10
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/labstack/gommon v0.3.0
@@ -22,3 +22,5 @@ require (
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	gopkg.in/yaml.v2 v2.4.0
 )
+
+replace github.com/apache/dubbo-go => github.com/yongjiapro/dubbo-go v1.5.6-rc3

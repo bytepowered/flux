@@ -8,5 +8,5 @@ type (
 		DoInvoke(*Context, Service) (*ServeResponse, *ServeError)
 	}
 	// TransportCodecFunc 解析 Transporter 返回的原始数据，生成响应对象
-	TransportCodecFunc func(ctx *Context, packet interface{}) (*ServeResponse, error)
+	TransportCodecFunc func(ctx *Context, result interface{}, att map[string]interface{}) (*ServeResponse, error)
 )
