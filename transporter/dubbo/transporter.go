@@ -10,6 +10,7 @@ import (
 	"github.com/bytepowered/flux"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -23,13 +24,13 @@ import (
 	"github.com/apache/dubbo-go/common"
 	"github.com/apache/dubbo-go/common/constant"
 	dubgo "github.com/apache/dubbo-go/config"
-	"github.com/apache/dubbo-go/protocol/dubbo"
 )
 
 import (
 	_ "github.com/apache/dubbo-go/cluster/cluster_impl"
 	_ "github.com/apache/dubbo-go/cluster/loadbalance"
 	_ "github.com/apache/dubbo-go/filter/filter_impl"
+	_ "github.com/apache/dubbo-go/protocol/dubbo"
 	_ "github.com/apache/dubbo-go/registry/protocol"
 )
 
@@ -49,7 +50,9 @@ var (
 )
 
 func init() {
-	ext.RegisterTransporter(flux.ProtoDubbo, NewTransporter())
+	trsp := NewTransporter()
+	ext.RegisterTransporter(flux.ProtoDubbo, trsp)
+	ext.RegisterTransporter(flux.ProtoGRPC, trsp)
 	// 替换Dubbo泛调用默认实现
 	extension.SetProxyFactory("default", func(_ ...proxy.Option) proxy.ProxyFactory {
 		return new(proxy_factory.GenericProxyFactory)
@@ -182,9 +185,9 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 			"retries":               "0",
 			"cluster":               "failover",
 			"load_balance":          "random",
-			"protocol":              dubbo.DUBBO,
+			"protocol":              "dubbo", // dubbo, grpc
 		}),
-		// 使用带Result结果的RPCService实现
+		// 使用带Attachment结果的 GenericService2 实现
 		WithGenericServiceFunc(func(service *flux.Service) common.RPCService {
 			return dubgo.NewGenericService2(service.Interface)
 		}),
@@ -374,19 +377,29 @@ func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryCon
 	}
 }
 
+var pattern = regexp.MustCompile(`^[a-zA-Z1-9]{2,}://`)
+
+func hasproto(s string) bool {
+	return pattern.Match([]byte(s))
+}
+
 func NewReference(refid string, service *flux.Service, config *flux.Configuration) *dubgo.ReferenceConfig {
-	logger.Infow("Create dubbo reference-config",
-		"target-service", service.Interface, "target-url", service.Url,
+	logger.Infow("DUBBO:GENERIC:CREATE:NEWREF",
+		"rpc-service", service.Interface, "rpc-url", service.Url, "rpc-proto", service.RpcProtocol(),
 		"rpc-group", service.RpcGroup(), "rpc-version", service.RpcVersion())
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
-	ref.Url = service.Url
+	if hasproto(service.Url) {
+		ref.Url = service.Url
+	} else {
+		ref.Url = service.RpcProtocol() + "://" + service.Url
+	}
 	ref.InterfaceName = service.Interface
 	ref.Version = service.RpcVersion()
 	ref.Group = service.RpcGroup()
 	ref.RequestTimeout = service.RpcTimeout()
 	ref.Retries = service.RpcRetries()
+	ref.Protocol = service.RpcProtocol()
 	ref.Cluster = config.GetString("cluster")
-	ref.Protocol = config.GetString("protocol")
 	ref.Loadbalance = config.GetString("load_balance")
 	ref.Generic = true
 	return ref
