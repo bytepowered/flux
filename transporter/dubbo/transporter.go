@@ -7,6 +7,7 @@ import (
 	"github.com/apache/dubbo-go/common/extension"
 	"github.com/apache/dubbo-go/common/proxy"
 	"github.com/apache/dubbo-go/common/proxy/proxy_factory"
+	"github.com/apache/dubbo-go/protocol/dubbo"
 	"github.com/bytepowered/flux"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
@@ -385,20 +386,27 @@ func hasproto(s string) bool {
 
 func NewReference(refid string, service *flux.Service, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("DUBBO:GENERIC:CREATE:NEWREF",
-		"rpc-service", service.Interface, "rpc-url", service.Url, "rpc-proto", service.RpcProtocol(),
+		"rpc-service", service.Interface, "rpc-url", service.Url, "rpc-proto", service.RpcProto(),
 		"rpc-group", service.RpcGroup(), "rpc-version", service.RpcVersion())
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
-	if hasproto(service.Url) {
-		ref.Url = service.Url
-	} else {
-		ref.Url = service.RpcProtocol() + "://" + service.Url
+	// 订正 url 地址
+	if service.Url != "" {
+		if hasproto(service.Url) {
+			ref.Url = service.Url
+		} else {
+			proto := service.RpcProto()
+			if proto == "" {
+				proto = dubbo.DUBBO
+			}
+			ref.Url = proto + "://" + service.Url
+		}
 	}
 	ref.InterfaceName = service.Interface
 	ref.Version = service.RpcVersion()
 	ref.Group = service.RpcGroup()
 	ref.RequestTimeout = service.RpcTimeout()
 	ref.Retries = service.RpcRetries()
-	ref.Protocol = service.RpcProtocol()
+	ref.Protocol = service.RpcProto()
 	ref.Cluster = config.GetString("cluster")
 	ref.Loadbalance = config.GetString("load_balance")
 	ref.Generic = true

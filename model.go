@@ -252,9 +252,6 @@ func (b Service) RpcRetries() string {
 	return b.Attributes.Single(ServiceAttrTagRpcRetries).ToString()
 }
 
-func (b Service) RpcProtocol() string {
-	return b.Attributes.Single(ServiceAttrTagRpcProto).ToString()
-}
 
 // IsValid 判断服务配置是否有效；
 // 1. Interface, Method 不能为空；
