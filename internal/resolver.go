@@ -140,15 +140,20 @@ func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 	}
 	switch mtValue.MediaType {
 	case flux.MediaTypeGoMapStringList:
-		return mtValue.Value.(map[string]interface{}), nil
+		ssmap := mtValue.Value.(map[string][]string)
+		var outmap = make(map[string]interface{}, len(ssmap))
+		for k, v := range ssmap {
+			outmap[k] = v
+		}
+		return outmap, nil
 	case flux.MediaTypeGoMapString:
 		return cast.ToStringMap(mtValue.Value), nil
 	case flux.MediaTypeGoString:
-		var hashmap = map[string]interface{}{}
-		if err := ext.JSONUnmarshal([]byte(mtValue.Value.(string)), &hashmap); nil != err {
+		var outmap = map[string]interface{}{}
+		if err := ext.JSONUnmarshal([]byte(mtValue.Value.(string)), &outmap); nil != err {
 			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mtValue.Value, err)
 		} else {
-			return hashmap, nil
+			return outmap, nil
 		}
 	case flux.MediaTypeGoObject:
 		if sm, err := cast.ToStringMapE(mtValue.Value); nil != err {
@@ -180,9 +185,9 @@ func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 					mtValue.Value, mtValue.Value, mtValue.MediaType)
 			}
 		}
-		var hashmap = map[string]interface{}{}
-		err := ext.JSONUnmarshal(data, &hashmap)
-		return hashmap, err
+		var outmap = make(map[string]interface{}, 16)
+		err := ext.JSONUnmarshal(data, &outmap)
+		return outmap, err
 	}
 }
 
