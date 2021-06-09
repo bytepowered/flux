@@ -135,17 +135,29 @@ func CastDecodeMTValueToString(mtValue flux.MTValue) (string, error) {
 // ToStringMapE 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
 func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
-	if isEmptyOrNil(mtValue.Value) {
+	if isEmptyOrNil(mtValue.Value) || !mtValue.Valid {
 		return make(map[string]interface{}, 0), nil
 	}
 	switch mtValue.MediaType {
 	case flux.MediaTypeGoMapStringList:
-		return mtValue.Value.(map[string]interface{}), nil
+		orimap, ok := mtValue.Value.(map[string][]string)
+		flux.AssertM(ok, func() string {
+			return fmt.Sprintf("mt-value(define:%s) is not map[string][]string, mt-value:%+v", mtValue.MediaType, mtValue.Value)
+		})
+		var hashmap = make(map[string]interface{}, len(orimap))
+		for k, v := range orimap {
+			hashmap[k] = v
+		}
+		return hashmap, nil
 	case flux.MediaTypeGoMapString:
 		return cast.ToStringMap(mtValue.Value), nil
 	case flux.MediaTypeGoString:
+		oristr, ok := mtValue.Value.(string)
+		flux.AssertM(ok, func() string {
+			return fmt.Sprintf("mt-value(define:%s) is not go:string, mt-value:%+v", mtValue.MediaType, mtValue.Value)
+		})
 		var hashmap = map[string]interface{}{}
-		if err := ext.JSONUnmarshal([]byte(mtValue.Value.(string)), &hashmap); nil != err {
+		if err := ext.JSONUnmarshal([]byte(oristr), &hashmap); nil != err {
 			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mtValue.Value, err)
 		} else {
 			return hashmap, nil
