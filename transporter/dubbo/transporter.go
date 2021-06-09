@@ -10,6 +10,7 @@ import (
 	"github.com/bytepowered/flux"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -238,6 +239,7 @@ func (b *RpcTransporter) OnShutdown(_ context.Context) error {
 }
 
 func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
+	flux.AssertNotEmpty(service.RpcProto(), "<service.proto> is required")
 	trace := logger.TraceExtras(ctx.RequestId(), map[string]string{
 		"transport-service": service.ServiceID(),
 	})
@@ -350,7 +352,7 @@ func (b *RpcTransporter) LoadGenericService(service *flux.Service) common.RPCSer
 		t = time.Millisecond * 10
 	}
 	<-time.After(t)
-	logger.Infow("DUBBO:GENERIC:CREATE: OJBK", "interface", service.Interface)
+	logger.Infow("DUBBO:GENERIC:CREATE: OK", "interface", service.Interface)
 	return srv
 }
 
@@ -375,11 +377,19 @@ func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryCon
 }
 
 func NewReference(refid string, service *flux.Service, config *flux.Configuration) *dubgo.ReferenceConfig {
-	logger.Infow("Create dubbo reference-config",
-		"target-service", service.Interface, "target-url", service.Url,
+	logger.Infow("DUBBO:GENERIC:CREATE:NEWREF",
+		"rpc-service", service.Interface, "rpc-url", service.Url, "rpc-proto", service.RpcProto(),
 		"rpc-group", service.RpcGroup(), "rpc-version", service.RpcVersion())
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
-	ref.Url = service.Url
+	// 订正 url 地址
+	if service.Url != "" {
+		if hasproto(service.Url) {
+			ref.Url = service.Url
+		} else {
+			ref.Url = service.RpcProto() + "://" + service.Url
+		}
+	}
+	ref.Protocol = service.RpcProto()
 	ref.InterfaceName = service.Interface
 	ref.Version = service.RpcVersion()
 	ref.Group = service.RpcGroup()
@@ -390,4 +400,10 @@ func NewReference(refid string, service *flux.Service, config *flux.Configuratio
 	ref.Loadbalance = config.GetString("load_balance")
 	ref.Generic = true
 	return ref
+}
+
+var pattern = regexp.MustCompile(`^[a-zA-Z1-9]{2,}://`)
+
+func hasproto(s string) bool {
+	return pattern.Match([]byte(s))
 }
