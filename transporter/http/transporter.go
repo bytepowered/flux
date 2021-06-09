@@ -79,7 +79,7 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 		return nil, serr
 	}
 	// decode response
-	result, err := b.codec(ctx, raw)
+	result, err := b.codec(ctx, raw, make(map[string]interface{}, 0))
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
