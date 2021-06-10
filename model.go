@@ -166,14 +166,14 @@ func (a Attribute) IsValid() bool {
 type Attributes []Attribute
 
 // Single 查询单个属性
-func (attrs Attributes) Single(name string) Attribute {
-	v, _ := attrs.SingleEx(name)
+func (a Attributes) Single(name string) Attribute {
+	v, _ := a.SingleEx(name)
 	return v
 }
 
 // SingleEx 查询单个属性，并返回是否存在标识
-func (attrs Attributes) SingleEx(name string) (Attribute, bool) {
-	for _, attr := range attrs {
+func (a Attributes) SingleEx(name string) (Attribute, bool) {
+	for _, attr := range a {
 		if strings.EqualFold(attr.Name, name) {
 			return attr, true
 		}
@@ -182,9 +182,9 @@ func (attrs Attributes) SingleEx(name string) (Attribute, bool) {
 }
 
 // Multiple 查询多个同名属性
-func (attrs Attributes) Multiple(name string) Attributes {
+func (a Attributes) Multiple(name string) Attributes {
 	out := make(Attributes, 0, 2)
-	for _, attr := range attrs {
+	for _, attr := range a {
 		if strings.EqualFold(attr.Name, name) {
 			out = append(out, attr)
 		}
@@ -193,8 +193,8 @@ func (attrs Attributes) Multiple(name string) Attributes {
 }
 
 // Exists 判定属性名是否存在
-func (attrs Attributes) Exists(name string) bool {
-	for _, attr := range attrs {
+func (a Attributes) Exists(name string) bool {
+	for _, attr := range a {
 		if strings.EqualFold(attr.Name, name) {
 			return true
 		}
@@ -203,21 +203,26 @@ func (attrs Attributes) Exists(name string) bool {
 }
 
 // Values 返回属性列表的值
-func (attrs Attributes) Values() []interface{} {
-	out := make([]interface{}, len(attrs))
-	for i, a := range attrs {
+func (a Attributes) Values() []interface{} {
+	out := make([]interface{}, len(a))
+	for i, a := range a {
 		out[i] = a.Value
 	}
 	return out
 }
 
 // Strings 返回属性列表的值
-func (attrs Attributes) Strings() []string {
-	out := make([]string, len(attrs))
-	for i, a := range attrs {
+func (a Attributes) Strings() []string {
+	out := make([]string, len(a))
+	for i, a := range a {
 		out[i] = a.ToString()
 	}
 	return out
+}
+
+// Append 追加新的属性，并返回新的属性列表
+func (a Attributes) Append(in Attribute) Attributes {
+	return append(a, in)
 }
 
 // Service 定义连接上游目标服务的信息
@@ -232,45 +237,45 @@ type Service struct {
 	Attributes Attributes `json:"attributes" yaml:"attributes"` // Service侧的属性列表
 }
 
-func (b Service) RpcProto() string {
-	return b.Attributes.Single(ServiceAttrTagRpcProto).ToString()
+func (s Service) RpcProto() string {
+	return s.Attributes.Single(ServiceAttrTagRpcProto).ToString()
 }
 
-func (b Service) RpcTimeout() string {
-	return b.Attributes.Single(ServiceAttrTagRpcTimeout).ToString()
+func (s Service) RpcTimeout() string {
+	return s.Attributes.Single(ServiceAttrTagRpcTimeout).ToString()
 }
 
-func (b Service) RpcGroup() string {
-	return b.Attributes.Single(ServiceAttrTagRpcGroup).ToString()
+func (s Service) RpcGroup() string {
+	return s.Attributes.Single(ServiceAttrTagRpcGroup).ToString()
 }
 
-func (b Service) RpcVersion() string {
-	return b.Attributes.Single(ServiceAttrTagRpcVersion).ToString()
+func (s Service) RpcVersion() string {
+	return s.Attributes.Single(ServiceAttrTagRpcVersion).ToString()
 }
 
-func (b Service) RpcRetries() string {
-	return b.Attributes.Single(ServiceAttrTagRpcRetries).ToString()
+func (s Service) RpcRetries() string {
+	return s.Attributes.Single(ServiceAttrTagRpcRetries).ToString()
 }
 
 // IsValid 判断服务配置是否有效；
 // 1. Interface, Method 不能为空；
 // 2. 包含Proto协议；
-func (b Service) IsValid() bool {
-	return b.Interface != "" && "" != b.Method &&
-		b.Attributes.Exists(ServiceAttrTagRpcProto)
+func (s Service) IsValid() bool {
+	return s.Interface != "" && "" != s.Method &&
+		s.Attributes.Exists(ServiceAttrTagRpcProto)
 }
 
 // HasArguments 判定是否有参数
-func (b Service) HasArguments() bool {
-	return len(b.Arguments) > 0
+func (s Service) HasArguments() bool {
+	return len(s.Arguments) > 0
 }
 
 // ServiceID 构建标识当前服务的ID
-func (b Service) ServiceID() string {
-	if b.Interface == "" || b.Method == "" {
+func (s Service) ServiceID() string {
+	if s.Interface == "" || s.Method == "" {
 		return ""
 	}
-	return b.Interface + ":" + b.Method
+	return s.Interface + ":" + s.Method
 }
 
 // Endpoint 定义前端Http请求与后端RPC服务的端点元数据
@@ -292,7 +297,7 @@ func (e *Endpoint) IsValid() bool {
 	return e.HttpMethod != "" && e.HttpPattern != "" && e.ServiceId != ""
 }
 
-// Deprecated Use Attribute instead
+// Deprecated: Attr Use Attribute instead
 func (e *Endpoint) Attr(name string) Attribute {
 	return e.Attribute(name)
 }
@@ -302,17 +307,17 @@ func (e *Endpoint) Attribute(name string) Attribute {
 	return e.ensureAttributes().Single(name)
 }
 
-// Deprecated Use AttributeEx instead
+// Deprecated: AttrEx Use AttributeEx instead
 func (e *Endpoint) AttrEx(name string) (Attribute, bool) {
 	return e.AttributeEx(name)
 }
 
-// Attribute 获取指定名称的属性，如果属性不存在，返回空属性，以及是否存在标识位
+// AttributeEx 获取指定名称的属性，如果属性不存在，返回空属性，以及是否存在标识位
 func (e *Endpoint) AttributeEx(name string) (Attribute, bool) {
 	return e.ensureAttributes().SingleEx(name)
 }
 
-// Deprecated Use AttributeExists instead
+// Deprecated: AttrExists Use AttributeExists instead
 func (e *Endpoint) AttrExists(name string) bool {
 	return e.AttributeExists(name)
 }
@@ -322,7 +327,7 @@ func (e *Endpoint) AttributeExists(name string) bool {
 	return e.ensureAttributes().Exists(name)
 }
 
-// Deprecated Use MultiAttributes instead
+// Deprecated: MultiAttrs Use MultiAttributes instead
 func (e *Endpoint) MultiAttrs(name string) Attributes {
 	return e.MultiAttributes(name)
 }
