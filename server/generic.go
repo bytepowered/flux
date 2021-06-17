@@ -231,7 +231,7 @@ func (gs *GenericServer) Startup(build flux.Build) error {
 
 func (gs *GenericServer) start() error {
 	flux.AssertNotNil(gs.defaultListener(), "<default-listener> MUST NOT nil")
-	flux.AssertNotNil(ext.LookupFunc(), "<lookup-func> MUST NOT nil")
+	flux.AssertNotNil(ext.LookupScopedValueFunc(), "<scope-value-lookup-func> MUST NOT nil")
 	logger.Info("SERVER:EVEN:STARTUP")
 	for _, startup := range sortedStartup(ext.StartupHooks()) {
 		if err := startup.OnStartup(); nil != err {

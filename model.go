@@ -93,11 +93,6 @@ const (
 	ArgumentAttributeTagDefault = "default" // 参数的默认值属性
 )
 
-type (
-	// MTValueLookupFunc 参数值查找函数
-	MTValueLookupFunc func(ctx *Context, scope, key string) (MTValue, error)
-)
-
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
 	Name       string     `json:"name" yaml:"name"`             // 参数名称
