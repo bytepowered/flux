@@ -94,8 +94,6 @@ const (
 )
 
 type (
-	// MTValueLoaderFunc 参值直接加载函数
-	MTValueLoaderFunc func() MTValue
 	// MTValueLookupFunc 参数值查找函数
 	MTValueLookupFunc func(ctx *Context, scope, key string) (MTValue, error)
 )
