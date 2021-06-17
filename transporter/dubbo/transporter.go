@@ -7,6 +7,7 @@ import (
 	"github.com/apache/dubbo-go/common/extension"
 	"github.com/apache/dubbo-go/common/proxy"
 	"github.com/apache/dubbo-go/common/proxy/proxy_factory"
+	"github.com/apache/dubbo-go/protocol/dubbo"
 	"github.com/bytepowered/flux"
 	jsoniter "github.com/json-iterator/go"
 	"reflect"
@@ -24,13 +25,13 @@ import (
 	"github.com/apache/dubbo-go/common"
 	"github.com/apache/dubbo-go/common/constant"
 	dubgo "github.com/apache/dubbo-go/config"
-	"github.com/apache/dubbo-go/protocol/dubbo"
 )
 
 import (
 	_ "github.com/apache/dubbo-go/cluster/cluster_impl"
 	_ "github.com/apache/dubbo-go/cluster/loadbalance"
 	_ "github.com/apache/dubbo-go/filter/filter_impl"
+	_ "github.com/apache/dubbo-go/protocol/dubbo"
 	_ "github.com/apache/dubbo-go/registry/protocol"
 )
 
@@ -50,7 +51,9 @@ var (
 )
 
 func init() {
-	ext.RegisterTransporter(flux.ProtoDubbo, NewTransporter())
+	trsp := NewTransporter()
+	ext.RegisterTransporter(flux.ProtoDubbo, trsp)
+	ext.RegisterTransporter(flux.ProtoGRPC, trsp)
 	// 替换Dubbo泛调用默认实现
 	extension.SetProxyFactory("default", func(_ ...proxy.Option) proxy.ProxyFactory {
 		return new(proxy_factory.GenericProxyFactory)
@@ -183,9 +186,9 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 			"retries":               "0",
 			"cluster":               "failover",
 			"load_balance":          "random",
-			"protocol":              dubbo.DUBBO,
+			"protocol":              "dubbo", // dubbo, grpc
 		}),
-		// 使用带Result结果的RPCService实现
+		// 使用带Attachment结果的 GenericService2 实现
 		WithGenericServiceFunc(func(service *flux.Service) common.RPCService {
 			return dubgo.NewGenericService2(service.Interface)
 		}),
@@ -386,17 +389,20 @@ func NewReference(refid string, service *flux.Service, config *flux.Configuratio
 		if hasproto(service.Url) {
 			ref.Url = service.Url
 		} else {
-			ref.Url = service.RpcProto() + "://" + service.Url
+			proto := service.RpcProto()
+			if proto == "" {
+				proto = dubbo.DUBBO
+			}
+			ref.Url = proto + "://" + service.Url
 		}
 	}
-	ref.Protocol = service.RpcProto()
 	ref.InterfaceName = service.Interface
 	ref.Version = service.RpcVersion()
 	ref.Group = service.RpcGroup()
 	ref.RequestTimeout = service.RpcTimeout()
 	ref.Retries = service.RpcRetries()
+	ref.Protocol = service.RpcProto()
 	ref.Cluster = config.GetString("cluster")
-	ref.Protocol = config.GetString("protocol")
 	ref.Loadbalance = config.GetString("load_balance")
 	ref.Generic = true
 	return ref

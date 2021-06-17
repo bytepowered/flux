@@ -250,6 +250,7 @@ func (s Service) RpcRetries() string {
 	return s.Attributes.Single(ServiceAttrTagRpcRetries).ToString()
 }
 
+
 // IsValid 判断服务配置是否有效；
 // 1. Interface, Method 不能为空；
 // 2. 包含Proto协议；

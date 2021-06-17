@@ -192,9 +192,9 @@ func ToStringMapE(mtValue flux.MTValue) (map[string]interface{}, error) {
 					mtValue.Value, mtValue.Value, mtValue.MediaType)
 			}
 		}
-		var hashmap = map[string]interface{}{}
-		err := ext.JSONUnmarshal(data, &hashmap)
-		return hashmap, err
+		var outmap = make(map[string]interface{}, 16)
+		err := ext.JSONUnmarshal(data, &outmap)
+		return outmap, err
 	}
 }
 
