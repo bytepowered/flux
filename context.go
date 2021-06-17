@@ -34,6 +34,9 @@ type (
 
 	// OnBeforeTransportHookFunc 在Transporter执行前被调用的勾子函数
 	OnBeforeTransportHookFunc func(*Context, Transporter)
+
+	// LookupScopedValueFunc 参数值查找函数
+	LookupScopedValueFunc func(ctx *Context, scope, key string) (MTValue, error)
 )
 
 // NewContext 构建新的Context实例。
