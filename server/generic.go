@@ -305,12 +305,14 @@ func (gs *GenericServer) startEventWatch(ctx context.Context, endpoints chan flu
 func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (err error) {
 	defer func(id string) {
 		if panerr := recover(); panerr != nil {
+			trace := logger.Trace(id)
 			if recerr, ok := panerr.(error); ok {
-				logger.Trace(id).Errorw(recerr.Error(), "error", panerr, "debug", string(debug.Stack()))
+				trace.Errorw(recerr.Error(), "r-error", recerr, "debug", string(debug.Stack()))
+				err = recerr
 			} else {
-				logger.Trace(id).Errorw("SERVER:EVEN:ROUTE:CRITICAL_PANIC", "error", panerr, "debug", string(debug.Stack()))
+				trace.Errorw("SERVER:EVEN:ROUTE:CRITICAL_PANIC", "r-error", panerr, "debug", string(debug.Stack()))
+				err = fmt.Errorf("SERVER:EVEN:ROUTE:%s", panerr)
 			}
-			err = fmt.Errorf("SERVER:EVEN:ROUTE:%s", panerr)
 		}
 	}(webex.RequestId())
 	var endpoint flux.Endpoint
