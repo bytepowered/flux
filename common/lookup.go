@@ -106,6 +106,8 @@ func ToMTValue(v interface{}) flux.MTValue {
 		return flux.NewMapStringListMTValue(v.(map[string][]string))
 	case []string:
 		return flux.NewListStringMTValue(v.([]string))
+	case []interface{}:
+		return flux.NewListObjectMTValue(v.([]interface{}))
 	default:
 		return flux.NewObjectMTValue(v)
 	}

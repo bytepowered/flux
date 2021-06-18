@@ -28,6 +28,7 @@ const (
 	MediaTypeGoObject        = MediaType("go:object")
 	MediaTypeGoString        = MediaType("go:string")
 	MediaTypeGoListString    = MediaType("go:[]string")
+	MediaTypeGoListObject    = MediaType("go:[]object")
 	MediaTypeGoMapString     = MediaType("go:map[string]object")
 	MediaTypeGoMapStringList = MediaType("go:map[string][]string")
 )
@@ -48,19 +49,23 @@ func NewStringMTValue(value string) MTValue {
 }
 
 func NewObjectMTValue(value interface{}) MTValue {
-	return MTValue{Valid: IsNil(value), Value: value, MediaType: MediaTypeGoObject}
+	return MTValue{Valid: !IsNil(value), Value: value, MediaType: MediaTypeGoObject}
 }
 
 func NewMapStringMTValue(value map[string]interface{}) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoMapString}
+	return MTValue{Valid: !IsNil(value), Value: value, MediaType: MediaTypeGoMapString}
 }
 
 func NewListStringMTValue(value []string) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoListString}
+	return MTValue{Valid: !IsNil(value), Value: value, MediaType: MediaTypeGoListString}
+}
+
+func NewListObjectMTValue(value []interface{}) MTValue {
+	return MTValue{Valid: !IsNil(value), Value: value, MediaType: MediaTypeGoListObject}
 }
 
 func NewMapStringListMTValue(value map[string][]string) MTValue {
-	return MTValue{Valid: value != nil, Value: value, MediaType: MediaTypeGoMapStringList}
+	return MTValue{Valid: !IsNil(value), Value: value, MediaType: MediaTypeGoMapStringList}
 }
 
 // MTValueResolver 将未定类型的值，按指定类型以及泛型类型转换为实际类型
