@@ -4,48 +4,55 @@ import (
 	"fmt"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
-	"github.com/spf13/cast"
+	"github.com/bytepowered/flux/logger"
 	"net/http"
 	"net/url"
 	"time"
 )
 
 func init() {
-	ext.RegisterTransporter(flux.ProtoHttp, NewTransporter())
+	ext.RegisterTransporter(flux.ProtoHttp,
+		NewTransporterWith(
+			WithTransportCodec(NewTransportCodecFunc()),
+			WithAssembleRequest(DefaultAssembleRequest),
+			WithAssembleHeader(DefaultAssembleHeaders),
+		),
+	)
 }
 
 var _ flux.Transporter = new(RpcTransporter)
+var _ flux.Initializer = new(RpcTransporter)
 
 type (
 	// Option 配置函数
 	Option func(service *RpcTransporter)
 	// AssembleRequestFunc Http调用参数封装函数，可外部化配置为其它协议的值对象
 	AssembleRequestFunc func(ctx *flux.Context, service *flux.Service) (*http.Request, error)
+	// AssemblyHeadersFunc 封装Attachment为Headers的函数
+	AssemblyHeadersFunc func(context *flux.Context) (http.Header, error)
 )
 
 type RpcTransporter struct {
-	httpClient      *http.Client
+	client          *http.Client
 	codec           flux.TransportCodecFunc
+	trace           bool
 	assembleRequest AssembleRequestFunc
+	assembleHeader  AssemblyHeadersFunc
 }
 
 func NewTransporter() *RpcTransporter {
 	return &RpcTransporter{
-		httpClient: &http.Client{
+		client: &http.Client{
 			Timeout: time.Second * 10,
 		},
 		codec:           NewTransportCodecFunc(),
 		assembleRequest: DefaultAssembleRequest,
+		assembleHeader:  DefaultAssembleHeaders,
 	}
 }
 
 func NewTransporterWith(opts ...Option) *RpcTransporter {
-	bts := &RpcTransporter{
-		httpClient: &http.Client{
-			Timeout: time.Second * 10,
-		},
-		codec: NewTransportCodecFunc(),
-	}
+	bts := NewTransporter()
 	for _, opt := range opts {
 		opt(bts)
 	}
@@ -55,7 +62,7 @@ func NewTransporterWith(opts ...Option) *RpcTransporter {
 // WithHttpClient 用于配置HttpClient客户端
 func WithHttpClient(client *http.Client) Option {
 	return func(s *RpcTransporter) {
-		s.httpClient = client
+		s.client = client
 	}
 }
 
@@ -73,26 +80,42 @@ func WithAssembleRequest(fun AssembleRequestFunc) Option {
 	}
 }
 
+// WithAssembleHeader 用于配置转发Http请求参数封装实现函数
+func WithAssembleHeader(fun AssemblyHeadersFunc) Option {
+	return func(service *RpcTransporter) {
+		service.assembleHeader = fun
+	}
+}
+
+func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
+	b.trace = config.GetBool("trace_enable")
+	flux.AssertNotNil(b.codec, "<TransportCodecFunc> MUST NOT nil")
+	flux.AssertNotNil(b.assembleHeader, "<AssemblyHeadersFunc> MUST NOT nil")
+	flux.AssertNotNil(b.assembleRequest, "<AssembleRequestFunc> MUST NOT nil")
+	return nil
+}
+
 func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
-	raw, serr := b.invoke0(ctx, service)
-	if nil != serr {
-		return nil, serr
+	invret, inverr := b.invoke0(ctx, service)
+	if inverr != nil {
+		return nil, inverr
 	}
 	// decode response
-	result, err := b.codec(ctx, raw, make(map[string]interface{}, 0))
-	if nil != err {
+	decret, decerr := b.codec(ctx, invret, make(map[string]interface{}, 0))
+	if nil != decerr {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
 			Message:    flux.ErrorMessageTransportCodecError,
-			CauseError: fmt.Errorf("decode http response, err: %w", err),
+			CauseError: fmt.Errorf("decode http response, err: %w", decerr),
 		}
 	}
-	return result, nil
+	return decret, nil
 }
 
 func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
 	flux.AssertNotEmpty(service.Url, "<service.url> MUST NOT empty in http transporter")
+	// request
 	newRequest, err := b.assembleRequest(ctx, &service)
 	if nil != err {
 		return nil, &flux.ServeError{
@@ -102,16 +125,31 @@ func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (inter
 			CauseError: err,
 		}
 	}
-	return b.request(newRequest, service, ctx)
+	// header
+	header, err := b.assembleHeader(ctx)
+	if err != nil {
+		return nil, &flux.ServeError{
+			StatusCode: flux.StatusServerError,
+			ErrorCode:  flux.ErrorCodeGatewayInternal,
+			Message:    flux.ErrorMessageTransportHttpAssembleFailed,
+			CauseError: err,
+		}
+	}
+	for k, s := range header {
+		for _, v := range s {
+			newRequest.Header.Add(k, v)
+		}
+	}
+	if b.trace {
+		logger.Trace(ctx.RequestId()).Infow("TRANSPORTER:HTTP:INVOKE/args",
+			"target-url", newRequest.URL.String(), "target-method", newRequest.Method,
+			"arg-query", newRequest.URL.RawQuery, "arg-body", "arg-header", header)
+	}
+	return b.execute(newRequest)
 }
 
-func (b *RpcTransporter) request(request *http.Request, _ flux.Service, ctx *flux.Context) (interface{}, *flux.ServeError) {
-	// Header透传以及传递AttrValues
-	request.Header = ctx.HeaderVars()
-	for k, v := range ctx.Attributes() {
-		request.Header.Set(k, cast.ToString(v))
-	}
-	resp, err := b.httpClient.Do(request)
+func (b *RpcTransporter) execute(request *http.Request) (interface{}, *flux.ServeError) {
+	resp, err := b.client.Do(request)
 	if nil != err {
 		msg := flux.ErrorMessageTransportHttpInvokeFailed
 		if uErr, ok := err.(*url.Error); ok {

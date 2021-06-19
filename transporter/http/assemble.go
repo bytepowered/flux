@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/toolkit"
 	"github.com/bytepowered/flux/transporter"
 	"github.com/spf13/cast"
@@ -48,11 +47,10 @@ func DefaultAssembleRequest(ctx *flux.Context, service *flux.Service) (*http.Req
 	to := service.RpcTimeout()
 	timeout, err := time.ParseDuration(to)
 	if err != nil {
-		logger.Warnf("Illegal endpoint rpc-timeout: ", to)
 		timeout = time.Second * 10
 	}
 	toctx, _ := context.WithTimeout(ctx.Context(), timeout)
-	newRequest, err := http.NewRequestWithContext(toctx, service.Method, newUrl.String(), newBodyReader)
+	newRequest, err := http.NewRequestWithContext(toctx, ctx.Method(), newUrl.String(), newBodyReader)
 	if nil != err {
 		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", service.Method, newUrl, err)
 	}
@@ -102,4 +100,17 @@ func ResolvePostFormValues(ctx *flux.Context, args []flux.Argument) (url.Values,
 	return SelectToArgumentValues(ctx, args, func(arg flux.Argument) bool {
 		return toolkit.MatchEqual([]string{flux.ScopeForm, flux.ScopeFormMulti, flux.ScopeFormMap}, arg.HttpScope)
 	})
+}
+
+func DefaultAssembleHeaders(ctx *flux.Context) (http.Header, error) {
+	header := ctx.HeaderVars()
+	for k, v := range ctx.Attributes() {
+		// ':' 表示特定类型的属性 -> tag:xx,  feature:xx
+		// '@' 表示内置状态的属性 -> @com.bytepowered.flux.
+		if strings.ContainsAny(k, "@:") {
+			continue
+		}
+		header.Set(k, cast.ToString(v))
+	}
+	return header, nil
 }
