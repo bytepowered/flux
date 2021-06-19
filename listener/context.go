@@ -92,6 +92,11 @@ func (w *AdaptWebContext) FormVars() url.Values {
 	return f
 }
 
+func (w *AdaptWebContext) PostFormVars() url.Values {
+	_, _ = w.echoc.FormParams() // trigger form parse
+	return w.echoc.Request().PostForm
+}
+
 func (w *AdaptWebContext) CookieVars() []*http.Cookie {
 	return w.echoc.Cookies()
 }
@@ -111,6 +116,10 @@ func (w *AdaptWebContext) PathVar(name string) string {
 
 func (w *AdaptWebContext) FormVar(name string) string {
 	return w.echoc.FormValue(name)
+}
+
+func (w *AdaptWebContext) PostFormVar(name string) string {
+	return w.PostFormVars().Get(name)
 }
 
 func (w *AdaptWebContext) CookieVar(name string) (*http.Cookie, error) {
