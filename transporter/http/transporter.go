@@ -5,14 +5,13 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/spf13/cast"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
 )
 
 func init() {
-	ext.RegisterTransporter(flux.ProtoHttp, NewRpcHttpTransporter())
+	ext.RegisterTransporter(flux.ProtoHttp, NewTransporter())
 }
 
 var _ flux.Transporter = new(RpcTransporter)
@@ -20,26 +19,27 @@ var _ flux.Transporter = new(RpcTransporter)
 type (
 	// Option 配置函数
 	Option func(service *RpcTransporter)
-	// ArgumentResolver Http调用参数封装函数，可外部化配置为其它协议的值对象
-	ArgumentResolver func(service *flux.Service, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error)
+	// AssembleRequestFunc Http调用参数封装函数，可外部化配置为其它协议的值对象
+	AssembleRequestFunc func(ctx *flux.Context, service *flux.Service) (*http.Request, error)
 )
 
 type RpcTransporter struct {
-	httpClient  *http.Client
-	codec       flux.TransportCodecFunc
-	argResolver ArgumentResolver
+	httpClient      *http.Client
+	codec           flux.TransportCodecFunc
+	assembleRequest AssembleRequestFunc
 }
 
-func NewRpcHttpTransporter() *RpcTransporter {
+func NewTransporter() *RpcTransporter {
 	return &RpcTransporter{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
 		},
-		codec: NewTransportCodecFunc(),
+		codec:           NewTransportCodecFunc(),
+		assembleRequest: DefaultAssembleRequest,
 	}
 }
 
-func NewRpcHttpTransporterWith(opts ...Option) *RpcTransporter {
+func NewTransporterWith(opts ...Option) *RpcTransporter {
 	bts := &RpcTransporter{
 		httpClient: &http.Client{
 			Timeout: time.Second * 10,
@@ -66,10 +66,10 @@ func WithTransportCodec(fun flux.TransportCodecFunc) Option {
 	}
 }
 
-// WithArgumentResolver 用于配置转发Http请求参数封装实现函数
-func WithArgumentResolver(fun ArgumentResolver) Option {
+// WithAssembleRequest 用于配置转发Http请求参数封装实现函数
+func WithAssembleRequest(fun AssembleRequestFunc) Option {
 	return func(service *RpcTransporter) {
-		service.argResolver = fun
+		service.assembleRequest = fun
 	}
 }
 
@@ -92,8 +92,8 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 }
 
 func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (interface{}, *flux.ServeError) {
-	body, _ := ctx.BodyReader()
-	newRequest, err := b.argResolver(&service, ctx.URL(), body, ctx)
+	flux.AssertNotEmpty(service.Url, "<service.url> MUST NOT empty in http transporter")
+	newRequest, err := b.assembleRequest(ctx, &service)
 	if nil != err {
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
