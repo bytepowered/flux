@@ -229,10 +229,9 @@ func (a Attributes) Append(in Attribute) Attributes {
 type Service struct {
 	Kind       string     `json:"kind" yaml:"kind"`             // Service类型
 	AliasId    string     `json:"aliasId" yaml:"aliasId"`       // Service别名
-	Scheme     string     `json:"scheme" yaml:"scheme"`         // Service侧URL的Scheme
-	Url        string     `json:"url" yaml:"url"`               // Service侧的Host
-	Interface  string     `json:"interface" yaml:"interface"`   // Service侧的URL/Interface
-	Method     string     `json:"method" yaml:"method"`         // Service侧的方法
+	Url        string     `json:"url" yaml:"url"`               // Service侧的URL
+	Interface  string     `json:"interface" yaml:"interface"`   // Service侧的Interface
+	Method     string     `json:"method" yaml:"method"`         // Service侧的Method
 	Arguments  []Argument `json:"arguments" yaml:"arguments"`   // Service侧的参数结构
 	Attributes Attributes `json:"attributes" yaml:"attributes"` // Service侧的属性列表
 }
