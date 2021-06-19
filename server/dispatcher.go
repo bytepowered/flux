@@ -84,10 +84,12 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		select {
 		case <-ctx.Context().Done():
 			return &flux.ServeError{StatusCode: flux.StatusBadRequest,
-				ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/200", CauseError: ctx.Context().Err(),
+				ErrorCode: "SERVER:ROUTE::CANCELED/200", CauseError: ctx.Context().Err(),
 			}
 		default:
-			break
+			if inverr != nil {
+				logger.TraceContext(ctx).Errorw("SERVER:ROUTE:TRANSPORT/error", "error", inverr, "t-service", ctx.ServiceID())
+			}
 		}
 		// Write response
 		if flux.NotNil(inverr) {
