@@ -7,15 +7,15 @@ import (
 // 提供一种可扩展的参数查找实现。
 // 通过替换参数值查找函数，可以允许某些非规范Http参数系统的自定义参数值查找逻辑。
 var (
-	lookupFunc flux.MTValueLookupFunc
+	lookupScopedValueFunc flux.LookupScopedValueFunc
 )
 
-func SetLookupFunc(f flux.MTValueLookupFunc) {
-	lookupFunc = flux.MustNotNil(f, "MTValueLookupFunc is nil").(flux.MTValueLookupFunc)
+func SetLookupScopedValueFunc(f flux.LookupScopedValueFunc) {
+	lookupScopedValueFunc = flux.MustNotNil(f, "LookupScopedValueFunc is nil").(flux.LookupScopedValueFunc)
 }
 
-func LookupFunc() flux.MTValueLookupFunc {
-	return lookupFunc
+func LookupScopedValueFunc() flux.LookupScopedValueFunc {
+	return lookupScopedValueFunc
 }
 
 //// 构建参数值对象工具函数

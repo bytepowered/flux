@@ -12,7 +12,7 @@ func init() {
 	// Default logger factory
 	ext.SetLoggerFactory(logger.DefaultFactory)
 	// 参数查找与解析函数
-	ext.SetLookupFunc(common.LookupMTValue)
+	ext.SetLookupScopedValueFunc(common.LookupValueByScoped)
 	// Serializer
 	// Default: JSON
 	serializer := flux.NewJsonSerializer()

@@ -6,34 +6,34 @@ import (
 )
 
 func sortedStartup(items []flux.Startuper) []flux.Startuper {
-	out := make(StartupArray, len(items))
+	out := make(StartupByOrderer, len(items))
 	for i, v := range items {
 		out[i] = v
 	}
-	sort.Sort(out)
+	sort.Stable(out)
 	return out
 }
 
 func sortedShutdown(items []flux.Shutdowner) []flux.Shutdowner {
-	out := make(ShutdownArray, len(items))
+	out := make(ShutdownByOrderer, len(items))
 	for i, v := range items {
 		out[i] = v
 	}
-	sort.Sort(out)
+	sort.Stable(out)
 	return out
 }
 
-type StartupArray []flux.Startuper
+type StartupByOrderer []flux.Startuper
 
-func (s StartupArray) Len() int           { return len(s) }
-func (s StartupArray) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s StartupArray) Less(i, j int) bool { return orderOf(s[i]) < orderOf(s[j]) }
+func (s StartupByOrderer) Len() int           { return len(s) }
+func (s StartupByOrderer) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s StartupByOrderer) Less(i, j int) bool { return orderOf(s[i]) < orderOf(s[j]) }
 
-type ShutdownArray []flux.Shutdowner
+type ShutdownByOrderer []flux.Shutdowner
 
-func (s ShutdownArray) Len() int           { return len(s) }
-func (s ShutdownArray) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s ShutdownArray) Less(i, j int) bool { return orderOf(s[i]) < orderOf(s[j]) }
+func (s ShutdownByOrderer) Len() int           { return len(s) }
+func (s ShutdownByOrderer) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s ShutdownByOrderer) Less(i, j int) bool { return orderOf(s[i]) < orderOf(s[j]) }
 
 func orderOf(v interface{}) int {
 	if v, ok := v.(flux.Orderer); ok {
