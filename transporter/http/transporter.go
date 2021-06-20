@@ -5,6 +5,7 @@ import (
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
 	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"net/http"
 	"net/url"
 	"time"
@@ -141,9 +142,10 @@ func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (inter
 		}
 	}
 	if b.trace {
+		bodys := string(toolkit.ReadReaderBytes(ctx.BodyReader()))
 		logger.Trace(ctx.RequestId()).Infow("TRANSPORTER:HTTP:INVOKE/args",
-			"target-url", newRequest.URL.String(), "target-method", newRequest.Method,
-			"arg-query", newRequest.URL.RawQuery, "arg-body", "arg-header", header)
+			"http-url", newRequest.URL.String(), "http-method", newRequest.Method,
+			"arg-query", newRequest.URL.RawQuery, "arg-body", bodys, "arg-header", header)
 	}
 	return b.execute(newRequest)
 }
