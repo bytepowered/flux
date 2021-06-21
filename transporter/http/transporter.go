@@ -119,6 +119,10 @@ func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (inter
 	// request
 	newRequest, err := b.assembleRequest(ctx, &service)
 	if nil != err {
+		logger.TraceExtras(ctx.RequestId(), map[string]string{
+			"invoke.service":     service.ServiceID(),
+			"invoke.service.url": service.Url,
+		}).Errorw("TRANSPORTER:HTTP:ASSEMBLE/header", "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -126,9 +130,14 @@ func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (inter
 			CauseError: err,
 		}
 	}
+	trace := logger.TraceExtras(ctx.RequestId(), map[string]string{
+		"invoke.service": service.ServiceID(),
+		"invoke.http":    newRequest.Method + ":" + newRequest.URL.String(),
+	})
 	// header
 	header, err := b.assembleHeader(ctx)
 	if err != nil {
+		trace.Errorw("TRANSPORTER:HTTP:ASSEMBLE/header", "error", err)
 		return nil, &flux.ServeError{
 			StatusCode: flux.StatusServerError,
 			ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -143,8 +152,7 @@ func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service) (inter
 	}
 	if b.trace {
 		bodys := string(toolkit.ReadReaderBytes(ctx.BodyReader()))
-		logger.Trace(ctx.RequestId()).Infow("TRANSPORTER:HTTP:INVOKE/args",
-			"http-url", newRequest.URL.String(), "http-method", newRequest.Method,
+		trace.Infow("TRANSPORTER:HTTP:INVOKE/args",
 			"arg-query", newRequest.URL.RawQuery, "arg-body", bodys, "arg-header", header)
 	}
 	return b.execute(newRequest)

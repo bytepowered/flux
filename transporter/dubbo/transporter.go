@@ -241,7 +241,7 @@ func (b *RpcTransporter) OnShutdown(_ context.Context) error {
 func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
 	flux.AssertNotEmpty(service.RpcProto(), "<service.proto> is required")
 	trace := logger.TraceExtras(ctx.RequestId(), map[string]string{
-		"transport-service": service.ServiceID(),
+		"invoke.service": service.ServiceID(),
 	})
 	types, values, err := b.argsAssembleFunc(ctx, service.Arguments)
 	if nil != err {
