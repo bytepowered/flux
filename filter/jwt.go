@@ -125,14 +125,14 @@ func ExtractTokenOAuth2(ctx *flux.Context) (string, error) {
 
 // ExtractTokenByFeature 根据Endpoint属性配置抓取Token的值
 func ExtractTokenByFeature(ctx *flux.Context) (string, error) {
-	expr := ctx.Endpoint().Attribute(FeatureJWT).ToString()
+	expr := ctx.Endpoint().Annotation(FeatureJWT).GetString()
 	if "" == expr {
 		return "", fmt.Errorf("<%s> not found in endpoint.attrs", FeatureJWT)
 	}
 	return TokenStripBearerPrefix(common.LookupWebValueByExpr(ctx, expr))
 }
 
-// Strips 'Bearer ' prefix from bearer token string
+// TokenStripBearerPrefix Strips 'Bearer ' prefix from bearer token string
 func TokenStripBearerPrefix(token string) (string, error) {
 	// Should be a bearer token
 	if len(token) > 6 && strings.ToUpper(token[0:7]) == "BEARER " {

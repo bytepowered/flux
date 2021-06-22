@@ -84,7 +84,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 		if p.Disabled || p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
-		ids := ctx.Endpoint().MultiAttributes(flux.EndpointAttrTagPermission).Strings()
+		ids := ctx.Endpoint().Annotation(flux.EndpointAnnotationPermissions).GetStrings()
 		workers := make([]flux.ServiceSpec, 0, len(ids))
 		for _, id := range ids {
 			if srv, ok := ext.ServiceByID(id); ok {

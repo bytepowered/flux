@@ -95,7 +95,7 @@ func (d *ResourceEndpointDiscovery) WatchEndpoints(ctx context.Context, events c
 func (d *ResourceEndpointDiscovery) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	for _, res := range d.resources {
 		for _, el := range res.Services {
-			if !el.Valid() {
+			if !el.IsValid() {
 				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/verify:invalid", "service", el)
 				continue
 			}

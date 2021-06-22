@@ -2,13 +2,12 @@ package flux
 
 import (
 	"github.com/spf13/cast"
+	"reflect"
 	"strings"
 	"sync"
 )
 
-type (
-	EventType int
-)
+type EventType int
 
 // 路由元数据事件类型
 const (
@@ -16,6 +15,20 @@ const (
 	EventTypeUpdated
 	EventTypeRemoved
 )
+
+var eventTypeNames = map[int]string{
+	-1:               "EventType:Unknown",
+	EventTypeAdded:   "EventType:Added",
+	EventTypeUpdated: "EventType:Updated",
+	EventTypeRemoved: "EventType:Removed",
+}
+
+func EventTypeName(evtType int) string {
+	if n, ok := eventTypeNames[evtType]; ok {
+		return n
+	}
+	return eventTypeNames[-1]
+}
 
 const (
 	// ScopePath 从动态Path参数中获取
@@ -55,8 +68,6 @@ const (
 	ServiceArgumentTypePrimitive = "PRIMITIVE"
 	// ServiceArgumentTypeComplex 复杂参数类型：POJO
 	ServiceArgumentTypeComplex = "COMPLEX"
-	// ServiceArgumentTypeJSONMap JSONMap类型
-	ServiceArgumentTypeJSONMap = "JSONMAP"
 )
 
 // Support protocols
@@ -73,36 +84,29 @@ const (
 	SpecKindEndpoint = "flux.go/EndpointSpec"
 )
 
-// Service内置属性
 const (
 	ServiceAttrTagNotDefined = ""
 )
 
 // Service内置注解
 const (
-	ServiceAnnotationNameRpcProto   = "flux.go/rpc.proto"
-	ServiceAnnotationNameRpcGroup   = "flux.go/rpc.group"
-	ServiceAnnotationNameRpcVersion = "flux.go/rpc.version"
-	ServiceAnnotationNameRpcTimeout = "flux.go/rpc.timeout"
-	ServiceAnnotationNameRpcRetries = "flux.go/rpc.retries"
-)
-
-// Endpoint内置属性
-const (
-	EndpointAttrTagNotDefined = ""                        // 默认的，未定义的属性
-	EndpointAttrTagPermission = "flux.go/attr.permission" // 权限权限声明
+	ServiceAnnotationRpcGroup   = "flux.go/rpc.group"
+	ServiceAnnotationRpcVersion = "flux.go/rpc.version"
+	ServiceAnnotationRpcTimeout = "flux.go/rpc.timeout"
+	ServiceAnnotationRpcRetries = "flux.go/rpc.retries"
 )
 
 // Endpoint内置注解
 const (
-	EndpointAnnotationNameBizKey      = "flux.go/biz.key"           // 标识Endpoint绑定到业务标识
-	EndpointAnnotationNameAuthorize   = "flux.go/authorize"         // 标识Endpoint访问是否需要授权的注解
-	EndpointAnnotationNameListenerSel = "flux.go/listener.selector" // 标识Endpoint绑定到哪个ListenServer服务
-	EndpointAnnotationNameStaticModel = "flux.go/static.model"      // 标识此Endpoint为固定数据模型，不支持动态更新
+	EndpointAnnotationPermissions = "flux.go/permissions"       // 权限权限声明
+	EndpointAnnotationBizKey      = "flux.go/biz.key"           // 标识Endpoint绑定到业务标识
+	EndpointAnnotationAuthorize   = "flux.go/authorize"         // 标识Endpoint访问是否需要授权的注解
+	EndpointAnnotationListenerSel = "flux.go/listener.selector" // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAnnotationStaticModel = "flux.go/static.model"      // 标识此Endpoint为固定数据模型，不支持动态更新
 )
 
 const (
-	ServiceArgumentAnnotationTagDefault = "default" // 参数的默认值属性
+	ServiceArgumentAnnotationDefault = "default" // 参数的默认值属性
 )
 
 // ServiceArgumentSpec 定义Endpoint的参数结构元数据
@@ -139,31 +143,22 @@ type NamedValueSpec struct {
 	Value interface{} `json:"value" yaml:"value"`
 }
 
-func (a NamedValueSpec) ToString() string {
-	if values, ok := a.Value.([]interface{}); ok {
-		if len(values) > 0 {
-			return cast.ToString(values[0])
-		} else {
+func (a NamedValueSpec) GetString() string {
+	rv := reflect.ValueOf(a.Value)
+	if rv.Kind() == reflect.Slice {
+		if rv.Len() == 0 {
 			return ""
 		}
-	} else {
-		return cast.ToString(a.Value)
+		return cast.ToString(rv.Index(0).Interface())
 	}
+	return cast.ToString(a.Value)
 }
 
-func (a NamedValueSpec) ToStringSlice() []string {
+func (a NamedValueSpec) GetStrings() []string {
 	return cast.ToStringSlice(a.Value)
 }
 
-func (a NamedValueSpec) ToInt() int {
-	return cast.ToInt(a.Value)
-}
-
-func (a NamedValueSpec) ToBool() bool {
-	return cast.ToBool(a.Value)
-}
-
-func (a NamedValueSpec) Valid() bool {
+func (a NamedValueSpec) IsValid() bool {
 	return a.Name != "" && a.Value != nil
 }
 
@@ -207,20 +202,11 @@ func (a Attributes) Exists(name string) bool {
 	return false
 }
 
-// Values 返回属性列表的值
-func (a Attributes) Values() []interface{} {
-	out := make([]interface{}, len(a))
-	for i, a := range a {
-		out[i] = a.Value
-	}
-	return out
-}
-
-// Strings 返回属性列表的值
-func (a Attributes) Strings() []string {
+// GetStrings 返回属性列表的字符串值
+func (a Attributes) GetStrings() []string {
 	out := make([]string, len(a))
 	for i, a := range a {
-		out[i] = a.ToString()
+		out[i] = a.GetString()
 	}
 	return out
 }
@@ -230,7 +216,7 @@ func (a Attributes) Append(in NamedValueSpec) Attributes {
 	return append(a, in)
 }
 
-// Annotations 注解对象，用于声明模型的固定有属性，不可被传递
+// Annotations 注解，用于声明模型的固定有属性。注解不可被传递到后端服务
 type Annotations map[string]interface{}
 
 func (a Annotations) Exists(name string) bool {
@@ -238,14 +224,14 @@ func (a Annotations) Exists(name string) bool {
 	return ok
 }
 
-func (a Annotations) Annotation(name string) NamedValueSpec {
+func (a Annotations) Get(name string) NamedValueSpec {
 	if v, ok := a[name]; ok {
 		return NamedValueSpec{Name: name, Value: v}
 	}
 	return NamedValueSpec{}
 }
 
-func (a Annotations) AnnotationEx(name string) (NamedValueSpec, bool) {
+func (a Annotations) GetEx(name string) (NamedValueSpec, bool) {
 	if v, ok := a[name]; ok {
 		return NamedValueSpec{Name: name, Value: v}, true
 	}
@@ -266,13 +252,13 @@ type ServiceSpec struct {
 
 // Annotation 获取指定名称的注解，如果注解不存在，返回空注解。
 func (s ServiceSpec) Annotation(name string) NamedValueSpec {
-	return s.Annotations.Annotation(name)
+	return s.Annotations.Get(name)
 }
 
-// Valid 判断服务配置是否有效；
+// IsValid 判断服务配置是否有效；
 // 1. Interface, Method 不能为空；
 // 2. 包含Proto协议；
-func (s ServiceSpec) Valid() bool {
+func (s ServiceSpec) IsValid() bool {
 	return s.Interface != "" && s.Method != "" && s.Protocol != ""
 }
 
@@ -327,12 +313,12 @@ func (e *EndpointSpec) MultiAttributes(name string) Attributes {
 
 // Annotation 获取指定名称的注解，如果注解不存在，返回空注解。
 func (e *EndpointSpec) Annotation(name string) NamedValueSpec {
-	return e.Annotations.Annotation(name)
+	return e.Annotations.Get(name)
 }
 
 // AnnotationEx 获取指定名称的注解，如果注解不存在，返回空注解。
 func (e *EndpointSpec) AnnotationEx(name string) (NamedValueSpec, bool) {
-	return e.Annotations.AnnotationEx(name)
+	return e.Annotations.GetEx(name)
 }
 
 // AnnotationExists 判断指定名称的注解是否存在

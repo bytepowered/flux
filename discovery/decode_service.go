@@ -26,7 +26,7 @@ func DecodeServiceFunc(bytes []byte) (flux.ServiceSpec, error) {
 		service.Annotations = make(flux.Annotations, 0)
 	}
 	// 检查有效性
-	if !service.Valid() {
+	if !service.IsValid() {
 		return emptyService, errors.New("DECODE:VERIFY:SERVICE/invalid")
 	}
 	return service, nil

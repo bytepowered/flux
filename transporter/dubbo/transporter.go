@@ -379,8 +379,8 @@ func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryCon
 func NewReference(refid string, service *flux.ServiceSpec, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("DUBBO:GENERIC:CREATE:NEWREF",
 		"rpc-service", service.Interface, "rpc-url", service.Url, "rpc-proto", service.Protocol,
-		"rpc-group", service.Annotation(flux.ServiceAnnotationNameRpcGroup).ToString(),
-		"rpc-version", service.Annotation(flux.ServiceAnnotationNameRpcVersion).ToString())
+		"rpc-group", service.Annotation(flux.ServiceAnnotationRpcGroup).GetString(),
+		"rpc-version", service.Annotation(flux.ServiceAnnotationRpcVersion).GetString())
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
 	// 订正 url 地址
 	if service.Url != "" {
@@ -392,10 +392,10 @@ func NewReference(refid string, service *flux.ServiceSpec, config *flux.Configur
 	}
 	ref.Protocol = service.Protocol
 	ref.InterfaceName = service.Interface
-	ref.Version = service.Annotation(flux.ServiceAnnotationNameRpcVersion).ToString()
-	ref.Group = service.Annotation(flux.ServiceAnnotationNameRpcGroup).ToString()
-	ref.RequestTimeout = service.Annotation(flux.ServiceAnnotationNameRpcTimeout).ToString()
-	ref.Retries = service.Annotation(flux.ServiceAnnotationNameRpcRetries).ToString()
+	ref.Version = service.Annotation(flux.ServiceAnnotationRpcVersion).GetString()
+	ref.Group = service.Annotation(flux.ServiceAnnotationRpcGroup).GetString()
+	ref.RequestTimeout = service.Annotation(flux.ServiceAnnotationRpcTimeout).GetString()
+	ref.Retries = service.Annotation(flux.ServiceAnnotationRpcRetries).GetString()
 	ref.Cluster = config.GetString("cluster")
 	ref.Protocol = config.GetString("protocol")
 	ref.Loadbalance = config.GetString("load_balance")

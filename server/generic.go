@@ -333,7 +333,7 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 	}
 	// 检查Endpoint/Service绑定
 	flux.AssertTrue(endpoint.Valid(), "<endpoint> must valid when routing")
-	flux.AssertTrue(endpoint.Service.Valid(), "<endpoint.service> must valid when routing")
+	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
@@ -443,8 +443,8 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		if register {
 			// 根据Endpoint注解属性，选择ListenServer来绑定
 			var listenerId = ListenerIdDefault
-			if anno, ok := ep.AnnotationEx(flux.EndpointAnnotationNameListenerSel); ok && anno.Valid() {
-				listenerId = anno.ToString()
+			if anno, ok := ep.AnnotationEx(flux.EndpointAnnotationListenerSel); ok && anno.IsValid() {
+				listenerId = anno.GetString()
 			}
 			if webListener, ok := gs.WebListenerById(listenerId); ok {
 				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+listenerId, epvars...)
@@ -559,7 +559,7 @@ func (gs *GenericServer) defaultListener() flux.WebListener {
 // 此处绑定的为原始元数据的引用；
 func (gs *GenericServer) syncService(ep *flux.EndpointSpec) {
 	// Endpoint为静态模型，不支持动态更新
-	if ep.AnnotationExists(flux.EndpointAnnotationNameStaticModel) {
+	if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
 		logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 		return
 	}
@@ -577,7 +577,7 @@ func (gs *GenericServer) syncEndpoint(srv *flux.ServiceSpec) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新
-			if ep.AnnotationExists(flux.EndpointAnnotationNameStaticModel) {
+			if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
 				logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				continue
 			}

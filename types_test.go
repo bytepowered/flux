@@ -5,6 +5,40 @@ import (
 	"testing"
 )
 
+func TestNamedValueSpec_ToString(t *testing.T) {
+	cases := []TestCase{
+		{
+			Expected: "a",
+			Actual:   NamedValueSpec{Value: []string{"a", "b"}}.GetString(),
+			Message:  "should be [0] == a",
+		},
+		{
+			Expected: "",
+			Actual:   NamedValueSpec{}.GetString(),
+			Message:  "default nil should be empty string",
+		},
+		{
+			Expected: "",
+			Actual:   NamedValueSpec{Value: []string{}}.GetString(),
+			Message:  "empty array should be empty string",
+		},
+		{
+			Expected: "",
+			Actual:   NamedValueSpec{Value: nil}.GetString(),
+			Message:  "nil value should be empty string",
+		},
+		{
+			Expected: "0",
+			Actual:   NamedValueSpec{Value: 0}.GetString(),
+			Message:  "0 value should be '0' string",
+		},
+	}
+	tester := assert2.New(t)
+	for _, c := range cases {
+		tester.Equal(c.Expected, c.Actual, c.Message)
+	}
+}
+
 func TestParseEndpointModelV2(t *testing.T) {
 	text := `{
     "endpointId": "auc:/api/users/register:1.0",
@@ -97,7 +131,7 @@ func TestParseEndpointModelV2(t *testing.T) {
         }
     ]
 }`
-	AssertWith(t, text, []AssertCase{
+	AssertEndpointSpecWith(t, text, []EndpointSpecCase{
 		{
 			Expected: true,
 			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Valid() },
@@ -120,12 +154,12 @@ func TestParseEndpointModelV2(t *testing.T) {
 		},
 		{
 			Expected: ":superadmin",
-			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Attributes.Single("roles").ToString() },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Attributes.Single("roles").GetString() },
 		},
 		{
 			Expected: []string{"key=query:etag", "ttl=3600"},
 			Actual: func(endpoint *EndpointSpec) interface{} {
-				return endpoint.Attributes.Single("feature:cache").ToStringSlice()
+				return endpoint.Attributes.Single("feature:cache").GetStrings()
 			},
 		},
 		{
@@ -163,13 +197,13 @@ func TestParseEndpointModelV2(t *testing.T) {
 		{
 			Expected: "0.0.0.0.1",
 			Actual: func(endpoint *EndpointSpec) interface{} {
-				return endpoint.Service.Annotation(ServiceAnnotationNameRpcVersion).ToString()
+				return endpoint.Service.Annotation(ServiceAnnotationRpcVersion).GetString()
 			},
 		},
 	})
 }
 
-func AssertWith(t *testing.T, text string, cases []AssertCase) {
+func AssertEndpointSpecWith(t *testing.T, text string, cases []EndpointSpecCase) {
 	endpoint := EndpointSpec{}
 	serializer := NewJsonSerializer()
 	err := serializer.Unmarshal([]byte(text), &endpoint)
@@ -180,7 +214,7 @@ func AssertWith(t *testing.T, text string, cases []AssertCase) {
 	}
 }
 
-type AssertCase struct {
+type EndpointSpecCase struct {
 	Expected interface{}
 	Actual   func(endpoint *EndpointSpec) interface{}
 	Message  string

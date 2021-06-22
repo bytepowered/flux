@@ -48,8 +48,8 @@ func resolvefield(ctx *flux.Context, a *flux.ServiceArgumentSpec) (interface{}, 
 	}
 	// 3: Default value
 	if !mtv.Valid && a.Annotations != nil {
-		if anno, ok := a.Annotations.AnnotationEx(flux.ServiceArgumentAnnotationTagDefault); ok {
-			mtv = flux.NewStringMTValue(anno.ToString())
+		if anno, ok := a.Annotations.GetEx(flux.ServiceArgumentAnnotationDefault); ok {
+			mtv = flux.NewStringMTValue(anno.GetString())
 		}
 	}
 	return resolver(mtv, a.ClassType, a.GenericTypes)

@@ -44,8 +44,7 @@ func DefaultAssembleRequest(ctx *flux.Context, service *flux.ServiceSpec) (*http
 		newBodyReader = reader
 	}
 
-	to := service.Annotation(flux.ServiceAnnotationNameRpcTimeout).ToString()
-	timeout, err := time.ParseDuration(to)
+	timeout, err := cast.ToDurationE(service.Annotation(flux.ServiceAnnotationRpcTimeout).Value)
 	if err != nil {
 		timeout = time.Second * 10
 	}
