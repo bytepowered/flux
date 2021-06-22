@@ -82,7 +82,7 @@ func (c *Context) ServiceID() string {
 
 // Attribute 获取指定key的Attribute。如果不存在，返回默认值；
 func (c *Context) Attribute(key string, defval interface{}) interface{} {
-	if v, ok := c.GetAttribute(key); ok {
+	if v, ok := c.AttributeEx(key); ok {
 		return v
 	} else {
 		return defval
@@ -96,7 +96,7 @@ func (c *Context) Attribute(key string, defval interface{}) interface{} {
 func (c *Context) Attributes() map[string]interface{} {
 	out := make(map[string]interface{}, len(c.attributes))
 	for _, attr := range c.endpoint.Attributes {
-		out[attr.Name] = attr.Value
+		out[attr.Key] = attr.Value
 	}
 	for k, v := range c.attributes {
 		out[k] = v
@@ -104,11 +104,11 @@ func (c *Context) Attributes() map[string]interface{} {
 	return out
 }
 
-// GetAttribute 获取指定key的Attribute，返回值和是否存在标识
+// AttributeEx 获取指定key的Attribute，返回值和是否存在标识
 // 搜索位置及顺序：
 // 1. Context自身的Attributes；【HIGH】
 // 2. Endpoint的Attributes；【LOW】
-func (c *Context) GetAttribute(key string) (interface{}, bool) {
+func (c *Context) AttributeEx(key string) (interface{}, bool) {
 	v, ok := c.attributes[key]
 	if !ok {
 		if attr, aok := c.endpoint.AttributeEx(key); aok {

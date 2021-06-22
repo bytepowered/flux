@@ -56,7 +56,7 @@ func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.MTVal
 	case flux.ScopeHeaderMap:
 		return flux.NewMapStringListMTValue(ctx.HeaderVars()), nil
 	case flux.ScopeAttr:
-		if v, ok := ctx.GetAttribute(key); ok {
+		if v, ok := ctx.AttributeEx(key); ok {
 			return ToMTValue(v), nil
 		}
 		return flux.NewInvalidMTValue(), nil
@@ -89,7 +89,7 @@ func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.MTVal
 		if mtv := lookupValues(ctx.HeaderVars(), key); mtv.Valid {
 			return mtv, nil
 		}
-		if v, ok := ctx.GetAttribute(key); ok {
+		if v, ok := ctx.AttributeEx(key); ok {
 			return ToMTValue(v), nil
 		}
 		return flux.NewInvalidMTValue(), nil

@@ -128,10 +128,10 @@ func (ptr *Argument) GetExtends(key interface{}) (interface{}, bool) {
 	return v, ok
 }
 
-// KvPair 定义服务的属性信息
+// KvPair 定义KV键值对
 type KvPair struct {
-	Name  string      `json:"name" yaml:"name"`   // 属性名
-	Value interface{} `json:"value" yaml:"value"` // 属性值
+	Key   string      `json:"name" yaml:"name"`
+	Value interface{} `json:"value" yaml:"value"`
 }
 
 func (a KvPair) ToString() string {
@@ -159,7 +159,7 @@ func (a KvPair) ToBool() bool {
 }
 
 func (a KvPair) Valid() bool {
-	return a.Name != "" && a.Value != nil
+	return a.Key != "" && a.Value != nil
 }
 
 // Attributes 定义属性列表
@@ -174,7 +174,7 @@ func (a Attributes) Single(name string) KvPair {
 // SingleEx 查询单个属性，并返回是否存在标识
 func (a Attributes) SingleEx(name string) (KvPair, bool) {
 	for _, attr := range a {
-		if strings.EqualFold(attr.Name, name) {
+		if strings.EqualFold(attr.Key, name) {
 			return attr, true
 		}
 	}
@@ -185,7 +185,7 @@ func (a Attributes) SingleEx(name string) (KvPair, bool) {
 func (a Attributes) Multiple(name string) Attributes {
 	out := make(Attributes, 0, 2)
 	for _, attr := range a {
-		if strings.EqualFold(attr.Name, name) {
+		if strings.EqualFold(attr.Key, name) {
 			out = append(out, attr)
 		}
 	}
@@ -195,7 +195,7 @@ func (a Attributes) Multiple(name string) Attributes {
 // Exists 判定属性名是否存在
 func (a Attributes) Exists(name string) bool {
 	for _, attr := range a {
-		if strings.EqualFold(attr.Name, name) {
+		if strings.EqualFold(attr.Key, name) {
 			return true
 		}
 	}
@@ -235,14 +235,14 @@ func (a Annotations) Exists(name string) bool {
 
 func (a Annotations) Annotation(name string) KvPair {
 	if v, ok := a[name]; ok {
-		return KvPair{Name: name, Value: v}
+		return KvPair{Key: name, Value: v}
 	}
 	return KvPair{}
 }
 
 func (a Annotations) AnnotationEx(name string) (KvPair, bool) {
 	if v, ok := a[name]; ok {
-		return KvPair{Name: name, Value: v}, true
+		return KvPair{Key: name, Value: v}, true
 	}
 	return KvPair{}, false
 }
