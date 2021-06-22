@@ -75,25 +75,25 @@ const (
 
 // Service内置注解
 const (
-	ServiceAnnoNameRpcProto   = "RpcProto"
-	ServiceAnnoNameRpcGroup   = "RpcGroup"
-	ServiceAnnoNameRpcVersion = "RpcVersion"
-	ServiceAnnoNameRpcTimeout = "RpcTimeout"
-	ServiceAnnoNameRpcRetries = "RpcRetries"
+	ServiceAnnoNameRpcProto   = "flux.go/rpc.proto"
+	ServiceAnnoNameRpcGroup   = "flux.go/rpc.group"
+	ServiceAnnoNameRpcVersion = "flux.go/rpc.version"
+	ServiceAnnoNameRpcTimeout = "flux.go/rpc.timeout"
+	ServiceAnnoNameRpcRetries = "flux.go/rpc.retries"
 )
 
 // Endpoint内置属性
 const (
-	EndpointAttrTagNotDefined = ""               // 默认的，未定义的属性
-	EndpointAttrTagPermission = "tag:permission" // 权限权限声明
+	EndpointAttrTagNotDefined = ""                        // 默认的，未定义的属性
+	EndpointAttrTagPermission = "flux.go/attr.permission" // 权限权限声明
 )
 
 // Endpoint内置注解
 const (
-	EndpointAnnoNameBizKey      = "BizKey"      // 标识Endpoint绑定到业务标识
-	EndpointAnnoNameAuthorize   = "Authorize"   // 标识Endpoint访问是否需要授权的注解
-	EndpointAnnoNameListenerId  = "ListenerId"  // 标识Endpoint绑定到哪个ListenServer服务
-	EndpointAnnoNameStaticModel = "StaticModel" // 标识此Endpoint为固定数据模型，不支持动态更新
+	EndpointAnnoNameBizKey      = "flux.go/biz.key"           // 标识Endpoint绑定到业务标识
+	EndpointAnnoNameAuthorize   = "flux.go/authorize"         // 标识Endpoint访问是否需要授权的注解
+	EndpointAnnoNameListenerSel = "flux.go/listener.selector" // 标识Endpoint绑定到哪个ListenServer服务
+	EndpointAnnoNameStaticModel = "flux.go/static.model"      // 标识此Endpoint为固定数据模型，不支持动态更新
 )
 
 const (

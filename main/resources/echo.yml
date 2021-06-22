@@ -9,7 +9,7 @@ endpoints:
         httpMethod: "GET"
         serviceId: "flux.debug.echo:get"
         annotations:
-            ListenerId: "admin"
+            flux.go/listener.selector: "admin"
         attributes: []
 
     -   kind: "flux.endpoint/v1"
@@ -34,14 +34,14 @@ services:
     -   interface: "flux.debug.echo"
         method: "get"
         annotations:
-            RpcProto: "ECHO"
+            flux.go/rpc.proto: "ECHO"
 
     -   interface: "flux.debug.echo"
         method: "post"
         annotations:
-            RpcProto: "ECHO"
+            flux.go/rpc.proto: "ECHO"
 
     -   interface: "flux.debug.inapp.Test"
         method: "echo"
         annotations:
-            RpcProto: "INAPP"
+            flux.go/rpc.proto: "INAPP"

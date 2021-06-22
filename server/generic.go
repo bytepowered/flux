@@ -6,6 +6,7 @@ import (
 	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/bytepowered/flux"
 	"github.com/bytepowered/flux/ext"
+	"github.com/bytepowered/flux/internal"
 	"github.com/bytepowered/flux/logger"
 	"github.com/bytepowered/flux/toolkit"
 	"github.com/jinzhu/copier"
@@ -390,9 +391,14 @@ func (gs *GenericServer) Shutdown(ctx goctx.Context) error {
 
 func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
+	var epvars = []interface{}{"service-id", service.ServiceID(), "alias-id", service.AliasId}
+	if err := internal.VerifyAnnotations(service.Annotations); err != nil {
+		logger.Warnw("SERVER:EVENT:SERVICE:ANNOTATION/invalid", epvars...)
+		return
+	}
 	switch event.EventType {
 	case flux.EventTypeAdded:
-		logger.Infow("SERVER:EVENT:SERVICE:ADD", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		logger.Infow("SERVER:EVENT:SERVICE:ADD", epvars...)
 		gs.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
@@ -400,14 +406,14 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 		}
 
 	case flux.EventTypeUpdated:
-		logger.Infow("SERVER:EVENT:SERVICE:UPDATE", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		logger.Infow("SERVER:EVENT:SERVICE:UPDATE", epvars...)
 		gs.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
 		}
 	case flux.EventTypeRemoved:
-		logger.Infow("SERVER:EVENT:SERVICE:REMOVE", "service-id", service.ServiceID(), "alias-id", service.AliasId)
+		logger.Infow("SERVER:EVENT:SERVICE:REMOVE", epvars...)
 		ext.RemoveServiceByID(service.ServiceID())
 		if service.AliasId != "" {
 			ext.RemoveServiceByID(service.AliasId)
@@ -424,6 +430,10 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", epvars...)
 		return
 	}
+	if err := internal.VerifyAnnotations(ep.Annotations); err != nil {
+		logger.Warnw("SERVER:EVENT:ENDPOINT:ANNOTATION/invalid", epvars...)
+		return
+	}
 	mvce, register := gs.selectMVCEndpoint(&ep)
 	switch event.EventType {
 	case flux.EventTypeAdded:
@@ -433,7 +443,7 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		if register {
 			// 根据Endpoint注解属性，选择ListenServer来绑定
 			var listenerId = ListenerIdDefault
-			if anno, ok := ep.AnnotationEx(flux.EndpointAnnoNameListenerId); ok && anno.Valid() {
+			if anno, ok := ep.AnnotationEx(flux.EndpointAnnoNameListenerSel); ok && anno.Valid() {
 				listenerId = anno.ToString()
 			}
 			if webListener, ok := gs.WebListenerById(listenerId); ok {
