@@ -76,10 +76,10 @@ func NewZookeeperEndpointDiscovery(id string, opts ...ZookeeperOption) *Zookeepe
 		id:                 id,
 		decodeEndpointFunc: DecodeEndpointFunc,
 		decodeServiceFunc:  DecodeServiceFunc,
-		endpointFilter: func(event remoting.NodeEvent, data *flux.Endpoint) bool {
+		endpointFilter: func(event remoting.NodeEvent, data *flux.EndpointSpec) bool {
 			return true
 		},
-		serviceFilter: func(event remoting.NodeEvent, data *flux.Service) bool {
+		serviceFilter: func(event remoting.NodeEvent, data *flux.ServiceSpec) bool {
 			return true
 		},
 	}

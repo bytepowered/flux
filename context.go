@@ -18,7 +18,7 @@ type (
 	// Attributes是Context的属性参数，它可以在多个组件之间传递，并且可以传递到后端Dubbo/Http/gRPC等服务。
 	Context struct {
 		ServerWebContext
-		endpoint   *Endpoint
+		endpoint   *EndpointSpec
 		attributes map[string]interface{}
 		metrics    []TraceMetric
 		startTime  time.Time
@@ -47,9 +47,9 @@ func NewContext() *Context {
 	}
 }
 
-// Reset 重置Context，重新与 ServerWebContext 关联，绑定新的 Endpoint
+// Reset 重置Context，重新与 ServerWebContext 关联，绑定新的 EndpointSpec
 // Note：此函数由内部框架调用，一般不作为业务使用。
-func (c *Context) Reset(webex ServerWebContext, endpoint *Endpoint) {
+func (c *Context) Reset(webex ServerWebContext, endpoint *EndpointSpec) {
 	c.ServerWebContext = webex
 	c.endpoint = endpoint
 	c.ctxLogger = zap.S()
@@ -65,13 +65,13 @@ func (c *Context) Application() string {
 	return c.endpoint.Application
 }
 
-// Endpoint 返回当前请求路由定义的Endpoint元数据
-func (c *Context) Endpoint() *Endpoint {
+// EndpointSpec 返回当前请求路由定义的Endpoint元数据
+func (c *Context) Endpoint() *EndpointSpec {
 	return c.endpoint
 }
 
-// Service 返回Service信息
-func (c *Context) Service() Service {
+// ServiceSpec 返回Service信息
+func (c *Context) Service() ServiceSpec {
 	return c.endpoint.Service
 }
 
@@ -96,7 +96,7 @@ func (c *Context) Attribute(key string, defval interface{}) interface{} {
 func (c *Context) Attributes() map[string]interface{} {
 	out := make(map[string]interface{}, len(c.attributes))
 	for _, attr := range c.endpoint.Attributes {
-		out[attr.Key] = attr.Value
+		out[attr.Name] = attr.Value
 	}
 	for k, v := range c.attributes {
 		out[k] = v

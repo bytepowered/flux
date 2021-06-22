@@ -8,9 +8,9 @@ import (
 )
 
 func TestCopierMap(t *testing.T) {
-	var src flux.Argument
+	var src flux.ServiceArgumentSpec
 	(&src).SetExtends("abc", "ABC")
-	var dst flux.Argument
+	var dst flux.ServiceArgumentSpec
 	(&dst).SetExtends("123", "123")
 	(&dst).SetExtends("abc", "123")
 

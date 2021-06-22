@@ -16,7 +16,7 @@ func NewSlimContextTODO(id string) *flux.Context {
 
 func NewSlimContext(ctx context.Context, id string, vars ...map[string]interface{}) *flux.Context {
 	fxctx := flux.NewContext()
-	fxctx.Reset(newSlimWithID(ctx, id), &flux.Endpoint{Application: "slim"})
+	fxctx.Reset(newSlimWithID(ctx, id), &flux.EndpointSpec{Application: "slim"})
 	fxctx.SetVariable("is.slim.ctx", true)
 	if len(vars) > 0 {
 		for k, v := range vars[0] {

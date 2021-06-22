@@ -32,7 +32,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
 		service := ctx.Service()
-		proto, uri, method := service.RpcProto(), service.Interface, service.Method
+		proto, uri, method := service.Protocol, service.Interface, service.Method
 		d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
 		if flux.NotNil(err) {
 			// Error Counter: ProtoName, Interface, Method, ErrorCode
@@ -64,7 +64,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		defer func() {
 			ctx.AddMetric("transporter", time.Since(ctx.StartAt()))
 		}()
-		proto := ctx.Service().RpcProto()
+		proto := ctx.Service().Protocol
 		transporter, ok := ext.TransporterByProto(proto)
 		if !ok {
 			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",

@@ -61,16 +61,16 @@ type (
 	// Option func to set option
 	Option func(*RpcTransporter)
 	// AssembleArgumentsFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
-	AssembleArgumentsFunc func(context *flux.Context, arguments []flux.Argument) (types []string, values interface{}, err error)
+	AssembleArgumentsFunc func(context *flux.Context, arguments []flux.ServiceArgumentSpec) (types []string, values interface{}, err error)
 	// AssembleAttachmentsFunc 封装Attachment附件的函数
 	AssembleAttachmentsFunc func(context *flux.Context) (interface{}, error)
 )
 
 type (
 	// GenericOptionsFunc DubboReference配置函数，可外部化配置Dubbo Reference
-	GenericOptionsFunc func(*flux.Service, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
+	GenericOptionsFunc func(*flux.ServiceSpec, *flux.Configuration, *dubgo.ReferenceConfig) *dubgo.ReferenceConfig
 	// GenericServiceFunc 用于构建DubboGo泛型调用Service实例
-	GenericServiceFunc func(*flux.Service) common.RPCService
+	GenericServiceFunc func(*flux.ServiceSpec) common.RPCService
 	// GenericInvokeFunc 用于执行Dubbo泛调用方法，返回统一Result数据结构
 	GenericInvokeFunc func(ctx context.Context, args []interface{}, rpc common.RPCService) (interface{}, map[string]interface{}, error)
 )
@@ -186,7 +186,7 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 			"protocol":              dubbo.DUBBO,
 		}),
 		// 使用带Result结果的RPCService实现
-		WithGenericServiceFunc(func(service *flux.Service) common.RPCService {
+		WithGenericServiceFunc(func(service *flux.ServiceSpec) common.RPCService {
 			return dubgo.NewGenericService2(service.Interface)
 		}),
 		// 转换为 GenericService2 的调用
@@ -238,8 +238,8 @@ func (b *RpcTransporter) OnShutdown(_ context.Context) error {
 	return nil
 }
 
-func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
-	flux.AssertNotEmpty(service.RpcProto(), "<service.proto> is required")
+func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.ServiceSpec) (*flux.ServeResponse, *flux.ServeError) {
+	flux.AssertNotEmpty(service.Protocol, "<service.proto> is required")
 	trace := logger.TraceExtras(ctx.RequestId(), map[string]string{
 		"invoke.service": service.ServiceID(),
 	})
@@ -312,7 +312,7 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flu
 	return codecd, nil
 }
 
-func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service, types []string, values, attachments interface{}) (interface{}, map[string]interface{}, *flux.ServeError) {
+func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.ServiceSpec, types []string, values, attachments interface{}) (interface{}, map[string]interface{}, *flux.ServeError) {
 	generic := b.LoadGenericService(&service)
 	goctx := context.WithValue(ctx.Context(), constant.AttachmentKey, attachments)
 	ret, att, cause := b.invokeFunc(goctx, []interface{}{service.Method, types, values}, generic)
@@ -328,7 +328,7 @@ func (b *RpcTransporter) invoke0(ctx *flux.Context, service flux.Service, types 
 }
 
 // LoadGenericService create and cache dubbo generic service
-func (b *RpcTransporter) LoadGenericService(service *flux.Service) common.RPCService {
+func (b *RpcTransporter) LoadGenericService(service *flux.ServiceSpec) common.RPCService {
 	b.servmx.Lock()
 	defer b.servmx.Unlock()
 	if srv := dubgo.GetConsumerService(service.Interface); nil != srv {
@@ -376,25 +376,26 @@ func newConsumerRegistry(config *flux.Configuration) (string, *dubgo.RegistryCon
 	}
 }
 
-func NewReference(refid string, service *flux.Service, config *flux.Configuration) *dubgo.ReferenceConfig {
+func NewReference(refid string, service *flux.ServiceSpec, config *flux.Configuration) *dubgo.ReferenceConfig {
 	logger.Infow("DUBBO:GENERIC:CREATE:NEWREF",
-		"rpc-service", service.Interface, "rpc-url", service.Url, "rpc-proto", service.RpcProto(),
-		"rpc-group", service.RpcGroup(), "rpc-version", service.RpcVersion())
+		"rpc-service", service.Interface, "rpc-url", service.Url, "rpc-proto", service.Protocol,
+		"rpc-group", service.Annotation(flux.ServiceAnnotationNameRpcGroup).ToString(),
+		"rpc-version", service.Annotation(flux.ServiceAnnotationNameRpcVersion).ToString())
 	ref := dubgo.NewReferenceConfig(refid, context.Background())
 	// 订正 url 地址
 	if service.Url != "" {
 		if hasproto(service.Url) {
 			ref.Url = service.Url
 		} else {
-			ref.Url = service.RpcProto() + "://" + service.Url
+			ref.Url = service.Protocol + "://" + service.Url
 		}
 	}
-	ref.Protocol = service.RpcProto()
+	ref.Protocol = service.Protocol
 	ref.InterfaceName = service.Interface
-	ref.Version = service.RpcVersion()
-	ref.Group = service.RpcGroup()
-	ref.RequestTimeout = service.RpcTimeout()
-	ref.Retries = service.RpcRetries()
+	ref.Version = service.Annotation(flux.ServiceAnnotationNameRpcVersion).ToString()
+	ref.Group = service.Annotation(flux.ServiceAnnotationNameRpcGroup).ToString()
+	ref.RequestTimeout = service.Annotation(flux.ServiceAnnotationNameRpcTimeout).ToString()
+	ref.Retries = service.Annotation(flux.ServiceAnnotationNameRpcRetries).ToString()
 	ref.Cluster = config.GetString("cluster")
 	ref.Protocol = config.GetString("protocol")
 	ref.Loadbalance = config.GetString("load_balance")

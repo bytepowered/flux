@@ -14,7 +14,7 @@ func MakeEndpointKey(method, pattern string) string {
 	return strings.ToUpper(method) + "#" + pattern
 }
 
-func RegisterEndpoint(key string, endpoint *flux.Endpoint) *flux.MVCEndpoint {
+func RegisterEndpoint(key string, endpoint *flux.EndpointSpec) *flux.MVCEndpoint {
 	mvce := flux.NewMVCEndpoint(endpoint)
 	endpoints.Store(key, mvce)
 	return mvce

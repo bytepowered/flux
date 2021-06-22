@@ -9,15 +9,15 @@ import (
 )
 
 var (
-	emptyService      = flux.Service{}
+	emptyService      = flux.ServiceSpec{}
 	emptyServiceEvent = flux.ServiceEvent{}
 )
 
-func DecodeServiceFunc(bytes []byte) (flux.Service, error) {
+func DecodeServiceFunc(bytes []byte) (flux.ServiceSpec, error) {
 	if err := VerifyJSON(bytes); err != nil {
 		return emptyService, err
 	}
-	service := flux.Service{}
+	service := flux.ServiceSpec{}
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
 		return emptyService, fmt.Errorf("DECODE:UNMARSHAL:JSON/err: %w", err)
 	}
@@ -32,7 +32,7 @@ func DecodeServiceFunc(bytes []byte) (flux.Service, error) {
 	return service, nil
 }
 
-func ToServiceEvent(srv *flux.Service, etype remoting.NodeEventType) (fxEvt flux.ServiceEvent, err error) {
+func ToServiceEvent(srv *flux.ServiceSpec, etype remoting.NodeEventType) (fxEvt flux.ServiceEvent, err error) {
 	event := flux.ServiceEvent{Service: *srv}
 	switch etype {
 	case remoting.EventTypeNodeAdd:

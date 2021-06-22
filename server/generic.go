@@ -316,7 +316,7 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 			}
 		}
 	}(webex.RequestId())
-	var endpoint flux.Endpoint
+	var endpoint flux.EndpointSpec
 	// 查找匹配版本的Endpoint
 	if src, found := gs.lookup(webex, server, endpoints); found {
 		// dup to enforce metadata safe
@@ -354,7 +354,7 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 	return
 }
 
-func (gs *GenericServer) lookup(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.Endpoint, bool) {
+func (gs *GenericServer) lookup(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
 	// 动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
 		if selector.Active(webex, server.ListenerId()) {
@@ -443,7 +443,7 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		if register {
 			// 根据Endpoint注解属性，选择ListenServer来绑定
 			var listenerId = ListenerIdDefault
-			if anno, ok := ep.AnnotationEx(flux.EndpointAnnoNameListenerSel); ok && anno.Valid() {
+			if anno, ok := ep.AnnotationEx(flux.EndpointAnnotationNameListenerSel); ok && anno.Valid() {
 				listenerId = anno.ToString()
 			}
 			if webListener, ok := gs.WebListenerById(listenerId); ok {
@@ -530,7 +530,7 @@ func (gs *GenericServer) newEndpointHandler(server flux.WebListener, endpoint *f
 	}
 }
 
-func (gs *GenericServer) selectMVCEndpoint(endpoint *flux.Endpoint) (*flux.MVCEndpoint, bool) {
+func (gs *GenericServer) selectMVCEndpoint(endpoint *flux.EndpointSpec) (*flux.MVCEndpoint, bool) {
 	key := ext.MakeEndpointKey(endpoint.HttpMethod, endpoint.HttpPattern)
 	if mve, ok := ext.EndpointByKey(key); ok {
 		return mve, false
@@ -557,9 +557,9 @@ func (gs *GenericServer) defaultListener() flux.WebListener {
 
 // syncService 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) syncService(ep *flux.Endpoint) {
+func (gs *GenericServer) syncService(ep *flux.EndpointSpec) {
 	// Endpoint为静态模型，不支持动态更新
-	if ep.AnnotationExists(flux.EndpointAnnoNameStaticModel) {
+	if ep.AnnotationExists(flux.EndpointAnnotationNameStaticModel) {
 		logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 		return
 	}
@@ -573,11 +573,11 @@ func (gs *GenericServer) syncService(ep *flux.Endpoint) {
 
 // syncEndpoint 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) syncEndpoint(srv *flux.Service) {
+func (gs *GenericServer) syncEndpoint(srv *flux.ServiceSpec) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新
-			if ep.AnnotationExists(flux.EndpointAnnoNameStaticModel) {
+			if ep.AnnotationExists(flux.EndpointAnnotationNameStaticModel) {
 				logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				continue
 			}
@@ -593,7 +593,7 @@ var copierconf = copier.Option{
 	DeepCopy: true,
 }
 
-func (gs *GenericServer) dup(toep *flux.Endpoint, fromep *flux.Endpoint) error {
+func (gs *GenericServer) dup(toep *flux.EndpointSpec, fromep *flux.EndpointSpec) error {
 	return copier.CopyWithOption(toep, fromep, copierconf)
 }
 

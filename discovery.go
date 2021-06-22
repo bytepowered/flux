@@ -20,14 +20,14 @@ type (
 	}
 
 	// DiscoveryDecodeServiceFunc 将原始数据解码为Service事件
-	DiscoveryDecodeServiceFunc func(bytes []byte) (service Service, err error)
+	DiscoveryDecodeServiceFunc func(bytes []byte) (service ServiceSpec, err error)
 
 	// DiscoveryDecodeEndpointFunc 将原始数据解码为Service事件
-	DiscoveryDecodeEndpointFunc func(bytes []byte) (endpoint Endpoint, err error)
+	DiscoveryDecodeEndpointFunc func(bytes []byte) (endpoint EndpointSpec, err error)
 
 	// DiscoveryServiceFilter 过滤和处理Service
-	DiscoveryServiceFilter func(event remoting.NodeEvent, data *Service) bool
+	DiscoveryServiceFilter func(event remoting.NodeEvent, data *ServiceSpec) bool
 
 	// DiscoveryEndpointFilter 过滤和重Endpoint
-	DiscoveryEndpointFilter func(event remoting.NodeEvent, data *Endpoint) bool
+	DiscoveryEndpointFilter func(event remoting.NodeEvent, data *EndpointSpec) bool
 )

@@ -22,8 +22,8 @@ type (
 )
 
 type Resources struct {
-	Endpoints []flux.Endpoint `yaml:"endpoints"`
-	Services  []flux.Service  `yaml:"services"`
+	Endpoints []flux.EndpointSpec `yaml:"endpoints"`
+	Services  []flux.ServiceSpec  `yaml:"services"`
 }
 
 // NewResourceEndpointDiscovery returns new a resource based discovery service

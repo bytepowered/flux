@@ -25,7 +25,7 @@ type (
 	// PermissionVerifyFunc 权限验证
 	// @return pass 对当前请求的权限验证是否通过；
 	// @return err 如果验证过程发生错误，返回error；
-	PermissionVerifyFunc func(services []flux.Service, ctx *flux.Context) (report PermissionReport, err error)
+	PermissionVerifyFunc func(services []flux.ServiceSpec, ctx *flux.Context) (report PermissionReport, err error)
 )
 
 // PermissionConfig 权限配置
@@ -85,7 +85,7 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 			return next(ctx)
 		}
 		ids := ctx.Endpoint().MultiAttributes(flux.EndpointAttrTagPermission).Strings()
-		workers := make([]flux.Service, 0, len(ids))
+		workers := make([]flux.ServiceSpec, 0, len(ids))
 		for _, id := range ids {
 			if srv, ok := ext.ServiceByID(id); ok {
 				workers = append(workers, srv)
@@ -123,8 +123,8 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 }
 
 // InvokeCodec 执行权限验证的后端服务，获取响应结果；
-func (p *PermissionFilter) InvokeCodec(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
-	proto := service.RpcProto()
+func (p *PermissionFilter) InvokeCodec(ctx *flux.Context, service flux.ServiceSpec) (*flux.ServeResponse, *flux.ServeError) {
+	proto := service.Protocol
 	transporter, ok := ext.TransporterByProto(proto)
 	if !ok {
 		return nil, &flux.ServeError{

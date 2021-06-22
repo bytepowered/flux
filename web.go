@@ -253,7 +253,7 @@ type EndpointSelector interface {
 	// Active 判定选择器是否激活
 	Active(ctx ServerWebContext, listenerId string) bool
 	// DoSelect 根据请求返回Endpoint，以及是否有效标识
-	DoSelect(ctx ServerWebContext, listenerId string, multi *MVCEndpoint) (*Endpoint, bool)
+	DoSelect(ctx ServerWebContext, listenerId string, multi *MVCEndpoint) (*EndpointSpec, bool)
 }
 
 // WrapHttpHandler Wrapper http.Handler to WebHandler

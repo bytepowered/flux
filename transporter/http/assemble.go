@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func DefaultAssembleRequest(ctx *flux.Context, service *flux.Service) (*http.Request, error) {
+func DefaultAssembleRequest(ctx *flux.Context, service *flux.ServiceSpec) (*http.Request, error) {
 	// url
 	newUrl, newErr := url.Parse(service.Url)
 	if newErr != nil {
@@ -44,7 +44,7 @@ func DefaultAssembleRequest(ctx *flux.Context, service *flux.Service) (*http.Req
 		newBodyReader = reader
 	}
 
-	to := service.RpcTimeout()
+	to := service.Annotation(flux.ServiceAnnotationNameRpcTimeout).ToString()
 	timeout, err := time.ParseDuration(to)
 	if err != nil {
 		timeout = time.Second * 10
@@ -63,7 +63,7 @@ func DefaultAssembleRequest(ctx *flux.Context, service *flux.Service) (*http.Req
 }
 
 // SelectToArgumentValues 解析Argument参数列表，并返回http标准参数值
-func SelectToArgumentValues(ctx *flux.Context, arguments []flux.Argument, selector func(flux.Argument) bool) (url.Values, error) {
+func SelectToArgumentValues(ctx *flux.Context, arguments []flux.ServiceArgumentSpec, selector func(flux.ServiceArgumentSpec) bool) (url.Values, error) {
 	values := make(url.Values, len(arguments))
 	for _, arg := range arguments {
 		if !selector(arg) {
@@ -79,25 +79,25 @@ func SelectToArgumentValues(ctx *flux.Context, arguments []flux.Argument, select
 }
 
 // ResolveQueryValues 解析Query参数
-func ResolveQueryValues(ctx *flux.Context, args []flux.Argument) (url.Values, error) {
+func ResolveQueryValues(ctx *flux.Context, args []flux.ServiceArgumentSpec) (url.Values, error) {
 	// 没有定义参数，透传全部Query参数
 	if len(args) == 0 {
 		return ctx.QueryVars(), nil
 	}
 	// 已定义，过滤
-	return SelectToArgumentValues(ctx, args, func(arg flux.Argument) bool {
+	return SelectToArgumentValues(ctx, args, func(arg flux.ServiceArgumentSpec) bool {
 		return toolkit.MatchEqual([]string{flux.ScopeQuery, flux.ScopeQueryMulti, flux.ScopeQueryMap}, arg.HttpScope)
 	})
 }
 
 // ResolvePostFormValues 解析Form表单参数
-func ResolvePostFormValues(ctx *flux.Context, args []flux.Argument) (url.Values, error) {
+func ResolvePostFormValues(ctx *flux.Context, args []flux.ServiceArgumentSpec) (url.Values, error) {
 	// 没有定义参数，透传全部Form参数
 	if len(args) == 0 {
 		return ctx.PostFormVars(), nil
 	}
 	// 已定义，过滤
-	return SelectToArgumentValues(ctx, args, func(arg flux.Argument) bool {
+	return SelectToArgumentValues(ctx, args, func(arg flux.ServiceArgumentSpec) bool {
 		return toolkit.MatchEqual([]string{flux.ScopeForm, flux.ScopeFormMulti, flux.ScopeFormMap}, arg.HttpScope)
 	})
 }

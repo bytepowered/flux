@@ -12,11 +12,13 @@ func TestParseEndpointModelV2(t *testing.T) {
     "application": "auc",
     "httpPattern": "/api/users/register",
     "httpMethod": "POST",
+	"serviceId": "com.foo.bar.testing.app.TestingAppService:testContext",
     "service": {
 		"kind": "DubboService",
         "serviceId": "com.foo.bar.testing.app.TestingAppService:testContext",
         "interface": "com.foo.bar.testing.app.TestingAppService",
         "method": "testContext",
+		"protocol": "DUBBO",
         "arguments": [
             {
                 "class": "com.foo.bar.endpoint.support.BizAppContext",
@@ -56,22 +58,21 @@ func TestParseEndpointModelV2(t *testing.T) {
                 "httpScope": "ATTR"
             }
         ],
+		"annotations": {
+			"flux.go/rpc.group": "",
+			"flux.go/rpc.version": "0.0.0.0.1"
+		},
         "attributes": [
             {
                 "name": "RpcProto",
                 "value": "DUBBO"
-            },
-            {
-                "name": "RpcGroup",
-                "value": ""
-            },
-            {
-                "name": "RpcVersion",
-                "value": "0.0.0.0.1"
             }
         ]
     },
     "permissions": [],
+	"annotations": {
+		"flux.go/static.model": true
+	},
     "attributes": [
         {
             "name": "feature:cache",
@@ -99,75 +100,77 @@ func TestParseEndpointModelV2(t *testing.T) {
 	AssertWith(t, text, []AssertCase{
 		{
 			Expected: true,
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Valid() },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Valid() },
 		},
 		{
 			Expected: "auc",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Application },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Application },
 		},
 		{
 			Expected: "1.0",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Version },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Version },
 		},
 		{
 			Expected: "/api/users/register",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpPattern },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.HttpPattern },
 		},
 		{
 			Expected: "POST",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.HttpMethod },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.HttpMethod },
 		},
 		{
 			Expected: ":superadmin",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Attributes.Single("roles").ToString() },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Attributes.Single("roles").ToString() },
 		},
 		{
 			Expected: []string{"key=query:etag", "ttl=3600"},
-			Actual: func(endpoint *Endpoint) interface{} {
+			Actual: func(endpoint *EndpointSpec) interface{} {
 				return endpoint.Attributes.Single("feature:cache").ToStringSlice()
 			},
 		},
 		{
 			Expected: true,
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Attributes.Single("Authorize").ToBool() },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Attributes.Single("Authorize").ToBool() },
 		},
 		{
 			Expected: "DubboService",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Kind },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Service.Kind },
 		},
 		{
 			Expected: 3,
-			Actual:   func(endpoint *Endpoint) interface{} { return len(endpoint.Service.Arguments) },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return len(endpoint.Service.Arguments) },
 		},
 		{
 			Expected: "context",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Name },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Service.Arguments[0].Name },
 		},
 		{
 			Expected: "COMPLEX",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Category },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Service.Arguments[0].StructType },
 		},
 		{
 			Expected: "$body",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpName },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpName },
 		},
 		{
 			Expected: "BODY",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpScope },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Service.Arguments[0].Fields[0].HttpScope },
 		},
 		{
 			Expected: "DUBBO",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.RpcProto() },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Service.Protocol },
 		},
 		{
 			Expected: "0.0.0.0.1",
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Service.RpcVersion() },
+			Actual: func(endpoint *EndpointSpec) interface{} {
+				return endpoint.Service.Annotation(ServiceAnnotationNameRpcVersion).ToString()
+			},
 		},
 	})
 }
 
 func AssertWith(t *testing.T, text string, cases []AssertCase) {
-	endpoint := Endpoint{}
+	endpoint := EndpointSpec{}
 	serializer := NewJsonSerializer()
 	err := serializer.Unmarshal([]byte(text), &endpoint)
 	tAssert := assert2.New(t)
@@ -179,6 +182,6 @@ func AssertWith(t *testing.T, text string, cases []AssertCase) {
 
 type AssertCase struct {
 	Expected interface{}
-	Actual   func(endpoint *Endpoint) interface{}
+	Actual   func(endpoint *EndpointSpec) interface{}
 	Message  string
 }

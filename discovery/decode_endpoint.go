@@ -9,15 +9,15 @@ import (
 )
 
 var (
-	emptyEndpoint      = flux.Endpoint{}
+	emptyEndpoint      = flux.EndpointSpec{}
 	emptyEndpointEvent = flux.EndpointEvent{}
 )
 
-func DecodeEndpointFunc(bytes []byte) (flux.Endpoint, error) {
+func DecodeEndpointFunc(bytes []byte) (flux.EndpointSpec, error) {
 	if err := VerifyJSON(bytes); err != nil {
 		return emptyEndpoint, err
 	}
-	ep := flux.Endpoint{}
+	ep := flux.EndpointSpec{}
 	if err := ext.JSONUnmarshal(bytes, &ep); nil != err {
 		return emptyEndpoint, fmt.Errorf("DECODE:UNMARSHAL:JSON/err: %w", err)
 	}
@@ -34,7 +34,7 @@ func DecodeEndpointFunc(bytes []byte) (flux.Endpoint, error) {
 	return ep, nil
 }
 
-func ToEndpointEvent(ep *flux.Endpoint, etype remoting.NodeEventType) (fxEvt flux.EndpointEvent, err error) {
+func ToEndpointEvent(ep *flux.EndpointSpec, etype remoting.NodeEventType) (fxEvt flux.EndpointEvent, err error) {
 	event := flux.EndpointEvent{Endpoint: *ep}
 	switch etype {
 	case remoting.EventTypeNodeAdd:
