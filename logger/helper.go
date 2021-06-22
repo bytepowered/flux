@@ -16,11 +16,11 @@ func Trace(id string) flux.Logger {
 	return ext.NewLoggerWith(context.WithValue(context.Background(), TraceId, id))
 }
 
-func TraceContext(ctx *flux.Context) flux.Logger {
-	return TraceContextExtras(ctx, nil)
+func TraceVerbose(ctx *flux.Context) flux.Logger {
+	return TraceVerboseExtras(ctx, nil)
 }
 
-func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger {
+func TraceVerboseExtras(ctx *flux.Context, extras map[string]string) flux.Logger {
 	flux.AssertNotNil(ctx, "<flux.context> must not nil in log trace")
 	fields := map[string]string{
 		"request.method": ctx.Method(),
@@ -30,7 +30,7 @@ func TraceContextExtras(ctx *flux.Context, extras map[string]string) flux.Logger
 		fields[k] = v
 	}
 	endpoint := ctx.Endpoint()
-	if nil != endpoint && endpoint.Valid() {
+	if nil != endpoint && endpoint.IsValid() {
 		fields["endpoint.appid"] = endpoint.Application
 		fields["endpoint.bizkey"] = endpoint.Annotation(flux.EndpointAnnotationBizKey).GetString()
 		fields["endpoint.version"] = endpoint.Version

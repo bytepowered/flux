@@ -28,7 +28,7 @@ func DecodeEndpointFunc(bytes []byte) (flux.EndpointSpec, error) {
 		ep.Attributes = make(flux.Attributes, 0)
 	}
 	// 检查有效性
-	if !ep.Valid() {
+	if !ep.IsValid() {
 		return emptyEndpoint, errors.New("DECODE:VERIFY:ENDPOINT/invalid")
 	}
 	return ep, nil

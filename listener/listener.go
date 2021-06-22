@@ -36,7 +36,7 @@ func NewAdaptWebListener(listenerId string, options *flux.Configuration) flux.We
 }
 
 func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentifier, mws *AdaptMiddleware) flux.WebListener {
-	flux.Assert("" != listenerId, "empty <listener-id> in web listener configuration")
+	flux.AssertNotEmpty(listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
 	server.Pre(RepeatableReader)
 	server.HideBanner = true
@@ -52,8 +52,8 @@ func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, ide
 			id := identifier(echoc)
 			flux.Assert("" != id, "<request-id> is empty, return by id lookup func")
 			swc := NewServeWebContext(echoc, id, webListener)
-			// Note: 不要修改echo.context.request对象引用，echo路由绑定了函数入口的request对象，从而导致
-			// 后续基于request修改路由时，会导致Http路由失败。
+			// Note: 不要修改echo.context.request对象引用，echo路由绑定了函数入口的request对象，
+			// 从而导致后续基于request修改路由时，会导致Http路由失败。
 			flux.AssertNil(echoc.Get(string(internal.CtxkeyWebContext)), "<web-context> must be nil")
 			echoc.Set(string(internal.CtxkeyWebContext), swc)
 			defer func() {
@@ -117,7 +117,7 @@ func (s *AdaptWebListener) ListenerId() string {
 }
 
 func (s *AdaptWebListener) OnInit(opts *flux.Configuration) error {
-	logger.Info("SERVER:EVENT:WEBLISTENER:INIT")
+	logger.Infow("SERVER:EVENT:WEBLISTENER:INIT", "listener-id", s.id)
 	s.tlsCertFile = opts.GetString(ConfigKeyTLSCertFile)
 	s.tlsKeyFile = opts.GetString(ConfigKeyTLSKeyFile)
 	addr, port := opts.GetString(ConfigKeyAddress), opts.GetString(ConfigKeyBindPort)
@@ -134,7 +134,7 @@ func (s *AdaptWebListener) OnInit(opts *flux.Configuration) error {
 }
 
 func (s *AdaptWebListener) Listen() error {
-	logger.Infof("WebListener(id:%s) start listen: %s", s.id, s.address)
+	logger.Infow("SERVER:EVENT:WEBLISTENER:LISTEN", "listener-id", s.id, "address", s.address)
 	s.started = true
 	if "" != s.tlsCertFile && "" != s.tlsKeyFile {
 		return s.server.StartTLS(s.address, s.tlsCertFile, s.tlsKeyFile)

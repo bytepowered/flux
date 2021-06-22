@@ -1,6 +1,7 @@
 package flux
 
 import (
+	"github.com/spf13/cast"
 	assert2 "github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -134,7 +135,7 @@ func TestParseEndpointModelV2(t *testing.T) {
 	AssertEndpointSpecWith(t, text, []EndpointSpecCase{
 		{
 			Expected: true,
-			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Valid() },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.IsValid() },
 		},
 		{
 			Expected: "auc",
@@ -164,7 +165,7 @@ func TestParseEndpointModelV2(t *testing.T) {
 		},
 		{
 			Expected: true,
-			Actual:   func(endpoint *EndpointSpec) interface{} { return endpoint.Attributes.Single("Authorize").ToBool() },
+			Actual:   func(endpoint *EndpointSpec) interface{} { return cast.ToBool(endpoint.Attribute("Authorize").Value) },
 		},
 		{
 			Expected: "DubboService",

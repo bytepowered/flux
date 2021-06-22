@@ -75,7 +75,7 @@ func DefaultErrorHandler(webex flux.ServerWebContext, error error) {
 		}
 	}
 	data, err := ext.JSONMarshalObject(serr)
-	if nil != err {
+	if err != nil {
 		logger.Trace(webex.RequestId()).Errorw("SERVER:ERROR_HANDLE", "error", err)
 		return
 	}

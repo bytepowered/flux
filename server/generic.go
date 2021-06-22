@@ -303,7 +303,7 @@ func (gs *GenericServer) startEventWatch(ctx context.Context, endpoints chan flu
 	return nil
 }
 
-func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (err error) {
+func (gs *GenericServer) route(webex flux.ServerWebContext, listener flux.WebListener, versions *flux.MVCEndpoint) (err error) {
 	defer func(id string) {
 		if panerr := recover(); panerr != nil {
 			trace := logger.Trace(id)
@@ -318,7 +318,7 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 	}(webex.RequestId())
 	var endpoint flux.EndpointSpec
 	// 查找匹配版本的Endpoint
-	if src, found := gs.lookup(webex, server, endpoints); found {
+	if src, found := gs.lookup(webex, listener, versions); found {
 		// dup to enforce metadata safe
 		cperr := gs.dup(&endpoint, src)
 		flux.AssertM(cperr == nil, func() string {
@@ -329,29 +329,26 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
 		)
 		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
-		return server.HandleNotfound(webex)
+		return listener.HandleNotfound(webex)
 	}
 	// 检查Endpoint/Service绑定
-	flux.AssertTrue(endpoint.Valid(), "<endpoint> must valid when routing")
+	flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
 	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
-	ctxw.SetAttribute(flux.XRequestId, webex.RequestId())
-	logger.TraceContext(ctxw).Infow("SERVER:EVEN:ROUTE:START")
+	ctxw.SetAttribute(flux.XRequestId, ctxw.RequestId())
+	logger.TraceVerbose(ctxw).Infow("SERVER:EVEN:ROUTE:START")
+	defer func(start time.Time) {
+		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
+	}(ctxw.StartAt())
 	// hook
 	for _, hook := range gs.onContextHooks {
 		hook(webex, ctxw)
 	}
-	defer func(start time.Time) {
-		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
-	}(ctxw.StartAt())
 	// route
-	if rouerr := gs.dispatcher.dispatch(ctxw); nil != rouerr {
-		server.HandleError(webex, rouerr)
-	}
-	return
+	return gs.dispatcher.dispatch(ctxw)
 }
 
 func (gs *GenericServer) lookup(webex flux.ServerWebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {

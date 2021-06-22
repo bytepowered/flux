@@ -65,12 +65,12 @@ func (c *Context) Application() string {
 	return c.endpoint.Application
 }
 
-// EndpointSpec 返回当前请求路由定义的Endpoint元数据
+// Endpoint 返回当前请求路由定义的Endpoint元数据
 func (c *Context) Endpoint() *EndpointSpec {
 	return c.endpoint
 }
 
-// ServiceSpec 返回Service信息
+// Service 返回Service信息
 func (c *Context) Service() ServiceSpec {
 	return c.endpoint.Service
 }

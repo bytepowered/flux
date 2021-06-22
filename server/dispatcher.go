@@ -29,7 +29,7 @@ func NewDispatcher() *Dispatcher {
 
 func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
-	doMetricEndpointFunc := func(err *flux.ServeError) *flux.ServeError {
+	wrapMetricFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
 		service := ctx.Service()
 		proto, uri, method := service.Protocol, service.Interface, service.Method
@@ -67,7 +67,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		proto := ctx.Service().Protocol
 		transporter, ok := ext.TransporterByProto(proto)
 		if !ok {
-			logger.TraceContext(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
+			logger.TraceVerbose(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", proto, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{StatusCode: flux.StatusNotFound,
 				ErrorCode: flux.ErrorCodeRequestNotFound,
@@ -88,7 +88,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 			}
 		default:
 			if inverr != nil {
-				logger.TraceContext(ctx).Errorw("SERVER:ROUTE:TRANSPORT/error", "error", inverr, "t-service", ctx.ServiceID())
+				logger.TraceVerbose(ctx).Errorw("SERVER:ROUTE:TRANSPORT/error", "error", inverr, "t-service", ctx.ServiceID())
 			}
 		}
 		// Write response
@@ -104,10 +104,10 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	}
 	// Walk filters
 	filters := append(ext.GlobalFilters(), selective...)
-	for _, hook := range d.onBeforeFilterHooks {
-		hook(ctx, filters)
+	for _, before := range d.onBeforeFilterHooks {
+		before(ctx, filters)
 	}
-	return doMetricEndpointFunc(d.walk(transport, filters)(ctx))
+	return wrapMetricFunc(d.walk(transport, filters)(ctx))
 }
 
 func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {

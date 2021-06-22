@@ -283,10 +283,10 @@ type EndpointSpec struct {
 	Service     ServiceSpec `json:"service"`                        // 上游/后端服务
 }
 
-// Valid 判断Endpoint配置是否有效；
+// IsValid 判断Endpoint配置是否有效；
 // 1. HttpMethod, HttpPattern 不能为空；
 // 2. 包含ServiceId；
-func (e *EndpointSpec) Valid() bool {
+func (e *EndpointSpec) IsValid() bool {
 	return e.HttpMethod != "" && e.HttpPattern != "" && e.ServiceId != "" &&
 		e.Attributes != nil && e.Annotations != nil
 }
