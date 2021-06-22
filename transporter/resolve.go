@@ -42,7 +42,7 @@ func resolvefield(ctx *flux.Context, a *flux.Argument) (interface{}, error) {
 		return resolver(mtv, a.Class, a.Generic)
 	}
 	// 2: Lookup and resolve
-	mtv, err := ext.LookupFunc()(ctx, a.HttpScope, a.HttpName)
+	mtv, err := ext.LookupScopedValueFunc()(ctx, a.HttpScope, a.HttpName)
 	if nil != err {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func resolvefield(ctx *flux.Context, a *flux.Argument) (interface{}, error) {
 
 // resolveobj 解析Map对象
 func resolveobj(ctx *flux.Context, a *flux.Argument) (interface{}, error) {
-	mtv, err := ext.LookupFunc()(ctx, a.HttpScope, a.HttpName)
+	mtv, err := ext.LookupScopedValueFunc()(ctx, a.HttpScope, a.HttpName)
 	if nil != err {
 		return nil, err
 	}

@@ -4,14 +4,19 @@ import (
 	"strings"
 )
 
+const (
+	SepKeyValue = "="
+	SepScopeKey = ":"
+)
+
 // ParseDefineExpr 解析键值定义的表达式（KEY=VALUE），返回(Key,Value)元组；
 func ParseDefineExpr(expr string) (key, value string, ok bool) {
-	return ParseExprBySep(expr, "=")
+	return ParseExprBySep(expr, SepKeyValue)
 }
 
 // ParseScopeExpr 解析指定查找域的表达式（SCOPE:KEY），返回(Scope,key)元组；
 func ParseScopeExpr(expr string) (scope, key string, ok bool) {
-	return ParseExprBySep(expr, ":")
+	return ParseExprBySep(expr, SepScopeKey)
 }
 
 func ParseExprBySep(expr, sep string) (first, second string, ok bool) {

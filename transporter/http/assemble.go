@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/logger"
+	"github.com/bytepowered/flux/toolkit"
 	"github.com/bytepowered/flux/transporter"
 	"github.com/spf13/cast"
 	"io"
@@ -14,66 +14,61 @@ import (
 	"time"
 )
 
-func DefaultArgumentResolver(service *flux.Service, inURL *url.URL, bodyReader io.ReadCloser, ctx *flux.Context) (*http.Request, error) {
-	inParams := service.Arguments
-	newQuery := inURL.RawQuery
-	// 使用可重复读的GetBody函数
-	defer bodyReader.Close()
-	var newBodyReader io.Reader = bodyReader
-	if len(inParams) > 0 {
-		// 如果Endpoint定义了参数，即表示限定参数传递
-		var data string
-		if values, err := AssembleHttpValues(inParams, ctx); nil != err {
-			return nil, err
-		} else {
-			data = values.Encode()
-		}
-		// GET：参数拼接到URL中；
-		if http.MethodGet == service.Method {
-			if newQuery == "" {
-				newQuery = data
-			} else {
-				newQuery += "&" + data
-			}
-		} else {
-			// 其它方法：拼接到Body中，并设置form-data/x-www-url-encoded
-			newBodyReader = strings.NewReader(data)
-		}
+func DefaultAssembleRequest(ctx *flux.Context, service *flux.Service) (*http.Request, error) {
+	// url
+	newUrl, newErr := url.Parse(service.Url)
+	if newErr != nil {
+		return nil, newErr
 	}
-	// 未定义参数，即透传Http请求：Rewrite inRequest path
-	newUrl := &url.URL{
-		Host:       service.Url,
-		Path:       service.Interface,
-		Scheme:     service.Scheme,
-		Opaque:     inURL.Opaque,
-		User:       inURL.User,
-		RawPath:    inURL.RawPath,
-		ForceQuery: inURL.ForceQuery,
-		RawQuery:   newQuery,
-		Fragment:   inURL.Fragment,
+	// query vars
+	newQuery, err := ResolveQueryValues(ctx, service.Arguments)
+	if err != nil {
+		return nil, fmt.Errorf("resolve query values, error: %w", err)
 	}
+	if newUrl.RawQuery != "" {
+		newUrl.RawQuery += "&" + newQuery.Encode()
+	} else {
+		newUrl.RawQuery = newQuery.Encode()
+	}
+	// body
+	var newBodyReader io.Reader
+	var newContentType = ctx.HeaderVar(flux.HeaderContentType)
+	// 如果解析出postforms参数，替换BodyReader
+	if postforms, err := ResolvePostFormValues(ctx, service.Arguments); err != nil {
+		return nil, fmt.Errorf("resolve form values, error: %w", err)
+	} else if len(postforms) > 0 {
+		newBodyReader = strings.NewReader(postforms.Encode())
+		newContentType = "application/x-www-form-urlencoded"
+	} else {
+		reader, _ := ctx.BodyReader()
+		newBodyReader = reader
+	}
+
 	to := service.RpcTimeout()
 	timeout, err := time.ParseDuration(to)
 	if err != nil {
-		logger.Warnf("Illegal endpoint rpc-timeout: ", to)
 		timeout = time.Second * 10
 	}
 	toctx, _ := context.WithTimeout(ctx.Context(), timeout)
-	newRequest, err := http.NewRequestWithContext(toctx, service.Method, newUrl.String(), newBodyReader)
+	newRequest, err := http.NewRequestWithContext(toctx, ctx.Method(), newUrl.String(), newBodyReader)
 	if nil != err {
 		return nil, fmt.Errorf("new request, method: %s, url: %s, err: %w", service.Method, newUrl, err)
 	}
 	// Body数据设置application/x-www-url-encoded
 	if http.MethodGet != service.Method {
-		newRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		newRequest.Header.Set("Content-Type", newContentType)
 	}
-	newRequest.Header.Set("User-Agent", "FluxGo/Transporter/v1")
+	newRequest.Header.Set("User-Agent", "Flux.go/Transporter/v1")
 	return newRequest, err
 }
 
-func AssembleHttpValues(arguments []flux.Argument, ctx *flux.Context) (url.Values, error) {
+// SelectToArgumentValues 解析Argument参数列表，并返回http标准参数值
+func SelectToArgumentValues(ctx *flux.Context, arguments []flux.Argument, selector func(flux.Argument) bool) (url.Values, error) {
 	values := make(url.Values, len(arguments))
 	for _, arg := range arguments {
+		if !selector(arg) {
+			continue
+		}
 		if val, err := transporter.Resolve(ctx, &arg); nil != err {
 			return nil, err
 		} else {
@@ -81,4 +76,41 @@ func AssembleHttpValues(arguments []flux.Argument, ctx *flux.Context) (url.Value
 		}
 	}
 	return values, nil
+}
+
+// ResolveQueryValues 解析Query参数
+func ResolveQueryValues(ctx *flux.Context, args []flux.Argument) (url.Values, error) {
+	// 没有定义参数，透传全部Query参数
+	if len(args) == 0 {
+		return ctx.QueryVars(), nil
+	}
+	// 已定义，过滤
+	return SelectToArgumentValues(ctx, args, func(arg flux.Argument) bool {
+		return toolkit.MatchEqual([]string{flux.ScopeQuery, flux.ScopeQueryMulti, flux.ScopeQueryMap}, arg.HttpScope)
+	})
+}
+
+// ResolvePostFormValues 解析Form表单参数
+func ResolvePostFormValues(ctx *flux.Context, args []flux.Argument) (url.Values, error) {
+	// 没有定义参数，透传全部Form参数
+	if len(args) == 0 {
+		return ctx.PostFormVars(), nil
+	}
+	// 已定义，过滤
+	return SelectToArgumentValues(ctx, args, func(arg flux.Argument) bool {
+		return toolkit.MatchEqual([]string{flux.ScopeForm, flux.ScopeFormMulti, flux.ScopeFormMap}, arg.HttpScope)
+	})
+}
+
+func DefaultAssembleHeaders(ctx *flux.Context) (http.Header, error) {
+	header := ctx.HeaderVars()
+	for k, v := range ctx.Attributes() {
+		// ':' 表示特定类型的属性 -> tag:xx,  feature:xx
+		// '@' 表示内置状态的属性 -> @com.bytepowered.flux.
+		if strings.ContainsAny(k, "@:") {
+			continue
+		}
+		header.Set(k, cast.ToString(v))
+	}
+	return header, nil
 }

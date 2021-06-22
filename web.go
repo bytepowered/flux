@@ -141,7 +141,11 @@ type ServerWebContext interface {
 	PathVars() url.Values
 
 	// FormVars 返回Form表单参数键值对；只读；
+	// 注意：FormVars包含Query参数域的键值对
 	FormVars() url.Values
+
+	// PostFormVars 返回PostForm表单参数键值对；只读；
+	PostFormVars() url.Values
 
 	// CookieVars 返回Cookie列表；只读；
 	CookieVars() []*http.Cookie
@@ -156,7 +160,11 @@ type ServerWebContext interface {
 	PathVar(name string) string
 
 	// FormVar 查询指定Name的表单参数值
+	// 注意：FormVars包含Query参数域的键值对
 	FormVar(name string) string
+
+	// PostFormVar 查询指定Name的Post表单参数值
+	PostFormVar(name string) string
 
 	// CookieVar 查询指定Name的Cookie对象，并返回是否存在标识
 	CookieVar(name string) (*http.Cookie, error)

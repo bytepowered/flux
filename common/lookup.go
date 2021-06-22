@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-// LookupMTValueByExpr 搜索LookupExpr表达式指定域的值。
-func LookupMTValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
+// LookupValueByExpr 搜索LookupExpr表达式指定域的值。
+func LookupValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
 	if expr == "" || nil == ctx {
 		return nil, errors.New("empty lookup expr, or context is nil")
 	}
@@ -19,15 +19,15 @@ func LookupMTValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
 	if !ok {
 		return "", errors.New("illegal lookup expr: " + expr)
 	}
-	mtv, err := LookupMTValue(ctx, scope, key)
+	mtv, err := LookupValueByScoped(ctx, scope, key)
 	if nil != err {
 		return "", err
 	}
 	return mtv.Value, nil
 }
 
-// LookupMTValue 根据Scope,Key从Context中查找参数；支持复杂参数类型
-func LookupMTValue(ctx *flux.Context, scope, key string) (value flux.MTValue, err error) {
+// LookupValueByScoped 根据Scope,Key从Context中查找参数；支持复杂参数类型
+func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.MTValue, err error) {
 	if scope == "" || key == "" {
 		return flux.NewInvalidMTValue(), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
 	}

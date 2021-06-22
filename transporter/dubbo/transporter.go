@@ -60,10 +60,10 @@ func init() {
 type (
 	// Option func to set option
 	Option func(*RpcTransporter)
-	// ArgumentsAssemblyFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
-	ArgumentsAssemblyFunc func(arguments []flux.Argument, context *flux.Context) (types []string, values interface{}, err error)
-	// AttachmentsAssemblyFunc 封装Attachment附件的函数
-	AttachmentsAssemblyFunc func(context *flux.Context) (interface{}, error)
+	// AssembleArgumentsFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
+	AssembleArgumentsFunc func(context *flux.Context, arguments []flux.Argument) (types []string, values interface{}, err error)
+	// AssembleAttachmentsFunc 封装Attachment附件的函数
+	AssembleAttachmentsFunc func(context *flux.Context) (interface{}, error)
 )
 
 type (
@@ -83,8 +83,8 @@ type RpcTransporter struct {
 	optionsFunc      []GenericOptionsFunc    // Dubbo Reference 配置函数
 	serviceFunc      GenericServiceFunc      // Dubbo Service 构建函数
 	invokeFunc       GenericInvokeFunc       // 执行Dubbo泛调用的函数
-	argsAssemblyFunc ArgumentsAssemblyFunc   // Dubbo参数封装函数
-	attrAssemblyFunc AttachmentsAssemblyFunc // Attachment封装函数
+	argsAssembleFunc AssembleArgumentsFunc   // Dubbo参数封装函数
+	attrAssemblyFunc AssembleAttachmentsFunc // Attachment封装函数
 	codec            flux.TransportCodecFunc // 解析响应结果的函数
 	// 内部私有
 	trace         bool
@@ -92,15 +92,15 @@ type RpcTransporter struct {
 	servmx        sync.RWMutex
 }
 
-// WithArgumentsAssemblyFunc 用于配置Dubbo参数封装实现函数
-func WithArgumentsAssemblyFunc(fun ArgumentsAssemblyFunc) Option {
+// WithAssembleArgumentsFunc 用于配置Dubbo参数封装实现函数
+func WithAssembleArgumentsFunc(fun AssembleArgumentsFunc) Option {
 	return func(service *RpcTransporter) {
-		service.argsAssemblyFunc = fun
+		service.argsAssembleFunc = fun
 	}
 }
 
-// WithAttachmentsAssemblyFunc 用于配置Attachment封装实现函数
-func WithAttachmentsAssemblyFunc(fun AttachmentsAssemblyFunc) Option {
+// WithAssembleAttachmentsFunc 用于配置Attachment封装实现函数
+func WithAssembleAttachmentsFunc(fun AssembleAttachmentsFunc) Option {
 	return func(service *RpcTransporter) {
 		service.attrAssemblyFunc = fun
 	}
@@ -193,8 +193,8 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 		WithGenericInvokeFunc(func(ctx context.Context, args []interface{}, service common.RPCService) (interface{}, map[string]interface{}, error) {
 			return service.(*dubgo.GenericService2).Invoke(ctx, args)
 		}),
-		WithArgumentsAssemblyFunc(DefaultArgumentsAssemblyFunc),
-		WithAttachmentsAssemblyFunc(DefaultAttachmentAssemblyFunc),
+		WithAssembleArgumentsFunc(DefaultArgumentsAssembleFunc),
+		WithAssembleAttachmentsFunc(DefaultAssembleAttachmentFunc),
 		WithTransportCodecFunc(NewTransportCodecFunc()),
 	}
 	return NewTransporterWith(append(opts, overrides...)...)
@@ -211,8 +211,8 @@ func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
 	if nil == b.optionsFunc {
 		b.optionsFunc = make([]GenericOptionsFunc, 0)
 	}
-	if flux.IsNil(b.argsAssemblyFunc) {
-		b.argsAssemblyFunc = DefaultArgumentsAssemblyFunc
+	if flux.IsNil(b.argsAssembleFunc) {
+		b.argsAssembleFunc = DefaultArgumentsAssembleFunc
 	}
 	// 修改默认Consumer配置
 	consumerc := dubgo.GetConsumerConfig()
@@ -241,9 +241,9 @@ func (b *RpcTransporter) OnShutdown(_ context.Context) error {
 func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.Service) (*flux.ServeResponse, *flux.ServeError) {
 	flux.AssertNotEmpty(service.RpcProto(), "<service.proto> is required")
 	trace := logger.TraceExtras(ctx.RequestId(), map[string]string{
-		"transport-service": service.ServiceID(),
+		"invoke.service": service.ServiceID(),
 	})
-	types, values, err := b.argsAssemblyFunc(service.Arguments, ctx)
+	types, values, err := b.argsAssembleFunc(ctx, service.Arguments)
 	if nil != err {
 		trace.Errorw("TRANSPORTER:DUBBO:ASSEMBLE/arguments", "error", err)
 		return nil, &flux.ServeError{

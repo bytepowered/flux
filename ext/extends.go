@@ -6,18 +6,23 @@ type extkey struct {
 	id string
 }
 
+// ArgumentValueLoaderFunc 参数值直接加载函数
+type (
+	ArgumentValueLoaderFunc func() flux.MTValue
+)
+
 var (
 	extkeyValueLoader = extkey{id: "argument.value.loader.func"}
 )
 
-func SetArgumentValueLoader(arg *flux.Argument, f flux.MTValueLoaderFunc) {
+func SetArgumentValueLoader(arg *flux.Argument, f ArgumentValueLoaderFunc) {
 	arg.SetExtends(extkeyValueLoader, f)
 }
 
-func GetArgumentValueLoader(arg *flux.Argument) (flux.MTValueLoaderFunc, bool) {
+func GetArgumentValueLoader(arg *flux.Argument) (ArgumentValueLoaderFunc, bool) {
 	v, ok := arg.GetExtends(extkeyValueLoader)
 	if ok {
-		f, is := v.(flux.MTValueLoaderFunc)
+		f, is := v.(ArgumentValueLoaderFunc)
 		return f, is
 	}
 	return nil, false

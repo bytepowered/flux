@@ -100,13 +100,6 @@ const (
 	ArgumentAnnoTagDefault = "default" // 参数的默认值属性
 )
 
-type (
-	// MTValueLoaderFunc 参值直接加载函数
-	MTValueLoaderFunc func() MTValue
-	// MTValueLookupFunc 参数值查找函数
-	MTValueLookupFunc func(ctx *Context, scope, key string) (MTValue, error)
-)
-
 // Argument 定义Endpoint的参数结构元数据
 type Argument struct {
 	Name        string      `json:"name" yaml:"name"`               // 参数名称
@@ -258,7 +251,6 @@ func (a Annotations) AnnotationEx(name string) (KvPair, bool) {
 type Service struct {
 	Kind        string      `json:"kind" yaml:"kind"`               // Service类型
 	AliasId     string      `json:"aliasId" yaml:"aliasId"`         // Service别名
-	Scheme      string      `json:"scheme" yaml:"scheme"`           // Service侧URL的Scheme
 	Url         string      `json:"url" yaml:"url"`                 // Service侧的URL
 	Interface   string      `json:"interface" yaml:"interface"`     // Service侧的Interface
 	Method      string      `json:"method" yaml:"method"`           // Service侧的Method
@@ -269,16 +261,6 @@ type Service struct {
 // Annotation 获取指定名称的注解，如果注解不存在，返回空注解。
 func (s Service) Annotation(name string) KvPair {
 	return s.Annotations.Annotation(name)
-}
-
-// AnnotationEx 获取指定名称的注解，如果注解不存在，返回空注解。
-func (s Service) AnnotationEx(name string) (KvPair, bool) {
-	return s.Annotations.AnnotationEx(name)
-}
-
-// AnnotationExists 判断指定名称的注解是否存在
-func (s Service) AnnotationExists(name string) bool {
-	return s.Annotations.Exists(name)
 }
 
 func (s Service) RpcProto() string {
