@@ -7,10 +7,10 @@ endpoints:
         version: "1.0"
         httpPattern: "/debug/flux/echo/get"
         httpMethod: "GET"
-        attributes:
-            -   name: "listenerId"
-                value: "admin"
         serviceId: "flux.debug.echo:get"
+        annotations:
+            ListenerId: "admin"
+        attributes: []
 
     -   kind: "flux.endpoint/v1"
         application: "flux"
@@ -18,35 +18,30 @@ endpoints:
         httpPattern: "/debug/flux/echo/post"
         httpMethod: "POST"
         serviceId: "flux.debug.echo:post"
+        annotations: { }
+        attributes: [ ]
 
     -   application: "flux"
         version: "1.0"
         httpPattern: "/debug/flux/inapp/echo"
         httpMethod: "POST"
         serviceId: "flux.debug.inapp.Test:echo"
+        annotations: { }
+        attributes: [ ]
 
 # Service 配置服务列表
 services:
     -   interface: "flux.debug.echo"
         method: "get"
-        attributes:
-            -   name: "rpc:proto"
-                value: "ECHO"
-            -   name: "tag:authorize"
-                value: false
+        annotations:
+            RpcProto: "ECHO"
 
     -   interface: "flux.debug.echo"
         method: "post"
-        attributes:
-            -   name: "rpc:proto"
-                value: "ECHO"
-            -   name: "tag:authorize"
-                value: false
+        annotations:
+            RpcProto: "ECHO"
 
     -   interface: "flux.debug.inapp.Test"
         method: "echo"
-        attributes:
-            -   name: "rpc:proto"
-                value: "INAPP"
-            -   name: "tag:authorize"
-                value: false
+        annotations:
+            RpcProto: "INAPP"

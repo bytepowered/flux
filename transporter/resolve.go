@@ -47,9 +47,9 @@ func resolvefield(ctx *flux.Context, a *flux.Argument) (interface{}, error) {
 		return nil, err
 	}
 	// 3: Default value
-	if !mtv.Valid && a.Attributes != nil {
-		if attr, ok := a.Attributes.SingleEx(flux.ArgumentAttributeTagDefault); ok {
-			mtv = flux.NewStringMTValue(attr.ToString())
+	if !mtv.Valid && a.Annotations != nil {
+		if anno, ok := a.Annotations.AnnotationEx(flux.ArgumentAnnoTagDefault); ok {
+			mtv = flux.NewStringMTValue(anno.ToString())
 		}
 	}
 	return resolver(mtv, a.Class, a.Generic)

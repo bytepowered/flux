@@ -99,7 +99,7 @@ func TestParseEndpointModelV2(t *testing.T) {
 	AssertWith(t, text, []AssertCase{
 		{
 			Expected: true,
-			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.IsValid() },
+			Actual:   func(endpoint *Endpoint) interface{} { return endpoint.Valid() },
 		},
 		{
 			Expected: "auc",

@@ -331,8 +331,8 @@ func (gs *GenericServer) route(webex flux.ServerWebContext, server flux.WebListe
 		return server.HandleNotfound(webex)
 	}
 	// 检查Endpoint/Service绑定
-	flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
-	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
+	flux.AssertTrue(endpoint.Valid(), "<endpoint> must valid when routing")
+	flux.AssertTrue(endpoint.Service.Valid(), "<endpoint.service> must valid when routing")
 	ctxw := gs.pooled.Get().(*flux.Context)
 	defer gs.pooled.Put(ctxw)
 	ctxw.Reset(webex, &endpoint)
@@ -430,18 +430,17 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", epvars...)
 		gs.syncService(&ep)
 		mvce.Update(ep.Version, &ep)
-		// 根据Endpoint属性，选择ListenServer来绑定
 		if register {
-			id := ep.Attributes.Single(flux.EndpointAttrTagListenerId).ToString()
-			if id == "" {
-				id = ListenerIdDefault
+			// 根据Endpoint注解属性，选择ListenServer来绑定
+			var listenerId = ListenerIdDefault
+			if anno, ok := ep.AnnotationEx(flux.EndpointAnnoNameListenerId); ok && anno.Valid() {
+				listenerId = anno.ToString()
 			}
-			server, ok := gs.WebListenerById(id)
-			if ok {
-				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+id, epvars...)
-				server.AddHandler(ep.HttpMethod, ep.HttpPattern, gs.newEndpointHandler(server, mvce))
+			if webListener, ok := gs.WebListenerById(listenerId); ok {
+				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+listenerId, epvars...)
+				webListener.AddHandler(ep.HttpMethod, ep.HttpPattern, gs.newEndpointHandler(webListener, mvce))
 			} else {
-				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+id, epvars...)
+				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+listenerId, epvars...)
 			}
 		}
 	case flux.EventTypeUpdated:
@@ -550,7 +549,8 @@ func (gs *GenericServer) defaultListener() flux.WebListener {
 // 此处绑定的为原始元数据的引用；
 func (gs *GenericServer) syncService(ep *flux.Endpoint) {
 	// Endpoint为静态模型，不支持动态更新
-	if ep.AttributeExists(flux.EndpointAttrTagStaticModel) {
+	if ep.AnnotationExists(flux.EndpointAnnoNameStaticModel) {
+		logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 		return
 	}
 	service, ok := ext.ServiceByID(ep.ServiceId)
@@ -567,7 +567,8 @@ func (gs *GenericServer) syncEndpoint(srv *flux.Service) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新
-			if ep.AttributeExists(flux.EndpointAttrTagStaticModel) {
+			if ep.AnnotationExists(flux.EndpointAnnoNameStaticModel) {
+				logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				continue
 			}
 			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {

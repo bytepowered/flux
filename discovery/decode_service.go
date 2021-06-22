@@ -21,8 +21,12 @@ func DecodeServiceFunc(bytes []byte) (flux.Service, error) {
 	if err := ext.JSONUnmarshal(bytes, &service); nil != err {
 		return emptyService, fmt.Errorf("DECODE:UNMARSHAL:JSON/err: %w", err)
 	}
+	// ensure
+	if service.Annotations == nil {
+		service.Annotations = make(flux.Annotations, 0)
+	}
 	// 检查有效性
-	if !service.IsValid() {
+	if !service.Valid() {
 		return emptyService, errors.New("DECODE:VERIFY:SERVICE/invalid")
 	}
 	return service, nil

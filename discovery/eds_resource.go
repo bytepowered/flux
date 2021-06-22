@@ -77,7 +77,7 @@ func (d *ResourceEndpointDiscovery) OnInit(config *flux.Configuration) error {
 func (d *ResourceEndpointDiscovery) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	for _, res := range d.resources {
 		for _, el := range res.Endpoints {
-			if !el.IsValid() {
+			if !el.Valid() {
 				logger.Warnw("DISCOVERY:RESOURCE:ENDPOINT/verify:invalid", "endpoint", el)
 				continue
 			}
@@ -95,7 +95,7 @@ func (d *ResourceEndpointDiscovery) WatchEndpoints(ctx context.Context, events c
 func (d *ResourceEndpointDiscovery) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	for _, res := range d.resources {
 		for _, el := range res.Services {
-			if !el.IsValid() {
+			if !el.Valid() {
 				logger.Warnw("DISCOVERY:RESOURCE:SERVICE/verify:invalid", "service", el)
 				continue
 			}

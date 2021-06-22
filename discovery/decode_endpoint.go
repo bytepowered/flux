@@ -21,12 +21,15 @@ func DecodeEndpointFunc(bytes []byte) (flux.Endpoint, error) {
 	if err := ext.JSONUnmarshal(bytes, &ep); nil != err {
 		return emptyEndpoint, fmt.Errorf("DECODE:UNMARSHAL:JSON/err: %w", err)
 	}
-	// 检查Endpoint有效性
-	if ep.HttpPattern == "" || ep.HttpMethod == "" {
-		return emptyEndpoint, errors.New("DECODE:VERIFY:ENDPOINT/method-pattern")
+	if ep.Annotations == nil {
+		ep.Annotations = make(flux.Annotations, 0)
 	}
-	if ep.ServiceId == "" || len(ep.ServiceId) < len("a:b") {
-		return emptyEndpoint, errors.New("DECODE:VERIFY:ENDPOINT:service-id")
+	if ep.Attributes == nil {
+		ep.Attributes = make(flux.Attributes, 0)
+	}
+	// 检查有效性
+	if !ep.Valid() {
+		return emptyEndpoint, errors.New("DECODE:VERIFY:ENDPOINT/invalid")
 	}
 	return ep, nil
 }
