@@ -55,16 +55,16 @@ func AddPluginSelector(s flux.PluginSelector) {
 }
 
 func PluginSelectors() []flux.PluginSelector {
-	out := make([]flux.PluginSelector, len(filterSelectors))
+	out := make([]flux.PluginSelector, len(pluginSelectors))
 	copy(out, pluginSelectors)
 	return out
 }
 
 // SelectivePluginById 获取已排序的可选Plugin列表
-func SelectivePluginById(filterId string) (flux.Plugin, bool) {
-	filterId = flux.MustNotEmpty(filterId, "pluginId is empty")
+func SelectivePluginById(pluginId string) (flux.Plugin, bool) {
+	pluginId = flux.MustNotEmpty(pluginId, "pluginId is empty")
 	for _, f := range selectivePlugin {
-		if filterId == f.plugin.PluginId() {
+		if pluginId == f.plugin.PluginId() {
 			return f.plugin, true
 		}
 	}
