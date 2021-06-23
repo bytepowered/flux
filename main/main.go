@@ -14,13 +14,13 @@ import (
 )
 
 import (
-	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/listener"
-	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/server"
-	_ "github.com/bytepowered/flux/transporter/dubbo"
-	_ "github.com/bytepowered/flux/transporter/echo"
-	_ "github.com/bytepowered/flux/transporter/http"
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/listener"
+	"github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/server"
+	_ "github.com/bytepowered/fluxgo/pkg/transporter/dubbo"
+	_ "github.com/bytepowered/fluxgo/pkg/transporter/echo"
+	_ "github.com/bytepowered/fluxgo/pkg/transporter/http"
 )
 
 var (
@@ -53,7 +53,7 @@ func NewDefaultGenericServer(options ...server.GenericOptionFunc) *server.Generi
 	opts := []server.GenericOptionFunc{
 		server.WithServerBanner("Flux.go"),
 		// Lookup version
-		server.WithVersionLookupFunc(func(webex flux.ServerWebContext) string {
+		server.WithVersionLookupFunc(func(webex flux.WebContext) string {
 			return webex.HeaderVar(server.DefaultHttpHeaderVersion)
 		}),
 		// Default WebListener
@@ -63,7 +63,7 @@ func NewDefaultGenericServer(options ...server.GenericOptionFunc) *server.Generi
 		server.WithNewWebListener(listener.New(server.ListenServerIdAdmin,
 			server.NewWebListenerOptions(server.ListenServerIdAdmin), nil,
 			// 内部元数据查询
-			listener.WithWebHandlers([]listener.WebHandlerTuple{
+			listener.WithHandlers([]listener.WebHandlerTuple{
 				// Metrics
 				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),

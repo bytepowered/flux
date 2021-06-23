@@ -8,9 +8,9 @@
       <env name="CONF_PROVIDER_FILE_PATH" value="./conf.d/dubbo.yml" />
     </envs>
     <kind value="PACKAGE" />
-    <filePath value="$PROJECT_DIR$/main/main.go" />
-    <package value="github.com/bytepowered/flux/main" />
+    <package value="github.com/bytepowered/fluxgo/main" />
     <directory value="$PROJECT_DIR$/" />
+    <filePath value="$PROJECT_DIR$/main/main.go" />
     <method v="2" />
   </configuration>
 </component>
