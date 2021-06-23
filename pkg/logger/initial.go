@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/bytepowered/fluxgo/pkg/ext"
 	"github.com/bytepowered/fluxgo/pkg/flux"
-	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -50,13 +49,7 @@ func SugaredFactory(sugar *zap.SugaredLogger) ext.LoggerFactory {
 }
 
 func LoadConfig(logfile string) (zap.Config, error) {
-	if logfile == "" {
-		logfile = os.Getenv(EnvKeyApplicationLogConfFile)
-	}
 	config := defaultZapConfig
-	if logfile == "" {
-		return config, errors.New("log configure logfile name is nil")
-	}
 	v := viper.New()
 	v.SetConfigFile(logfile)
 	if err := v.ReadInConfig(); nil != err {
