@@ -261,7 +261,7 @@ func (d *DispatcherManager) start() error {
 	// Listeners
 	errch := make(chan error, 1)
 	for id, dis := range d.dispatchers {
-		logger.Infow("SERVER:EVEN:LISTENER:START", "listener-id", dis.WebListener.ListenerId())
+		logger.Infow("SERVER:EVEN:LISTENER:START", "listener-id", id)
 		go func(id string, listener flux.WebListener) {
 			errch <- listener.ListenServe()
 			logger.Infow("SERVER:EVEN:LISTENER:STOP", "listener-id", id)
