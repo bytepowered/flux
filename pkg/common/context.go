@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"github.com/bytepowered/fluxgo/pkg/internal"
 	"github.com/labstack/echo/v4"
 	"net/http/httptest"
 )
@@ -19,7 +20,7 @@ func NewSlimContextTODO(id string) *flux.Context {
 
 func NewSlimContext(ctx context.Context, id string, vars ...map[string]interface{}) *flux.Context {
 	fxctx := flux.NewContext()
-	fxctx.Reset(newSlimWithID(ctx, id), &flux.EndpointSpec{Application: "slim"})
+	fxctx.Reset(newSlimWithID(ctx, id), &flux.EndpointSpec{Application: "slim"}, internal.Enforce)
 	fxctx.SetVariable("is.slim.ctx", true)
 	if len(vars) > 0 {
 		for k, v := range vars[0] {

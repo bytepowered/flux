@@ -16,8 +16,8 @@ func SetArgumentValueLoader(arg *flux.ServiceArgumentSpec, f ArgumentValueLoader
 	arg.SetExtends(argumentValueLoaderExtKey, f)
 }
 
-// GetArgumentValueLoader 获取参数值加载函数
-func GetArgumentValueLoader(arg *flux.ServiceArgumentSpec) (ArgumentValueLoaderFunc, bool) {
+// ArgumentValueLoader 获取参数值加载函数
+func ArgumentValueLoader(arg *flux.ServiceArgumentSpec) (ArgumentValueLoaderFunc, bool) {
 	v, ok := arg.GetExtends(argumentValueLoaderExtKey)
 	if ok {
 		f, is := v.(ArgumentValueLoaderFunc)

@@ -2,6 +2,7 @@ package flux
 
 import (
 	"go.uber.org/zap"
+	"reflect"
 	"time"
 )
 
@@ -10,9 +11,8 @@ const (
 	XRequestTime = "X-Request-Time"
 )
 
-// Context 定义每个请求的上下文环境。包含当前请求的Endpoint、属性、请求Context等。
-// Context是一个与请求生命周期相同的临时上下文容器，它在请求被接受处理时创建，在请求被处理完成时销毁。
-// Attributes是Context的属性参数，它可以在多个组件之间传递，并且可以传递到后端Dubbo/Http/gRPC等服务。
+// Context 定义每个请求的上下文环境。包含当前请求的Endpoint、属性Attributes、请求Context等。
+// Context是一个与请求生命周期相同的临时上下文容器，它在Http请求被接受处理时创建，并在请求被处理完成时销毁回收。
 type Context struct {
 	WebContext
 	endpoint   *EndpointSpec
@@ -31,8 +31,11 @@ func NewContext() *Context {
 }
 
 // Reset 重置Context，重新与 WebContext 关联，绑定新的 EndpointSpec
-// Note：此函数由内部框架调用，一般不作为业务使用。
-func (c *Context) Reset(webex WebContext, endpoint *EndpointSpec) {
+// Note：此函数由内部框架调用，不作为外部使用。
+func (c *Context) Reset(webex WebContext, endpoint *EndpointSpec, enforce interface{}) {
+	AssertT(func() bool {
+		return "github.com/bytepowered/fluxgo/pkg/internal" == reflect.TypeOf(enforce).PkgPath()
+	}, "<Context.Reset>函数只允许框架内部调用")
 	c.WebContext = webex
 	c.endpoint = endpoint
 	c.ctxLogger = zap.S()

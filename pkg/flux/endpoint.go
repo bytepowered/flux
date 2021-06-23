@@ -28,19 +28,19 @@ type EndpointSpec struct {
 }
 
 // IsValid 判断Endpoint配置是否有效；
-// 1. HttpMethod, HttpPattern 不能为空；
-// 2. 包含ServiceId；
+// - HttpMethod, HttpPattern, ServiceId 不能为空；
+// - 字段 Attributes, Annotation 非Nil；
 func (e *EndpointSpec) IsValid() bool {
 	return e.HttpMethod != "" && e.HttpPattern != "" && e.ServiceId != "" &&
 		e.Attributes != nil && e.Annotations != nil
 }
 
-// Attribute 获取指定名称的属性，如果属性不存在，返回空属性。
+// Attribute 获取指定名称的属性；如果属性不存在，返回空属性对象。
 func (e *EndpointSpec) Attribute(name string) NamedValueSpec {
 	return e.Attributes.Single(name)
 }
 
-// AttributeEx 获取指定名称的属性，如果属性不存在，返回空属性，以及是否存在标识位
+// AttributeEx 获取指定名称的属性，如果属性不存在，返回空属性；并返回属性是否有效的标识；
 func (e *EndpointSpec) AttributeEx(name string) (NamedValueSpec, bool) {
 	return e.Attributes.SingleEx(name)
 }
@@ -60,7 +60,7 @@ func (e *EndpointSpec) Annotation(name string) NamedValueSpec {
 	return e.Annotations.Get(name)
 }
 
-// AnnotationEx 获取指定名称的注解，如果注解不存在，返回空注解。
+// AnnotationEx 获取指定名称的注解，如果注解不存在，返回空注解。并返回注解是否有效的标识；
 func (e *EndpointSpec) AnnotationEx(name string) (NamedValueSpec, bool) {
 	return e.Annotations.GetEx(name)
 }
@@ -79,7 +79,7 @@ func (a Attributes) Single(name string) NamedValueSpec {
 	return v
 }
 
-// SingleEx 查询单个属性，并返回是否存在标识
+// SingleEx 查询单个属性，并返回属性是否有效的标识
 func (a Attributes) SingleEx(name string) (NamedValueSpec, bool) {
 	for _, attr := range a {
 		if strings.EqualFold(attr.Name, name) {
@@ -89,7 +89,7 @@ func (a Attributes) SingleEx(name string) (NamedValueSpec, bool) {
 	return NamedValueSpec{}, false
 }
 
-// Multiple 查询多个同名属性
+// Multiple 查询多个相同名称的属性，返回新的属性列表
 func (a Attributes) Multiple(name string) Attributes {
 	out := make(Attributes, 0, 2)
 	for _, attr := range a {
@@ -124,7 +124,7 @@ func (a Attributes) Append(in NamedValueSpec) Attributes {
 	return append(a, in)
 }
 
-// MVCEndpoint Multi version control Endpoint
+// MVCEndpoint 维护多个版本号的Endpoint对象
 type MVCEndpoint struct {
 	versions map[string]*EndpointSpec // 各版本数据
 	*sync.RWMutex
@@ -139,14 +139,14 @@ func NewMVCEndpoint(endpoint *EndpointSpec) *MVCEndpoint {
 	}
 }
 
-// IsEmpty 判断多版本控制Endpoint是否为空
+// IsEmpty 判断是否为空
 func (m *MVCEndpoint) IsEmpty() bool {
 	m.RLock()
 	defer m.RUnlock()
 	return len(m.versions) == 0
 }
 
-// Lookup 按指定版本事情查找Endpoint。返回Endpoint的复制数据。
+// Lookup 按指定版本号查找匹配的Endpoint；注意返回值是数据引用指针；
 // 如果有且仅有一个版本，则直接返回此Endpoint，不比较版本号是否匹配。
 func (m *MVCEndpoint) Lookup(version string) (*EndpointSpec, bool) {
 	m.RLock()
@@ -174,14 +174,14 @@ func (m *MVCEndpoint) Update(version string, endpoint *EndpointSpec) {
 	m.Unlock()
 }
 
-// Delete 删除指定版本号的元数据
+// Delete 删除指定版本号的Endpoint元数据
 func (m *MVCEndpoint) Delete(version string) {
 	m.Lock()
 	delete(m.versions, version)
 	m.Unlock()
 }
 
-// Random 随机读取一个版本的元数据。
+// Random 随机读取一个版本的Endpoint元数据。
 // 注意：必须保证随机读取版本时存在非空元数据，否则会报错panic。
 func (m *MVCEndpoint) Random() EndpointSpec {
 	m.RLock()

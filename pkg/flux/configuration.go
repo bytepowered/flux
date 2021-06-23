@@ -75,14 +75,17 @@ type Configuration struct {
 	watchStop chan struct{}
 }
 
+// SetDataId 设置当前配置实例的 dataId
 func (c *Configuration) SetDataId(dataID string) {
 	c.dataID = dataID
 }
 
+// DataId 返回当前配置实例的 dataId
 func (c *Configuration) DataId() string {
 	return c.dataID
 }
 
+// ToStringMap 将当前配置实例（命名空间）下所有配置，转换成 map[string]any 类型的字典。
 func (c *Configuration) ToStringMap() map[string]interface{} {
 	if "" == c.namespace {
 		return c.registry.AllSettings()
@@ -90,6 +93,7 @@ func (c *Configuration) ToStringMap() map[string]interface{} {
 	return cast.ToStringMap(c.registry.Get(c.namespace))
 }
 
+// Keys 获取当前配置实例（命名空间）下所有配置的键列表
 func (c *Configuration) Keys() []string {
 	v := c.registry.Sub(c.namespace)
 	if v != nil {
@@ -98,6 +102,7 @@ func (c *Configuration) Keys() []string {
 	return []string{}
 }
 
+// ToConfigurations 将当前配置实例（命名空间）下所有配置，转换成 Configuration 类型的列表。
 func (c *Configuration) ToConfigurations() []*Configuration {
 	if "" == c.namespace {
 		return ToConfigurations("", []interface{}{c.registry.AllSettings()})

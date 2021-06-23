@@ -38,7 +38,7 @@ func resolvepojo(ctx *flux.Context, a *flux.ServiceArgumentSpec) (interface{}, e
 func resolvefield(ctx *flux.Context, a *flux.ServiceArgumentSpec) (interface{}, error) {
 	resolver := ext.ValueObjectResolverByType(a.ClassType)
 	// 1: By Value loader
-	if loader, ok := common.GetArgumentValueLoader(a); ok && nil != loader {
+	if loader, ok := common.ArgumentValueLoader(a); ok && nil != loader {
 		mtv := loader()
 		return resolver(mtv, a.ClassType, a.GenericTypes)
 	}

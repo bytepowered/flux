@@ -59,6 +59,8 @@ type NamedValueSpec struct {
 	Value interface{} `json:"value" yaml:"value"`
 }
 
+// GetString 获取键值对的值，并转换值为String。如果值类型为列表数组，则读取第1个值并转换。
+// 如果转换失败，返回空字符串。
 func (a NamedValueSpec) GetString() string {
 	rv := reflect.ValueOf(a.Value)
 	if rv.Kind() == reflect.Slice {
@@ -78,7 +80,7 @@ func (a NamedValueSpec) IsValid() bool {
 	return a.Name != "" && a.Value != nil
 }
 
-// Annotations 注解，用于声明模型的固定有属性。注解不可被传递到后端服务
+// Annotations 注解，用于声明模型的固定有属性。
 type Annotations map[string]interface{}
 
 func (a Annotations) Exists(name string) bool {

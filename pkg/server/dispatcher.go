@@ -77,7 +77,7 @@ func (d *dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (e
 	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
 	ctxw := d.pooled.Get().(*flux.Context)
 	defer d.pooled.Put(ctxw)
-	ctxw.Reset(webex, &endpoint)
+	ctxw.Reset(webex, &endpoint, internal.Enforce)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, ctxw.RequestId())
 	logger.TraceVerbose(ctxw).Infow("DISPATCH:EVEN:ROUTE:START")

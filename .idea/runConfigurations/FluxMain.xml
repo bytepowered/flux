@@ -6,6 +6,7 @@
       <env name="APP_LOG_CONF_FILE" value="./conf.d/log.yml" />
       <env name="CONF_CONSUMER_FILE_PATH" value="./conf.d/dubbo.yml" />
       <env name="CONF_PROVIDER_FILE_PATH" value="./conf.d/dubbo.yml" />
+      <env name="ASSERT_DISABLED" value="false" />
     </envs>
     <kind value="PACKAGE" />
     <package value="github.com/bytepowered/fluxgo/main" />

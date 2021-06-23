@@ -37,8 +37,7 @@ func (s ServiceSpec) Annotation(name string) NamedValueSpec {
 }
 
 // IsValid 判断服务配置是否有效；
-// 1. Interface, Method 不能为空；
-// 2. 包含Proto协议；
+// 要求： Interface, Method, Protocol 不能为空；
 func (s ServiceSpec) IsValid() bool {
 	return s.Interface != "" && s.Method != "" && s.Protocol != ""
 }
