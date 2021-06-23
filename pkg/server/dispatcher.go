@@ -120,66 +120,100 @@ func (d *dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	}
 	// Metric: Route
 	defer func() {
-		ctx.AddMetric("dispatch", time.Since(ctx.StartAt()))
+		ctx.AddMetric("dispatcher", time.Since(ctx.StartAt()))
 	}()
-	// Select filters
+	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
+	// Walk filters
+	filters := d.selectFilters(ctx)
+	for _, before := range d.onBeforeFilterHooks {
+		before(ctx, filters)
+	}
+	next := func(ctx *flux.Context) *flux.ServeError {
+		ctx.AddMetric("filters", time.Since(ctx.StartAt()))
+		if perr := d.handlePlugins(ctx); perr != nil {
+			return perr
+		}
+		return d.doTransport(ctx)
+	}
+	if rouerr := wrapMetricFunc(d.walk(next, filters)(ctx)); rouerr != nil {
+		d.responseWriter.WriteError(ctx, rouerr)
+	}
+	return nil // always return nil
+}
+
+func (d *dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
+	defer func() {
+		ctx.AddMetric("plugins", time.Since(ctx.StartAt()))
+	}()
+	for _, plugin := range d.selectPlugins(ctx) {
+		if plerr := plugin.DoHandle(ctx); plerr != nil {
+			return plerr
+		}
+		ctx.AddMetric(plugin.PluginId(), time.Since(ctx.StartAt()))
+	}
+	return nil
+}
+
+func (d *dispatcher) doTransport(ctx *flux.Context) *flux.ServeError {
+	select {
+	case <-ctx.Context().Done():
+		return &flux.ServeError{StatusCode: flux.StatusBadRequest,
+			ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/100", CauseError: ctx.Context().Err(),
+		}
+	default:
+		break
+	}
+	defer func() {
+		ctx.AddMetric("transporter", time.Since(ctx.StartAt()))
+	}()
+	proto := ctx.Service().Protocol
+	transporter, ok := ext.TransporterByProto(proto)
+	if !ok {
+		logger.TraceVerbose(ctx).Errorw("DISPATCH:EVEN:ROUTE:UNSUPPORTED_PROTOCOL",
+			"proto", proto, "service", ctx.Endpoint().Service)
+		return &flux.ServeError{StatusCode: flux.StatusNotFound,
+			ErrorCode: flux.ErrorCodeRequestNotFound,
+			Message:   fmt.Sprintf("SERVER:ROUTE:ILLEGAL_PROTOCOL/%s", proto),
+		}
+	}
+	for _, hook := range d.onBeforeTransportHooks {
+		hook(ctx, transporter)
+	}
+	timer := prometheus.NewTimer(d.metrics.RouteDuration.WithLabelValues("Transporter", proto))
+	invret, inverr := transporter.DoInvoke(ctx, ctx.Service())
+	timer.ObserveDuration()
+	select {
+	case <-ctx.Context().Done():
+		return &flux.ServeError{StatusCode: flux.StatusBadRequest,
+			ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/200", CauseError: ctx.Context().Err(),
+		}
+	default:
+		if flux.IsNil(inverr) {
+			d.responseWriter.Write(ctx, invret)
+			return nil
+		}
+		return inverr
+	}
+}
+
+func (d *dispatcher) selectFilters(ctx *flux.Context) []flux.Filter {
 	selective := make([]flux.Filter, 0, 16)
 	for _, selector := range ext.FilterSelectors() {
 		if selector.Activate(ctx) {
 			selective = append(selective, selector.DoSelect(ctx)...)
 		}
 	}
-	ctx.AddMetric("selector", time.Since(ctx.StartAt()))
-	transport := func(ctx *flux.Context) *flux.ServeError {
-		select {
-		case <-ctx.Context().Done():
-			return &flux.ServeError{StatusCode: flux.StatusBadRequest,
-				ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/100", CauseError: ctx.Context().Err(),
-			}
-		default:
-			break
-		}
-		defer func() {
-			ctx.AddMetric("transporter", time.Since(ctx.StartAt()))
-		}()
-		proto := ctx.Service().Protocol
-		transporter, ok := ext.TransporterByProto(proto)
-		if !ok {
-			logger.TraceVerbose(ctx).Errorw("DISPATCH:EVEN:ROUTE:UNSUPPORTED_PROTOCOL",
-				"proto", proto, "service", ctx.Endpoint().Service)
-			return &flux.ServeError{StatusCode: flux.StatusNotFound,
-				ErrorCode: flux.ErrorCodeRequestNotFound,
-				Message:   fmt.Sprintf("SERVER:ROUTE:ILLEGAL_PROTOCOL/%s", proto),
-			}
-		}
-		for _, hook := range d.onBeforeTransportHooks {
-			hook(ctx, transporter)
-		}
-		timer := prometheus.NewTimer(d.metrics.RouteDuration.WithLabelValues("Transporter", proto))
-		invret, inverr := transporter.DoInvoke(ctx, ctx.Service())
-		timer.ObserveDuration()
-		select {
-		case <-ctx.Context().Done():
-			return &flux.ServeError{StatusCode: flux.StatusBadRequest,
-				ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/200", CauseError: ctx.Context().Err(),
-			}
-		default:
-			if flux.IsNil(inverr) {
-				d.responseWriter.Write(ctx, invret)
-				return nil
-			}
-			return inverr
+	return append(ext.GlobalFilters(), selective...)
+}
+
+func (d *dispatcher) selectPlugins(ctx *flux.Context) []flux.Plugin {
+	selective := make([]flux.Plugin, 0, 16)
+	for _, selector := range ext.PluginSelectors() {
+		if selector.Activate(ctx) {
+			selective = append(selective, selector.DoSelect(ctx)...)
 		}
 	}
-	// Walk filters
-	filters := append(ext.GlobalFilters(), selective...)
-	for _, before := range d.onBeforeFilterHooks {
-		before(ctx, filters)
-	}
-	if rouerr := wrapMetricFunc(d.walk(transport, filters)(ctx)); rouerr != nil {
-		d.responseWriter.WriteError(ctx, rouerr)
-	}
-	return nil // always return nil
+	return append(ext.GlobalPlugins(), selective...)
 }
 
 func (d *dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {

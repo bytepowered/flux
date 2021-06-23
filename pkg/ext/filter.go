@@ -5,38 +5,38 @@ import (
 	"sort"
 )
 
-type filterWrapper struct {
+type filterw struct {
 	filter flux.Filter
 	order  int
 }
 
-type filterArray []filterWrapper
+type filters []filterw
 
-func (s filterArray) Len() int           { return len(s) }
-func (s filterArray) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s filterArray) Less(i, j int) bool { return s[i].order < s[j].order }
+func (a filters) Len() int           { return len(a) }
+func (a filters) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a filters) Less(i, j int) bool { return a[i].order < a[j].order }
 
 var (
-	globalFilter    = make([]filterWrapper, 0, 16)
-	selectiveFilter = make([]filterWrapper, 0, 16)
+	globalFilter    = make([]filterw, 0, 16)
+	selectiveFilter = make([]filterw, 0, 16)
 	filterSelectors = make([]flux.FilterSelector, 0, 8)
 )
 
 // AddGlobalFilter 注册全局Filter；
 func AddGlobalFilter(v interface{}) {
 	globalFilter = _checkedAppendFilter(v, globalFilter)
-	sort.Sort(filterArray(globalFilter))
+	sort.Sort(filters(globalFilter))
 }
 
 // AddSelectiveFilter 注册可选Filter；
 func AddSelectiveFilter(v interface{}) {
 	selectiveFilter = _checkedAppendFilter(v, selectiveFilter)
-	sort.Sort(filterArray(selectiveFilter))
+	sort.Sort(filters(selectiveFilter))
 }
 
-func _checkedAppendFilter(v interface{}, in []filterWrapper) (out []filterWrapper) {
+func _checkedAppendFilter(v interface{}, in []filterw) (out []filterw) {
 	f := flux.MustNotNil(v, "Not a valid Filter").(flux.Filter)
-	return append(in, filterWrapper{filter: f, order: orderOf(v)})
+	return append(in, filterw{filter: f, order: orderOfFilter(f)})
 }
 
 // SelectiveFilters 获取已排序的Filter列表
@@ -71,7 +71,7 @@ func SelectiveFilterById(filterId string) (flux.Filter, bool) {
 	return nil, false
 }
 
-func getFilters(in []filterWrapper) []flux.Filter {
+func getFilters(in []filterw) []flux.Filter {
 	out := make([]flux.Filter, len(in))
 	for i, v := range in {
 		out[i] = v.filter
@@ -79,7 +79,7 @@ func getFilters(in []filterWrapper) []flux.Filter {
 	return out
 }
 
-func orderOf(v interface{}) int {
+func orderOfFilter(v flux.Filter) int {
 	if v, ok := v.(flux.Orderer); ok {
 		return v.Order()
 	} else {

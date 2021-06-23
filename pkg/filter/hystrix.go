@@ -57,7 +57,7 @@ type HystrixConfig struct {
 	errorPercentThreshold  int
 }
 
-// HystrixFilter
+// HystrixFilter 熔断与限流Filter
 type HystrixFilter struct {
 	HystrixConfig
 	commands     sync.Map

@@ -44,8 +44,8 @@ func RemoveServiceByID(serviceID string) {
 	services.Delete(serviceID)
 }
 
-// HasServiceByID check service exists by service id
-func HasServiceByID(serviceID string) bool {
+// ExistsServiceByID check service exists by service id
+func ExistsServiceByID(serviceID string) bool {
 	_, ok := services.Load(serviceID)
 	return ok
 }
