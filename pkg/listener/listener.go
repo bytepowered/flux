@@ -19,10 +19,14 @@ const (
 	ConfigKeyBindPort    = "bind_port"
 	ConfigKeyTLSCertFile = "tls_cert_file"
 	ConfigKeyTLSKeyFile  = "tls_key_file"
-	ConfigKeyBodyLimit   = "body_limit"
-	ConfigKeyCORSEnable  = "cors_enable"
-	ConfigKeyCSRFEnable  = "csrf_enable"
-	ConfigKeyFeatures    = "features"
+)
+
+const (
+	ConfigKeyFeatures             = "features"
+	ConfigKeyFeatureBodyLimit     = "body_limit"
+	ConfigKeyFeatureCORSEnable    = "cors_enable"
+	ConfigKeyFeatureCSRFEnable    = "csrf_enable"
+	ConfigKeyFeatureTrafficEnable = "traffic_enable"
 )
 
 var _ flux.WebListener = new(AdaptWebListener)
@@ -79,19 +83,24 @@ func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, ide
 	// Feature
 	features := options.Sub(ConfigKeyFeatures)
 	// 是否设置BodyLimit
-	if limit := features.GetString(ConfigKeyBodyLimit); "" != limit {
+	if limit := features.GetString(ConfigKeyFeatureBodyLimit); "" != limit {
 		logger.Infof("WebListener(id:%s), feature BODY-LIMIT: enabled, size= %s", webListener.id, limit)
 		server.Pre(middleware.BodyLimit(limit))
 	}
 	// CORS
-	if enabled := features.GetBool(ConfigKeyCORSEnable); enabled {
+	if enabled := features.GetBool(ConfigKeyFeatureCORSEnable); enabled {
 		logger.Infof("WebListener(id:%s), feature CORS: enabled", webListener.id)
 		server.Pre(middleware.CORS())
 	}
 	// CSRF
-	if enabled := features.GetBool(ConfigKeyCSRFEnable); enabled {
+	if enabled := features.GetBool(ConfigKeyFeatureCSRFEnable); enabled {
 		logger.Infof("WebListener(id:%s), feature CSRF: enabled", webListener.id)
 		server.Pre(middleware.CSRF())
+	}
+	// 流量日志
+	if enabled := features.GetBool(ConfigKeyFeatureTrafficEnable); enabled {
+		logger.Infof("WebListener(id:%s), feature TRAFFIC: enabled", webListener.id)
+		webListener.AddFilter(NewAccessLogFilter())
 	}
 	// After features
 	if mws != nil && len(mws.AfterFeature) > 0 {
@@ -144,23 +153,19 @@ func (s *AdaptWebListener) ListenServe() error {
 }
 
 func (s *AdaptWebListener) SetBodyResolver(r flux.WebBodyResolver) {
-	flux.AssertNotNil(r, "<WebBodyResolver> must not nil, listener-id: "+s.id)
+	flux.AssertNotNil(r, "<web-body-resolver> must not nil, listener-id: "+s.id)
 	s.mustNotStarted().bodyResolver = r
 }
 
 func (s *AdaptWebListener) SetNotfoundHandler(f flux.WebHandlerFunc) {
-	flux.AssertNotNil(f, "<NotfoundHandler> must not nil, listener-id: "+s.id)
+	flux.AssertNotNil(f, "<notfound-handler> must not nil, listener-id: "+s.id)
 	s.mustNotStarted()
 	echo.NotFoundHandler = AdaptWebHandler(f).AdaptFunc
 }
 
-func (s *AdaptWebListener) HandleNotfound(webex flux.WebContext) error {
-	return echo.NotFoundHandler(webex.(*AdaptWebContext).ShadowContext())
-}
-
 func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandlerFunc) {
 	// Route请求返回的Error，全部经由此函数处理
-	flux.AssertNotNil(handler, "<ErrorHandler> must not nil, listener-id: "+s.id)
+	flux.AssertNotNil(handler, "<error-handler> must not nil, listener-id: "+s.id)
 	s.mustNotStarted().server.HTTPErrorHandler = func(err error, c echo.Context) {
 		if flux.IsNil(err) {
 			return
@@ -171,6 +176,10 @@ func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandlerFunc) {
 	}
 }
 
+func (s *AdaptWebListener) HandleNotfound(webex flux.WebContext) error {
+	return echo.NotFoundHandler(webex.(*AdaptWebContext).ShadowContext())
+}
+
 func (s *AdaptWebListener) HandleError(webex flux.WebContext, err error) {
 	s.server.HTTPErrorHandler(err, webex.(*AdaptWebContext).ShadowContext())
 }
@@ -178,11 +187,6 @@ func (s *AdaptWebListener) HandleError(webex flux.WebContext, err error) {
 func (s *AdaptWebListener) AddFilter(i flux.WebFilter) {
 	flux.AssertNotNil(i, "<web-filter> must not nil, listener-id: "+s.id)
 	s.server.Pre(AdaptWebInterceptor(i).AdaptFunc)
-}
-
-func (s *AdaptWebListener) AddMiddleware(m flux.WebFilter) {
-	flux.AssertNotNil(m, "<web-filter/middleware> must not nil, listener-id: "+s.id)
-	s.server.Use(AdaptWebInterceptor(m).AdaptFunc)
 }
 
 func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandlerFunc, is ...flux.WebFilter) {
