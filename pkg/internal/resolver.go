@@ -35,11 +35,11 @@ var (
 )
 
 var (
-	objectResolver = ext.ValueObjectResolver(func(mtValue flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
-		return mtValue.Value, nil
+	objectResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
+		return valueobj.Value, nil
 	})
-	stringResolver = ext.ValueObjectResolver(func(mtValue flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
-		return CastDecodeMTValueToString(mtValue)
+	stringResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
+		return CastDecodeValueObjectToString(valueobj)
 	})
 	integerResolver = ext.WrapValueObjectResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
@@ -71,17 +71,17 @@ var (
 		}
 		return cast.ToBoolE(value)
 	}).ResolveTo
-	mapResolver = ext.ValueObjectResolver(func(value flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
-		return ToStringMapE(value)
+	mapResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
+		return ToStringMapE(valueobj)
 	})
-	listResolver = ext.ValueObjectResolver(func(value flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
-		return ToGenericListE(genericTypes, value)
+	listResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
+		return ToGenericListE(genericTypes, valueobj)
 	})
-	complexObjectResolver = ext.ValueObjectResolver(func(mtValue flux.ValueObject, class string, generic []string) (interface{}, error) {
-		if isEmptyOrNil(mtValue.Value) {
+	complexObjectResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, class string, generic []string) (interface{}, error) {
+		if isEmptyOrNil(valueobj.Value) {
 			return map[string]interface{}{"class": class}, nil
 		}
-		sm, err := ToStringMapE(mtValue)
+		sm, err := ToStringMapE(valueobj)
 		sm["class"] = class
 		if nil != err {
 			return nil, err
@@ -126,22 +126,22 @@ func init() {
 	ext.RegisterObjectValueResolver(ext.DefaultValueObjectResolverName, complexObjectResolver)
 }
 
-// CastDecodeMTValueToString 最大努力地将值转换成String类型。
+// CastDecodeValueObjectToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
-func CastDecodeMTValueToString(mtValue flux.ValueObject) (string, error) {
-	if isEmptyOrNil(mtValue.Value) {
+func CastDecodeValueObjectToString(valueobj flux.ValueObject) (string, error) {
+	if isEmptyOrNil(valueobj.Value) {
 		return "", nil
 	}
 	// 可直接转String类型：
-	if str, err := cast.ToStringE(mtValue.Value); nil == err {
+	if str, err := cast.ToStringE(valueobj.Value); nil == err {
 		return str, nil
 	}
-	if data, err := toByteArray0(mtValue.Value); nil == err {
+	if data, err := toByteArray0(valueobj.Value); nil == err {
 		return string(data), nil
 	} else if err != errCastToByteTypeNotSupported {
 		return "", err
 	}
-	if data, err := ext.JSONMarshal(mtValue.Value); nil != err {
+	if data, err := ext.JSONMarshal(valueobj.Value); nil != err {
 		return "", err
 	} else {
 		return string(data), nil
@@ -150,15 +150,15 @@ func CastDecodeMTValueToString(mtValue flux.ValueObject) (string, error) {
 
 // ToStringMapE 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
-func ToStringMapE(mtValue flux.ValueObject) (map[string]interface{}, error) {
-	if isEmptyOrNil(mtValue.Value) || !mtValue.Valid {
+func ToStringMapE(valueobj flux.ValueObject) (map[string]interface{}, error) {
+	if isEmptyOrNil(valueobj.Value) || !valueobj.Valid {
 		return make(map[string]interface{}, 0), nil
 	}
-	switch mtValue.Encoding {
+	switch valueobj.Encoding {
 	case flux.EncodingTypeMapStringList:
-		orimap, ok := mtValue.Value.(map[string][]string)
+		orimap, ok := valueobj.Value.(map[string][]string)
 		flux.AssertM(ok, func() string {
-			return fmt.Sprintf("mt-value(define:%s) is not map[string][]string, mt-value:%+v", mtValue.Encoding, mtValue.Value)
+			return fmt.Sprintf("mt-value(define:%s) is not map[string][]string, mt-value:%+v", valueobj.Encoding, valueobj.Value)
 		})
 		var hashmap = make(map[string]interface{}, len(orimap))
 		for k, v := range orimap {
@@ -166,34 +166,34 @@ func ToStringMapE(mtValue flux.ValueObject) (map[string]interface{}, error) {
 		}
 		return hashmap, nil
 	case flux.EncodingTypeGoMapString:
-		return cast.ToStringMap(mtValue.Value), nil
+		return cast.ToStringMap(valueobj.Value), nil
 	case flux.EncodingTypeGoString:
-		oristr, ok := mtValue.Value.(string)
+		oristr, ok := valueobj.Value.(string)
 		flux.AssertM(ok, func() string {
-			return fmt.Sprintf("mt-value(define:%s) is not go:string, mt-value:%+v", mtValue.Encoding, mtValue.Value)
+			return fmt.Sprintf("mt-value(define:%s) is not go:string, mt-value:%+v", valueobj.Encoding, valueobj.Value)
 		})
 		var hashmap = map[string]interface{}{}
 		if err := ext.JSONUnmarshal([]byte(oristr), &hashmap); nil != err {
-			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", mtValue.Value, err)
+			return nil, fmt.Errorf("cannot decode text to hashmap, text: %s, error:%w", valueobj.Value, err)
 		} else {
 			return hashmap, nil
 		}
 	case flux.EncodingTypeGoObject:
-		if sm, err := cast.ToStringMapE(mtValue.Value); nil != err {
-			return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", mtValue.Value, mtValue.Value)
+		if sm, err := cast.ToStringMapE(valueobj.Value); nil != err {
+			return nil, fmt.Errorf("cannot cast object to hashmap, object: %+v, object.type:%T", valueobj.Value, valueobj.Value)
 		} else {
 			return sm, nil
 		}
 	default:
 		var data []byte
-		if mtValue.Encoding.Contains("application/json") {
-			if bs, err := toByteArray(mtValue.Value); nil != err {
+		if valueobj.Encoding.Contains("application/json") {
+			if bs, err := toByteArray(valueobj.Value); nil != err {
 				return nil, err
 			} else {
 				data = bs
 			}
-		} else if mtValue.Encoding.Contains("application/x-www-form-urlencoded") {
-			if bs, err := toByteArray(mtValue.Value); nil != err {
+		} else if valueobj.Encoding.Contains("application/x-www-form-urlencoded") {
+			if bs, err := toByteArray(valueobj.Value); nil != err {
 				return nil, err
 			} else if jbs, err := JSONBytesFromQueryString(bs); nil != err {
 				return nil, err
@@ -201,11 +201,11 @@ func ToStringMapE(mtValue flux.ValueObject) (map[string]interface{}, error) {
 				data = jbs
 			}
 		} else {
-			if sm, err := cast.ToStringMapE(mtValue.Value); nil == err {
+			if sm, err := cast.ToStringMapE(valueobj.Value); nil == err {
 				return sm, nil
 			} else {
 				return nil, fmt.Errorf("unsupported mime-type to hashmap, value: %+v, value.type:%T, mime-type: %s",
-					mtValue.Value, mtValue.Value, mtValue.Encoding)
+					valueobj.Value, valueobj.Value, valueobj.Encoding)
 			}
 		}
 		var hashmap = map[string]interface{}{}
@@ -216,21 +216,21 @@ func ToStringMapE(mtValue flux.ValueObject) (map[string]interface{}, error) {
 
 // ToGenericListE 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
-func ToGenericListE(generics []string, mtValue flux.ValueObject) (interface{}, error) {
-	if isEmptyOrNil(mtValue.Value) {
+func ToGenericListE(generics []string, valueobj flux.ValueObject) (interface{}, error) {
+	if isEmptyOrNil(valueobj.Value) {
 		return make([]interface{}, 0), nil
 	}
-	vType := reflect.TypeOf(mtValue.Value)
+	vType := reflect.TypeOf(valueobj.Value)
 	// 没有指定泛型类型
 	if len(generics) == 0 {
-		return []interface{}{mtValue.Value}, nil
+		return []interface{}{valueobj.Value}, nil
 	}
 	// 进行特定泛型类型转换
 	generic := generics[0]
 	resolver := ext.ValueObjectResolverByType(generic)
 	kind := vType.Kind()
 	if kind == reflect.Slice {
-		vValue := reflect.ValueOf(mtValue.Value)
+		vValue := reflect.ValueOf(valueobj.Value)
 		out := make([]interface{}, vValue.Len())
 		for i := 0; i < vValue.Len(); i++ {
 			if v, err := resolver(ext.NewObjectValueObject(vValue.Index(i).Interface()), generic, []string{}); nil != err {
@@ -241,7 +241,7 @@ func ToGenericListE(generics []string, mtValue flux.ValueObject) (interface{}, e
 		}
 		return out, nil
 	}
-	if v, err := resolver(mtValue, generic, []string{}); nil != err {
+	if v, err := resolver(valueobj, generic, []string{}); nil != err {
 		return nil, err
 	} else {
 		return []interface{}{v}, nil

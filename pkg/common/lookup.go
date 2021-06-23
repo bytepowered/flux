@@ -61,7 +61,7 @@ func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.Value
 		return ext.NewMapStringListValueObject(ctx.HeaderVars()), nil
 	case flux.ScopeAttr:
 		if v, ok := ctx.AttributeEx(key); ok {
-			return ToMTValue(v), nil
+			return ToValueObject(v), nil
 		}
 		return ext.NewNilValueObject(), nil
 	case flux.ScopeAttrs:
@@ -94,13 +94,13 @@ func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.Value
 			return mtv, nil
 		}
 		if v, ok := ctx.AttributeEx(key); ok {
-			return ToMTValue(v), nil
+			return ToValueObject(v), nil
 		}
 		return ext.NewNilValueObject(), nil
 	}
 }
 
-func ToMTValue(v interface{}) flux.ValueObject {
+func ToValueObject(v interface{}) flux.ValueObject {
 	switch v.(type) {
 	case string:
 		return ext.NewStringValueObject(v.(string))
