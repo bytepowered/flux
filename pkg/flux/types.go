@@ -110,17 +110,34 @@ func (m EncodingType) Contains(s string) bool {
 }
 
 const (
-	EncodingTypeGoObject      = EncodingType("go:object")
-	EncodingTypeGoString      = EncodingType("go:string")
-	EncodingTypeGoListString  = EncodingType("go:[]string")
-	EncodingTypeGoListObject  = EncodingType("go:[]object")
-	EncodingTypeGoMapString   = EncodingType("go:map[string]object")
-	EncodingTypeMapStringList = EncodingType("go:map[string][]string")
+	EncodingTypeGoNumber      = EncodingType("go.lang/number")
+	EncodingTypeGoObject      = EncodingType("go.lang/object")
+	EncodingTypeGoString      = EncodingType("go.lang/string")
+	EncodingTypeGoListString  = EncodingType("go.lang/[]string")
+	EncodingTypeGoListObject  = EncodingType("go.lang/[]object")
+	EncodingTypeGoMapString   = EncodingType("go.lang/map[string]object")
+	EncodingTypeMapStringList = EncodingType("go.lang/map[string][]string")
 )
 
-// ValueObject 包含指示值的媒体类型和Value结构
-type ValueObject struct {
-	Valid    bool         // 是否有效
+// EncodeValue 包含指示值的类型和Value结构
+type EncodeValue struct {
+	valid    bool         // 是否有效
 	Value    interface{}  // 原始值类型
-	Encoding EncodingType // 数据媒体类型
+	Encoding EncodingType // 数据类型
+}
+
+func NewEncodeValue(value interface{}, encoding EncodingType) EncodeValue {
+	return EncodeValue{
+		Value: value, Encoding: encoding, valid: !IsNil(value),
+	}
+}
+
+func NewEncodeValueWith(value interface{}, encoding EncodingType, valid func() bool) EncodeValue {
+	return EncodeValue{
+		Value: value, Encoding: encoding, valid: valid(),
+	}
+}
+
+func (v EncodeValue) IsValid() bool {
+	return v.valid
 }

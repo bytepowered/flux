@@ -43,7 +43,7 @@ var (
 )
 
 func TestToGenericList_IntEmpty(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeInt, ext.NewStringValueObject(""))
+	a1, err := ToGenericListE(GenericTypeInt, ext.NewStringEncodeValue(""))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -51,7 +51,7 @@ func TestToGenericList_IntEmpty(t *testing.T) {
 }
 
 func TestToGenericList_IntNil(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeInt, ext.NewObjectValueObject(nil))
+	a1, err := ToGenericListE(GenericTypeInt, ext.NewObjectEncodeValue(nil))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -59,7 +59,7 @@ func TestToGenericList_IntNil(t *testing.T) {
 }
 
 func TestToGenericList_Int(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeInt, ext.NewStringValueObject("123"))
+	a1, err := ToGenericListE(GenericTypeInt, ext.NewStringEncodeValue("123"))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -67,13 +67,13 @@ func TestToGenericList_Int(t *testing.T) {
 }
 
 func TestToGenericList_IntErr(t *testing.T) {
-	_, err := ToGenericListE(GenericTypeInt, ext.NewStringValueObject("abc"))
+	_, err := ToGenericListE(GenericTypeInt, ext.NewStringEncodeValue("abc"))
 	assert := assert2.New(t)
 	assert.Error(err)
 }
 
 func TestToGenericList_String(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, ext.NewObjectValueObject(123))
+	a1, err := ToGenericListE(GenericTypeString, ext.NewObjectEncodeValue(123))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -81,7 +81,7 @@ func TestToGenericList_String(t *testing.T) {
 }
 
 func TestToGenericList_Nil(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, ext.NewObjectValueObject(nil))
+	a1, err := ToGenericListE(GenericTypeString, ext.NewObjectEncodeValue(nil))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -89,7 +89,7 @@ func TestToGenericList_Nil(t *testing.T) {
 }
 
 func TestToGenericList_EmptyString(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, ext.NewStringValueObject(""))
+	a1, err := ToGenericListE(GenericTypeString, ext.NewStringEncodeValue(""))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -97,7 +97,7 @@ func TestToGenericList_EmptyString(t *testing.T) {
 }
 
 func TestToGenericList_ValuesToString(t *testing.T) {
-	a1, err := ToGenericListE(GenericTypeString, ext.NewObjectValueObject([]int{123}))
+	a1, err := ToGenericListE(GenericTypeString, ext.NewObjectEncodeValue([]int{123}))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -105,7 +105,7 @@ func TestToGenericList_ValuesToString(t *testing.T) {
 }
 
 func TestToGenericList_ValuesToLong(t *testing.T) {
-	a1, err := ToGenericListE([]string{"long"}, ext.NewObjectValueObject([]string{"123456"}))
+	a1, err := ToGenericListE([]string{"long"}, ext.NewObjectEncodeValue([]string{"123456"}))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	fmt.Println(a1)
@@ -116,20 +116,20 @@ func TestToGenericList_ValuesToLong(t *testing.T) {
 
 func TestToStringMap_Err(t *testing.T) {
 	assert := assert2.New(t)
-	_, err1 := ToStringMapE(ext.NewStringValueObject("123"))
+	_, err1 := ToStringMapE(ext.NewStringEncodeValue("123"))
 	assert.Error(err1)
 }
 
 func TestToStringMap_Empty(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err1 := ToStringMapE(ext.NewStringValueObject(""))
+	sm, err1 := ToStringMapE(ext.NewStringEncodeValue(""))
 	assert.NoError(err1)
 	assert.True(0 == len(sm))
 }
 
 func TestCastToStringMap_TextEmpty(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(ext.NewStringValueObject(""))
+	sm, err := ToStringMapE(ext.NewStringEncodeValue(""))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.True(0 == len(sm))
@@ -137,7 +137,7 @@ func TestCastToStringMap_TextEmpty(t *testing.T) {
 
 func TestCastToStringMap_TextEmptyJSON(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(ext.NewStringValueObject("{}"))
+	sm, err := ToStringMapE(ext.NewStringEncodeValue("{}"))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.True(0 == len(sm))
@@ -145,7 +145,7 @@ func TestCastToStringMap_TextEmptyJSON(t *testing.T) {
 
 func TestCastToStringMap_Text(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(ext.NewStringValueObject(`{"k":1,"e":"a"}`))
+	sm, err := ToStringMapE(ext.NewStringEncodeValue(`{"k":1,"e":"a"}`))
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -154,7 +154,7 @@ func TestCastToStringMap_Text(t *testing.T) {
 
 func TestCastToStringMap_JSONText(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.ValueObject{Value: `{"k":1,"e":"a"}`, Encoding: "application/json"})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: `{"k":1,"e":"a"}`, Encoding: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -163,7 +163,7 @@ func TestCastToStringMap_JSONText(t *testing.T) {
 
 func TestCastToStringMap_JSONBytes(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.ValueObject{Value: []byte(`{"k":1,"e":"a"}`), Encoding: "application/json"})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: []byte(`{"k":1,"e":"a"}`), Encoding: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -172,7 +172,7 @@ func TestCastToStringMap_JSONBytes(t *testing.T) {
 
 func TestCastToStringMap_JSONReader(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.ValueObject{Value: ioutil.NopCloser(strings.NewReader(`{"k":1,"e":"a"}`)), Encoding: "application/json"})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: ioutil.NopCloser(strings.NewReader(`{"k":1,"e":"a"}`)), Encoding: "application/json"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal(float64(1), sm["k"])
@@ -181,7 +181,7 @@ func TestCastToStringMap_JSONReader(t *testing.T) {
 
 func TestCastToStringMap_QueryText(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.ValueObject{Value: `k=1&e=a`, Encoding: "application/x-www-form-urlencoded"})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: `k=1&e=a`, Encoding: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -190,7 +190,7 @@ func TestCastToStringMap_QueryText(t *testing.T) {
 
 func TestCastToStringMap_QueryBytes(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.ValueObject{Value: []byte(`k=1&e=a`), Encoding: "application/x-www-form-urlencoded"})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: []byte(`k=1&e=a`), Encoding: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -199,7 +199,7 @@ func TestCastToStringMap_QueryBytes(t *testing.T) {
 
 func TestCastToStringMap_QueryReader(t *testing.T) {
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, flux.NewJsonSerializer())
-	sm, err := ToStringMapE(flux.ValueObject{Value: ioutil.NopCloser(strings.NewReader(`k=1&e=a`)), Encoding: "application/x-www-form-urlencoded"})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: ioutil.NopCloser(strings.NewReader(`k=1&e=a`)), Encoding: "application/x-www-form-urlencoded"})
 	assert := assert2.New(t)
 	assert.NoError(err)
 	assert.Equal("1", sm["k"])
@@ -208,7 +208,7 @@ func TestCastToStringMap_QueryReader(t *testing.T) {
 
 func TestCastToStringMap_Object1(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := ToStringMapE(flux.ValueObject{Value: map[string]interface{}{"a": 1, "b": "c"}, Encoding: flux.EncodingTypeGoObject})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: map[string]interface{}{"a": 1, "b": "c"}, Encoding: flux.EncodingTypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])
@@ -216,7 +216,7 @@ func TestCastToStringMap_Object1(t *testing.T) {
 
 func TestCastToStringMap_Object2(t *testing.T) {
 	assert := assert2.New(t)
-	sm, err := ToStringMapE(flux.ValueObject{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, Encoding: flux.EncodingTypeGoObject})
+	sm, err := ToStringMapE(flux.EncodeValue{Value: map[interface{}]interface{}{"a": 1, "b": "c"}, Encoding: flux.EncodingTypeGoObject})
 	assert.NoError(err)
 	assert.Equal(1, sm["a"])
 	assert.Equal("c", sm["b"])

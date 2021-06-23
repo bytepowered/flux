@@ -35,49 +35,49 @@ var (
 )
 
 var (
-	objectResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
+	objectResolver = ext.EncodeValueResolver(func(valueobj flux.EncodeValue, _ string, genericTypes []string) (interface{}, error) {
 		return valueobj.Value, nil
 	})
-	stringResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
-		return CastDecodeValueObjectToString(valueobj)
+	stringResolver = ext.EncodeValueResolver(func(valueobj flux.EncodeValue, _ string, genericTypes []string) (interface{}, error) {
+		return CastDecodeEncodeValueToString(valueobj)
 	})
-	integerResolver = ext.WrapValueObjectResolver(func(value interface{}) (interface{}, error) {
+	integerResolver = ext.WrapEncodeValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return int(0), nil
 		}
 		return cast.ToIntE(value)
 	}).ResolveTo
-	longResolver = ext.WrapValueObjectResolver(func(value interface{}) (interface{}, error) {
+	longResolver = ext.WrapEncodeValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return int64(0), nil
 		}
 		return cast.ToInt64E(value)
 	}).ResolveTo
-	float32Resolver = ext.WrapValueObjectResolver(func(value interface{}) (interface{}, error) {
+	float32Resolver = ext.WrapEncodeValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return float32(0), nil
 		}
 		return cast.ToFloat32E(value)
 	}).ResolveTo
-	float64Resolver = ext.WrapValueObjectResolver(func(value interface{}) (interface{}, error) {
+	float64Resolver = ext.WrapEncodeValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return float64(0), nil
 		}
 		return cast.ToFloat64E(value)
 	}).ResolveTo
-	booleanResolver = ext.WrapValueObjectResolver(func(value interface{}) (interface{}, error) {
+	booleanResolver = ext.WrapEncodeValueResolver(func(value interface{}) (interface{}, error) {
 		if isEmptyOrNil(value) {
 			return false, nil
 		}
 		return cast.ToBoolE(value)
 	}).ResolveTo
-	mapResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
+	mapResolver = ext.EncodeValueResolver(func(valueobj flux.EncodeValue, _ string, genericTypes []string) (interface{}, error) {
 		return ToStringMapE(valueobj)
 	})
-	listResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, _ string, genericTypes []string) (interface{}, error) {
+	listResolver = ext.EncodeValueResolver(func(valueobj flux.EncodeValue, _ string, genericTypes []string) (interface{}, error) {
 		return ToGenericListE(genericTypes, valueobj)
 	})
-	complexObjectResolver = ext.ValueObjectResolver(func(valueobj flux.ValueObject, class string, generic []string) (interface{}, error) {
+	complexObjectResolver = ext.EncodeValueResolver(func(valueobj flux.EncodeValue, class string, generic []string) (interface{}, error) {
 		if isEmptyOrNil(valueobj.Value) {
 			return map[string]interface{}{"class": class}, nil
 		}
@@ -91,44 +91,44 @@ var (
 )
 
 func init() {
-	ext.RegisterObjectValueResolver("string", stringResolver)
-	ext.RegisterObjectValueResolver(JavaLangStringClassName, stringResolver)
+	ext.RegisterEncodeValueResolver("string", stringResolver)
+	ext.RegisterEncodeValueResolver(JavaLangStringClassName, stringResolver)
 
-	ext.RegisterObjectValueResolver("int", integerResolver)
-	ext.RegisterObjectValueResolver(JavaLangIntegerClassName, integerResolver)
+	ext.RegisterEncodeValueResolver("int", integerResolver)
+	ext.RegisterEncodeValueResolver(JavaLangIntegerClassName, integerResolver)
 
-	ext.RegisterObjectValueResolver("int64", longResolver)
-	ext.RegisterObjectValueResolver("long", longResolver)
-	ext.RegisterObjectValueResolver(JavaLangLongClassName, longResolver)
+	ext.RegisterEncodeValueResolver("int64", longResolver)
+	ext.RegisterEncodeValueResolver("long", longResolver)
+	ext.RegisterEncodeValueResolver(JavaLangLongClassName, longResolver)
 
-	ext.RegisterObjectValueResolver("float", float32Resolver)
-	ext.RegisterObjectValueResolver("float32", float32Resolver)
-	ext.RegisterObjectValueResolver(JavaLangFloatClassName, float32Resolver)
+	ext.RegisterEncodeValueResolver("float", float32Resolver)
+	ext.RegisterEncodeValueResolver("float32", float32Resolver)
+	ext.RegisterEncodeValueResolver(JavaLangFloatClassName, float32Resolver)
 
-	ext.RegisterObjectValueResolver("float64", float64Resolver)
-	ext.RegisterObjectValueResolver("double", float64Resolver)
-	ext.RegisterObjectValueResolver(JavaLangDoubleClassName, float64Resolver)
+	ext.RegisterEncodeValueResolver("float64", float64Resolver)
+	ext.RegisterEncodeValueResolver("double", float64Resolver)
+	ext.RegisterEncodeValueResolver(JavaLangDoubleClassName, float64Resolver)
 
-	ext.RegisterObjectValueResolver("bool", booleanResolver)
-	ext.RegisterObjectValueResolver("boolean", booleanResolver)
-	ext.RegisterObjectValueResolver(JavaLangBooleanClassName, booleanResolver)
+	ext.RegisterEncodeValueResolver("bool", booleanResolver)
+	ext.RegisterEncodeValueResolver("boolean", booleanResolver)
+	ext.RegisterEncodeValueResolver(JavaLangBooleanClassName, booleanResolver)
 
-	ext.RegisterObjectValueResolver("map", mapResolver)
-	ext.RegisterObjectValueResolver(JavaUtilMapClassName, mapResolver)
+	ext.RegisterEncodeValueResolver("map", mapResolver)
+	ext.RegisterEncodeValueResolver(JavaUtilMapClassName, mapResolver)
 
-	ext.RegisterObjectValueResolver("slice", listResolver)
-	ext.RegisterObjectValueResolver("list", listResolver)
-	ext.RegisterObjectValueResolver(JavaUtilListClassName, listResolver)
+	ext.RegisterEncodeValueResolver("slice", listResolver)
+	ext.RegisterEncodeValueResolver("list", listResolver)
+	ext.RegisterEncodeValueResolver(JavaUtilListClassName, listResolver)
 
-	ext.RegisterObjectValueResolver(JavaIOSerializable, objectResolver)
-	ext.RegisterObjectValueResolver(JavaLangObjectClassName, objectResolver)
+	ext.RegisterEncodeValueResolver(JavaIOSerializable, objectResolver)
+	ext.RegisterEncodeValueResolver(JavaLangObjectClassName, objectResolver)
 
-	ext.RegisterObjectValueResolver(ext.DefaultValueObjectResolverName, complexObjectResolver)
+	ext.RegisterEncodeValueResolver(ext.DefaultEncodeValueResolverName, complexObjectResolver)
 }
 
-// CastDecodeValueObjectToString 最大努力地将值转换成String类型。
+// CastDecodeEncodeValueToString 最大努力地将值转换成String类型。
 // 如果类型无法安全地转换成String或者解析异常，返回错误。
-func CastDecodeValueObjectToString(valueobj flux.ValueObject) (string, error) {
+func CastDecodeEncodeValueToString(valueobj flux.EncodeValue) (string, error) {
 	if isEmptyOrNil(valueobj.Value) {
 		return "", nil
 	}
@@ -150,8 +150,8 @@ func CastDecodeValueObjectToString(valueobj flux.ValueObject) (string, error) {
 
 // ToStringMapE 最大努力地将值转换成map[string]any类型。
 // 如果类型无法安全地转换成map[string]any或者解析异常，返回错误。
-func ToStringMapE(valueobj flux.ValueObject) (map[string]interface{}, error) {
-	if isEmptyOrNil(valueobj.Value) || !valueobj.Valid {
+func ToStringMapE(valueobj flux.EncodeValue) (map[string]interface{}, error) {
+	if isEmptyOrNil(valueobj.Value) || !valueobj.IsValid() {
 		return make(map[string]interface{}, 0), nil
 	}
 	switch valueobj.Encoding {
@@ -216,7 +216,7 @@ func ToStringMapE(valueobj flux.ValueObject) (map[string]interface{}, error) {
 
 // ToGenericListE 最大努力地将值转换成[]any类型。
 // 如果类型无法安全地转换成[]any或者解析异常，返回错误。
-func ToGenericListE(generics []string, valueobj flux.ValueObject) (interface{}, error) {
+func ToGenericListE(generics []string, valueobj flux.EncodeValue) (interface{}, error) {
 	if isEmptyOrNil(valueobj.Value) {
 		return make([]interface{}, 0), nil
 	}
@@ -227,13 +227,13 @@ func ToGenericListE(generics []string, valueobj flux.ValueObject) (interface{}, 
 	}
 	// 进行特定泛型类型转换
 	generic := generics[0]
-	resolver := ext.ValueObjectResolverByType(generic)
+	resolver := ext.EncodeValueResolverByType(generic)
 	kind := vType.Kind()
 	if kind == reflect.Slice {
 		vValue := reflect.ValueOf(valueobj.Value)
 		out := make([]interface{}, vValue.Len())
 		for i := 0; i < vValue.Len(); i++ {
-			if v, err := resolver(ext.NewObjectValueObject(vValue.Index(i).Interface()), generic, []string{}); nil != err {
+			if v, err := resolver(ext.NewObjectEncodeValue(vValue.Index(i).Interface()), generic, []string{}); nil != err {
 				return nil, err
 			} else {
 				out[i] = v

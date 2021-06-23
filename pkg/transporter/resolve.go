@@ -36,33 +36,33 @@ func resolvepojo(ctx *flux.Context, a *flux.ServiceArgumentSpec) (interface{}, e
 
 // resolvefield 解析字段值
 func resolvefield(ctx *flux.Context, a *flux.ServiceArgumentSpec) (interface{}, error) {
-	resolver := ext.ValueObjectResolverByType(a.ClassType)
+	resolver := ext.EncodeValueResolverByType(a.ClassType)
 	// 1: By Value loader
 	if loader, ok := common.ArgumentValueLoader(a); ok && nil != loader {
-		mtv := loader()
-		return resolver(mtv, a.ClassType, a.GenericTypes)
+		obj := loader()
+		return resolver(obj, a.ClassType, a.GenericTypes)
 	}
 	// 2: Lookup and resolve
-	mtv, err := ext.GetLookupScopedValueFunc()(ctx, a.HttpScope, a.HttpName)
+	obj, err := ext.GetLookupScopedValueFunc()(ctx, a.HttpScope, a.HttpName)
 	if nil != err {
 		return nil, err
 	}
 	// 3: Default value
-	if !mtv.Valid && a.Annotations != nil {
+	if !obj.IsValid() && a.Annotations != nil {
 		if anno, ok := a.Annotations.GetEx(flux.ServiceArgumentAnnotationDefault); ok {
-			mtv = ext.NewStringValueObject(anno.GetString())
+			obj = ext.NewStringEncodeValue(anno.GetString())
 		}
 	}
-	return resolver(mtv, a.ClassType, a.GenericTypes)
+	return resolver(obj, a.ClassType, a.GenericTypes)
 }
 
 // resolveobj 解析Map对象
 func resolveobj(ctx *flux.Context, a *flux.ServiceArgumentSpec) (interface{}, error) {
-	mtv, err := ext.GetLookupScopedValueFunc()(ctx, a.HttpScope, a.HttpName)
+	obj, err := ext.GetLookupScopedValueFunc()(ctx, a.HttpScope, a.HttpName)
 	if nil != err {
 		return nil, err
 	}
 	// 使用Default解析器
-	resolver := ext.ValueObjectResolverByType(ext.DefaultValueObjectResolverName)
-	return resolver(mtv, a.ClassType, a.GenericTypes)
+	resolver := ext.EncodeValueResolverByType(ext.DefaultEncodeValueResolverName)
+	return resolver(obj, a.ClassType, a.GenericTypes)
 }

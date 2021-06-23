@@ -23,97 +23,99 @@ func LookupValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
 	if !ok {
 		return "", errors.New("illegal lookup expr: " + expr)
 	}
-	mtv, err := LookupValueByScoped(ctx, scope, key)
+	obj, err := LookupValueByScoped(ctx, scope, key)
 	if nil != err {
 		return "", err
 	}
-	return mtv.Value, nil
+	return obj.Value, nil
 }
 
 // LookupValueByScoped 根据Scope,Key从Context中查找参数；支持复杂参数类型
-func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.ValueObject, err error) {
+func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.EncodeValue, err error) {
 	if scope == "" || key == "" {
-		return ext.NewNilValueObject(), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
+		return ext.NewNilEncodeValue(), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
 	}
 	if nil == ctx {
-		return ext.NewNilValueObject(), errors.New("lookup nil context")
+		return ext.NewNilEncodeValue(), errors.New("lookup nil context")
 	}
 	switch strings.ToUpper(scope) {
 	case flux.ScopePath:
 		return lookupValues(ctx.PathVars(), key), nil
 	case flux.ScopePathMap:
-		return ext.NewMapStringListValueObject(ctx.PathVars()), nil
+		return ext.NewMapStringListEncodeValue(ctx.PathVars()), nil
 	case flux.ScopeQuery:
 		return lookupValues(ctx.QueryVars(), key), nil
 	case flux.ScopeQueryMulti:
-		return ext.NewListStringValueObject(ctx.QueryVars()[key]), nil
+		return ext.NewListStringEncodeValue(ctx.QueryVars()[key]), nil
 	case flux.ScopeQueryMap:
-		return ext.NewMapStringListValueObject(ctx.QueryVars()), nil
+		return ext.NewMapStringListEncodeValue(ctx.QueryVars()), nil
 	case flux.ScopeForm:
 		return lookupValues(ctx.FormVars(), key), nil
 	case flux.ScopeFormMap:
-		return ext.NewMapStringListValueObject(ctx.FormVars()), nil
+		return ext.NewMapStringListEncodeValue(ctx.FormVars()), nil
 	case flux.ScopeFormMulti:
-		return ext.NewListStringValueObject(ctx.FormVars()[key]), nil
+		return ext.NewListStringEncodeValue(ctx.FormVars()[key]), nil
 	case flux.ScopeHeader:
 		return lookupValues(ctx.HeaderVars(), key), nil
 	case flux.ScopeHeaderMap:
-		return ext.NewMapStringListValueObject(ctx.HeaderVars()), nil
+		return ext.NewMapStringListEncodeValue(ctx.HeaderVars()), nil
 	case flux.ScopeAttr:
 		if v, ok := ctx.AttributeEx(key); ok {
-			return ToValueObject(v), nil
+			return ToEncodeValue(v), nil
 		}
-		return ext.NewNilValueObject(), nil
+		return ext.NewNilEncodeValue(), nil
 	case flux.ScopeAttrs:
-		return ext.NewMapStringValueObject(ctx.Attributes()), nil
+		return ext.NewMapStringEncodeValue(ctx.Attributes()), nil
 	case flux.ScopeBody:
 		reader, err := ctx.BodyReader()
 		hct := ctx.HeaderVar(flux.HeaderContentType)
-		return flux.ValueObject{Valid: err == nil, Value: reader, Encoding: flux.EncodingType(hct)}, err
+		return flux.NewEncodeValue(reader, flux.EncodingType(hct)), err
 	case flux.ScopeParam:
 		v, _ := LookupValues(key, ctx.QueryVars, ctx.FormVars)
-		return ext.NewStringValueObject(v), nil
+		return ext.NewStringEncodeValue(v), nil
 	case flux.ScopeRequest:
 		switch strings.ToUpper(key) {
 		case "METHOD":
-			return ext.NewStringValueObject(ctx.Method()), nil
+			return ext.NewStringEncodeValue(ctx.Method()), nil
 		case "URI":
-			return ext.NewStringValueObject(ctx.URI()), nil
+			return ext.NewStringEncodeValue(ctx.URI()), nil
 		case "HOST":
-			return ext.NewStringValueObject(ctx.Host()), nil
+			return ext.NewStringEncodeValue(ctx.Host()), nil
 		case "REMOTEADDR":
-			return ext.NewStringValueObject(ctx.RemoteAddr()), nil
+			return ext.NewStringEncodeValue(ctx.RemoteAddr()), nil
 		default:
-			return ext.NewNilValueObject(), nil
+			return ext.NewNilEncodeValue(), nil
 		}
 	default:
 		if v, ok := LookupValues(key, ctx.PathVars, ctx.QueryVars, ctx.FormVars); ok {
-			return ext.NewStringValueObject(v), nil
+			return ext.NewStringEncodeValue(v), nil
 		}
-		if mtv := lookupValues(ctx.HeaderVars(), key); mtv.Valid {
-			return mtv, nil
+		if obj := lookupValues(ctx.HeaderVars(), key); obj.IsValid() {
+			return obj, nil
 		}
 		if v, ok := ctx.AttributeEx(key); ok {
-			return ToValueObject(v), nil
+			return ToEncodeValue(v), nil
 		}
-		return ext.NewNilValueObject(), nil
+		return ext.NewNilEncodeValue(), nil
 	}
 }
 
-func ToValueObject(v interface{}) flux.ValueObject {
+func ToEncodeValue(v interface{}) flux.EncodeValue {
 	switch v.(type) {
+	case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64:
+		return ext.NewNumberEncodeValue(v.(int64))
 	case string:
-		return ext.NewStringValueObject(v.(string))
+		return ext.NewStringEncodeValue(v.(string))
 	case map[string]interface{}:
-		return ext.NewMapStringValueObject(v.(map[string]interface{}))
+		return ext.NewMapStringEncodeValue(v.(map[string]interface{}))
 	case map[string][]string:
-		return ext.NewMapStringListValueObject(v.(map[string][]string))
+		return ext.NewMapStringListEncodeValue(v.(map[string][]string))
 	case []string:
-		return ext.NewListStringValueObject(v.([]string))
+		return ext.NewListStringEncodeValue(v.([]string))
 	case []interface{}:
-		return ext.NewListObjectValueObject(v.([]interface{}))
+		return ext.NewListObjectEncodeValue(v.([]interface{}))
 	default:
-		return ext.NewObjectValueObject(v)
+		return ext.NewObjectEncodeValue(v)
 	}
 }
 
@@ -127,7 +129,7 @@ func LookupValues(key string, providers ...func() url.Values) (string, bool) {
 	return "", false
 }
 
-func lookupValues(values interface{}, key string) flux.ValueObject {
+func lookupValues(values interface{}, key string) flux.EncodeValue {
 	var value []string
 	var ok bool
 	switch values.(type) {
@@ -144,15 +146,15 @@ func lookupValues(values interface{}, key string) flux.ValueObject {
 	if ok {
 		switch {
 		case len(value) == 1:
-			return ext.NewStringValueObject(value[0])
+			return ext.NewStringEncodeValue(value[0])
 		case len(value) > 1:
 			copied := make([]string, len(value))
 			copy(copied, value)
-			return ext.NewListStringValueObject(copied)
+			return ext.NewListStringEncodeValue(copied)
 		default:
-			return ext.NewStringValueObject("")
+			return ext.NewStringEncodeValue("")
 		}
 	} else {
-		return ext.NewNilValueObject()
+		return ext.NewNilEncodeValue()
 	}
 }

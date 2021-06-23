@@ -9,7 +9,7 @@ import (
 var argumentValueLoaderExtKey = extkey{id: "argument.value.loader.func"}
 
 // ArgumentValueLoaderFunc 参数值直接加载函数
-type ArgumentValueLoaderFunc func() flux.ValueObject
+type ArgumentValueLoaderFunc func() flux.EncodeValue
 
 // SetArgumentValueLoader 设置参数值加载函数
 func SetArgumentValueLoader(arg *flux.ServiceArgumentSpec, f ArgumentValueLoaderFunc) {
@@ -32,7 +32,7 @@ func NewPrimitiveArgument(typeClass, argName string) flux.ServiceArgumentSpec {
 	return NewPrimitiveArgumentWithLoader(typeClass, argName, nil)
 }
 
-func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() flux.ValueObject) flux.ServiceArgumentSpec {
+func NewPrimitiveArgumentWithLoader(typeClass, argName string, valLoader func() flux.EncodeValue) flux.ServiceArgumentSpec {
 	arg := flux.ServiceArgumentSpec{
 		ClassType:  flux.MustNotEmpty(typeClass, "<type-class> in argument MUST NOT empty"),
 		StructType: flux.ServiceArgumentTypePrimitive,
@@ -65,8 +65,8 @@ func NewStringArgument(argName string) flux.ServiceArgumentSpec {
 }
 
 func NewStringArgumentWith(argName string, value string) flux.ServiceArgumentSpec {
-	return NewPrimitiveArgumentWithLoader(internal.JavaLangStringClassName, argName, func() flux.ValueObject {
-		return ext.NewStringValueObject(value)
+	return NewPrimitiveArgumentWithLoader(internal.JavaLangStringClassName, argName, func() flux.EncodeValue {
+		return ext.NewStringEncodeValue(value)
 	})
 }
 
@@ -75,8 +75,8 @@ func NewIntegerArgument(argName string) flux.ServiceArgumentSpec {
 }
 
 func NewIntegerArgumentWith(argName string, value int32) flux.ServiceArgumentSpec {
-	return NewPrimitiveArgumentWithLoader(internal.JavaLangIntegerClassName, argName, func() flux.ValueObject {
-		return ext.NewObjectValueObject(value)
+	return NewPrimitiveArgumentWithLoader(internal.JavaLangIntegerClassName, argName, func() flux.EncodeValue {
+		return ext.NewObjectEncodeValue(value)
 	})
 }
 
@@ -85,8 +85,8 @@ func NewLongArgument(argName string) flux.ServiceArgumentSpec {
 }
 
 func NewLongArgumentWith(argName string, value int64) flux.ServiceArgumentSpec {
-	return NewPrimitiveArgumentWithLoader(internal.JavaLangLongClassName, argName, func() flux.ValueObject {
-		return ext.NewObjectValueObject(value)
+	return NewPrimitiveArgumentWithLoader(internal.JavaLangLongClassName, argName, func() flux.EncodeValue {
+		return ext.NewObjectEncodeValue(value)
 	})
 }
 
@@ -95,8 +95,8 @@ func NewBooleanArgument(argName string) flux.ServiceArgumentSpec {
 }
 
 func NewBooleanArgumentWith(argName string, value bool) flux.ServiceArgumentSpec {
-	return NewPrimitiveArgumentWithLoader(internal.JavaLangBooleanClassName, argName, func() flux.ValueObject {
-		return ext.NewObjectValueObject(value)
+	return NewPrimitiveArgumentWithLoader(internal.JavaLangBooleanClassName, argName, func() flux.EncodeValue {
+		return ext.NewObjectEncodeValue(value)
 	})
 }
 
@@ -105,8 +105,8 @@ func NewFloatArgument(argName string) flux.ServiceArgumentSpec {
 }
 
 func NewFloatArgumentWith(argName string, value float64) flux.ServiceArgumentSpec {
-	return NewPrimitiveArgumentWithLoader(internal.JavaLangFloatClassName, argName, func() flux.ValueObject {
-		return ext.NewObjectValueObject(value)
+	return NewPrimitiveArgumentWithLoader(internal.JavaLangFloatClassName, argName, func() flux.EncodeValue {
+		return ext.NewObjectEncodeValue(value)
 	})
 }
 
