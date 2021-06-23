@@ -35,24 +35,27 @@ type Metrics struct {
 	RouteDuration  *prometheus.HistogramVec
 }
 
-func NewMetrics() *Metrics {
+func NewMetrics(listenerId string) *Metrics {
+	// rer: https://prometheus.io/docs/concepts/data_model/
+	// must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
+	namespace := "onlistener:" + listenerId
 	return &Metrics{
 		EndpointAccess: promauto.NewCounterVec(prometheus.CounterOpts{
-			Namespace: defaultMetricNamespace,
-			Subsystem: defaultMetricSubsystem,
-			Name:      "endpoint_access_total",
+			Namespace: namespace,
+			Subsystem: "endpoint",
+			Name:      "access_count",
 			Help:      "Number of endpoint access",
 		}, []string{"ProtoName", "Interface", "Method"}),
 		EndpointError: promauto.NewCounterVec(prometheus.CounterOpts{
-			Namespace: defaultMetricNamespace,
-			Subsystem: defaultMetricSubsystem,
-			Name:      "endpoint_error_total",
+			Namespace: namespace,
+			Subsystem: "endpoint",
+			Name:      "error_count",
 			Help:      "Number of endpoint access errors",
 		}, []string{"ProtoName", "Interface", "Method", "ErrorCode"}),
 		RouteDuration: promauto.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: defaultMetricNamespace,
-			Subsystem: defaultMetricSubsystem,
-			Name:      "endpoint_route_duration",
+			Namespace: namespace,
+			Subsystem: "endpoint",
+			Name:      "route_duration",
 			Help:      "Spend time by processing a endpoint",
 			Buckets:   defaultMetricBuckets,
 		}, []string{"ComponentType", "TypeId"}),

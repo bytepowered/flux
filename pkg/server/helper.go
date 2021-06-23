@@ -2,13 +2,19 @@ package server
 
 import (
 	"context"
-	ext "github.com/bytepowered/fluxgo/pkg/ext"
-	"github.com/bytepowered/fluxgo/pkg/flux"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
+	"os"
+)
+
+import (
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"os"
+)
+
+import (
+	"github.com/bytepowered/fluxgo/pkg/ext"
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/logger"
 )
 
 const (
@@ -51,4 +57,8 @@ func InitAppConfig(envKey string) {
 
 func IsDisabled(config *flux.Configuration) bool {
 	return config.GetBool("disable") || config.GetBool("disabled")
+}
+
+func DefaultRequestVersionLocateFunc(webex flux.WebContext) (version string) {
+	return webex.HeaderVar(DefaultHttpHeaderVersion)
 }

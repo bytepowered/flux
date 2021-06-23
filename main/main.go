@@ -33,41 +33,40 @@ func main() {
 	server.InitLogger()
 	build := flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate}
 	server.InitAppConfig(server.EnvKeyDeployEnv)
-	generic := NewDefaultGenericServer()
-	if err := generic.Prepare(); nil != err {
-		logger.Panic("GenericServer prepare:", err)
+	dm := NewDispatcherManager()
+	if err := dm.Prepare(); nil != err {
+		logger.Panic("DispatcherManager prepare:", err)
 	}
-	if err := generic.Init(); nil != err {
-		logger.Panic("GenericServer init:", err)
+	if err := dm.Init(); nil != err {
+		logger.Panic("DispatcherManager init:", err)
 	}
 	go func() {
-		if err := generic.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
+		if err := dm.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error(err)
 		}
 	}()
 	quit := make(chan os.Signal, 1)
-	generic.AwaitSignal(quit, 10*time.Second)
+	dm.AwaitSignal(quit, 10*time.Second)
 }
 
-func NewDefaultGenericServer(options ...server.GenericOptionFunc) *server.GenericServer {
-	opts := []server.GenericOptionFunc{
+func NewDispatcherManager(options ...server.OptionFunc) *server.DispatcherManager {
+	opts := []server.OptionFunc{
 		server.WithServerBanner("Flux.go"),
-		// Lookup version
-		server.WithVersionLookupFunc(func(webex flux.WebContext) string {
-			return webex.HeaderVar(server.DefaultHttpHeaderVersion)
-		}),
 		// Default WebListener
 		server.WithNewWebListener(listener.New(server.ListenerIdDefault,
 			server.NewWebListenerOptions(server.ListenerIdDefault), nil)),
 		// Admin WebListener
-		server.WithNewWebListener(listener.New(server.ListenServerIdAdmin,
-			server.NewWebListenerOptions(server.ListenServerIdAdmin), nil,
+		server.WithNewWebListener(listener.New(server.ListenerIdAdmin,
+			server.NewWebListenerOptions(server.ListenerIdAdmin), nil,
 			// 内部元数据查询
 			listener.WithHandlers([]listener.WebHandlerTuple{
 				// Metrics
 				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),
 		)),
+		// Setup
+		server.EnabledRequestVersionLocator(server.ListenerIdDefault, server.DefaultRequestVersionLocateFunc),
+		server.EnabledRequestVersionLocator(server.ListenerIdAdmin, server.DefaultRequestVersionLocateFunc),
 	}
-	return server.NewGenericServer(append(opts, options...)...)
+	return server.NewDispatcherManager(append(opts, options...)...)
 }

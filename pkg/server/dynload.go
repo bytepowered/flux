@@ -2,9 +2,12 @@ package server
 
 import (
 	"fmt"
-	ext "github.com/bytepowered/fluxgo/pkg/ext"
+)
+
+import (
+	"github.com/bytepowered/fluxgo/pkg/ext"
 	"github.com/bytepowered/fluxgo/pkg/flux"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/logger"
 )
 
 const (

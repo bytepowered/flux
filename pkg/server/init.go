@@ -1,11 +1,11 @@
 package server
 
 import (
-	common "github.com/bytepowered/fluxgo/pkg/common"
-	discovery2 "github.com/bytepowered/fluxgo/pkg/discovery"
-	ext "github.com/bytepowered/fluxgo/pkg/ext"
+	"github.com/bytepowered/fluxgo/pkg/common"
+	"github.com/bytepowered/fluxgo/pkg/discovery"
+	"github.com/bytepowered/fluxgo/pkg/ext"
 	"github.com/bytepowered/fluxgo/pkg/flux"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/logger"
 )
 
 func init() {
@@ -19,6 +19,6 @@ func init() {
 	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint discovery
-	ext.RegisterEndpointDiscovery(discovery2.NewZookeeperEndpointDiscovery(discovery2.ZookeeperId))
-	ext.RegisterEndpointDiscovery(discovery2.NewResourceEndpointDiscovery(discovery2.ResourceId))
+	ext.RegisterEndpointDiscovery(discovery.NewZookeeperEndpointDiscovery(discovery.ZookeeperId))
+	ext.RegisterEndpointDiscovery(discovery.NewResourceEndpointDiscovery(discovery.ResourceId))
 }

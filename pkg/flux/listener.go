@@ -95,8 +95,11 @@ type (
 	// WebListenerFactory 构建 WebListener 的工厂函数，可通过Factory实现对不同Web框架的支持；
 	WebListenerFactory func(string, *Configuration) WebListener
 
-	// WebRequestIdentifier 查找请求ID的函数
-	WebRequestIdentifier func(shadowContext interface{}) string
+	// WebRequestIdentityLocator 查找请求ID的函数
+	WebRequestIdentityLocator func(shadowContext interface{}) (requestId string)
+
+	// WebRequestVersionLocator Http请求版本查找函数
+	WebRequestVersionLocator func(webex WebContext) (version string)
 
 	// WebBodyResolver 解析请求体数据
 	WebBodyResolver func(WebContext) url.Values

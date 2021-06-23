@@ -2,32 +2,110 @@ package server
 
 import (
 	"fmt"
-	ext "github.com/bytepowered/fluxgo/pkg/ext"
-	"github.com/bytepowered/fluxgo/pkg/flux"
-	internal2 "github.com/bytepowered/fluxgo/pkg/internal"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/spf13/cast"
+	"runtime/debug"
+	"sync"
 	"time"
 )
 
-type Dispatcher struct {
+import (
+	"github.com/jinzhu/copier"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/spf13/cast"
+)
+
+import (
+	"github.com/bytepowered/fluxgo/pkg/ext"
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/internal"
+	"github.com/bytepowered/fluxgo/pkg/logger"
+)
+
+type dispatcher struct {
+	flux.WebListener
 	metrics                *Metrics
-	writer                 flux.ServeResponseWriter
+	pooled                 *sync.Pool
+	responseWriter         flux.ServeResponseWriter
+	versionLocator         flux.WebRequestVersionLocator
+	onContextHooks         []flux.OnContextHookFunc
 	onBeforeFilterHooks    []flux.OnBeforeFilterHookFunc
 	onBeforeTransportHooks []flux.OnBeforeTransportHookFunc
 }
 
-func NewDispatcher() *Dispatcher {
-	return &Dispatcher{
-		metrics:                NewMetrics(),
-		writer:                 new(internal2.JSONServeResponseWriter),
+func newDispatcher(listener flux.WebListener) *dispatcher {
+	return &dispatcher{
+		WebListener:            listener,
+		metrics:                NewMetrics(listener.ListenerId()),
+		pooled:                 &sync.Pool{New: func() interface{} { return flux.NewContext() }},
+		versionLocator:         DefaultRequestVersionLocateFunc,
+		responseWriter:         new(internal.JSONServeResponseWriter),
+		onContextHooks:         make([]flux.OnContextHookFunc, 0, 4),
 		onBeforeFilterHooks:    make([]flux.OnBeforeFilterHookFunc, 0, 4),
 		onBeforeTransportHooks: make([]flux.OnBeforeTransportHookFunc, 0, 4),
 	}
 }
 
-func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
+func (d *dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
+	defer func(id string) {
+		if panerr := recover(); panerr != nil {
+			trace := logger.Trace(id)
+			if recerr, ok := panerr.(error); ok {
+				trace.Errorw(recerr.Error(), "r-error", recerr, "debug", string(debug.Stack()))
+				err = recerr
+			} else {
+				trace.Errorw("DISPATCH:EVEN:ROUTE:CRITICAL_PANIC", "r-error", panerr, "debug", string(debug.Stack()))
+				err = fmt.Errorf("DISPATCH:EVEN:ROUTE:%s", panerr)
+			}
+		}
+	}(webex.RequestId())
+	var endpoint flux.EndpointSpec
+	// 查找匹配版本的Endpoint
+	if src, found := d.lookup(webex, d.WebListener, versions); found {
+		// dup to enforce metadata safe
+		cperr := d.dup(&endpoint, src)
+		flux.AssertM(cperr == nil, func() string {
+			return fmt.Sprintf("duplicate endpoint metadata, error: %s", cperr.Error())
+		})
+	} else {
+		logger.Trace(webex.RequestId()).Infow("DISPATCH:EVEN:ROUTE:ENDPOINT/not-found",
+			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
+		)
+		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
+		return d.WebListener.HandleNotfound(webex)
+	}
+	// check endpoint bindings
+	flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
+	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
+	ctxw := d.pooled.Get().(*flux.Context)
+	defer d.pooled.Put(ctxw)
+	ctxw.Reset(webex, &endpoint)
+	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
+	ctxw.SetAttribute(flux.XRequestId, ctxw.RequestId())
+	logger.TraceVerbose(ctxw).Infow("DISPATCH:EVEN:ROUTE:START")
+	defer func(start time.Time) {
+		logger.Trace(webex.RequestId()).Infow("DISPATCH:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
+	}(ctxw.StartAt())
+	// context hook
+	for _, hook := range d.onContextHooks {
+		hook(webex, ctxw)
+	}
+	// route and dispatch
+	return d.dispatch(ctxw)
+}
+
+func (d *dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
+	// 动态Endpoint版本选择
+	for _, selector := range ext.EndpointSelectors() {
+		if selector.Active(webex, server.ListenerId()) {
+			if ep, ok := selector.DoSelect(webex, server.ListenerId(), endpoints); ok {
+				return ep, true
+			}
+		}
+	}
+	// 默认版本选择
+	return endpoints.Lookup(d.versionLocator(webex))
+}
+
+func (d *dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	// 统计异常
 	wrapMetricFunc := func(err *flux.ServeError) *flux.ServeError {
 		// Access Counter: ProtoName, Interface, Method
@@ -67,14 +145,13 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		proto := ctx.Service().Protocol
 		transporter, ok := ext.TransporterByProto(proto)
 		if !ok {
-			logger.TraceVerbose(ctx).Errorw("SERVER:ROUTE:UNSUPPORTED_PROTOCOL",
+			logger.TraceVerbose(ctx).Errorw("DISPATCH:EVEN:ROUTE:UNSUPPORTED_PROTOCOL",
 				"proto", proto, "service", ctx.Endpoint().Service)
 			return &flux.ServeError{StatusCode: flux.StatusNotFound,
 				ErrorCode: flux.ErrorCodeRequestNotFound,
 				Message:   fmt.Sprintf("SERVER:ROUTE:ILLEGAL_PROTOCOL/%s", proto),
 			}
 		}
-		// Transporter invoke
 		for _, hook := range d.onBeforeTransportHooks {
 			hook(ctx, transporter)
 		}
@@ -84,47 +161,56 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		select {
 		case <-ctx.Context().Done():
 			return &flux.ServeError{StatusCode: flux.StatusBadRequest,
-				ErrorCode: "SERVER:ROUTE::CANCELED/200", CauseError: ctx.Context().Err(),
+				ErrorCode: "DISPATCHER:TRANSPORT:CANCELED/200", CauseError: ctx.Context().Err(),
 			}
 		default:
-			if inverr != nil {
-				logger.TraceVerbose(ctx).Errorw("SERVER:ROUTE:TRANSPORT/error", "error", inverr, "t-service", ctx.ServiceID())
+			if flux.IsNil(inverr) {
+				d.responseWriter.Write(ctx, invret)
+				return nil
 			}
+			return inverr
 		}
-		// Write response
-		if flux.NotNil(inverr) {
-			d.writer.WriteError(ctx, inverr)
-		} else {
-			for k, v := range invret.Attachments {
-				ctx.SetAttribute(k, v)
-			}
-			d.writer.Write(ctx, invret)
-		}
-		return nil
 	}
 	// Walk filters
 	filters := append(ext.GlobalFilters(), selective...)
 	for _, before := range d.onBeforeFilterHooks {
 		before(ctx, filters)
 	}
-	return wrapMetricFunc(d.walk(transport, filters)(ctx))
+	if rouerr := wrapMetricFunc(d.walk(transport, filters)(ctx)); rouerr != nil {
+		d.responseWriter.WriteError(ctx, rouerr)
+	}
+	return nil // always return nil
 }
 
-func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
+func (d *dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}
 	return next
 }
 
-func (d *Dispatcher) setResponseWriter(w flux.ServeResponseWriter) {
-	d.writer = w
+func (d *dispatcher) setResponseWriter(w flux.ServeResponseWriter) {
+	d.responseWriter = w
 }
 
-func (d *Dispatcher) addOnBeforeFilterHook(h flux.OnBeforeFilterHookFunc) {
+func (d *dispatcher) setVersionLocator(l flux.WebRequestVersionLocator) {
+	d.versionLocator = l
+}
+
+func (d *dispatcher) addOnBeforeFilterHook(h flux.OnBeforeFilterHookFunc) {
 	d.onBeforeFilterHooks = append(d.onBeforeFilterHooks, h)
 }
 
-func (d *Dispatcher) addOnBeforeTransportHook(h flux.OnBeforeTransportHookFunc) {
+func (d *dispatcher) addOnBeforeTransportHook(h flux.OnBeforeTransportHookFunc) {
 	d.onBeforeTransportHooks = append(d.onBeforeTransportHooks, h)
+}
+
+func (d *dispatcher) addOnContextHook(h flux.OnContextHookFunc) {
+	d.onContextHooks = append(d.onContextHooks, h)
+}
+
+func (*dispatcher) dup(toep *flux.EndpointSpec, fromep *flux.EndpointSpec) error {
+	return copier.CopyWithOption(toep, fromep, copier.Option{
+		DeepCopy: true,
+	})
 }

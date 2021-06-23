@@ -3,23 +3,29 @@ package server
 import (
 	goctx "context"
 	"fmt"
-	dubgo "github.com/apache/dubbo-go/config"
-	ext "github.com/bytepowered/fluxgo/pkg/ext"
-	"github.com/bytepowered/fluxgo/pkg/flux"
-	internal2 "github.com/bytepowered/fluxgo/pkg/internal"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
-	toolkit "github.com/bytepowered/fluxgo/pkg/toolkit"
-	"github.com/jinzhu/copier"
-	"golang.org/x/net/context"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"reflect"
-	"runtime/debug"
 	"strings"
-	"sync"
 	"time"
+)
+
+import (
+	dubgo "github.com/apache/dubbo-go/config"
+	"golang.org/x/net/context"
+	"net/http"
+)
+
+import (
+	_ "net/http/pprof"
+)
+
+import (
+	"github.com/bytepowered/fluxgo/pkg/ext"
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/internal"
+	"github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/toolkit"
 )
 
 const (
@@ -30,90 +36,86 @@ const (
 const (
 	DefaultHttpHeaderVersion = "X-Version"
 
-	ListenerIdDefault   = "default"
-	ListenerIdWebapi    = ListenerIdDefault
-	ListenServerIdAdmin = "admin"
+	ListenerIdDefault = "default"
+	ListenerIdWebapi  = ListenerIdDefault
+	ListenerIdAdmin   = "admin"
 )
 
 type (
-	// GenericOptionFunc 配置HttpServeEngine函数
-	GenericOptionFunc func(gs *GenericServer)
-	// VersionLookupFunc Http请求版本查找函数
-	VersionLookupFunc func(webex flux.WebContext) (version string)
+	// OptionFunc 配置HttpServeEngine函数
+	OptionFunc func(gs *DispatcherManager)
 )
 
-// GenericServer Server
-type GenericServer struct {
-	listeners      map[string]flux.WebListener
-	onContextHooks []flux.OnContextHookFunc
-	versionFunc    VersionLookupFunc
-	dispatcher     *Dispatcher
-	pooled         *sync.Pool
-	started        chan struct{}
-	stopped        chan struct{}
-	banner         string
-}
-
-// WithOnContextHooks 配置请求Hook函数列表
-func WithOnContextHooks(hooks ...flux.OnContextHookFunc) GenericOptionFunc {
-	return func(bs *GenericServer) {
-		bs.onContextHooks = append(bs.onContextHooks, hooks...)
-	}
-}
-
-// WithVersionLookupFunc 配置Web请求版本选择函数
-func WithVersionLookupFunc(fun VersionLookupFunc) GenericOptionFunc {
-	return func(bs *GenericServer) {
-		bs.versionFunc = fun
-	}
+// DispatcherManager Server
+type DispatcherManager struct {
+	dispatchers map[string]*dispatcher
+	started     chan struct{}
+	stopped     chan struct{}
+	banner      string
 }
 
 // WithServerBanner 配置服务Banner
-func WithServerBanner(banner string) GenericOptionFunc {
-	return func(bs *GenericServer) {
+func WithServerBanner(banner string) OptionFunc {
+	return func(bs *DispatcherManager) {
 		bs.banner = banner
 	}
 }
 
 // WithNewWebListener 配置WebListener
-func WithNewWebListener(server flux.WebListener) GenericOptionFunc {
-	return func(bs *GenericServer) {
-		bs.AddWebListener(server.ListenerId(), server)
+func WithNewWebListener(webListener flux.WebListener) OptionFunc {
+	return func(bs *DispatcherManager) {
+		bs.AddWebListener(webListener.ListenerId(), webListener)
 	}
 }
 
-// WithServeResponseWriter 配置ResponseWriter
-func WithServeResponseWriter(writer flux.ServeResponseWriter) GenericOptionFunc {
-	return func(bs *GenericServer) {
-		bs.dispatcher.setResponseWriter(writer)
-	}
-}
-
-func WithOnBeforeFilterHookFunc(hooks ...flux.OnBeforeFilterHookFunc) GenericOptionFunc {
-	return func(bs *GenericServer) {
+// EnabledOnContextHooks 配置请求Hook函数列表
+func EnabledOnContextHooks(listenerId string, hooks ...flux.OnContextHookFunc) OptionFunc {
+	return func(d *DispatcherManager) {
+		dis := d.ensureDispatcher(listenerId)
 		for _, h := range hooks {
-			bs.dispatcher.addOnBeforeFilterHook(h)
+			dis.addOnContextHook(h)
 		}
 	}
 }
 
-func WithOnBeforeTransportHookFunc(hooks ...flux.OnBeforeTransportHookFunc) GenericOptionFunc {
-	return func(bs *GenericServer) {
+// EnabledRequestVersionLocator 配置Web请求版本选择函数
+func EnabledRequestVersionLocator(listenerId string, fun flux.WebRequestVersionLocator) OptionFunc {
+	return func(d *DispatcherManager) {
+		d.ensureDispatcher(listenerId).setVersionLocator(fun)
+	}
+}
+
+// EnabledServeResponseWriter 配置ResponseWriter
+func EnabledServeResponseWriter(listenerId string, writer flux.ServeResponseWriter) OptionFunc {
+	return func(d *DispatcherManager) {
+		d.ensureDispatcher(listenerId).setResponseWriter(writer)
+	}
+}
+
+func WithOnBeforeFilterHookFunc(listenerId string, hooks ...flux.OnBeforeFilterHookFunc) OptionFunc {
+	return func(d *DispatcherManager) {
+		dis := d.ensureDispatcher(listenerId)
 		for _, h := range hooks {
-			bs.dispatcher.addOnBeforeTransportHook(h)
+			dis.addOnBeforeFilterHook(h)
 		}
 	}
 }
 
-func NewGenericServer(opts ...GenericOptionFunc) *GenericServer {
-	server := &GenericServer{
-		dispatcher:     NewDispatcher(),
-		listeners:      make(map[string]flux.WebListener, 2),
-		onContextHooks: make([]flux.OnContextHookFunc, 0, 4),
-		pooled:         &sync.Pool{New: func() interface{} { return flux.NewContext() }},
-		started:        make(chan struct{}),
-		stopped:        make(chan struct{}),
-		banner:         defaultBanner,
+func EnabledOnBeforeTransportHookFunc(listenerId string, hooks ...flux.OnBeforeTransportHookFunc) OptionFunc {
+	return func(d *DispatcherManager) {
+		dis := d.ensureDispatcher(listenerId)
+		for _, h := range hooks {
+			dis.addOnBeforeTransportHook(h)
+		}
+	}
+}
+
+func NewDispatcherManager(opts ...OptionFunc) *DispatcherManager {
+	server := &DispatcherManager{
+		dispatchers: make(map[string]*dispatcher, 2),
+		started:     make(chan struct{}),
+		stopped:     make(chan struct{}),
+		banner:      defaultBanner,
 	}
 	for _, opt := range opts {
 		opt(server)
@@ -122,7 +124,7 @@ func NewGenericServer(opts ...GenericOptionFunc) *GenericServer {
 }
 
 // Prepare Call before init and startup
-func (gs *GenericServer) Prepare() error {
+func (d *DispatcherManager) Prepare() error {
 	logger.Info("SERVER:EVEN:PREPARE")
 	for _, hook := range ext.PrepareHooks() {
 		if err := hook.OnPrepare(); nil != err {
@@ -134,11 +136,12 @@ func (gs *GenericServer) Prepare() error {
 }
 
 // Init Call components init
-func (gs *GenericServer) Init() error {
+func (d *DispatcherManager) Init() error {
 	logger.Info("SERVER:EVEN:INIT")
 	defer logger.Info("SERVER:EVEN:INIT:OK")
 	// 1. WebListen Server
-	for id, webListener := range gs.listeners {
+	for id, dis := range d.dispatchers {
+		webListener := dis.WebListener
 		config := NewWebListenerConfig(id)
 		ext.AddStartupHook(webListener)
 		ext.AddShutdownHook(webListener)
@@ -222,16 +225,16 @@ func (gs *GenericServer) Init() error {
 	return nil
 }
 
-func (gs *GenericServer) Startup(build flux.Build) error {
+func (d *DispatcherManager) Startup(build flux.Build) error {
 	fmt.Printf(VersionFormat, build.CommitId, build.Version, build.Date)
-	if gs.banner != "" {
-		fmt.Println(gs.banner)
+	if d.banner != "" {
+		fmt.Println(d.banner)
 	}
-	return gs.start()
+	return d.start()
 }
 
-func (gs *GenericServer) start() error {
-	flux.AssertNotNil(gs.defaultListener(), "<default-listener> MUST NOT nil")
+func (d *DispatcherManager) start() error {
+	flux.AssertNotNil(d.defaultListener(), "<default-listener> MUST NOT nil")
 	flux.AssertNotNil(ext.GetLookupScopedValueFunc(), "<scope-value-lookup-func> MUST NOT nil")
 	logger.Info("SERVER:EVEN:STARTUP")
 	for _, startup := range sortedStartup(ext.StartupHooks()) {
@@ -250,37 +253,37 @@ func (gs *GenericServer) start() error {
 	logger.Info("SERVER:EVEN:DISCOVERY:START")
 	ctx, canceled := context.WithCancel(context.Background())
 	defer canceled()
-	go gs.startEventLoop(ctx, endpoints, services)
-	if err := gs.startEventWatch(ctx, endpoints, services); nil != err {
+	go d.startEventLoop(ctx, endpoints, services)
+	if err := d.startEventWatch(ctx, endpoints, services); nil != err {
 		return err
 	}
 	logger.Info("SERVER:EVEN:DISCOVERY:OK")
 	// Listeners
 	errch := make(chan error, 1)
-	for id, web := range gs.listeners {
-		logger.Infow("SERVER:EVEN:LISTENER:START", "listener-id", web.ListenerId())
-		go func(id string, server flux.WebListener) {
-			errch <- server.ListenServe()
+	for id, dis := range d.dispatchers {
+		logger.Infow("SERVER:EVEN:LISTENER:START", "listener-id", dis.WebListener.ListenerId())
+		go func(id string, listener flux.WebListener) {
+			errch <- listener.ListenServe()
 			logger.Infow("SERVER:EVEN:LISTENER:STOP", "listener-id", id)
-		}(id, web)
+		}(id, dis.WebListener)
 	}
-	close(gs.started)
+	close(d.started)
 	return <-errch
 }
 
-func (gs *GenericServer) startEventLoop(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) {
+func (d *DispatcherManager) startEventLoop(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) {
 	logger.Info("SERVER:EVEN:EVENTLOOP:START")
 	defer logger.Info("SERVER:EVEN:EVENTLOOP:STOP")
 	for {
 		select {
 		case epEvt, ok := <-endpoints:
 			if ok {
-				gs.onEndpointEvent(epEvt)
+				d.onEndpointEvent(epEvt)
 			}
 
 		case esEvt, ok := <-services:
 			if ok {
-				gs.onServiceEvent(esEvt)
+				d.onServiceEvent(esEvt)
 			}
 
 		case <-ctx.Done():
@@ -289,7 +292,7 @@ func (gs *GenericServer) startEventLoop(ctx context.Context, endpoints chan flux
 	}
 }
 
-func (gs *GenericServer) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
+func (d *DispatcherManager) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
 	for _, discovery := range ext.EndpointDiscoveries() {
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH", "discovery-id", discovery.Id())
 		if err := discovery.WatchServices(ctx, services); nil != err {
@@ -303,77 +306,16 @@ func (gs *GenericServer) startEventWatch(ctx context.Context, endpoints chan flu
 	return nil
 }
 
-func (gs *GenericServer) route(webex flux.WebContext, listener flux.WebListener, versions *flux.MVCEndpoint) (err error) {
-	defer func(id string) {
-		if panerr := recover(); panerr != nil {
-			trace := logger.Trace(id)
-			if recerr, ok := panerr.(error); ok {
-				trace.Errorw(recerr.Error(), "r-error", recerr, "debug", string(debug.Stack()))
-				err = recerr
-			} else {
-				trace.Errorw("SERVER:EVEN:ROUTE:CRITICAL_PANIC", "r-error", panerr, "debug", string(debug.Stack()))
-				err = fmt.Errorf("SERVER:EVEN:ROUTE:%s", panerr)
-			}
-		}
-	}(webex.RequestId())
-	var endpoint flux.EndpointSpec
-	// 查找匹配版本的Endpoint
-	if src, found := gs.lookup(webex, listener, versions); found {
-		// dup to enforce metadata safe
-		cperr := gs.dup(&endpoint, src)
-		flux.AssertM(cperr == nil, func() string {
-			return fmt.Sprintf("duplicate endpoint metadata, error: %s", cperr.Error())
-		})
-	} else {
-		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:ENDPOINT/NOT_FOUND",
-			"http-pattern", []string{webex.Method(), webex.URI(), webex.URL().Path},
-		)
-		// Endpoint节点版本被删除，需要重新路由到NotFound处理函数
-		return listener.HandleNotfound(webex)
-	}
-	// 检查Endpoint/Service绑定
-	flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
-	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
-	ctxw := gs.pooled.Get().(*flux.Context)
-	defer gs.pooled.Put(ctxw)
-	ctxw.Reset(webex, &endpoint)
-	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
-	ctxw.SetAttribute(flux.XRequestId, ctxw.RequestId())
-	logger.TraceVerbose(ctxw).Infow("SERVER:EVEN:ROUTE:START")
-	defer func(start time.Time) {
-		logger.Trace(webex.RequestId()).Infow("SERVER:EVEN:ROUTE:END", "metric", ctxw.Metrics(), "elapses", time.Since(start).String())
-	}(ctxw.StartAt())
-	// hook
-	for _, hook := range gs.onContextHooks {
-		hook(webex, ctxw)
-	}
-	// route
-	return gs.dispatcher.dispatch(ctxw)
-}
-
-func (gs *GenericServer) lookup(webex flux.WebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
-	// 动态Endpoint版本选择
-	for _, selector := range ext.EndpointSelectors() {
-		if selector.Active(webex, server.ListenerId()) {
-			if ep, ok := selector.DoSelect(webex, server.ListenerId(), endpoints); ok {
-				return ep, true
-			}
-		}
-	}
-	// 默认版本选择
-	return endpoints.Lookup(gs.versionFunc(webex))
-}
-
 // Shutdown to cleanup resources
-func (gs *GenericServer) Shutdown(ctx goctx.Context) error {
+func (d *DispatcherManager) Shutdown(ctx goctx.Context) error {
 	logger.Info("SERVER:EVENT:SHUTDOWN")
 	defer func() {
 		logger.Info("SERVER:EVENT:SHUTDOWN/ok")
-		close(gs.stopped)
+		close(d.stopped)
 	}()
 	// WebListener
-	for id, server := range gs.listeners {
-		if err := server.OnShutdown(ctx); nil != err {
+	for id, dis := range d.dispatchers {
+		if err := dis.WebListener.OnShutdown(ctx); nil != err {
 			logger.Warnw("Server["+id+"] shutdown http server", "error", err)
 		}
 	}
@@ -386,17 +328,28 @@ func (gs *GenericServer) Shutdown(ctx goctx.Context) error {
 	return nil
 }
 
-func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
+func (d *DispatcherManager) serve(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
+	dis := d.ensureDispatcher(webex.WebListener().ListenerId())
+	return dis.route(webex, versions)
+}
+
+func (d *DispatcherManager) ensureDispatcher(id string) *dispatcher {
+	dis := d.dispatchers[id]
+	flux.AssertNotNil(dis, "<dispatcher> must not nil, id: "+id)
+	return dis
+}
+
+func (d *DispatcherManager) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
 	var epvars = []interface{}{"service-id", service.ServiceID(), "alias-id", service.AliasId}
-	if err := internal2.VerifyAnnotations(service.Annotations); err != nil {
+	if err := internal.VerifyAnnotations(service.Annotations); err != nil {
 		logger.Warnw("SERVER:EVENT:SERVICE:ANNOTATION/invalid", epvars...)
 		return
 	}
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:SERVICE:ADD", epvars...)
-		gs.syncEndpoint(&service)
+		d.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
@@ -404,7 +357,7 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:SERVICE:UPDATE", epvars...)
-		gs.syncEndpoint(&service)
+		d.syncEndpoint(&service)
 		ext.RegisterService(service)
 		if service.AliasId != "" {
 			ext.RegisterServiceByID(service.AliasId, service)
@@ -418,7 +371,7 @@ func (gs *GenericServer) onServiceEvent(event flux.ServiceEvent) {
 	}
 }
 
-func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
+func (d *DispatcherManager) onEndpointEvent(event flux.EndpointEvent) {
 	ep := event.Endpoint
 	var epvars = []interface{}{"ep-app", ep.Application, "ep-version", ep.Version, "ep-method", ep.HttpMethod, "ep-pattern", ep.HttpPattern}
 	// Check http method
@@ -427,15 +380,15 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", epvars...)
 		return
 	}
-	if err := internal2.VerifyAnnotations(ep.Annotations); err != nil {
+	if err := internal.VerifyAnnotations(ep.Annotations); err != nil {
 		logger.Warnw("SERVER:EVENT:ENDPOINT:ANNOTATION/invalid", epvars...)
 		return
 	}
-	mvce, register := gs.selectMVCEndpoint(&ep)
+	mvce, register := d.selectMVCEndpoint(&ep)
 	switch event.EventType {
 	case flux.EventTypeAdded:
 		logger.Infow("SERVER:EVENT:ENDPOINT:ADD", epvars...)
-		gs.syncService(&ep)
+		d.syncService(&ep)
 		mvce.Update(ep.Version, &ep)
 		if register {
 			// 根据Endpoint注解属性，选择ListenServer来绑定
@@ -443,16 +396,16 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 			if anno, ok := ep.AnnotationEx(flux.EndpointAnnotationListenerSel); ok && anno.IsValid() {
 				listenerId = anno.GetString()
 			}
-			if webListener, ok := gs.WebListenerById(listenerId); ok {
+			if webListener, ok := d.WebListenerById(listenerId); ok {
 				logger.Infow("SERVER:EVENT:ENDPOINT:HTTP_HANDLER/"+listenerId, epvars...)
-				webListener.AddHandler(ep.HttpMethod, ep.HttpPattern, gs.newEndpointHandler(webListener, mvce))
+				webListener.AddHandler(ep.HttpMethod, ep.HttpPattern, d.newEndpointHandler(mvce))
 			} else {
 				logger.Errorw("SERVER:EVENT:ENDPOINT:LISTENER_MISSED/"+listenerId, epvars...)
 			}
 		}
 	case flux.EventTypeUpdated:
 		logger.Infow("SERVER:EVENT:ENDPOINT:UPDATE", epvars...)
-		gs.syncService(&ep)
+		d.syncService(&ep)
 		mvce.Update(ep.Version, &ep)
 	case flux.EventTypeRemoved:
 		logger.Infow("SERVER:EVENT:ENDPOINT:REMOVE", epvars...)
@@ -461,73 +414,68 @@ func (gs *GenericServer) onEndpointEvent(event flux.EndpointEvent) {
 }
 
 // AwaitSignal GracefulShutdown
-func (gs *GenericServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
+func (d *DispatcherManager) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	// 接收停止信号
 	signal.Notify(quit, dubgo.ShutdownSignals...)
 	<-quit
 	logger.Infof("SERVER:EVENT:SIGNAL:SHUTDOWN")
 	ctx, cancel := goctx.WithTimeout(goctx.Background(), to)
 	defer cancel()
-	if err := gs.Shutdown(ctx); nil != err {
+	if err := d.Shutdown(ctx); nil != err {
 		logger.Errorw("SERVER:EVENT:SHUTDOWN/error", "error", err)
 	}
 }
 
 // StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。
-func (gs *GenericServer) StateStarted() <-chan struct{} {
-	return gs.started
+func (d *DispatcherManager) StateStarted() <-chan struct{} {
+	return d.started
 }
 
 // StateStopped 返回一个Channel。当服务停止后完成时，此Channel将被关闭。
-func (gs *GenericServer) StateStopped() <-chan struct{} {
-	return gs.stopped
+func (d *DispatcherManager) StateStopped() <-chan struct{} {
+	return d.stopped
 }
 
-// AddWebInterceptor 添加Http前拦截器到默认ListenerServer。将在Http被路由到对应Handler之前执行
-func (gs *GenericServer) AddWebInterceptor(m flux.WebFilter) {
-	gs.defaultListener().AddFilter(m)
+// AddWebFilter 添加Http前拦截器到默认ListenerServer。将在Http被路由到对应Handler之前执行
+func (d *DispatcherManager) AddWebFilter(m flux.WebFilter) {
+	d.defaultListener().AddFilter(m)
 }
 
 // AddWebHandler 添加Http处理接口到默认ListenerServer。
-func (gs *GenericServer) AddWebHandler(method, pattern string, h flux.WebHandlerFunc, m ...flux.WebFilter) {
-	gs.defaultListener().AddHandler(method, pattern, h, m...)
+func (d *DispatcherManager) AddWebHandler(method, pattern string, h flux.WebHandlerFunc, m ...flux.WebFilter) {
+	d.defaultListener().AddHandler(method, pattern, h, m...)
 }
 
 // AddWebHttpHandler 添加Http处理接口到默认ListenerServer。
-func (gs *GenericServer) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
-	gs.defaultListener().AddHttpHandler(method, pattern, h, m...)
+func (d *DispatcherManager) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+	d.defaultListener().AddHttpHandler(method, pattern, h, m...)
 }
 
 // SetWebNotfoundHandler 设置Http路由失败的处理接口到默认ListenerServer
-func (gs *GenericServer) SetWebNotfoundHandler(nfh flux.WebHandlerFunc) {
-	gs.defaultListener().SetNotfoundHandler(nfh)
+func (d *DispatcherManager) SetWebNotfoundHandler(nfh flux.WebHandlerFunc) {
+	d.defaultListener().SetNotfoundHandler(nfh)
 }
 
 // AddWebListener 添加指定ID
-func (gs *GenericServer) AddWebListener(listenerID string, listener flux.WebListener) {
+func (d *DispatcherManager) AddWebListener(listenerID string, listener flux.WebListener) {
 	flux.AssertNotNil(listener, "WebListener Must Not nil")
 	flux.AssertNotEmpty(listenerID, "WebListener Id Must Not empty")
-	gs.listeners[strings.ToLower(listenerID)] = listener
+	d.dispatchers[listenerID] = newDispatcher(listener)
 }
 
 // WebListenerById 返回ListenServer实例
-func (gs *GenericServer) WebListenerById(listenerID string) (flux.WebListener, bool) {
-	ls, ok := gs.listeners[strings.ToLower(listenerID)]
-	return ls, ok
+func (d *DispatcherManager) WebListenerById(listenerID string) (flux.WebListener, bool) {
+	dis, ok := d.dispatchers[listenerID]
+	return dis.WebListener, ok
 }
 
-// AddContextHookFunc 添加Http与Flux的Context桥接函数
-func (gs *GenericServer) AddContextHookFunc(f flux.OnContextHookFunc) {
-	gs.onContextHooks = append(gs.onContextHooks, f)
-}
-
-func (gs *GenericServer) newEndpointHandler(server flux.WebListener, endpoint *flux.MVCEndpoint) flux.WebHandlerFunc {
+func (d *DispatcherManager) newEndpointHandler(endpoint *flux.MVCEndpoint) flux.WebHandlerFunc {
 	return func(webex flux.WebContext) error {
-		return gs.route(webex, server, endpoint)
+		return d.serve(webex, endpoint)
 	}
 }
 
-func (gs *GenericServer) selectMVCEndpoint(endpoint *flux.EndpointSpec) (*flux.MVCEndpoint, bool) {
+func (d *DispatcherManager) selectMVCEndpoint(endpoint *flux.EndpointSpec) (*flux.MVCEndpoint, bool) {
 	key := ext.MakeEndpointKey(endpoint.HttpMethod, endpoint.HttpPattern)
 	if mve, ok := ext.EndpointByKey(key); ok {
 		return mve, false
@@ -536,25 +484,25 @@ func (gs *GenericServer) selectMVCEndpoint(endpoint *flux.EndpointSpec) (*flux.M
 	}
 }
 
-func (gs *GenericServer) defaultListener() flux.WebListener {
-	count := len(gs.listeners)
+func (d *DispatcherManager) defaultListener() flux.WebListener {
+	count := len(d.dispatchers)
 	if count == 0 {
 		return nil
 	} else if count == 1 {
-		for _, server := range gs.listeners {
-			return server
+		for _, dis := range d.dispatchers {
+			return dis.WebListener
 		}
 	}
-	server, ok := gs.listeners[ListenerIdDefault]
+	dis, ok := d.dispatchers[ListenerIdDefault]
 	if ok {
-		return server
+		return dis.WebListener
 	}
 	return nil
 }
 
 // syncService 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) syncService(ep *flux.EndpointSpec) {
+func (d *DispatcherManager) syncService(ep *flux.EndpointSpec) {
 	// Endpoint为静态模型，不支持动态更新
 	if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
 		logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
@@ -570,7 +518,7 @@ func (gs *GenericServer) syncService(ep *flux.EndpointSpec) {
 
 // syncEndpoint 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (gs *GenericServer) syncEndpoint(srv *flux.ServiceSpec) {
+func (d *DispatcherManager) syncEndpoint(srv *flux.ServiceSpec) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新
@@ -584,14 +532,6 @@ func (gs *GenericServer) syncEndpoint(srv *flux.ServiceSpec) {
 			}
 		}
 	}
-}
-
-var copierconf = copier.Option{
-	DeepCopy: true,
-}
-
-func (gs *GenericServer) dup(toep *flux.EndpointSpec, fromep *flux.EndpointSpec) error {
-	return copier.CopyWithOption(toep, fromep, copierconf)
 }
 
 func onInitializer(v interface{}, f func(initable flux.Initializer) error) error {
