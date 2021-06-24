@@ -12,7 +12,8 @@ var (
 )
 
 func SetLookupScopedValueFunc(f LookupScopedValueFunc) {
-	lookupScopedValueFunc = flux.MustNotNil(f, "LookupScopedValueFunc is nil").(LookupScopedValueFunc)
+	lookupScopedValueFunc = flux.MustNotNil(f,
+		"<lookup-scoped-value-func> must not nil").(LookupScopedValueFunc)
 }
 
 func GetLookupScopedValueFunc() LookupScopedValueFunc {

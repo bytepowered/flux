@@ -9,6 +9,7 @@ var (
 )
 
 func SetWebListenerFactory(f flux.WebListenerFactory) {
+	flux.AssertNotNil(f, "<web-listener-factory> must no nil")
 	webListenerFactory = f
 }
 

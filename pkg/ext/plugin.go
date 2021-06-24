@@ -24,18 +24,21 @@ var (
 
 // AddGlobalPlugin 注册全局Plugin；
 func AddGlobalPlugin(v interface{}) {
+	flux.AssertNotNil(v, "<plugin> must not nil")
 	globalPlugin = _checkedAppendPlugin(v, globalPlugin)
 	sort.Sort(plugins(globalPlugin))
 }
 
 // AddSelectivePlugin 注册可选Plugin；
 func AddSelectivePlugin(v interface{}) {
+	flux.AssertNotNil(v, "<plugin> must not nil")
 	selectivePlugin = _checkedAppendPlugin(v, selectivePlugin)
 	sort.Sort(plugins(selectivePlugin))
 }
 
 func _checkedAppendPlugin(v interface{}, in []pluginw) (out []pluginw) {
-	p := flux.MustNotNil(v, "Not a valid Plugin").(flux.Plugin)
+	flux.AssertNotNil(v, "<plugin> must not nil")
+	p := v.(flux.Plugin)
 	return append(in, pluginw{plugin: p, order: orderOfPlugin(p)})
 }
 

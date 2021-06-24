@@ -24,12 +24,14 @@ var (
 
 // AddGlobalFilter 注册全局Filter；
 func AddGlobalFilter(v interface{}) {
+	flux.AssertNotNil(v, "<filter> must not nil")
 	globalFilter = _checkedAppendFilter(v, globalFilter)
 	sort.Sort(filters(globalFilter))
 }
 
 // AddSelectiveFilter 注册可选Filter；
 func AddSelectiveFilter(v interface{}) {
+	flux.AssertNotNil(v, "<filter> must not nil")
 	selectiveFilter = _checkedAppendFilter(v, selectiveFilter)
 	sort.Sort(filters(selectiveFilter))
 }
@@ -50,7 +52,7 @@ func GlobalFilters() []flux.Filter {
 }
 
 func AddFilterSelector(s flux.FilterSelector) {
-	flux.MustNotNil(s, "FilterSelector is nil")
+	flux.MustNotNil(s, "<filter-selector> must not nil")
 	filterSelectors = append(filterSelectors, s)
 }
 
@@ -62,7 +64,7 @@ func FilterSelectors() []flux.FilterSelector {
 
 // SelectiveFilterById 获取已排序的可选Filter列表
 func SelectiveFilterById(filterId string) (flux.Filter, bool) {
-	filterId = flux.MustNotEmpty(filterId, "filterId is empty")
+	filterId = flux.MustNotEmpty(filterId, "<filter-id> must not empty")
 	for _, f := range selectiveFilter {
 		if filterId == f.filter.FilterId() {
 			return f.filter, true

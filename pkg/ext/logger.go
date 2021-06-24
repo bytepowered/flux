@@ -12,7 +12,7 @@ var (
 )
 
 func SetLoggerFactory(f LoggerFactory) {
-	flux.AssertNotNil(f, "LoggerFactory must not nil")
+	flux.AssertNotNil(f, "<logger-factory> must not nil")
 	loggerFactory = f
 }
 

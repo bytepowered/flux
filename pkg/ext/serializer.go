@@ -22,13 +22,13 @@ var (
 ////
 
 func RegisterSerializer(typeName string, serializer flux.Serializer) {
-	typeName = flux.MustNotEmpty(typeName, "typeName is empty")
+	typeName = flux.MustNotEmpty(typeName, "<type-name> is empty")
 	typeName = strings.ToLower(typeName)
-	typedSerializers[typeName] = flux.MustNotNil(serializer, "Serializer is nil").(flux.Serializer)
+	typedSerializers[typeName] = flux.MustNotNil(serializer, "<serializer> is nil").(flux.Serializer)
 }
 
 func SerializerByType(typeName string) flux.Serializer {
-	typeName = flux.MustNotEmpty(typeName, "typeName is empty")
+	typeName = flux.MustNotEmpty(typeName, "<type-name> is empty")
 	typeName = strings.ToLower(typeName)
 	return typedSerializers[typeName]
 }

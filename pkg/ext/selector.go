@@ -9,7 +9,7 @@ var (
 )
 
 func AddEndpointSelector(s flux.EndpointSelector) {
-	flux.MustNotNil(s, "FilterSelector is nil")
+	flux.AssertNotNil(s, "<filter-selector> must not nil")
 	endpointSelectors = append(endpointSelectors, s)
 }
 

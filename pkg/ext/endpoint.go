@@ -15,6 +15,8 @@ func MakeEndpointKey(method, pattern string) string {
 }
 
 func RegisterEndpoint(key string, endpoint *flux.EndpointSpec) *flux.MVCEndpoint {
+	flux.AssertNotEmpty(key, "<key> must not empty")
+	flux.AssertNotNil(endpoint, "<endpoint> must not nil")
 	mvce := flux.NewMVCEndpoint(endpoint)
 	endpoints.Store(key, mvce)
 	return mvce

@@ -9,12 +9,12 @@ var (
 )
 
 func RegisterTransporter(proto string, transporter flux.Transporter) {
-	proto = flux.MustNotEmpty(proto, "protoName is empty")
-	transporters[proto] = flux.MustNotNil(transporter, "Transporter is nil").(flux.Transporter)
+	proto = flux.MustNotEmpty(proto, "<proto-name> must not empty")
+	transporters[proto] = flux.MustNotNil(transporter, "<transporter> must not nil").(flux.Transporter)
 }
 
 func TransporterByProto(proto string) (flux.Transporter, bool) {
-	proto = flux.MustNotEmpty(proto, "protoName is empty")
+	proto = flux.MustNotEmpty(proto, "<proto-name> must not empty")
 	transporter, ok := transporters[proto]
 	return transporter, ok
 }

@@ -25,14 +25,14 @@ var (
 
 // RegisterEncodeValueResolver 添加实际值类型解析函数
 func RegisterEncodeValueResolver(typeName string, resolver EncodeValueResolver) {
-	typeName = flux.MustNotEmpty(typeName, "typeName is empty")
+	typeName = flux.MustNotEmpty(typeName, "<type-name> must not empty")
 	typeName = strings.ToLower(typeName)
 	objectResolvers[typeName] = resolver
 }
 
 // EncodeValueResolverByType 获取值类型解析函数；如果指定类型不存在，返回默认解析函数；
 func EncodeValueResolverByType(typeName string) EncodeValueResolver {
-	typeName = flux.MustNotEmpty(typeName, "typeName is empty")
+	typeName = flux.MustNotEmpty(typeName, "<type-name> must not empty")
 	typeName = strings.ToLower(typeName)
 	if r, ok := objectResolvers[typeName]; ok {
 		return r
