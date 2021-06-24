@@ -2,23 +2,21 @@ package main
 
 import (
 	"errors"
-	"github.com/bytepowered/fluxgo/pkg/cmd"
-	"github.com/bytepowered/fluxgo/pkg/logger"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/urfave/cli/v2"
 	"net/http"
 	"os"
 	"time"
 )
 
 import (
-	_ "github.com/apache/dubbo-go/filter/filter_impl"
-	_ "github.com/apache/dubbo-go/registry/zookeeper"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/urfave/cli/v2"
 )
 
 import (
+	"github.com/bytepowered/fluxgo/pkg/cmd"
 	"github.com/bytepowered/fluxgo/pkg/flux"
 	"github.com/bytepowered/fluxgo/pkg/listener"
+	"github.com/bytepowered/fluxgo/pkg/logger"
 	"github.com/bytepowered/fluxgo/pkg/server"
 	_ "github.com/bytepowered/fluxgo/pkg/transporter/dubbo"
 	_ "github.com/bytepowered/fluxgo/pkg/transporter/echo"

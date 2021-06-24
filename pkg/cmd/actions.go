@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	argNameLogFile    = "logfile"
-	argNameConfigFile = "config"
+	argNameLogFile       = "log"
+	argNameAppConfigFile = "config"
 )
 
 func NewActions(actions ...cli.ActionFunc) cli.ActionFunc {
@@ -29,7 +29,7 @@ func InitLoggerAction(ctx *cli.Context) error {
 }
 
 func InitConfigAction(ctx *cli.Context) error {
-	if err := server.InitConfig(ctx.String(argNameConfigFile)); err != nil {
+	if err := server.InitConfig(ctx.String(argNameAppConfigFile)); err != nil {
 		return err
 	}
 	return nil

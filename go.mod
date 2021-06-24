@@ -13,12 +13,11 @@ require (
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/labstack/gommon v0.3.0
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
 	github.com/spf13/cast v1.3.0
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/urfave/cli/v2 v2.3.0 // indirect
+	github.com/urfave/cli/v2 v2.3.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	gopkg.in/yaml.v2 v2.4.0
