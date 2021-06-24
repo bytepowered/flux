@@ -5,7 +5,7 @@ listeners:
         # 服务器绑定地址
         address: "${listeners.default.master}"
         master: "0.0.0.0"
-        bind_port: 8080
+        bind_port: 8893
         # 设置TLS密钥文件地址
         tls_cert_file: ""
         tls_key_file: ""
@@ -17,11 +17,21 @@ listeners:
             cors_enable: true
             # 设置是否开启检查跨站请求伪造特性，默认关闭
             csrf_enable: false
+            # 设置是否开启日志记录
+            traffic_enable: true
 
     # 网关内部管理服务
     admin:
         address: "0.0.0.0"
         bind_port: 9527
+        # 功能特性
+        features:
+            # 设置限制请求Body大小，默认为 1M
+            body_limit: "500K"
+            # 设置是否开启支持跨域访问特性，默认关闭
+            cors_enable: true
+            # 设置是否开启日志记录
+            traffic_enable: true
 
 # EndpointDiscoveryService (EDS) 配置
 discoveries:
@@ -45,7 +55,7 @@ discoveries:
     resource:
         # 指定资源配置地址列表
         includes:
-            - "./resources/echo.yml"
+            - "./resources/registry.yml"
         endpoints: [ ]
         # 指定当前配置Endpoint列表
         services: [ ]
@@ -60,7 +70,7 @@ transporters:
         # 负载策略: [Random, RoundRobin, LeastActive, ConsistentHash]
         load_balance: "random"
         # 日志开关；如果开启则打印Dubbo调用细节
-        trace_enable: false
+        trace_enable: true
         # DuoobReference 初始化等待延时
         reference_delay: "30ms"
         # Dubbo注册中心列表
@@ -76,7 +86,7 @@ transporters:
     http:
         timeout: "10s"
         # 日志开关；如果开启则打印Dubbo调用细节
-        trace_enable: false
+        trace_enable: true
 
 # CircuitFilter 服务限流熔断配置
 circuit_filter:

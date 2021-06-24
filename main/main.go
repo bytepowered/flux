@@ -2,25 +2,25 @@ package main
 
 import (
 	"errors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"os"
 	"time"
 )
 
 import (
-	_ "github.com/apache/dubbo-go/filter/filter_impl"
-	_ "github.com/apache/dubbo-go/registry/zookeeper"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/urfave/cli/v2"
 )
 
 import (
-	"github.com/bytepowered/flux"
-	"github.com/bytepowered/flux/listener"
-	"github.com/bytepowered/flux/logger"
-	"github.com/bytepowered/flux/server"
-	_ "github.com/bytepowered/flux/transporter/dubbo"
-	_ "github.com/bytepowered/flux/transporter/echo"
-	_ "github.com/bytepowered/flux/transporter/http"
+	"github.com/bytepowered/fluxgo/pkg/cmd"
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/listener"
+	"github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/server"
+	_ "github.com/bytepowered/fluxgo/pkg/transporter/dubbo"
+	_ "github.com/bytepowered/fluxgo/pkg/transporter/echo"
+	_ "github.com/bytepowered/fluxgo/pkg/transporter/http"
 )
 
 var (
@@ -30,44 +30,53 @@ var (
 )
 
 func main() {
-	server.InitLogger()
 	build := flux.Build{CommitId: GitCommit, Version: Version, Date: BuildDate}
-	server.InitAppConfig(server.EnvKeyDeployEnv)
-	generic := NewDefaultGenericServer()
-	if err := generic.Prepare(); nil != err {
-		logger.Panic("GenericServer prepare:", err)
+	app := cmd.NewApp(cmd.NewActions(
+		cmd.InitLoggerAction,
+		cmd.InitConfigAction,
+		func(context *cli.Context) error {
+			dm := newDispatcherManager()
+			if err := dm.Prepare(); nil != err {
+				return err
+			}
+			if err := dm.Init(); nil != err {
+				return err
+			}
+			go func() {
+				err := dm.Startup(build)
+				if nil != err && !errors.Is(err, http.ErrServerClosed) {
+					logger.Error(err)
+				}
+			}()
+			quit := make(chan os.Signal, 1)
+			dm.AwaitSignal(quit, 10*time.Second)
+			return nil
+		},
+	), build)
+	err := app.Run(os.Args)
+	if err != nil {
+		logger.Error(err)
 	}
-	if err := generic.Init(); nil != err {
-		logger.Panic("GenericServer init:", err)
-	}
-	go func() {
-		if err := generic.Startup(build); nil != err && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error(err)
-		}
-	}()
-	quit := make(chan os.Signal, 1)
-	generic.AwaitSignal(quit, 10*time.Second)
 }
 
-func NewDefaultGenericServer(options ...server.GenericOptionFunc) *server.GenericServer {
-	opts := []server.GenericOptionFunc{
+func newDispatcherManager(options ...server.OptionFunc) *server.DispatcherManager {
+	opts := []server.OptionFunc{
 		server.WithServerBanner("Flux.go"),
-		// Lookup version
-		server.WithVersionLookupFunc(func(webex flux.ServerWebContext) string {
-			return webex.HeaderVar(server.DefaultHttpHeaderVersion)
-		}),
 		// Default WebListener
 		server.WithNewWebListener(listener.New(server.ListenerIdDefault,
 			server.NewWebListenerOptions(server.ListenerIdDefault), nil)),
 		// Admin WebListener
-		server.WithNewWebListener(listener.New(server.ListenServerIdAdmin,
-			server.NewWebListenerOptions(server.ListenServerIdAdmin), nil,
+		server.WithNewWebListener(listener.New(server.ListenerIdAdmin,
+			server.NewWebListenerOptions(server.ListenerIdAdmin), nil,
 			// 内部元数据查询
-			listener.WithWebHandlers([]listener.WebHandlerTuple{
+			listener.WithHandlers([]listener.WebHandlerTuple{
 				// Metrics
 				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),
 		)),
+		// Setup
+		server.EnabledRequestVersionLocator(server.ListenerIdDefault, server.DefaultRequestVersionLocateFunc),
+		server.EnabledRequestVersionLocator(server.ListenerIdAdmin, server.DefaultRequestVersionLocateFunc),
 	}
-	return server.NewGenericServer(append(opts, options...)...)
+	return server.NewDispatcherManager(append(opts, options...)...)
 }
