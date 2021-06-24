@@ -122,8 +122,8 @@ const (
 // EncodeValue 包含指示值的类型和Value结构
 type EncodeValue struct {
 	valid    bool         // 是否有效
-	Value    interface{}  // 原始值类型
 	Encoding EncodingType // 数据类型
+	Value    interface{}  // 原始值类型
 }
 
 func NewEncodeValue(value interface{}, encoding EncodingType) EncodeValue {

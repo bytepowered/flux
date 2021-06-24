@@ -47,10 +47,14 @@ func NewNilEncodeValue() flux.EncodeValue {
 	return NewObjectEncodeValue(nil)
 }
 
-func NewNumberEncodeValue(value int64) flux.EncodeValue {
+func NewNumberEncodeValueOf(value float64, valid bool) flux.EncodeValue {
 	return flux.NewEncodeValueWith(value, flux.EncodingTypeGoNumber, func() bool {
-		return true
+		return valid
 	})
+}
+
+func NewNumberEncodeValue(value float64) flux.EncodeValue {
+	return NewNumberEncodeValueOf(value, true)
 }
 
 func NewStringEncodeValue(value string) flux.EncodeValue {

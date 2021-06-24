@@ -6,7 +6,7 @@ import (
 	"github.com/bytepowered/fluxgo/pkg/internal"
 )
 
-var argumentValueLoaderExtKey = extkey{id: "argument.value.loader.func"}
+var argumentValueLoaderExtKey = extkey{id: "flux.io/argument.value.loader.func"}
 
 // ArgumentValueLoaderFunc 参数值直接加载函数
 type ArgumentValueLoaderFunc func() flux.EncodeValue

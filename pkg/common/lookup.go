@@ -15,6 +15,7 @@ import (
 )
 
 // LookupValueByExpr 搜索LookupExpr表达式指定域的值。
+// Expr格式： Scope:Key
 func LookupValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
 	if expr == "" || nil == ctx {
 		return nil, errors.New("empty lookup expr, or context is nil")
@@ -31,7 +32,7 @@ func LookupValueByExpr(ctx *flux.Context, expr string) (interface{}, error) {
 }
 
 // LookupValueByScoped 根据Scope,Key从Context中查找参数；支持复杂参数类型
-func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.EncodeValue, err error) {
+func LookupValueByScoped(ctx *flux.Context, scope, key string) (flux.EncodeValue, error) {
 	if scope == "" || key == "" {
 		return ext.NewNilEncodeValue(), errors.New("lookup empty scope or key, scope: " + scope + ", key: " + key)
 	}
@@ -68,8 +69,11 @@ func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.Encod
 		return ext.NewMapStringEncodeValue(ctx.Attributes()), nil
 	case flux.ScopeBody:
 		reader, err := ctx.BodyReader()
+		if err != nil {
+			return ext.NewNilEncodeValue(), err
+		}
 		hct := ctx.HeaderVar(flux.HeaderContentType)
-		return flux.NewEncodeValue(reader, flux.EncodingType(hct)), err
+		return flux.NewEncodeValue(reader, flux.EncodingType(hct)), nil
 	case flux.ScopeParam:
 		v, _ := LookupValues(key, ctx.QueryVars, ctx.FormVars)
 		return ext.NewStringEncodeValue(v), nil
@@ -102,8 +106,8 @@ func LookupValueByScoped(ctx *flux.Context, scope, key string) (value flux.Encod
 
 func ToEncodeValue(v interface{}) flux.EncodeValue {
 	switch v.(type) {
-	case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64:
-		return ext.NewNumberEncodeValue(v.(int64))
+	case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64:
+		return ext.NewNumberEncodeValue(ToNumber(v))
 	case string:
 		return ext.NewStringEncodeValue(v.(string))
 	case map[string]interface{}:
