@@ -11,22 +11,22 @@ import (
 // AdaptWebHandler 实现flux.WebRouteHandler与Echo框架的echo.HandlerFunc函数适配
 type AdaptWebHandler flux.WebHandlerFunc
 
-func (call AdaptWebHandler) AdaptFunc(ctx echo.Context) error {
-	return call(toServerWebContext(ctx))
+func (f AdaptWebHandler) AdaptFunc(ctx echo.Context) error {
+	return f(toWebContext(ctx))
 }
 
-// AdaptWebInterceptor 实现flux.WebInterceptor与Echo框架的echo.MiddlewareFunc函数适配
-type AdaptWebInterceptor flux.WebFilter
+// AdaptWebFilter 实现 flux.WebFilter 与Echo框架的echo.MiddlewareFunc函数适配
+type AdaptWebFilter flux.WebFilter
 
-func (call AdaptWebInterceptor) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc {
+func (f AdaptWebFilter) AdaptFunc(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(echoc echo.Context) error {
-		return call(func(webex flux.WebContext) error {
+		return f(func(webex flux.WebContext) error {
 			return next(echoc)
-		})(toServerWebContext(echoc))
+		})(toWebContext(echoc))
 	}
 }
 
-func toServerWebContext(echoc echo.Context) flux.WebContext {
+func toWebContext(echoc echo.Context) flux.WebContext {
 	webex, ok := echoc.Get(string(internal.CtxkeyWebContext)).(flux.WebContext)
 	flux.Assert(ok == true && webex != nil, "<web-context> not found in echo.context")
 	return webex
