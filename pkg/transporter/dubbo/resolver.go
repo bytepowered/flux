@@ -3,7 +3,7 @@ package dubbo
 import (
 	hessian "github.com/apache/dubbo-go-hessian2"
 	"github.com/bytepowered/fluxgo/pkg/flux"
-	transporter2 "github.com/bytepowered/fluxgo/pkg/transporter"
+	transporter "github.com/bytepowered/fluxgo/pkg/transporter"
 )
 
 // DefaultArgumentsAssembleFunc Dubbo默认参数封装处理：转换成hession协议对象。
@@ -16,7 +16,7 @@ func DefaultArgumentsAssembleFunc(ctx *flux.Context, arguments []flux.ServiceArg
 	outputs := make([]hessian.Object, size)
 	for i, arg := range arguments {
 		types[i] = arg.ClassType
-		if val, err := transporter2.Resolve(ctx, &arg); nil != err {
+		if val, err := transporter.Resolve(ctx, &arg); nil != err {
 			return nil, nil, err
 		} else {
 			outputs[i] = val

@@ -2,13 +2,16 @@ package http
 
 import (
 	"fmt"
-	ext "github.com/bytepowered/fluxgo/pkg/ext"
-	"github.com/bytepowered/fluxgo/pkg/flux"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
-	toolkit "github.com/bytepowered/fluxgo/pkg/toolkit"
 	"net/http"
 	"net/url"
 	"time"
+)
+
+import (
+	"github.com/bytepowered/fluxgo/pkg/ext"
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/toolkit"
 )
 
 func init() {

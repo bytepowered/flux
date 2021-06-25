@@ -3,15 +3,18 @@ package http
 import (
 	"context"
 	"fmt"
-	"github.com/bytepowered/fluxgo/pkg/flux"
-	toolkit "github.com/bytepowered/fluxgo/pkg/toolkit"
-	transporter2 "github.com/bytepowered/fluxgo/pkg/transporter"
-	"github.com/spf13/cast"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+)
+
+import (
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/toolkit"
+	"github.com/bytepowered/fluxgo/pkg/transporter"
+	"github.com/spf13/cast"
 )
 
 func DefaultAssembleRequest(ctx *flux.Context, service *flux.ServiceSpec) (*http.Request, error) {
@@ -68,7 +71,7 @@ func SelectToArgumentValues(ctx *flux.Context, arguments []flux.ServiceArgumentS
 		if !selector(arg) {
 			continue
 		}
-		if val, err := transporter2.Resolve(ctx, &arg); nil != err {
+		if val, err := transporter.Resolve(ctx, &arg); nil != err {
 			return nil, err
 		} else {
 			values.Add(arg.Name, cast.ToString(val))

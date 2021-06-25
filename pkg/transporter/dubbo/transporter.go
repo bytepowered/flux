@@ -4,13 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/apache/dubbo-go/common/extension"
-	"github.com/apache/dubbo-go/common/proxy"
-	"github.com/apache/dubbo-go/common/proxy/proxy_factory"
-	ext "github.com/bytepowered/fluxgo/pkg/ext"
-	"github.com/bytepowered/fluxgo/pkg/flux"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
-	jsoniter "github.com/json-iterator/go"
+
 	"reflect"
 	"regexp"
 	"sync"
@@ -20,8 +14,15 @@ import (
 import (
 	"github.com/apache/dubbo-go/common"
 	"github.com/apache/dubbo-go/common/constant"
+	"github.com/apache/dubbo-go/common/extension"
+	"github.com/apache/dubbo-go/common/proxy"
+	"github.com/apache/dubbo-go/common/proxy/proxy_factory"
 	dubgo "github.com/apache/dubbo-go/config"
 	"github.com/apache/dubbo-go/protocol/dubbo"
+	"github.com/bytepowered/fluxgo/pkg/ext"
+	"github.com/bytepowered/fluxgo/pkg/flux"
+	"github.com/bytepowered/fluxgo/pkg/logger"
+	jsoniter "github.com/json-iterator/go"
 )
 
 import (
@@ -81,7 +82,7 @@ type RpcTransporter struct {
 	serviceFunc      GenericServiceFunc      // Dubbo Service 构建函数
 	invokeFunc       GenericInvokeFunc       // 执行Dubbo泛调用的函数
 	argsAssembleFunc AssembleArgumentsFunc   // Dubbo参数封装函数
-	attrAssemblyFunc AssembleAttachmentsFunc // Attachment封装函数
+	attrAssembleFunc AssembleAttachmentsFunc // Attachment封装函数
 	codec            flux.TransportCodecFunc // 解析响应结果的函数
 	// 内部私有
 	trace         bool
@@ -99,7 +100,7 @@ func WithAssembleArgumentsFunc(fun AssembleArgumentsFunc) Option {
 // WithAssembleAttachmentsFunc 用于配置Attachment封装实现函数
 func WithAssembleAttachmentsFunc(fun AssembleAttachmentsFunc) Option {
 	return func(service *RpcTransporter) {
-		service.attrAssemblyFunc = fun
+		service.attrAssembleFunc = fun
 	}
 }
 
@@ -199,11 +200,11 @@ func NewTransporterOverride(overrides ...Option) flux.Transporter {
 
 // OnInit init transporter
 func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
-	logger.Info("Dubbo transporter transporter initializing")
+	logger.Info("TRANSPORTER:DUBBO:INIT")
 	config.SetDefaults(b.defaults)
 	b.configuration = config
 	b.trace = config.GetBool(ConfigKeyTraceEnable)
-	logger.Infow("Dubbo transporter transporter request trace", "enable", b.trace)
+	logger.Infow("TRANSPORTER:DUBBO:INIT/trace", "enable", b.trace)
 	// Set default impl if not present
 	if nil == b.optionsFunc {
 		b.optionsFunc = make([]GenericOptionsFunc, 0)
@@ -218,7 +219,7 @@ func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
 	registry.SetKeyAlias(b.registry)
 	if id, rconfig := newConsumerRegistry(registry); id != "" && nil != rconfig {
 		consumerc.Registries[id] = rconfig
-		logger.Infow("Dubbo transporter transporter setup registry", "id", id, "config", rconfig)
+		logger.Infow("TRANSPORTER:DUBBO:INIT/registry", "id", id, "config", rconfig)
 	}
 	dubgo.SetConsumerConfig(consumerc)
 	return nil
@@ -226,6 +227,9 @@ func (b *RpcTransporter) OnInit(config *flux.Configuration) error {
 
 // OnStartup startup service
 func (b *RpcTransporter) OnStartup() error {
+	flux.AssertNotNil(b.codec, "<codec-func> must not nil")
+	flux.AssertNotNil(b.argsAssembleFunc, "<arguments-assemble-func> must not nil")
+	flux.AssertNotNil(b.attrAssembleFunc, "<attachment-assemble-func> must not nil")
 	return nil
 }
 
@@ -250,7 +254,7 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.ServiceSpec) (
 			CauseError: err,
 		}
 	}
-	attachments, err := b.attrAssemblyFunc(ctx, &service)
+	attachments, err := b.attrAssembleFunc(ctx, &service)
 	if nil != err {
 		trace.Errorw("TRANSPORTER:DUBBO:ASSEMBLE/attachments", "error", err)
 		return nil, &flux.ServeError{
