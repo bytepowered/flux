@@ -377,7 +377,7 @@ func (d *DispatcherManager) onEndpointEvent(event flux.EndpointEvent) {
 	// Check http method
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	if !SupportedHttpMethod(method) {
-		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", epvars...)
+		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/ignore", epvars...)
 		return
 	}
 	if err := internal.VerifyAnnotations(ep.Annotations); err != nil {
@@ -458,13 +458,14 @@ func (d *DispatcherManager) SetWebNotfoundHandler(nfh flux.WebHandlerFunc) {
 
 // AddWebListener 添加指定ID
 func (d *DispatcherManager) AddWebListener(listenerID string, listener flux.WebListener) {
-	flux.AssertNotNil(listener, "WebListener Must Not nil")
-	flux.AssertNotEmpty(listenerID, "WebListener Id Must Not empty")
+	flux.AssertNotNil(listener, "<web-listener> must not nil")
+	flux.AssertNotEmpty(listenerID, "<web-listener-id> must not empty")
 	d.dispatchers[listenerID] = newDispatcher(listener)
 }
 
 // WebListenerById 返回ListenServer实例
 func (d *DispatcherManager) WebListenerById(listenerID string) (flux.WebListener, bool) {
+	flux.AssertNotEmpty(listenerID, "<web-listener-id> must not empty")
 	dis, ok := d.dispatchers[listenerID]
 	return dis.WebListener, ok
 }
@@ -505,14 +506,14 @@ func (d *DispatcherManager) defaultListener() flux.WebListener {
 func (d *DispatcherManager) syncService(ep *flux.EndpointSpec) {
 	// Endpoint为静态模型，不支持动态更新
 	if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
-		logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+		logger.Infow("SERVER:EVENT:SYN-MODEL/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 		return
 	}
 	service, ok := ext.ServiceByID(ep.ServiceId)
 	if !ok {
 		return
 	}
-	logger.Infow("SERVER:EVENT:MAPMETA/sync-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+	logger.Infow("SERVER:EVENT:SYN-MODEL/sync-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 	ep.Service = service
 }
 
@@ -523,11 +524,11 @@ func (d *DispatcherManager) syncEndpoint(srv *flux.ServiceSpec) {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新
 			if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
-				logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				logger.Infow("SERVER:EVENT:SYN-MODEL/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				continue
 			}
 			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
-				logger.Infow("SERVER:EVENT:MAPMETA/sync-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				logger.Infow("SERVER:EVENT:SYN-MODEL/sync-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				ep.Service = *srv
 			}
 		}

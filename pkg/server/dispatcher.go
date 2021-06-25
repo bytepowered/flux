@@ -92,32 +92,7 @@ func (d *dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (e
 	return d.dispatch(ctxw)
 }
 
-func (d *dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
-	// 动态Endpoint版本选择
-	for _, selector := range ext.EndpointSelectors() {
-		if selector.Active(webex, server.ListenerId()) {
-			if ep, ok := selector.DoSelect(webex, server.ListenerId(), endpoints); ok {
-				return ep, true
-			}
-		}
-	}
-	// 默认版本选择
-	return endpoints.Lookup(d.versionLocator(webex))
-}
-
 func (d *dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
-	// 统计异常
-	wrapMetricFunc := func(err *flux.ServeError) *flux.ServeError {
-		// Access Counter: ProtoName, Interface, Method
-		service := ctx.Service()
-		proto, uri, method := service.Protocol, service.Interface, service.Method
-		d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
-		if flux.NotNil(err) {
-			// Error Counter: ProtoName, Interface, Method, ErrorCode
-			d.metrics.EndpointError.WithLabelValues(proto, uri, method, cast.ToString(err.ErrorCode)).Inc()
-		}
-		return err
-	}
 	// Metric: Route
 	defer func() {
 		ctx.AddMetric("dispatcher", time.Since(ctx.StartAt()))
@@ -135,10 +110,42 @@ func (d *dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 		}
 		return d.doTransport(ctx)
 	}
-	if rouerr := wrapMetricFunc(d.walk(next, filters)(ctx)); rouerr != nil {
-		d.responseWriter.WriteError(ctx, rouerr)
+	if wkerr := d.metric(ctx, d.walk(next, filters)(ctx)); wkerr != nil {
+		d.responseWriter.WriteError(ctx, wkerr)
 	}
 	return nil // always return nil
+}
+
+func (d *dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
+	for i := len(filters) - 1; i >= 0; i-- {
+		next = filters[i].DoFilter(next)
+	}
+	return next
+}
+
+func (d dispatcher) metric(ctx *flux.Context, err *flux.ServeError) *flux.ServeError {
+	// Access Counter: ProtoName, Interface, Method
+	service := ctx.Service()
+	proto, uri, method := service.Protocol, service.Interface, service.Method
+	d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
+	if flux.NotNil(err) {
+		// Error Counter: ProtoName, Interface, Method, ErrorCode
+		d.metrics.EndpointError.WithLabelValues(proto, uri, method, cast.ToString(err.ErrorCode)).Inc()
+	}
+	return err
+}
+
+func (d *dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
+	// 动态Endpoint版本选择
+	for _, selector := range ext.EndpointSelectors() {
+		if selector.Active(webex, server.ListenerId()) {
+			if ep, ok := selector.DoSelect(webex, server.ListenerId(), endpoints); ok {
+				return ep, true
+			}
+		}
+	}
+	// 默认版本选择
+	return endpoints.Lookup(d.versionLocator(webex))
 }
 
 func (d *dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
@@ -146,8 +153,8 @@ func (d *dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
 		ctx.AddMetric("plugins", time.Since(ctx.StartAt()))
 	}()
 	for _, plugin := range d.selectPlugins(ctx) {
-		if plerr := plugin.DoHandle(ctx); plerr != nil {
-			return plerr
+		if pherr := plugin.DoHandle(ctx); pherr != nil {
+			return pherr
 		}
 		ctx.AddMetric(plugin.PluginId(), time.Since(ctx.StartAt()))
 	}
@@ -214,13 +221,6 @@ func (d *dispatcher) selectPlugins(ctx *flux.Context) []flux.Plugin {
 		}
 	}
 	return append(ext.GlobalPlugins(), selective...)
-}
-
-func (d *dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
-	for i := len(filters) - 1; i >= 0; i-- {
-		next = filters[i].DoFilter(next)
-	}
-	return next
 }
 
 func (d *dispatcher) setResponseWriter(w flux.ServeResponseWriter) {

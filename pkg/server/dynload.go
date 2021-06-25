@@ -23,7 +23,7 @@ type AwareConfig struct {
 	Factory flux.Factory
 }
 
-// 动态加载Filter
+// dynamicFilters 动态加载Filter
 func dynamicFilters() ([]AwareConfig, error) {
 	out := make([]AwareConfig, 0)
 	fconfig := flux.NewConfiguration(dynConfigKeyDynamicFilter)
