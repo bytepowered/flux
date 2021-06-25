@@ -2,13 +2,13 @@ package main
 
 import (
 	"errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"os"
 	"time"
 )
 
 import (
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 )
 
@@ -63,20 +63,21 @@ func newDispatcherManager(options ...server.OptionFunc) *server.DispatcherManage
 	opts := []server.OptionFunc{
 		server.WithServerBanner("Flux.go"),
 		// WebApi WebListener
-		server.WithNewWebListener(listener.New(server.ListenerIdWebapi,
-			server.NewWebListenerOptions(server.ListenerIdWebapi), nil)),
-		server.OnGroupOptions(server.ListenerIdWebapi,
-			server.EnabledRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
+		server.WithNewDispatcherOptions(
+			listener.New(server.ListenerIdWebapi,
+				server.NewWebListenerOptions(server.ListenerIdWebapi), nil,
+			),
+			server.WithRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
 		),
 		// Admin WebListener
-		server.WithNewWebListener(listener.New(server.ListenerIdAdmin,
-			server.NewWebListenerOptions(server.ListenerIdAdmin), nil,
-			listener.WithHandlers([]listener.WebHandlerTuple{
-				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
-			}),
-		)),
-		server.OnGroupOptions(server.ListenerIdAdmin,
-			server.EnabledRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
+		server.WithNewDispatcherOptions(
+			listener.New(server.ListenerIdAdmin,
+				server.NewWebListenerOptions(server.ListenerIdAdmin), nil,
+				listener.WithHandlers([]listener.WebHandlerTuple{
+					{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
+				}),
+			),
+			server.WithRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
 		),
 	}
 	return server.NewDispatcherManager(append(opts, options...)...)

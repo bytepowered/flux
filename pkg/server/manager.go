@@ -43,13 +43,12 @@ const (
 
 type (
 	// OptionFunc 配置HttpServeEngine函数
-	OptionFunc           func(d *DispatcherManager)
-	DispatcherOptionFunc func(d *dispatcher)
+	OptionFunc func(d *DispatcherManager)
 )
 
-// DispatcherManager Server
+// DispatcherManager 管理Dispatcher
 type DispatcherManager struct {
-	dispatchers map[string]*dispatcher
+	dispatchers map[string]*Dispatcher
 	started     chan struct{}
 	stopped     chan struct{}
 	banner      string
@@ -69,50 +68,20 @@ func WithNewWebListener(webListener flux.WebListener) OptionFunc {
 	}
 }
 
-func OnGroupOptions(listenerId string, optfs ...DispatcherOptionFunc) OptionFunc {
+// WithNewDispatcherOptions 注册WebListener的Dispatcher对象，并配置相关参数
+func WithNewDispatcherOptions(webListener flux.WebListener, optfs ...DispatcherOptionFunc) OptionFunc {
 	return func(d *DispatcherManager) {
-		dis := d.ensureDispatcher(listenerId)
+		d.AddWebListener(webListener.ListenerId(), webListener)
+		dis := d.DispatcherById(webListener.ListenerId())
 		for _, optf := range optfs {
 			optf(dis)
 		}
 	}
 }
 
-// EnabledRequestVersionLocator 配置Web请求版本选择函数
-func EnabledRequestVersionLocator(fun flux.WebRequestVersionLocator) DispatcherOptionFunc {
-	return func(d *dispatcher) {
-		d.setVersionLocator(fun)
-	}
-}
-
-// EnabledServeResponseWriter 配置ResponseWriter
-func EnabledServeResponseWriter(writer flux.ServeResponseWriter) DispatcherOptionFunc {
-	return func(d *dispatcher) {
-		d.setResponseWriter(writer)
-	}
-}
-
-// EnabledOnBeforeTransportHookFunc 配置Transporter调用前的钩子函数列表
-func EnabledOnBeforeTransportHookFunc(hooks ...flux.OnBeforeTransportHookFunc) DispatcherOptionFunc {
-	return func(d *dispatcher) {
-		for _, h := range hooks {
-			d.addOnBeforeTransportHook(h)
-		}
-	}
-}
-
-// EnabledOnContextHooks 配置WebContext转换为fluxContext时后的钩子函数列表
-func EnabledOnContextHooks(hooks ...flux.OnContextHookFunc) DispatcherOptionFunc {
-	return func(d *dispatcher) {
-		for _, h := range hooks {
-			d.addOnContextHook(h)
-		}
-	}
-}
-
 func NewDispatcherManager(opts ...OptionFunc) *DispatcherManager {
 	server := &DispatcherManager{
-		dispatchers: make(map[string]*dispatcher, 2),
+		dispatchers: make(map[string]*Dispatcher, 2),
 		started:     make(chan struct{}),
 		stopped:     make(chan struct{}),
 		banner:      defaultBanner,
@@ -329,11 +298,11 @@ func (d *DispatcherManager) Shutdown(ctx goctx.Context) error {
 }
 
 func (d *DispatcherManager) serve(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
-	dis := d.ensureDispatcher(webex.WebListener().ListenerId())
+	dis := d.DispatcherById(webex.WebListener().ListenerId())
 	return dis.route(webex, versions)
 }
 
-func (d *DispatcherManager) ensureDispatcher(id string) *dispatcher {
+func (d *DispatcherManager) DispatcherById(id string) *Dispatcher {
 	dis := d.dispatchers[id]
 	flux.AssertNotNil(dis, "<dispatcher> must not nil, id: "+id)
 	return dis

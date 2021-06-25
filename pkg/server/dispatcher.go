@@ -20,7 +20,11 @@ import (
 	"github.com/bytepowered/fluxgo/pkg/logger"
 )
 
-type dispatcher struct {
+type (
+	DispatcherOptionFunc func(d *Dispatcher)
+)
+
+type Dispatcher struct {
 	flux.WebListener
 	metrics                *Metrics
 	pooled                 *sync.Pool
@@ -31,8 +35,40 @@ type dispatcher struct {
 	onBeforeTransportHooks []flux.OnBeforeTransportHookFunc
 }
 
-func newDispatcher(listener flux.WebListener) *dispatcher {
-	return &dispatcher{
+// WithRequestVersionLocator 配置Web请求版本选择函数
+func WithRequestVersionLocator(fun flux.WebRequestVersionLocator) DispatcherOptionFunc {
+	return func(d *Dispatcher) {
+		d.SetVersionLocator(fun)
+	}
+}
+
+// WithServeResponseWriter 配置ResponseWriter
+func WithServeResponseWriter(writer flux.ServeResponseWriter) DispatcherOptionFunc {
+	return func(d *Dispatcher) {
+		d.SetResponseWriter(writer)
+	}
+}
+
+// WithOnBeforeTransportHookFunc 配置Transporter调用前的钩子函数列表
+func WithOnBeforeTransportHookFunc(hooks ...flux.OnBeforeTransportHookFunc) DispatcherOptionFunc {
+	return func(d *Dispatcher) {
+		for _, h := range hooks {
+			d.AddOnBeforeTransportHook(h)
+		}
+	}
+}
+
+// WithOnContextHooks 配置WebContext转换为fluxContext时后的钩子函数列表
+func WithOnContextHooks(hooks ...flux.OnContextHookFunc) DispatcherOptionFunc {
+	return func(d *Dispatcher) {
+		for _, h := range hooks {
+			d.AddOnContextHook(h)
+		}
+	}
+}
+
+func newDispatcher(listener flux.WebListener) *Dispatcher {
+	return &Dispatcher{
 		WebListener:            listener,
 		metrics:                NewMetrics(listener.ListenerId()),
 		pooled:                 &sync.Pool{New: func() interface{} { return flux.NewContext() }},
@@ -44,7 +80,7 @@ func newDispatcher(listener flux.WebListener) *dispatcher {
 	}
 }
 
-func (d *dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
+func (d *Dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
 	defer func(id string) {
 		if panerr := recover(); panerr != nil {
 			trace := logger.Trace(id)
@@ -92,7 +128,7 @@ func (d *dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (e
 	return d.dispatch(ctxw)
 }
 
-func (d *dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
+func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	// Metric: Route
 	defer func() {
 		ctx.AddMetric("dispatcher", time.Since(ctx.StartAt()))
@@ -116,14 +152,14 @@ func (d *dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	return nil // always return nil
 }
 
-func (d *dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
+func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}
 	return next
 }
 
-func (d dispatcher) metric(ctx *flux.Context, err *flux.ServeError) *flux.ServeError {
+func (d Dispatcher) metric(ctx *flux.Context, err *flux.ServeError) *flux.ServeError {
 	// Access Counter: ProtoName, Interface, Method
 	service := ctx.Service()
 	proto, uri, method := service.Protocol, service.Interface, service.Method
@@ -135,7 +171,7 @@ func (d dispatcher) metric(ctx *flux.Context, err *flux.ServeError) *flux.ServeE
 	return err
 }
 
-func (d *dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
+func (d *Dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
 	// 动态Endpoint版本选择
 	for _, selector := range ext.EndpointSelectors() {
 		if selector.Active(webex, server.ListenerId()) {
@@ -148,7 +184,7 @@ func (d *dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endp
 	return endpoints.Lookup(d.versionLocator(webex))
 }
 
-func (d *dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
+func (d *Dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
 	defer func() {
 		ctx.AddMetric("plugins", time.Since(ctx.StartAt()))
 	}()
@@ -161,7 +197,7 @@ func (d *dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
 	return nil
 }
 
-func (d *dispatcher) doTransport(ctx *flux.Context) *flux.ServeError {
+func (d *Dispatcher) doTransport(ctx *flux.Context) *flux.ServeError {
 	select {
 	case <-ctx.Context().Done():
 		return &flux.ServeError{StatusCode: flux.StatusBadRequest,
@@ -203,7 +239,27 @@ func (d *dispatcher) doTransport(ctx *flux.Context) *flux.ServeError {
 	}
 }
 
-func (d *dispatcher) selectFilters(ctx *flux.Context) []flux.Filter {
+func (d *Dispatcher) SetResponseWriter(w flux.ServeResponseWriter) {
+	d.responseWriter = w
+}
+
+func (d *Dispatcher) SetVersionLocator(l flux.WebRequestVersionLocator) {
+	d.versionLocator = l
+}
+
+func (d *Dispatcher) AddOnBeforeFilterHook(h flux.OnBeforeFilterHookFunc) {
+	d.onBeforeFilterHooks = append(d.onBeforeFilterHooks, h)
+}
+
+func (d *Dispatcher) AddOnBeforeTransportHook(h flux.OnBeforeTransportHookFunc) {
+	d.onBeforeTransportHooks = append(d.onBeforeTransportHooks, h)
+}
+
+func (d *Dispatcher) AddOnContextHook(h flux.OnContextHookFunc) {
+	d.onContextHooks = append(d.onContextHooks, h)
+}
+
+func (d *Dispatcher) selectFilters(ctx *flux.Context) []flux.Filter {
 	selective := make([]flux.Filter, 0, 16)
 	for _, selector := range ext.FilterSelectors() {
 		if selector.Activate(ctx) {
@@ -213,7 +269,7 @@ func (d *dispatcher) selectFilters(ctx *flux.Context) []flux.Filter {
 	return append(ext.GlobalFilters(), selective...)
 }
 
-func (d *dispatcher) selectPlugins(ctx *flux.Context) []flux.Plugin {
+func (d *Dispatcher) selectPlugins(ctx *flux.Context) []flux.Plugin {
 	selective := make([]flux.Plugin, 0, 16)
 	for _, selector := range ext.PluginSelectors() {
 		if selector.Activate(ctx) {
@@ -223,27 +279,7 @@ func (d *dispatcher) selectPlugins(ctx *flux.Context) []flux.Plugin {
 	return append(ext.GlobalPlugins(), selective...)
 }
 
-func (d *dispatcher) setResponseWriter(w flux.ServeResponseWriter) {
-	d.responseWriter = w
-}
-
-func (d *dispatcher) setVersionLocator(l flux.WebRequestVersionLocator) {
-	d.versionLocator = l
-}
-
-func (d *dispatcher) addOnBeforeFilterHook(h flux.OnBeforeFilterHookFunc) {
-	d.onBeforeFilterHooks = append(d.onBeforeFilterHooks, h)
-}
-
-func (d *dispatcher) addOnBeforeTransportHook(h flux.OnBeforeTransportHookFunc) {
-	d.onBeforeTransportHooks = append(d.onBeforeTransportHooks, h)
-}
-
-func (d *dispatcher) addOnContextHook(h flux.OnContextHookFunc) {
-	d.onContextHooks = append(d.onContextHooks, h)
-}
-
-func (*dispatcher) dup(toep *flux.EndpointSpec, fromep *flux.EndpointSpec) error {
+func (*Dispatcher) dup(toep *flux.EndpointSpec, fromep *flux.EndpointSpec) error {
 	return copier.CopyWithOption(toep, fromep, copier.Option{
 		DeepCopy: true,
 	})
