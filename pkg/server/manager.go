@@ -43,7 +43,8 @@ const (
 
 type (
 	// OptionFunc 配置HttpServeEngine函数
-	OptionFunc func(gs *DispatcherManager)
+	OptionFunc           func(d *DispatcherManager)
+	DispatcherOptionFunc func(d *dispatcher)
 )
 
 // DispatcherManager Server
@@ -63,49 +64,48 @@ func WithServerBanner(banner string) OptionFunc {
 
 // WithNewWebListener 配置WebListener
 func WithNewWebListener(webListener flux.WebListener) OptionFunc {
-	return func(bs *DispatcherManager) {
-		bs.AddWebListener(webListener.ListenerId(), webListener)
+	return func(d *DispatcherManager) {
+		d.AddWebListener(webListener.ListenerId(), webListener)
 	}
 }
 
-// EnabledOnContextHooks 配置请求Hook函数列表
-func EnabledOnContextHooks(listenerId string, hooks ...flux.OnContextHookFunc) OptionFunc {
+func OnGroupOptions(listenerId string, optfs ...DispatcherOptionFunc) OptionFunc {
 	return func(d *DispatcherManager) {
 		dis := d.ensureDispatcher(listenerId)
-		for _, h := range hooks {
-			dis.addOnContextHook(h)
+		for _, optf := range optfs {
+			optf(dis)
 		}
 	}
 }
 
 // EnabledRequestVersionLocator 配置Web请求版本选择函数
-func EnabledRequestVersionLocator(listenerId string, fun flux.WebRequestVersionLocator) OptionFunc {
-	return func(d *DispatcherManager) {
-		d.ensureDispatcher(listenerId).setVersionLocator(fun)
+func EnabledRequestVersionLocator(fun flux.WebRequestVersionLocator) DispatcherOptionFunc {
+	return func(d *dispatcher) {
+		d.setVersionLocator(fun)
 	}
 }
 
 // EnabledServeResponseWriter 配置ResponseWriter
-func EnabledServeResponseWriter(listenerId string, writer flux.ServeResponseWriter) OptionFunc {
-	return func(d *DispatcherManager) {
-		d.ensureDispatcher(listenerId).setResponseWriter(writer)
+func EnabledServeResponseWriter(writer flux.ServeResponseWriter) DispatcherOptionFunc {
+	return func(d *dispatcher) {
+		d.setResponseWriter(writer)
 	}
 }
 
-func WithOnBeforeFilterHookFunc(listenerId string, hooks ...flux.OnBeforeFilterHookFunc) OptionFunc {
-	return func(d *DispatcherManager) {
-		dis := d.ensureDispatcher(listenerId)
+// EnabledOnBeforeTransportHookFunc 配置Transporter调用前的钩子函数列表
+func EnabledOnBeforeTransportHookFunc(hooks ...flux.OnBeforeTransportHookFunc) DispatcherOptionFunc {
+	return func(d *dispatcher) {
 		for _, h := range hooks {
-			dis.addOnBeforeFilterHook(h)
+			d.addOnBeforeTransportHook(h)
 		}
 	}
 }
 
-func EnabledOnBeforeTransportHookFunc(listenerId string, hooks ...flux.OnBeforeTransportHookFunc) OptionFunc {
-	return func(d *DispatcherManager) {
-		dis := d.ensureDispatcher(listenerId)
+// EnabledOnContextHooks 配置WebContext转换为fluxContext时后的钩子函数列表
+func EnabledOnContextHooks(hooks ...flux.OnContextHookFunc) DispatcherOptionFunc {
+	return func(d *dispatcher) {
 		for _, h := range hooks {
-			dis.addOnBeforeTransportHook(h)
+			d.addOnContextHook(h)
 		}
 	}
 }

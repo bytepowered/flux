@@ -62,21 +62,22 @@ func main() {
 func newDispatcherManager(options ...server.OptionFunc) *server.DispatcherManager {
 	opts := []server.OptionFunc{
 		server.WithServerBanner("Flux.go"),
-		// Default WebListener
-		server.WithNewWebListener(listener.New(server.ListenerIdDefault,
-			server.NewWebListenerOptions(server.ListenerIdDefault), nil)),
+		// WebApi WebListener
+		server.WithNewWebListener(listener.New(server.ListenerIdWebapi,
+			server.NewWebListenerOptions(server.ListenerIdWebapi), nil)),
+		server.OnGroupOptions(server.ListenerIdWebapi,
+			server.EnabledRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
+		),
 		// Admin WebListener
 		server.WithNewWebListener(listener.New(server.ListenerIdAdmin,
 			server.NewWebListenerOptions(server.ListenerIdAdmin), nil,
-			// 内部元数据查询
 			listener.WithHandlers([]listener.WebHandlerTuple{
-				// Metrics
 				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
 			}),
 		)),
-		// Setup
-		server.EnabledRequestVersionLocator(server.ListenerIdDefault, server.DefaultRequestVersionLocateFunc),
-		server.EnabledRequestVersionLocator(server.ListenerIdAdmin, server.DefaultRequestVersionLocateFunc),
+		server.OnGroupOptions(server.ListenerIdAdmin,
+			server.EnabledRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
+		),
 	}
 	return server.NewDispatcherManager(append(opts, options...)...)
 }
