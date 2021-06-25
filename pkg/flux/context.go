@@ -77,8 +77,8 @@ func (c *Context) Attribute(key string, defval interface{}) interface{} {
 
 // Attributes 返回所有Attributes键值对；只读；
 // 搜索位置及顺序：
-// 1. Context自身的Attributes；【HIGH】
-// 2. Endpoint的Attributes；【LOW】
+// 1. 【HIGH】Context自身的Attributes；
+// 2. 【LOW】Endpoint的Attributes；
 func (c *Context) Attributes() map[string]interface{} {
 	out := make(map[string]interface{}, len(c.attributes))
 	for _, attr := range c.endpoint.Attributes {

@@ -26,6 +26,6 @@ func DefaultArgumentsAssembleFunc(ctx *flux.Context, arguments []flux.ServiceArg
 }
 
 // DefaultAssembleAttachmentFunc 默认实现封装DubboAttachment的函数
-func DefaultAssembleAttachmentFunc(ctx *flux.Context) (interface{}, error) {
+func DefaultAssembleAttachmentFunc(ctx *flux.Context, service *flux.ServiceSpec) (map[string]interface{}, error) {
 	return ctx.Attributes(), nil
 }

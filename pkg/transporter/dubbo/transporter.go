@@ -60,7 +60,7 @@ type (
 	// AssembleArgumentsFunc Dubbo调用参数封装函数，可外部化配置为其它协议的值对象
 	AssembleArgumentsFunc func(context *flux.Context, arguments []flux.ServiceArgumentSpec) (types []string, values interface{}, err error)
 	// AssembleAttachmentsFunc 封装Attachment附件的函数
-	AssembleAttachmentsFunc func(context *flux.Context) (interface{}, error)
+	AssembleAttachmentsFunc func(context *flux.Context, service *flux.ServiceSpec) (map[string]interface{}, error)
 )
 
 type (
@@ -250,7 +250,7 @@ func (b *RpcTransporter) DoInvoke(ctx *flux.Context, service flux.ServiceSpec) (
 			CauseError: err,
 		}
 	}
-	attachments, err := b.attrAssemblyFunc(ctx)
+	attachments, err := b.attrAssemblyFunc(ctx, &service)
 	if nil != err {
 		trace.Errorw("TRANSPORTER:DUBBO:ASSEMBLE/attachments", "error", err)
 		return nil, &flux.ServeError{
