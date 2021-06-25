@@ -22,6 +22,7 @@ const (
 // ServiceSpec 定义连接上游目标服务的信息
 type ServiceSpec struct {
 	Kind        string                `json:"kind" yaml:"kind"`               // Service类型
+	Application string                `json:"application" yaml:"application"` // 所属应用名
 	AliasId     string                `json:"aliasId" yaml:"aliasId"`         // Service别名
 	Url         string                `json:"url" yaml:"url"`                 // Service侧的URL
 	Protocol    string                `json:"protocol" yaml:"protocol"`       // Service侧后端协议

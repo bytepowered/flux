@@ -43,12 +43,12 @@ const (
 
 type (
 	// OptionFunc 配置HttpServeEngine函数
-	OptionFunc func(gs *DispatcherManager)
+	OptionFunc func(d *DispatcherManager)
 )
 
-// DispatcherManager Server
+// DispatcherManager 管理Dispatcher
 type DispatcherManager struct {
-	dispatchers map[string]*dispatcher
+	dispatchers map[string]*Dispatcher
 	started     chan struct{}
 	stopped     chan struct{}
 	banner      string
@@ -63,56 +63,25 @@ func WithServerBanner(banner string) OptionFunc {
 
 // WithNewWebListener 配置WebListener
 func WithNewWebListener(webListener flux.WebListener) OptionFunc {
-	return func(bs *DispatcherManager) {
-		bs.AddWebListener(webListener.ListenerId(), webListener)
+	return func(d *DispatcherManager) {
+		d.AddWebListener(webListener.ListenerId(), webListener)
 	}
 }
 
-// EnabledOnContextHooks 配置请求Hook函数列表
-func EnabledOnContextHooks(listenerId string, hooks ...flux.OnContextHookFunc) OptionFunc {
+// WithNewDispatcherOptions 注册WebListener的Dispatcher对象，并配置相关参数
+func WithNewDispatcherOptions(webListener flux.WebListener, optfs ...DispatcherOptionFunc) OptionFunc {
 	return func(d *DispatcherManager) {
-		dis := d.ensureDispatcher(listenerId)
-		for _, h := range hooks {
-			dis.addOnContextHook(h)
-		}
-	}
-}
-
-// EnabledRequestVersionLocator 配置Web请求版本选择函数
-func EnabledRequestVersionLocator(listenerId string, fun flux.WebRequestVersionLocator) OptionFunc {
-	return func(d *DispatcherManager) {
-		d.ensureDispatcher(listenerId).setVersionLocator(fun)
-	}
-}
-
-// EnabledServeResponseWriter 配置ResponseWriter
-func EnabledServeResponseWriter(listenerId string, writer flux.ServeResponseWriter) OptionFunc {
-	return func(d *DispatcherManager) {
-		d.ensureDispatcher(listenerId).setResponseWriter(writer)
-	}
-}
-
-func WithOnBeforeFilterHookFunc(listenerId string, hooks ...flux.OnBeforeFilterHookFunc) OptionFunc {
-	return func(d *DispatcherManager) {
-		dis := d.ensureDispatcher(listenerId)
-		for _, h := range hooks {
-			dis.addOnBeforeFilterHook(h)
-		}
-	}
-}
-
-func EnabledOnBeforeTransportHookFunc(listenerId string, hooks ...flux.OnBeforeTransportHookFunc) OptionFunc {
-	return func(d *DispatcherManager) {
-		dis := d.ensureDispatcher(listenerId)
-		for _, h := range hooks {
-			dis.addOnBeforeTransportHook(h)
+		d.AddWebListener(webListener.ListenerId(), webListener)
+		dis := d.DispatcherById(webListener.ListenerId())
+		for _, optf := range optfs {
+			optf(dis)
 		}
 	}
 }
 
 func NewDispatcherManager(opts ...OptionFunc) *DispatcherManager {
 	server := &DispatcherManager{
-		dispatchers: make(map[string]*dispatcher, 2),
+		dispatchers: make(map[string]*Dispatcher, 2),
 		started:     make(chan struct{}),
 		stopped:     make(chan struct{}),
 		banner:      defaultBanner,
@@ -329,11 +298,11 @@ func (d *DispatcherManager) Shutdown(ctx goctx.Context) error {
 }
 
 func (d *DispatcherManager) serve(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
-	dis := d.ensureDispatcher(webex.WebListener().ListenerId())
+	dis := d.DispatcherById(webex.WebListener().ListenerId())
 	return dis.route(webex, versions)
 }
 
-func (d *DispatcherManager) ensureDispatcher(id string) *dispatcher {
+func (d *DispatcherManager) DispatcherById(id string) *Dispatcher {
 	dis := d.dispatchers[id]
 	flux.AssertNotNil(dis, "<dispatcher> must not nil, id: "+id)
 	return dis
@@ -377,7 +346,7 @@ func (d *DispatcherManager) onEndpointEvent(event flux.EndpointEvent) {
 	// Check http method
 	method := strings.ToUpper(event.Endpoint.HttpMethod)
 	if !SupportedHttpMethod(method) {
-		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/IGNORE", epvars...)
+		logger.Warnw("SERVER:EVENT:ENDPOINT:METHOD/ignore", epvars...)
 		return
 	}
 	if err := internal.VerifyAnnotations(ep.Annotations); err != nil {
@@ -458,13 +427,14 @@ func (d *DispatcherManager) SetWebNotfoundHandler(nfh flux.WebHandlerFunc) {
 
 // AddWebListener 添加指定ID
 func (d *DispatcherManager) AddWebListener(listenerID string, listener flux.WebListener) {
-	flux.AssertNotNil(listener, "WebListener Must Not nil")
-	flux.AssertNotEmpty(listenerID, "WebListener Id Must Not empty")
+	flux.AssertNotNil(listener, "<web-listener> must not nil")
+	flux.AssertNotEmpty(listenerID, "<web-listener-id> must not empty")
 	d.dispatchers[listenerID] = newDispatcher(listener)
 }
 
 // WebListenerById 返回ListenServer实例
 func (d *DispatcherManager) WebListenerById(listenerID string) (flux.WebListener, bool) {
+	flux.AssertNotEmpty(listenerID, "<web-listener-id> must not empty")
 	dis, ok := d.dispatchers[listenerID]
 	return dis.WebListener, ok
 }
@@ -505,14 +475,14 @@ func (d *DispatcherManager) defaultListener() flux.WebListener {
 func (d *DispatcherManager) syncService(ep *flux.EndpointSpec) {
 	// Endpoint为静态模型，不支持动态更新
 	if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
-		logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+		logger.Infow("SERVER:EVENT:SYN-MODEL/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 		return
 	}
 	service, ok := ext.ServiceByID(ep.ServiceId)
 	if !ok {
 		return
 	}
-	logger.Infow("SERVER:EVENT:MAPMETA/sync-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+	logger.Infow("SERVER:EVENT:SYN-MODEL/sync-service", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 	ep.Service = service
 }
 
@@ -523,11 +493,11 @@ func (d *DispatcherManager) syncEndpoint(srv *flux.ServiceSpec) {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新
 			if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
-				logger.Infow("SERVER:EVENT:MAPMETA/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				logger.Infow("SERVER:EVENT:SYN-MODEL/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				continue
 			}
 			if toolkit.MatchEqual([]string{srv.ServiceID(), srv.AliasId}, ep.ServiceId) {
-				logger.Infow("SERVER:EVENT:MAPMETA/sync-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
+				logger.Infow("SERVER:EVENT:SYN-MODEL/sync-endpoint", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
 				ep.Service = *srv
 			}
 		}

@@ -117,7 +117,7 @@ func (c *Context) StartAt() time.Time {
 // AddMetric 添加路由耗时统计节点
 func (c *Context) AddMetric(name string, elapsed time.Duration) {
 	c.metrics = append(c.metrics, TraceMetric{
-		Name: name, Elapses: elapsed.String(),
+		Name: name, Latency: elapsed.String(),
 	})
 }
 
@@ -142,7 +142,7 @@ func (c *Context) Logger() Logger {
 // TraceMetric 请求路由的的统计数据
 type TraceMetric struct {
 	Name    string `json:"name"`
-	Elapses string `json:"elapses"`
+	Latency string `json:"latency"`
 }
 
 // Logger 日志Logger接口定义

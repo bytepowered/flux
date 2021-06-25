@@ -2,13 +2,13 @@ package main
 
 import (
 	"errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"os"
 	"time"
 )
 
 import (
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 )
 
@@ -62,21 +62,23 @@ func main() {
 func newDispatcherManager(options ...server.OptionFunc) *server.DispatcherManager {
 	opts := []server.OptionFunc{
 		server.WithServerBanner("Flux.go"),
-		// Default WebListener
-		server.WithNewWebListener(listener.New(server.ListenerIdDefault,
-			server.NewWebListenerOptions(server.ListenerIdDefault), nil)),
+		// WebApi WebListener
+		server.WithNewDispatcherOptions(
+			listener.New(server.ListenerIdWebapi,
+				server.NewWebListenerOptions(server.ListenerIdWebapi), nil,
+			),
+			server.WithRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
+		),
 		// Admin WebListener
-		server.WithNewWebListener(listener.New(server.ListenerIdAdmin,
-			server.NewWebListenerOptions(server.ListenerIdAdmin), nil,
-			// 内部元数据查询
-			listener.WithHandlers([]listener.WebHandlerTuple{
-				// Metrics
-				{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
-			}),
-		)),
-		// Setup
-		server.EnabledRequestVersionLocator(server.ListenerIdDefault, server.DefaultRequestVersionLocateFunc),
-		server.EnabledRequestVersionLocator(server.ListenerIdAdmin, server.DefaultRequestVersionLocateFunc),
+		server.WithNewDispatcherOptions(
+			listener.New(server.ListenerIdAdmin,
+				server.NewWebListenerOptions(server.ListenerIdAdmin), nil,
+				listener.WithHandlers([]listener.WebHandlerTuple{
+					{Method: "GET", Pattern: "/inspect/metrics", Handler: flux.WrapHttpHandler(promhttp.Handler())},
+				}),
+			),
+			server.WithRequestVersionLocator(server.DefaultRequestVersionLocateFunc),
+		),
 	}
 	return server.NewDispatcherManager(append(opts, options...)...)
 }
