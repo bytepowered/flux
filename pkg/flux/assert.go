@@ -12,7 +12,8 @@ const (
 
 var (
 	_AssertEnabled = func() bool {
-		v, ok := os.LookupEnv("ASSERT_DISABLED")
+		// 允许通过环境变量禁用断言
+		v, ok := os.LookupEnv("FLUX_ASSERT_DISABLED")
 		return !ok || "true" != v
 	}()
 )

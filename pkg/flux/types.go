@@ -76,6 +76,10 @@ func (a NamedValueSpec) GetStrings() []string {
 	return cast.ToStringSlice(a.Value)
 }
 
+func (a NamedValueSpec) GetBoolean() bool {
+	return cast.ToBool(a.Value)
+}
+
 func (a NamedValueSpec) IsValid() bool {
 	return a.Name != "" && a.Value != nil
 }
