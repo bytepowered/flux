@@ -5,21 +5,21 @@ import (
 )
 
 var (
-	endpointDiscoveryMap = make(map[string]flux.EndpointDiscovery, 4)
+	metadataDiscoveryMap = make(map[string]flux.MetadataDiscovery, 4)
 )
 
-func RegisterEndpointDiscovery(discovery flux.EndpointDiscovery) {
-	endpointDiscoveryMap[discovery.Id()] = discovery
+func RegisterMetadataDiscovery(discovery flux.MetadataDiscovery) {
+	metadataDiscoveryMap[discovery.Id()] = discovery
 }
 
-func EndpointDiscoveryById(id string) (flux.EndpointDiscovery, bool) {
-	v, ok := endpointDiscoveryMap[id]
+func MetadataDiscoveryById(id string) (flux.MetadataDiscovery, bool) {
+	v, ok := metadataDiscoveryMap[id]
 	return v, ok
 }
 
-func EndpointDiscoveries() []flux.EndpointDiscovery {
-	out := make([]flux.EndpointDiscovery, 0, len(endpointDiscoveryMap))
-	for _, d := range endpointDiscoveryMap {
+func MetadataDiscoveries() []flux.MetadataDiscovery {
+	out := make([]flux.MetadataDiscovery, 0, len(metadataDiscoveryMap))
+	for _, d := range metadataDiscoveryMap {
 		out = append(out, d)
 	}
 	return out

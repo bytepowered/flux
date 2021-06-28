@@ -14,6 +14,7 @@ import (
 const (
 	NamespaceWebListeners = "listeners"
 	NamespaceTransporters = "transporters"
+	NamespaceDiscoveries  = "discoveries"
 )
 
 // MakeConfigurationKey 根据Key列表，构建Configuration的查询Key。

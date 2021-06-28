@@ -30,15 +30,15 @@ const (
 	zkConfigRegistrySelector = "registry_selector"
 )
 
-var _ flux.EndpointDiscovery = new(ZookeeperEndpointDiscovery)
+var _ flux.MetadataDiscovery = new(ZookeeperMetadataDiscovery)
 
 type (
-	// ZookeeperOption 配置函数
-	ZookeeperOption func(discovery *ZookeeperEndpointDiscovery)
+	// ZookeeperDiscoveryOption 配置函数
+	ZookeeperDiscoveryOption func(discovery *ZookeeperMetadataDiscovery)
 )
 
-// ZookeeperEndpointDiscovery 基于ZK节点树实现的Endpoint元数据注册中心
-type ZookeeperEndpointDiscovery struct {
+// ZookeeperMetadataDiscovery 基于ZK节点树实现的Endpoint元数据注册中心
+type ZookeeperMetadataDiscovery struct {
 	id                 string
 	endpointPath       string
 	servicePath        string
@@ -49,33 +49,33 @@ type ZookeeperEndpointDiscovery struct {
 	endpointFilter     EndpointFilter
 }
 
-func WithZookeeperDecodeServiceFunc(f DecodeServiceFunc) ZookeeperOption {
-	return func(discovery *ZookeeperEndpointDiscovery) {
+func WithZookeeperDecodeServiceFunc(f DecodeServiceFunc) ZookeeperDiscoveryOption {
+	return func(discovery *ZookeeperMetadataDiscovery) {
 		discovery.decodeServiceFunc = f
 	}
 }
 
-func WithZookeeperDecodeEndpointFunc(f DecodeEndpointFunc) ZookeeperOption {
-	return func(discovery *ZookeeperEndpointDiscovery) {
+func WithZookeeperDecodeEndpointFunc(f DecodeEndpointFunc) ZookeeperDiscoveryOption {
+	return func(discovery *ZookeeperMetadataDiscovery) {
 		discovery.decodeEndpointFunc = f
 	}
 }
 
-func WithZookeeperEndpointFilter(f EndpointFilter) ZookeeperOption {
-	return func(discovery *ZookeeperEndpointDiscovery) {
+func WithZookeeperEndpointFilter(f EndpointFilter) ZookeeperDiscoveryOption {
+	return func(discovery *ZookeeperMetadataDiscovery) {
 		discovery.endpointFilter = f
 	}
 }
 
-func WithZookeeperServiceFilter(f ServiceFilter) ZookeeperOption {
-	return func(discovery *ZookeeperEndpointDiscovery) {
+func WithZookeeperServiceFilter(f ServiceFilter) ZookeeperDiscoveryOption {
+	return func(discovery *ZookeeperMetadataDiscovery) {
 		discovery.serviceFilter = f
 	}
 }
 
-// NewZookeeperEndpointDiscovery returns new a zookeeper discovery factory
-func NewZookeeperEndpointDiscovery(id string, opts ...ZookeeperOption) *ZookeeperEndpointDiscovery {
-	d := &ZookeeperEndpointDiscovery{
+// NewZookeeperMetadataSpecDiscovery returns new a zookeeper discovery factory
+func NewZookeeperMetadataSpecDiscovery(id string, opts ...ZookeeperDiscoveryOption) *ZookeeperMetadataDiscovery {
+	d := &ZookeeperMetadataDiscovery{
 		id:                 id,
 		decodeEndpointFunc: DecodeEndpoint,
 		decodeServiceFunc:  DecodeService,
@@ -92,12 +92,12 @@ func NewZookeeperEndpointDiscovery(id string, opts ...ZookeeperOption) *Zookeepe
 	return d
 }
 
-func (d *ZookeeperEndpointDiscovery) Id() string {
+func (d *ZookeeperMetadataDiscovery) Id() string {
 	return d.id
 }
 
 // OnInit init discovery
-func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
+func (d *ZookeeperMetadataDiscovery) OnInit(config *flux.Configuration) error {
 	config.SetDefaults(map[string]interface{}{
 		zkConfigRootpathEndpoint: zkDiscoveryEndpointPath,
 		zkConfigRootpathService:  zkDiscoveryServicePath,
@@ -106,7 +106,7 @@ func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
 	if len(selected) == 0 {
 		selected = []string{"default"}
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:INIT", "selected-registry", selected)
+	logger.Infow("METADISCOVERY:ZOOKEEPER:INIT", "selected-registry", selected)
 	d.endpointPath = config.GetString(zkConfigRootpathEndpoint)
 	d.servicePath = config.GetString(zkConfigRootpathService)
 	if d.endpointPath == "" || d.servicePath == "" {
@@ -118,7 +118,7 @@ func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
 		id := selected[i]
 		d.retrievers[i] = zk.NewZookeeperRetriever(id)
 		zkconf := registries.Sub(id)
-		logger.Infow("DISCOVERY:ZOOKEEPER:INIT/start-eds", "discovery-id", id)
+		logger.Infow("METADISCOVERY:ZOOKEEPER:INIT/start-eds", "discovery-id", id)
 		if err := d.retrievers[i].OnInit(zkconf); nil != err {
 			return err
 		}
@@ -126,8 +126,7 @@ func (d *ZookeeperEndpointDiscovery) OnInit(config *flux.Configuration) error {
 	return nil
 }
 
-// WatchEndpoints Listen http endpoints events
-func (d *ZookeeperEndpointDiscovery) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
+func (d *ZookeeperMetadataDiscovery) SubscribeEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	callback := func(event *remoting.NodeEvent) (err error) {
 		defer func() {
 			if r := recover(); nil != r {
@@ -147,16 +146,15 @@ func (d *ZookeeperEndpointDiscovery) WatchEndpoints(ctx context.Context, events 
 		}
 		return err
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:ENDPOINT/watch", "ep-path", d.endpointPath)
+	logger.Infow("METADISCOVERY:ZOOKEEPER:ENDPOINT/watch", "ep-path", d.endpointPath)
 	return d.onRetrievers(ctx, d.endpointPath, func(event remoting.NodeEvent) {
 		if err := callback(&event); err != nil {
-			logger.Warnw("DISCOVERY:ZOOKEEPER:ENDPOINT/failed", "ep-event", event, "error", err)
+			logger.Warnw("METADISCOVERY:ZOOKEEPER:ENDPOINT/failed", "ep-event", event, "error", err)
 		}
 	})
 }
 
-// WatchServices Listen gateway services events
-func (d *ZookeeperEndpointDiscovery) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
+func (d *ZookeeperMetadataDiscovery) SubscribeServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	callback := func(event *remoting.NodeEvent) (err error) {
 		defer func() {
 			if r := recover(); nil != r {
@@ -176,21 +174,21 @@ func (d *ZookeeperEndpointDiscovery) WatchServices(ctx context.Context, events c
 		}
 		return err
 	}
-	logger.Infow("DISCOVERY:ZOOKEEPER:SERVICE/watch", "service-path", d.servicePath)
+	logger.Infow("METADISCOVERY:ZOOKEEPER:SERVICE/watch", "service-path", d.servicePath)
 	return d.onRetrievers(ctx, d.servicePath, func(event remoting.NodeEvent) {
 		if err := callback(&event); err != nil {
-			logger.Warnw("DISCOVERY:ZOOKEEPER:SERVICE/failed", "service-event", event, "error", err)
+			logger.Warnw("METADISCOVERY:ZOOKEEPER:SERVICE/failed", "service-event", event, "error", err)
 		}
 	})
 }
 
-func (d *ZookeeperEndpointDiscovery) onRetrievers(ctx context.Context, path string, callback func(remoting.NodeEvent)) error {
+func (d *ZookeeperMetadataDiscovery) onRetrievers(ctx context.Context, path string, callback func(remoting.NodeEvent)) error {
 	for _, retriever := range d.retrievers {
 		watcher := func(ret *zk.ZookeeperRetriever, notify chan<- struct{}) {
 			if err := d.watch(ret, path, callback); err != nil {
-				logger.Errorw("DISCOVERY:ZOOKEEPER:WATCH/error", "watch-path", path, "error", err)
+				logger.Errorw("METADISCOVERY:ZOOKEEPER:WATCH/error", "watch-path", path, "error", err)
 			} else {
-				logger.Infow("DISCOVERY:ZOOKEEPER:WATCH/success", "watch-path", path)
+				logger.Infow("METADISCOVERY:ZOOKEEPER:WATCH/success", "watch-path", path)
 			}
 			notify <- struct{}{}
 		}
@@ -198,10 +196,10 @@ func (d *ZookeeperEndpointDiscovery) onRetrievers(ctx context.Context, path stri
 		go watcher(retriever, notify)
 		select {
 		case <-ctx.Done():
-			logger.Infow("DISCOVERY:ZOOKEEPER:WATCH/canceled", "watch-path", path)
+			logger.Infow("METADISCOVERY:ZOOKEEPER:WATCH/canceled", "watch-path", path)
 			return nil
 		case <-time.After(time.Minute):
-			logger.Warnw("DISCOVERY:ZOOKEEPER:WATCH/timeout", "watch-path", path)
+			logger.Warnw("METADISCOVERY:ZOOKEEPER:WATCH/timeout", "watch-path", path)
 		case <-notify:
 			continue
 		}
@@ -209,7 +207,7 @@ func (d *ZookeeperEndpointDiscovery) onRetrievers(ctx context.Context, path stri
 	return nil
 }
 
-func (d *ZookeeperEndpointDiscovery) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
+func (d *ZookeeperMetadataDiscovery) watch(retriever *zk.ZookeeperRetriever, rootpath string, nodeListener func(remoting.NodeEvent)) error {
 	exist, err := retriever.Exists(rootpath)
 	if nil != err {
 		return fmt.Errorf("check path exists, path: %s, error: %w", rootpath, err)
@@ -220,18 +218,18 @@ func (d *ZookeeperEndpointDiscovery) watch(retriever *zk.ZookeeperRetriever, roo
 		}
 	}
 	return retriever.AddChildChangedListener("", rootpath, func(event remoting.NodeEvent) {
-		logger.Infow("DISCOVERY:ZOOKEEPER:WATCH/recv", "event", event)
+		logger.Infow("METADISCOVERY:ZOOKEEPER:WATCH/recv", "event", event)
 		if event.Event == remoting.EventTypeChildAdd {
 			if err := retriever.AddChangedListener("", event.Path, nodeListener); nil != err {
-				logger.Warnw("DISCOVERY:ZOOKEEPER:WATCH/node", "path", event.Path, "error", err)
+				logger.Warnw("METADISCOVERY:ZOOKEEPER:WATCH/node", "path", event.Path, "error", err)
 			}
 		}
 	})
 }
 
 // OnStartup startup discovery service
-func (d *ZookeeperEndpointDiscovery) OnStartup() error {
-	logger.Info("DISCOVERY:ZOOKEEPER:STARTUP")
+func (d *ZookeeperMetadataDiscovery) OnStartup() error {
+	logger.Info("METADISCOVERY:ZOOKEEPER:STARTUP")
 	for _, retriever := range d.retrievers {
 		if err := retriever.OnStartup(); nil != err {
 			return err
@@ -241,8 +239,8 @@ func (d *ZookeeperEndpointDiscovery) OnStartup() error {
 }
 
 // OnShutdown shutdown discovery service
-func (d *ZookeeperEndpointDiscovery) OnShutdown(ctx context.Context) error {
-	logger.Info("DISCOVERY:ZOOKEEPER:SHUTDOWN")
+func (d *ZookeeperMetadataDiscovery) OnShutdown(ctx context.Context) error {
+	logger.Info("METADISCOVERY:ZOOKEEPER:SHUTDOWN")
 	for _, retriever := range d.retrievers {
 		if err := retriever.OnShutdown(ctx); nil != err {
 			return err

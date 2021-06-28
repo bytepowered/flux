@@ -120,7 +120,7 @@ func (d *DispatchServer) Init() error {
 		}
 	}
 	// 2. EDS
-	for _, eds := range ext.EndpointDiscoveries() {
+	for _, eds := range ext.MetadataDiscoveries() {
 		ext.AddStartupHook(eds)
 		ext.AddShutdownHook(eds)
 		err := onInitializer(eds, func(initable flux.Initializer) error {
@@ -262,12 +262,12 @@ func (d *DispatchServer) startEventLoop(ctx context.Context, endpoints chan flux
 }
 
 func (d *DispatchServer) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
-	for _, discovery := range ext.EndpointDiscoveries() {
+	for _, discovery := range ext.MetadataDiscoveries() {
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH", "discovery-id", discovery.Id())
-		if err := discovery.WatchServices(ctx, services); nil != err {
+		if err := discovery.SubscribeServices(ctx, services); nil != err {
 			return err
 		}
-		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
+		if err := discovery.SubscribeEndpoints(ctx, endpoints); nil != err {
 			return err
 		}
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH/OK", "discovery-id", discovery.Id())

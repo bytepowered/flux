@@ -4,20 +4,17 @@ import (
 	"context"
 )
 
-// EndpointDiscovery Endpoint注册元数据事件监听
-// 监听接收元数据中心的配置变化
-type (
-	EndpointDiscovery interface {
-		// Id 返回标识当前服务标识
-		Id() string
+// MetadataDiscovery 负责对注册中心的 EndpointSpec / ServiceSpec 等元数据注册变更事件进行监听与同步。
+type MetadataDiscovery interface {
+	// Id 返回标识当前服务标识
+	Id() string
 
-		// WatchEndpoints 监听HttpEndpoint注册事件
-		WatchEndpoints(ctx context.Context, events chan<- EndpointEvent) error
+	// SubscribeEndpoints 订阅监听Endpoint元数据配置变更事件
+	SubscribeEndpoints(ctx context.Context, queue chan<- EndpointEvent) error
 
-		// WatchServices 监听TransporterService注册事件
-		WatchServices(ctx context.Context, events chan<- ServiceEvent) error
-	}
-)
+	// SubscribeServices 订阅监听Service元数据配置变更事件
+	SubscribeServices(ctx context.Context, notifyQ chan<- ServiceEvent) error
+}
 
 type EventType int
 
