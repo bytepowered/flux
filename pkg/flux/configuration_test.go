@@ -93,6 +93,7 @@ func TestParseDynamicKey(t *testing.T) {
 }
 
 func TestConfiguration_GetDynamic(t *testing.T) {
+	viper.Reset()
 	viper.Set("username", "chen")
 	viper.Set("user.year", 2020)
 	cases := []struct {
@@ -148,6 +149,7 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 }
 
 func TestConfiguration_GetStruct(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.user.name", "chen")
 	viper.Set("app.user.year", 2020)
 	viper.Set("app.user.id", "yongjiapro")
@@ -166,6 +168,7 @@ func TestConfiguration_GetStruct(t *testing.T) {
 }
 
 func TestConfiguration_Keys(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", 2020)
 	viper.Set("app.profile", "yongjiapro")
 	viper.Set("app.id", "yongjiapro")
@@ -176,19 +179,21 @@ func TestConfiguration_Keys(t *testing.T) {
 }
 
 func TestConfiguration_CircleKey(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", "${app.year:2020}")
 	app := NewConfiguration("app")
 	assert.Equal(t, "2020", app.GetString("year"))
 }
 
 func TestConfiguration_WatchKey(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", "2020")
 	app := NewConfiguration("app")
 	app.StartWatch(func(key string, value interface{}) {
 		fmt.Printf("key=%s, value=%d \n", key, value)
 	})
 	go func() {
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 3; i++ {
 			<-time.After(time.Second)
 			app.Set("year", i)
 		}
@@ -198,6 +203,7 @@ func TestConfiguration_WatchKey(t *testing.T) {
 }
 
 func TestConfiguration_RootNamespace(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", "${app.year:2020}")
 	viper.Set("app.no", "9999")
 	root := NewRootConfiguration()
