@@ -16,12 +16,13 @@ import (
 	"github.com/labstack/gommon/random"
 )
 
-// DefaultRequestBodyResolver 默认对RequestBody的表单数据进行解析
+// DefaultRequestBodyResolver 默认对RequestBody的表单数据进行解析，返回Post表单列表
 func DefaultRequestBodyResolver(webex flux.WebContext) url.Values {
-	return webex.FormVars()
+	return webex.PostFormVars()
 }
 
-func DefaultIdentifier(ctx interface{}) string {
+// DefaultRequestIdentifierLocator 默认RequestId查找函数实现
+func DefaultRequestIdentifierLocator(ctx interface{}) string {
 	echoc, ok := ctx.(echo.Context)
 	flux.Assert(ok, "<context> must be echo.context")
 	id := echoc.Request().Header.Get(flux.XRequestId)
@@ -32,8 +33,8 @@ func DefaultIdentifier(ctx interface{}) string {
 	return "fxid_" + random.String(32)
 }
 
-// RepeatableReader Body缓存，允许通过 GetBody 多次读取Body
-func RepeatableReader(next echo.HandlerFunc) echo.HandlerFunc {
+// RepeatableReadFilter Body缓存，允许通过 GetBody 多次读取Body
+func RepeatableReadFilter(next echo.HandlerFunc) echo.HandlerFunc {
 	// 包装Http处理错误，统一由HttpErrorHandler处理
 	return func(echo echo.Context) error {
 		request := echo.Request()

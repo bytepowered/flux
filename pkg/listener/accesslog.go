@@ -12,7 +12,7 @@ func NewAccessLogFilter() flux.WebFilter {
 			multiWriter := NewEmptyHttpResponseMultiWriter(webc.ResponseWriter())
 			webc.SetResponseWriter(multiWriter)
 			defer func(trace flux.Logger, start time.Time) {
-				trace.Infow("LISTENER:TRAFFIC",
+				trace.Infow("SERVER:TRAFFIC:LOG",
 					"listener-id", webc.WebListener().ListenerId(),
 					"remote-ip", webc.RemoteAddr(),
 					"request.uri", webc.URI(),

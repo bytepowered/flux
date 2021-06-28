@@ -3,7 +3,7 @@ package flux
 import (
 	"fmt"
 	"github.com/spf13/viper"
-	assert2 "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
@@ -39,61 +39,61 @@ func TestParseDynamicKey(t *testing.T) {
 			pattern:      "${user}",
 			expectedKey:  "user",
 			expectedDef:  "",
-			expectedType: DynamicTypeConfig,
+			expectedType: DynamicTypeLookupConfig,
 		},
 		{
 			pattern:      "${   user }",
 			expectedKey:  "user",
 			expectedDef:  "",
-			expectedType: DynamicTypeConfig,
+			expectedType: DynamicTypeLookupConfig,
 		},
 		{
 			pattern:      "${user:yongjia}",
 			expectedKey:  "user",
 			expectedDef:  "yongjia",
-			expectedType: DynamicTypeConfig,
+			expectedType: DynamicTypeLookupConfig,
 		},
 		{
 			pattern:      "${     user:yongjia  }",
 			expectedKey:  "user",
 			expectedDef:  "yongjia",
-			expectedType: DynamicTypeConfig,
+			expectedType: DynamicTypeLookupConfig,
 		},
 		{
 			pattern:      "${     address:http://bytepowered.net:8080  }",
 			expectedKey:  "address",
 			expectedDef:  "http://bytepowered.net:8080",
-			expectedType: DynamicTypeConfig,
+			expectedType: DynamicTypeLookupConfig,
 		},
 		{
 			pattern:      "${     host:  }",
 			expectedKey:  "host",
 			expectedDef:  "",
-			expectedType: DynamicTypeConfig,
+			expectedType: DynamicTypeLookupConfig,
 		},
 		{
 			pattern:      "#{     DEPLOY_ENV:  }",
 			expectedKey:  "DEPLOY_ENV",
 			expectedDef:  "",
-			expectedType: DynamicTypeEnv,
+			expectedType: DynamicTypeLookupEnv,
 		},
 		{
 			pattern:      "#{     DEPLOY_ENV:2020  }",
 			expectedKey:  "DEPLOY_ENV",
 			expectedDef:  "2020",
-			expectedType: DynamicTypeEnv,
+			expectedType: DynamicTypeLookupEnv,
 		},
 	}
-	assert := assert2.New(t)
 	for _, tcase := range cases {
 		key, def, typ := ParseDynamicKey(tcase.pattern)
-		assert.Equal(tcase.expectedKey, key)
-		assert.Equal(tcase.expectedDef, def)
-		assert.Equal(tcase.expectedType, typ)
+		assert.Equal(t, tcase.expectedKey, key)
+		assert.Equal(t, tcase.expectedDef, def)
+		assert.Equal(t, tcase.expectedType, typ)
 	}
 }
 
 func TestConfiguration_GetDynamic(t *testing.T) {
+	viper.Reset()
 	viper.Set("username", "chen")
 	viper.Set("user.year", 2020)
 	cases := []struct {
@@ -143,13 +143,13 @@ func TestConfiguration_GetDynamic(t *testing.T) {
 			expected: 2020,
 		},
 	}
-	assert := assert2.New(t)
 	for _, tcase := range cases {
-		assert.Equal(tcase.expected, tcase.config.Get(tcase.lookup))
+		assert.Equal(t, tcase.expected, tcase.config.Get(tcase.lookup))
 	}
 }
 
 func TestConfiguration_GetStruct(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.user.name", "chen")
 	viper.Set("app.user.year", 2020)
 	viper.Set("app.user.id", "yongjiapro")
@@ -160,40 +160,40 @@ func TestConfiguration_GetStruct(t *testing.T) {
 		Year int    `json:"year"`
 		Id   string `json:"id"`
 	}{}
-	assert := assert2.New(t)
 	err := app.GetStruct("user", &user)
-	assert.Nil(err)
-	assert.Equal(user.Name, "chen")
-	assert.Equal(user.Year, 2020)
-	assert.Equal(user.Id, "yongjiapro")
+	assert.Nil(t, err)
+	assert.Equal(t, user.Name, "chen")
+	assert.Equal(t, user.Year, 2020)
+	assert.Equal(t, user.Id, "yongjiapro")
 }
 
 func TestConfiguration_Keys(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", 2020)
 	viper.Set("app.profile", "yongjiapro")
 	viper.Set("app.id", "yongjiapro")
 	app := NewConfiguration("app")
-	assert := assert2.New(t)
 	keys := app.Keys()
-	assert.Contains(keys, "year")
-	assert.Contains(keys, "profile")
+	assert.Contains(t, keys, "year")
+	assert.Contains(t, keys, "profile")
 }
 
 func TestConfiguration_CircleKey(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", "${app.year:2020}")
 	app := NewConfiguration("app")
-	assert := assert2.New(t)
-	assert.Equal("2020", app.GetString("year"))
+	assert.Equal(t, "2020", app.GetString("year"))
 }
 
 func TestConfiguration_WatchKey(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", "2020")
 	app := NewConfiguration("app")
 	app.StartWatch(func(key string, value interface{}) {
 		fmt.Printf("key=%s, value=%d \n", key, value)
 	})
 	go func() {
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 3; i++ {
 			<-time.After(time.Second)
 			app.Set("year", i)
 		}
@@ -203,17 +203,17 @@ func TestConfiguration_WatchKey(t *testing.T) {
 }
 
 func TestConfiguration_RootNamespace(t *testing.T) {
+	viper.Reset()
 	viper.Set("app.year", "${app.year:2020}")
 	viper.Set("app.no", "9999")
 	root := NewRootConfiguration()
-	assert := assert2.New(t)
-	assert.Equal(map[string]interface{}{
+	assert.Equal(t, map[string]interface{}{
 		"app": map[string]interface{}{
 			"no":   "9999",
 			"year": "${app.year:2020}",
 		},
 	}, root.ToStringMap())
 	confs := root.ToConfigurations()
-	assert.Equal(1, len(confs))
-	assert.Equal("2020", confs[0].GetString("app.year"))
+	assert.Equal(t, 1, len(confs))
+	assert.Equal(t, "2020", confs[0].GetString("app.year"))
 }

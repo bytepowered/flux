@@ -43,11 +43,11 @@ const (
 
 type (
 	// OptionFunc 配置HttpServeEngine函数
-	OptionFunc func(d *DispatcherManager)
+	OptionFunc func(d *DispatchServer)
 )
 
-// DispatcherManager 管理Dispatcher
-type DispatcherManager struct {
+// DispatchServer 管理Dispatcher
+type DispatchServer struct {
 	dispatchers map[string]*Dispatcher
 	started     chan struct{}
 	stopped     chan struct{}
@@ -56,21 +56,21 @@ type DispatcherManager struct {
 
 // WithServerBanner 配置服务Banner
 func WithServerBanner(banner string) OptionFunc {
-	return func(bs *DispatcherManager) {
+	return func(bs *DispatchServer) {
 		bs.banner = banner
 	}
 }
 
 // WithNewWebListener 配置WebListener
 func WithNewWebListener(webListener flux.WebListener) OptionFunc {
-	return func(d *DispatcherManager) {
+	return func(d *DispatchServer) {
 		d.AddWebListener(webListener.ListenerId(), webListener)
 	}
 }
 
 // WithNewDispatcherOptions 注册WebListener的Dispatcher对象，并配置相关参数
 func WithNewDispatcherOptions(webListener flux.WebListener, optfs ...DispatcherOptionFunc) OptionFunc {
-	return func(d *DispatcherManager) {
+	return func(d *DispatchServer) {
 		d.AddWebListener(webListener.ListenerId(), webListener)
 		dis := d.DispatcherById(webListener.ListenerId())
 		for _, optf := range optfs {
@@ -79,8 +79,8 @@ func WithNewDispatcherOptions(webListener flux.WebListener, optfs ...DispatcherO
 	}
 }
 
-func NewDispatcherManager(opts ...OptionFunc) *DispatcherManager {
-	server := &DispatcherManager{
+func NewDispatcherManager(opts ...OptionFunc) *DispatchServer {
+	server := &DispatchServer{
 		dispatchers: make(map[string]*Dispatcher, 2),
 		started:     make(chan struct{}),
 		stopped:     make(chan struct{}),
@@ -93,7 +93,7 @@ func NewDispatcherManager(opts ...OptionFunc) *DispatcherManager {
 }
 
 // Prepare Call before init and startup
-func (d *DispatcherManager) Prepare() error {
+func (d *DispatchServer) Prepare() error {
 	logger.Info("SERVER:EVEN:PREPARE")
 	for _, hook := range ext.PrepareHooks() {
 		if err := hook.OnPrepare(); nil != err {
@@ -105,7 +105,7 @@ func (d *DispatcherManager) Prepare() error {
 }
 
 // Init Call components init
-func (d *DispatcherManager) Init() error {
+func (d *DispatchServer) Init() error {
 	logger.Info("SERVER:EVEN:INIT")
 	defer logger.Info("SERVER:EVEN:INIT:OK")
 	// 1. WebListen Server
@@ -120,7 +120,7 @@ func (d *DispatcherManager) Init() error {
 		}
 	}
 	// 2. EDS
-	for _, eds := range ext.EndpointDiscoveries() {
+	for _, eds := range ext.MetadataDiscoveries() {
 		ext.AddStartupHook(eds)
 		ext.AddShutdownHook(eds)
 		err := onInitializer(eds, func(initable flux.Initializer) error {
@@ -194,7 +194,7 @@ func (d *DispatcherManager) Init() error {
 	return nil
 }
 
-func (d *DispatcherManager) Startup(build flux.Build) error {
+func (d *DispatchServer) Startup(build flux.Build) error {
 	fmt.Printf(VersionFormat, build.CommitId, build.Version, build.Date)
 	if d.banner != "" {
 		fmt.Println(d.banner)
@@ -202,7 +202,7 @@ func (d *DispatcherManager) Startup(build flux.Build) error {
 	return d.start()
 }
 
-func (d *DispatcherManager) start() error {
+func (d *DispatchServer) start() error {
 	flux.AssertNotNil(d.defaultListener(), "<default-listener> MUST NOT nil")
 	flux.AssertNotNil(ext.GetLookupScopedValueFunc(), "<scope-value-lookup-func> MUST NOT nil")
 	logger.Info("SERVER:EVEN:STARTUP")
@@ -240,7 +240,7 @@ func (d *DispatcherManager) start() error {
 	return <-errch
 }
 
-func (d *DispatcherManager) startEventLoop(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) {
+func (d *DispatchServer) startEventLoop(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) {
 	logger.Info("SERVER:EVEN:EVENTLOOP:START")
 	defer logger.Info("SERVER:EVEN:EVENTLOOP:STOP")
 	for {
@@ -261,13 +261,13 @@ func (d *DispatcherManager) startEventLoop(ctx context.Context, endpoints chan f
 	}
 }
 
-func (d *DispatcherManager) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
-	for _, discovery := range ext.EndpointDiscoveries() {
+func (d *DispatchServer) startEventWatch(ctx context.Context, endpoints chan flux.EndpointEvent, services chan flux.ServiceEvent) error {
+	for _, discovery := range ext.MetadataDiscoveries() {
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH", "discovery-id", discovery.Id())
-		if err := discovery.WatchServices(ctx, services); nil != err {
+		if err := discovery.SubscribeServices(ctx, services); nil != err {
 			return err
 		}
-		if err := discovery.WatchEndpoints(ctx, endpoints); nil != err {
+		if err := discovery.SubscribeEndpoints(ctx, endpoints); nil != err {
 			return err
 		}
 		logger.Infow("SERVER:EVEN:DISCOVERY:WATCH/OK", "discovery-id", discovery.Id())
@@ -276,7 +276,7 @@ func (d *DispatcherManager) startEventWatch(ctx context.Context, endpoints chan 
 }
 
 // Shutdown to cleanup resources
-func (d *DispatcherManager) Shutdown(ctx goctx.Context) error {
+func (d *DispatchServer) Shutdown(ctx goctx.Context) error {
 	logger.Info("SERVER:EVENT:SHUTDOWN")
 	defer func() {
 		logger.Info("SERVER:EVENT:SHUTDOWN/ok")
@@ -297,18 +297,18 @@ func (d *DispatcherManager) Shutdown(ctx goctx.Context) error {
 	return nil
 }
 
-func (d *DispatcherManager) serve(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
+func (d *DispatchServer) serve(webex flux.WebContext, versions *flux.MVCEndpoint) (err error) {
 	dis := d.DispatcherById(webex.WebListener().ListenerId())
 	return dis.route(webex, versions)
 }
 
-func (d *DispatcherManager) DispatcherById(id string) *Dispatcher {
+func (d *DispatchServer) DispatcherById(id string) *Dispatcher {
 	dis := d.dispatchers[id]
 	flux.AssertNotNil(dis, "<dispatcher> must not nil, id: "+id)
 	return dis
 }
 
-func (d *DispatcherManager) onServiceEvent(event flux.ServiceEvent) {
+func (d *DispatchServer) onServiceEvent(event flux.ServiceEvent) {
 	service := event.Service
 	var epvars = []interface{}{"service-id", service.ServiceID(), "alias-id", service.AliasId}
 	if err := internal.VerifyAnnotations(service.Annotations); err != nil {
@@ -340,7 +340,7 @@ func (d *DispatcherManager) onServiceEvent(event flux.ServiceEvent) {
 	}
 }
 
-func (d *DispatcherManager) onEndpointEvent(event flux.EndpointEvent) {
+func (d *DispatchServer) onEndpointEvent(event flux.EndpointEvent) {
 	ep := event.Endpoint
 	var epvars = []interface{}{"ep-app", ep.Application, "ep-version", ep.Version, "ep-method", ep.HttpMethod, "ep-pattern", ep.HttpPattern}
 	// Check http method
@@ -383,7 +383,7 @@ func (d *DispatcherManager) onEndpointEvent(event flux.EndpointEvent) {
 }
 
 // AwaitSignal GracefulShutdown
-func (d *DispatcherManager) AwaitSignal(quit chan os.Signal, to time.Duration) {
+func (d *DispatchServer) AwaitSignal(quit chan os.Signal, to time.Duration) {
 	// 接收停止信号
 	signal.Notify(quit, dubgo.ShutdownSignals...)
 	<-quit
@@ -396,56 +396,56 @@ func (d *DispatcherManager) AwaitSignal(quit chan os.Signal, to time.Duration) {
 }
 
 // StateStarted 返回一个Channel。当服务启动完成时，此Channel将被关闭。
-func (d *DispatcherManager) StateStarted() <-chan struct{} {
+func (d *DispatchServer) StateStarted() <-chan struct{} {
 	return d.started
 }
 
 // StateStopped 返回一个Channel。当服务停止后完成时，此Channel将被关闭。
-func (d *DispatcherManager) StateStopped() <-chan struct{} {
+func (d *DispatchServer) StateStopped() <-chan struct{} {
 	return d.stopped
 }
 
 // AddWebFilter 添加Http前拦截器到默认ListenerServer。将在Http被路由到对应Handler之前执行
-func (d *DispatcherManager) AddWebFilter(m flux.WebFilter) {
+func (d *DispatchServer) AddWebFilter(m flux.WebFilter) {
 	d.defaultListener().AddFilter(m)
 }
 
 // AddWebHandler 添加Http处理接口到默认ListenerServer。
-func (d *DispatcherManager) AddWebHandler(method, pattern string, h flux.WebHandlerFunc, m ...flux.WebFilter) {
+func (d *DispatchServer) AddWebHandler(method, pattern string, h flux.WebHandlerFunc, m ...flux.WebFilter) {
 	d.defaultListener().AddHandler(method, pattern, h, m...)
 }
 
 // AddWebHttpHandler 添加Http处理接口到默认ListenerServer。
-func (d *DispatcherManager) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
+func (d *DispatchServer) AddWebHttpHandler(method, pattern string, h http.Handler, m ...func(http.Handler) http.Handler) {
 	d.defaultListener().AddHttpHandler(method, pattern, h, m...)
 }
 
 // SetWebNotfoundHandler 设置Http路由失败的处理接口到默认ListenerServer
-func (d *DispatcherManager) SetWebNotfoundHandler(nfh flux.WebHandlerFunc) {
+func (d *DispatchServer) SetWebNotfoundHandler(nfh flux.WebHandlerFunc) {
 	d.defaultListener().SetNotfoundHandler(nfh)
 }
 
 // AddWebListener 添加指定ID
-func (d *DispatcherManager) AddWebListener(listenerID string, listener flux.WebListener) {
+func (d *DispatchServer) AddWebListener(listenerID string, listener flux.WebListener) {
 	flux.AssertNotNil(listener, "<web-listener> must not nil")
 	flux.AssertNotEmpty(listenerID, "<web-listener-id> must not empty")
 	d.dispatchers[listenerID] = newDispatcher(listener)
 }
 
 // WebListenerById 返回ListenServer实例
-func (d *DispatcherManager) WebListenerById(listenerID string) (flux.WebListener, bool) {
+func (d *DispatchServer) WebListenerById(listenerID string) (flux.WebListener, bool) {
 	flux.AssertNotEmpty(listenerID, "<web-listener-id> must not empty")
 	dis, ok := d.dispatchers[listenerID]
 	return dis.WebListener, ok
 }
 
-func (d *DispatcherManager) newEndpointHandler(endpoint *flux.MVCEndpoint) flux.WebHandlerFunc {
+func (d *DispatchServer) newEndpointHandler(endpoint *flux.MVCEndpoint) flux.WebHandlerFunc {
 	return func(webex flux.WebContext) error {
 		return d.serve(webex, endpoint)
 	}
 }
 
-func (d *DispatcherManager) selectMVCEndpoint(endpoint *flux.EndpointSpec) (*flux.MVCEndpoint, bool) {
+func (d *DispatchServer) selectMVCEndpoint(endpoint *flux.EndpointSpec) (*flux.MVCEndpoint, bool) {
 	key := ext.MakeEndpointKey(endpoint.HttpMethod, endpoint.HttpPattern)
 	if mve, ok := ext.EndpointByKey(key); ok {
 		return mve, false
@@ -454,7 +454,7 @@ func (d *DispatcherManager) selectMVCEndpoint(endpoint *flux.EndpointSpec) (*flu
 	}
 }
 
-func (d *DispatcherManager) defaultListener() flux.WebListener {
+func (d *DispatchServer) defaultListener() flux.WebListener {
 	count := len(d.dispatchers)
 	if count == 0 {
 		return nil
@@ -472,7 +472,7 @@ func (d *DispatcherManager) defaultListener() flux.WebListener {
 
 // syncService 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (d *DispatcherManager) syncService(ep *flux.EndpointSpec) {
+func (d *DispatchServer) syncService(ep *flux.EndpointSpec) {
 	// Endpoint为静态模型，不支持动态更新
 	if ep.AnnotationExists(flux.EndpointAnnotationStaticModel) {
 		logger.Infow("SERVER:EVENT:SYN-MODEL/ignore:static", "ep-pattern", ep.HttpPattern, "ep-service", ep.ServiceId)
@@ -488,7 +488,7 @@ func (d *DispatcherManager) syncService(ep *flux.EndpointSpec) {
 
 // syncEndpoint 将Endpoint与Service建立绑定映射；
 // 此处绑定的为原始元数据的引用；
-func (d *DispatcherManager) syncEndpoint(srv *flux.ServiceSpec) {
+func (d *DispatchServer) syncEndpoint(srv *flux.ServiceSpec) {
 	for _, mvce := range ext.Endpoints() {
 		for _, ep := range mvce.Endpoints() {
 			// Endpoint为静态模型，不支持动态更新

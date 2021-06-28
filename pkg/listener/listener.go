@@ -36,13 +36,13 @@ func init() {
 }
 
 func NewAdaptWebListener(listenerId string, options *flux.Configuration) flux.WebListener {
-	return NewAdaptWebListenerWith(listenerId, options, DefaultIdentifier, nil)
+	return NewAdaptWebListenerWith(listenerId, options, DefaultRequestIdentifierLocator, nil)
 }
 
 func NewAdaptWebListenerWith(listenerId string, options *flux.Configuration, identifier flux.WebRequestIdentityLocator, mws *AdaptMiddleware) flux.WebListener {
 	flux.AssertNotEmpty(listenerId, "empty <listener-id> in web listener configuration")
 	server := echo.New()
-	server.Pre(RepeatableReader)
+	server.Pre(RepeatableReadFilter)
 	server.HideBanner = true
 	server.HidePort = true
 	webListener := &AdaptWebListener{
@@ -186,7 +186,7 @@ func (s *AdaptWebListener) HandleError(webex flux.WebContext, err error) {
 
 func (s *AdaptWebListener) AddFilter(i flux.WebFilter) {
 	flux.AssertNotNil(i, "<web-filter> must not nil, listener-id: "+s.id)
-	s.server.Pre(AdaptWebInterceptor(i).AdaptFunc)
+	s.server.Pre(AdaptWebFilter(i).AdaptFunc)
 }
 
 func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandlerFunc, is ...flux.WebFilter) {
@@ -195,7 +195,7 @@ func (s *AdaptWebListener) AddHandler(method, pattern string, h flux.WebHandlerF
 	flux.AssertNotEmpty(pattern, "<http-pattern> must not empty")
 	wms := make([]echo.MiddlewareFunc, len(is))
 	for i, mi := range is {
-		wms[i] = AdaptWebInterceptor(mi).AdaptFunc
+		wms[i] = AdaptWebFilter(mi).AdaptFunc
 	}
 	s.server.Add(strings.ToUpper(method), s.resolve(pattern), AdaptWebHandler(h).AdaptFunc, wms...)
 }

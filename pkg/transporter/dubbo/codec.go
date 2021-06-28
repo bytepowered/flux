@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	ResponseKeyStatusCode = "@net.bytepowered.flux.http-status"
-	ResponseKeyHeaders    = "@net.bytepowered.flux.http-headers"
+	ResponseKeyStatusCode = "@net.bytepowered.flux/http.status"
+	ResponseKeyHeaders    = "@net.bytepowered.flux/http.headers"
 )
 
 func NewTransportCodecFuncWith(codeKey, headerKey string) flux.TransportCodecFunc {

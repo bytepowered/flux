@@ -42,7 +42,7 @@ func NewConfigurationByKeys(namespaceAndKeys ...string) *Configuration {
 
 // NewRootConfiguration 构建获取根配置对象。
 func NewRootConfiguration() *Configuration {
-	return newConfiguration("")
+	return newGlobalRefConfiguration("")
 }
 
 // NewConfiguration 根据指定Namespace的配置
@@ -50,29 +50,42 @@ func NewConfiguration(namespace string) *Configuration {
 	if namespace == "" {
 		panic("configuration: not allow empty namespace")
 	}
-	return newConfiguration(namespace)
+	return newGlobalRefConfiguration(namespace)
+}
+
+func NewVarsConfiguration(vars map[string]interface{}) *Configuration {
+	locals := viper.New()
+	for k, v := range vars {
+		locals.Set(k, v)
+	}
+	return newSpecifiedRefConfiguration("", locals, true)
 }
 
 // NewConfiguration 根据指定Namespace的配置
-func newConfiguration(namespace string) *Configuration {
+func newGlobalRefConfiguration(namespace string) *Configuration {
+	// 持有Viper全局实例，通过Namespace来控制查询的Key
+	return newSpecifiedRefConfiguration(namespace, viper.GetViper(), false)
+}
+
+func newSpecifiedRefConfiguration(namespace string, viperRef *viper.Viper, local bool) *Configuration {
 	return &Configuration{
-		namespace: namespace,
-		dataID:    namespace,
-		registry:  viper.GetViper(), // 持有Viper全局实例，通过Namespace来控制查询的Key
-		local:     false,
-		alias:     make(map[string]string),
+		namespace:  namespace,
+		dataID:     namespace,
+		root:       viperRef,
+		isLocalRef: local,
+		alias:      make(map[string]string),
 	}
 }
 
 // Configuration 封装Viper实例访问接口的配置类
 // 根据Namespace指向不同的配置路径，可以从全局配置中读取指定域的配置数据
 type Configuration struct {
-	dataID    string            // 数据ID
-	namespace string            // 配置所属命名空间
-	registry  *viper.Viper      // 实际的配置实例
-	local     bool              // 是否使用本地Viper实例
-	alias     map[string]string // 本地Key别名
-	watchStop chan struct{}
+	dataID     string            // 数据ID
+	namespace  string            // 配置所属命名空间
+	root       *viper.Viper      // 实际的配置实例
+	isLocalRef bool              // 是否使用本地Viper实例
+	alias      map[string]string // 本地Key别名
+	watchStop  chan struct{}
 }
 
 // SetDataId 设置当前配置实例的 dataId
@@ -88,14 +101,14 @@ func (c *Configuration) DataId() string {
 // ToStringMap 将当前配置实例（命名空间）下所有配置，转换成 map[string]any 类型的字典。
 func (c *Configuration) ToStringMap() map[string]interface{} {
 	if "" == c.namespace {
-		return c.registry.AllSettings()
+		return c.root.AllSettings()
 	}
-	return cast.ToStringMap(c.registry.Get(c.namespace))
+	return cast.ToStringMap(c.root.Get(c.namespace))
 }
 
 // Keys 获取当前配置实例（命名空间）下所有配置的键列表
 func (c *Configuration) Keys() []string {
-	v := c.registry.Sub(c.namespace)
+	v := c.root.Sub(c.namespace)
 	if v != nil {
 		return v.AllKeys()
 	}
@@ -105,13 +118,13 @@ func (c *Configuration) Keys() []string {
 // ToConfigurations 将当前配置实例（命名空间）下所有配置，转换成 Configuration 类型的列表。
 func (c *Configuration) ToConfigurations() []*Configuration {
 	if "" == c.namespace {
-		return ToConfigurations("", []interface{}{c.registry.AllSettings()})
+		return ToConfigurations("", []interface{}{c.root.AllSettings()})
 	}
-	return ToConfigurations(c.namespace, c.registry.Get(c.namespace))
+	return ToConfigurations(c.namespace, c.root.Get(c.namespace))
 }
 
 func (c *Configuration) Sub(subNamespace string) *Configuration {
-	return NewConfiguration(c.makeKey(subNamespace))
+	return newSpecifiedRefConfiguration(c.makeKey(subNamespace), c.root, false)
 }
 
 func (c *Configuration) Get(key string) interface{} {
@@ -124,12 +137,11 @@ func (c *Configuration) GetOrDefault(key string, def interface{}) interface{} {
 
 // Set 向当前配置实例以覆盖的方式设置Key-Value键值。
 func (c *Configuration) Set(key string, value interface{}) {
-	c.registry.Set(c.makeKey(key), value)
+	c.root.Set(c.makeKey(key), value)
 }
 
 // SetKeyAlias 设置当前配置实例的Key与GlobalAlias的映射
 func (c *Configuration) SetKeyAlias(keyAlias map[string]string) {
-	// 指定命名空间的Alias，不设置到全局Viper实例
 	for key, alias := range keyAlias {
 		c.alias[c.makeKey(key)] = alias
 	}
@@ -137,13 +149,13 @@ func (c *Configuration) SetKeyAlias(keyAlias map[string]string) {
 
 // SetDefault 为当前配置实例设置单个默认值。与Viper的SetDefault一致，作用于当前配置实例。
 func (c *Configuration) SetDefault(key string, value interface{}) {
-	c.registry.SetDefault(c.makeKey(key), value)
+	c.root.SetDefault(c.makeKey(key), value)
 }
 
 // SetDefaults 为当前配置实例设置一组默认值。与Viper的SetDefault一致，作用于当前配置实例。
 func (c *Configuration) SetDefaults(defaults map[string]interface{}) {
 	for key, val := range defaults {
-		c.registry.SetDefault(c.makeKey(key), val)
+		c.root.SetDefault(c.makeKey(key), val)
 	}
 }
 
@@ -154,7 +166,7 @@ func (c *Configuration) IsSet(keys ...string) bool {
 	}
 	// Any not set, return false
 	for _, key := range keys {
-		if !c.registry.IsSet(c.makeKey(key)) {
+		if !c.root.IsSet(c.makeKey(key)) {
 			return false
 		}
 	}
@@ -239,10 +251,10 @@ func (c *Configuration) GetStringMapString(key string) map[string]string {
 // GetConfigurations returns the value associated with the key as a slice of configurations
 func (c *Configuration) GetConfigurations(key string) []*Configuration {
 	key = c.makeKey(key)
-	if !c.registry.IsSet(key) {
+	if !c.root.IsSet(key) {
 		return nil
 	}
-	v := c.registry.Get(key)
+	v := c.root.Get(key)
 	if v == nil {
 		return nil
 	}
@@ -255,10 +267,10 @@ func (c *Configuration) GetStruct(key string, outptr interface{}) error {
 
 func (c *Configuration) GetStructTag(key, structTag string, outptr interface{}) error {
 	key = c.makeKey(key)
-	if !c.registry.IsSet(key) {
+	if !c.root.IsSet(key) {
 		return nil
 	}
-	return c.registry.UnmarshalKey(key, outptr, func(opt *mapstructure.DecoderConfig) {
+	return c.root.UnmarshalKey(key, outptr, func(opt *mapstructure.DecoderConfig) {
 		opt.TagName = structTag
 	})
 }
@@ -308,14 +320,14 @@ func (c *Configuration) StopWatch() {
 }
 
 func (c *Configuration) makeKey(key string) string {
-	if c.local || c.namespace == "" {
+	if c.isLocalRef || c.namespace == "" {
 		return key
 	}
 	return MakeConfigurationKey(c.namespace, key)
 }
 
 func (c *Configuration) doget(key string, indef interface{}) interface{} {
-	val := c.registry.Get(key)
+	val := c.root.Get(key)
 	if expr, ok := val.(string); ok {
 		// 动态全局Key和默认值： ${username:yongjia}
 		pkey, pdef, ptype := ParseDynamicKey(expr)
@@ -326,25 +338,25 @@ func (c *Configuration) doget(key string, indef interface{}) interface{} {
 			usedef = pdef
 		}
 		switch ptype {
-		case DynamicTypeConfig:
+		case DynamicTypeLookupConfig:
 			// check circle key
 			if key == pkey {
 				return usedef
 			}
-			if c.registry.IsSet(pkey) {
+			if c.root.IsSet(pkey) {
 				return c.doget(pkey, usedef)
 			} else {
 				return usedef
 			}
 
-		case DynamicTypeEnv:
+		case DynamicTypeLookupEnv:
 			if ev, ok := os.LookupEnv(pkey); ok {
 				return ev
 			} else {
 				return usedef
 			}
 
-		case DynamicTypeValue:
+		case DynamicTypeStaticValue:
 			return val
 
 		default:
@@ -354,7 +366,7 @@ func (c *Configuration) doget(key string, indef interface{}) interface{} {
 	// check local alias
 	if nil == val {
 		if alias, ok := c.alias[key]; ok {
-			val = c.registry.Get(alias)
+			val = c.root.Get(alias)
 		}
 	}
 	if nil == val {
@@ -373,9 +385,9 @@ func ToConfigurations(namespace string, v interface{}) []*Configuration {
 		sm := cast.ToStringMap(sliceV.Index(i).Interface())
 		if len(sm) > 0 {
 			out = append(out, &Configuration{
-				namespace: namespace + fmt.Sprintf("[%d]", i),
-				local:     true,
-				registry: func() *viper.Viper {
+				namespace:  namespace + fmt.Sprintf("[%d]", i),
+				isLocalRef: true,
+				root: func() *viper.Viper {
 					r := viper.New()
 					for k, v := range sm {
 						r.Set(k, v)
@@ -389,17 +401,17 @@ func ToConfigurations(namespace string, v interface{}) []*Configuration {
 }
 
 const (
-	DynamicTypeValue  = 0
-	DynamicTypeConfig = 1
-	DynamicTypeEnv    = 2
+	DynamicTypeStaticValue  = 0 << iota
+	DynamicTypeLookupConfig = 1
+	DynamicTypeLookupEnv    = 2
 )
 
-// 解析动态值：配置参数：${key:defaultV}，环境变量：#{key:defaultV}
+// ParseDynamicKey 解析动态值：配置参数：${key:defaultV}，环境变量：#{key:defaultV}
 func ParseDynamicKey(pattern string) (key string, def string, typ int) {
 	pattern = strings.TrimSpace(pattern)
 	size := len(pattern)
-	if size <= 3 {
-		return pattern, "", DynamicTypeValue
+	if size <= len("${}") {
+		return pattern, "", DynamicTypeStaticValue
 	}
 	dyn := "${" == pattern[:2]
 	env := "#{" == pattern[:2]
@@ -412,10 +424,10 @@ func ParseDynamicKey(pattern string) (key string, def string, typ int) {
 			def = values[idx+1:]
 		}
 		if env {
-			return key, def, DynamicTypeEnv
+			return key, def, DynamicTypeLookupEnv
 		} else {
-			return key, def, DynamicTypeConfig
+			return key, def, DynamicTypeLookupConfig
 		}
 	}
-	return pattern, "", DynamicTypeValue
+	return pattern, "", DynamicTypeStaticValue
 }

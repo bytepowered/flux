@@ -59,7 +59,7 @@ func main() {
 	}
 }
 
-func newDispatcherManager(options ...server.OptionFunc) *server.DispatcherManager {
+func newDispatcherManager(options ...server.OptionFunc) *server.DispatchServer {
 	opts := []server.OptionFunc{
 		server.WithServerBanner("Flux.go"),
 		// WebApi WebListener

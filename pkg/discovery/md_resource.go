@@ -17,11 +17,11 @@ const (
 	ResourceId = "resource"
 )
 
-var _ flux.EndpointDiscovery = new(ResourceEndpointDiscovery)
+var _ flux.MetadataDiscovery = new(ResourceMetadataDiscovery)
 
 type (
-	// ResourceOption 配置函数
-	ResourceOption func(discovery *ResourceEndpointDiscovery)
+	// ResourceDiscoveryOption 配置函数
+	ResourceDiscoveryOption func(discovery *ResourceMetadataDiscovery)
 )
 
 type Resources struct {
@@ -29,9 +29,9 @@ type Resources struct {
 	Services  []flux.ServiceSpec  `yaml:"services"`
 }
 
-// NewResourceEndpointDiscovery returns new a resource based discovery service
-func NewResourceEndpointDiscovery(id string, opts ...ResourceOption) *ResourceEndpointDiscovery {
-	r := &ResourceEndpointDiscovery{
+// NewResourceMetadataDiscovery returns new a resource based discovery service
+func NewResourceMetadataDiscovery(id string, opts ...ResourceDiscoveryOption) *ResourceMetadataDiscovery {
+	r := &ResourceMetadataDiscovery{
 		id:        id,
 		resources: make([]Resources, 0, 8),
 	}
@@ -41,16 +41,16 @@ func NewResourceEndpointDiscovery(id string, opts ...ResourceOption) *ResourceEn
 	return r
 }
 
-type ResourceEndpointDiscovery struct {
+type ResourceMetadataDiscovery struct {
 	id        string
 	resources []Resources
 }
 
-func (d *ResourceEndpointDiscovery) Id() string {
+func (d *ResourceMetadataDiscovery) Id() string {
 	return d.id
 }
 
-func (d *ResourceEndpointDiscovery) OnInit(config *flux.Configuration) error {
+func (d *ResourceMetadataDiscovery) OnInit(config *flux.Configuration) error {
 	// 加载指定路径的配置
 	files := config.GetStringSlice("includes")
 	logger.Infow("DISCOVERY:RESOURCE:LOAD/resource", "includes", files)
@@ -77,7 +77,7 @@ func (d *ResourceEndpointDiscovery) OnInit(config *flux.Configuration) error {
 	return nil
 }
 
-func (d *ResourceEndpointDiscovery) WatchEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
+func (d *ResourceMetadataDiscovery) SubscribeEndpoints(ctx context.Context, events chan<- flux.EndpointEvent) error {
 	for _, res := range d.resources {
 		for _, el := range res.Endpoints {
 			if !el.IsValid() {
@@ -95,7 +95,7 @@ func (d *ResourceEndpointDiscovery) WatchEndpoints(ctx context.Context, events c
 	return nil
 }
 
-func (d *ResourceEndpointDiscovery) WatchServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
+func (d *ResourceMetadataDiscovery) SubscribeServices(ctx context.Context, events chan<- flux.ServiceEvent) error {
 	for _, res := range d.resources {
 		for _, el := range res.Services {
 			if !el.IsValid() {
@@ -113,7 +113,7 @@ func (d *ResourceEndpointDiscovery) WatchServices(ctx context.Context, events ch
 	return nil
 }
 
-func (d *ResourceEndpointDiscovery) includes(files []string) error {
+func (d *ResourceMetadataDiscovery) includes(files []string) error {
 	for _, file := range files {
 		bytes, err := ioutil.ReadFile(file)
 		if nil != err {

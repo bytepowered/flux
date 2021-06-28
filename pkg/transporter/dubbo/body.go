@@ -2,7 +2,7 @@ package dubbo
 
 import (
 	"github.com/bytepowered/fluxgo/pkg/flux"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/logger"
 	"github.com/spf13/cast"
 	"net/http"
 	"reflect"
