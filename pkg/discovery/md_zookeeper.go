@@ -73,8 +73,8 @@ func WithZookeeperServiceFilter(f ServiceFilter) ZookeeperDiscoveryOption {
 	}
 }
 
-// NewZookeeperMetadataSpecDiscovery returns new a zookeeper discovery factory
-func NewZookeeperMetadataSpecDiscovery(id string, opts ...ZookeeperDiscoveryOption) *ZookeeperMetadataDiscovery {
+// NewZookeeperMetadataDiscovery returns new a zookeeper discovery factory
+func NewZookeeperMetadataDiscovery(id string, opts ...ZookeeperDiscoveryOption) *ZookeeperMetadataDiscovery {
 	d := &ZookeeperMetadataDiscovery{
 		id:                 id,
 		decodeEndpointFunc: DecodeEndpoint,

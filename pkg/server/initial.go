@@ -24,7 +24,7 @@ func init() {
 	ext.RegisterSerializer(ext.TypeNameSerializerDefault, serializer)
 	ext.RegisterSerializer(ext.TypeNameSerializerJson, serializer)
 	// Endpoint discovery
-	ext.RegisterMetadataDiscovery(discovery.NewZookeeperMetadataSpecDiscovery(discovery.ZookeeperId))
+	ext.RegisterMetadataDiscovery(discovery.NewZookeeperMetadataDiscovery(discovery.ZookeeperId))
 	ext.RegisterMetadataDiscovery(discovery.NewResourceMetadataDiscovery(discovery.ResourceId))
 }
 
