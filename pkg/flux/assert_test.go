@@ -7,16 +7,14 @@ import (
 )
 
 func TestMustNotNil(t *testing.T) {
-	asserter := assert.New(t)
-	asserter.Panics(func() {
+	assert.Panics(t, func() {
 		MustNotNil(nil, "should nil, panic")
 	})
 }
 
 func TestMustNotNilFunc(t *testing.T) {
-	asserter := assert.New(t)
 	var nilFunc func() = nil
-	asserter.Panics(func() {
+	assert.Panics(t, func() {
 		MustNotNil(nilFunc, "should nil, panic")
 	})
 }
