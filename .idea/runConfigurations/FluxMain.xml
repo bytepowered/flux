@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="FluxMain" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="flux" />
+    <module name="fluxgo" />
     <working_directory value="$PROJECT_DIR$/main" />
     <envs>
       <env name="APP_LOG_CONF_FILE" value="./conf.d/log.yml" />
