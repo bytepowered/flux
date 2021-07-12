@@ -61,6 +61,11 @@ func (c *Context) Endpoint() *flux.EndpointSpec {
 	return c.endpoint
 }
 
+// Exposed 返回当前绑定暴露到Http服务端口的三元组
+func (c *Context) Exposed() (pattern, method, version string) {
+	return c.endpoint.HttpPattern, c.endpoint.HttpMethod, c.endpoint.Version
+}
+
 // Service 返回Service信息
 func (c *Context) Service() flux.ServiceSpec {
 	return c.endpoint.Service

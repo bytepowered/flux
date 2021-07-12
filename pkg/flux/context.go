@@ -20,6 +20,9 @@ type Context interface {
 	// Endpoint 返回当前请求路由定义的Endpoint元数据
 	Endpoint() *EndpointSpec
 
+	// Exposed 返回当前绑定暴露到Http服务端口的三元组
+	Exposed() (pattern, method, version string)
+
 	// Service 返回Service信息
 	Service() ServiceSpec
 

@@ -70,7 +70,7 @@ func WithOnContextHooks(hooks ...flux.OnContextHookFunc) DispatcherOptionFunc {
 func newDispatcher(listener flux.WebListener) *Dispatcher {
 	return &Dispatcher{
 		WebListener:            listener,
-		metrics:                NewMetrics(listener.ListenerId()),
+		metrics:                NewMetrics(),
 		pooled:                 &sync.Pool{New: func() interface{} { return internal.NewContext() }},
 		versionLocator:         DefaultRequestVersionLocateFunc,
 		responseWriter:         new(internal.JSONServeResponseWriter),
@@ -160,13 +160,18 @@ func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.F
 }
 
 func (d Dispatcher) metric(ctx flux.Context, err *flux.ServeError) *flux.ServeError {
-	// Access Counter: ProtoName, Interface, Method
-	service := ctx.Service()
-	proto, uri, method := service.Protocol, service.Interface, service.Method
-	d.metrics.EndpointAccess.WithLabelValues(proto, uri, method).Inc()
+	// Access Counter: (ListenerId, Method, Pattern, Version)
+	// See: pkg/server/metric.go:46
+	pattern, method, version := ctx.Exposed()
+	if version == "" {
+		version = "default"
+	}
+	listener := ctx.WebListener().ListenerId()
+	d.metrics.EndpointAccess.WithLabelValues(listener, method, pattern, version).Inc()
 	if flux.NotNil(err) {
-		// Error Counter: ProtoName, Interface, Method, ErrorCode
-		d.metrics.EndpointError.WithLabelValues(proto, uri, method, cast.ToString(err.ErrorCode)).Inc()
+		// Error Counter: (ListenerId, Method, Pattern, Version, ErrorCode)
+		// See: pkg/server/metric.go:46
+		d.metrics.EndpointError.WithLabelValues(listener, method, pattern, version, cast.ToString(err.ErrorCode)).Inc()
 	}
 	return err
 }

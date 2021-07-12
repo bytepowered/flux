@@ -87,6 +87,9 @@ func (p *PermissionFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker 
 		if p.Disabled || p.Configs.SkipFunc(ctx) {
 			return next(ctx)
 		}
+		defer func() {
+			ctx.AddMetric(p.FilterId(), time.Since(ctx.StartAt()))
+		}()
 		ids := ctx.Endpoint().Annotation(flux.EndpointAnnotationPermissions).GetStrings()
 		workers := make([]flux.ServiceSpec, 0, len(ids))
 		for _, id := range ids {

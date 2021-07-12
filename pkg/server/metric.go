@@ -30,31 +30,34 @@ var (
 )
 
 type Metrics struct {
+	// 请求访问次数统计
 	EndpointAccess *prometheus.CounterVec
-	EndpointError  *prometheus.CounterVec
-	RouteDuration  *prometheus.HistogramVec
+	// 请求错误次数统计
+	EndpointError *prometheus.CounterVec
+	// 请求耗时次数统计
+	RouteDuration *prometheus.HistogramVec
 }
 
-func NewMetrics(listenerId string) *Metrics {
+func NewMetrics() *Metrics {
 	// rer: https://prometheus.io/docs/concepts/data_model/
 	// must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
-	namespace := "onlistener:" + listenerId
+	const namespace, subsystem = "fluxgo", "runtime"
 	return &Metrics{
 		EndpointAccess: promauto.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
-			Subsystem: "endpoint",
+			Subsystem: subsystem,
 			Name:      "access_count",
 			Help:      "Number of endpoint access",
-		}, []string{"ProtoName", "Interface", "Method"}),
+		}, []string{"Listener", "Method", "Pattern", "Version"}),
 		EndpointError: promauto.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
-			Subsystem: "endpoint",
+			Subsystem: subsystem,
 			Name:      "error_count",
 			Help:      "Number of endpoint access errors",
-		}, []string{"ProtoName", "Interface", "Method", "ErrorCode"}),
+		}, []string{"Listener", "Method", "Pattern", "Version", "ErrorCode"}),
 		RouteDuration: promauto.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: namespace,
-			Subsystem: "endpoint",
+			Subsystem: subsystem,
 			Name:      "route_duration",
 			Help:      "Spend time by processing a endpoint",
 			Buckets:   defaultMetricBuckets,
