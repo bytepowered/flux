@@ -54,9 +54,9 @@ type (
 	// ServeResponseWriter 用于解析和序列化响应数据结构的接口，并将序列化后的数据写入Http响应流。
 	ServeResponseWriter interface {
 		// Write 写入正常响应数据
-		Write(ctx *Context, response *ServeResponse)
+		Write(ctx Context, response *ServeResponse)
 		// WriteError 写入发生错误响应数据
-		WriteError(ctx *Context, err *ServeError)
+		WriteError(ctx Context, err *ServeError)
 	}
 	// ServeResponse 表示后端服务(Dubbo/Http/gRPC/Echo)返回响应数据结构，
 	// 包含后端期望透传的状态码、Header和Attachment等数据

@@ -71,7 +71,7 @@ func newDispatcher(listener flux.WebListener) *Dispatcher {
 	return &Dispatcher{
 		WebListener:            listener,
 		metrics:                NewMetrics(listener.ListenerId()),
-		pooled:                 &sync.Pool{New: func() interface{} { return flux.NewContext() }},
+		pooled:                 &sync.Pool{New: func() interface{} { return internal.NewContext() }},
 		versionLocator:         DefaultRequestVersionLocateFunc,
 		responseWriter:         new(internal.JSONServeResponseWriter),
 		onContextHooks:         make([]flux.OnContextHookFunc, 0, 4),
@@ -111,9 +111,9 @@ func (d *Dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (e
 	// check endpoint bindings
 	flux.AssertTrue(endpoint.IsValid(), "<endpoint> must valid when routing")
 	flux.AssertTrue(endpoint.Service.IsValid(), "<endpoint.service> must valid when routing")
-	ctxw := d.pooled.Get().(*flux.Context)
+	ctxw := d.pooled.Get().(flux.Context)
 	defer d.pooled.Put(ctxw)
-	ctxw.Reset(webex, &endpoint, internal.Enforce)
+	ctxw.(*internal.Context).Reset(webex, &endpoint)
 	ctxw.SetAttribute(flux.XRequestTime, ctxw.StartAt().Unix())
 	ctxw.SetAttribute(flux.XRequestId, ctxw.RequestId())
 	logger.TraceVerbose(ctxw).Infow("DISPATCH:EVEN:ROUTE:START")
@@ -128,7 +128,7 @@ func (d *Dispatcher) route(webex flux.WebContext, versions *flux.MVCEndpoint) (e
 	return d.dispatch(ctxw)
 }
 
-func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
+func (d *Dispatcher) dispatch(ctx flux.Context) *flux.ServeError {
 	// Metric: Route
 	defer func() {
 		ctx.AddMetric("dispatcher", time.Since(ctx.StartAt()))
@@ -139,7 +139,7 @@ func (d *Dispatcher) dispatch(ctx *flux.Context) *flux.ServeError {
 	for _, before := range d.onBeforeFilterHooks {
 		before(ctx, filters)
 	}
-	next := func(ctx *flux.Context) *flux.ServeError {
+	next := func(ctx flux.Context) *flux.ServeError {
 		ctx.AddMetric("filters", time.Since(ctx.StartAt()))
 		if perr := d.handlePlugins(ctx); perr != nil {
 			return perr
@@ -159,7 +159,7 @@ func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.F
 	return next
 }
 
-func (d Dispatcher) metric(ctx *flux.Context, err *flux.ServeError) *flux.ServeError {
+func (d Dispatcher) metric(ctx flux.Context, err *flux.ServeError) *flux.ServeError {
 	// Access Counter: ProtoName, Interface, Method
 	service := ctx.Service()
 	proto, uri, method := service.Protocol, service.Interface, service.Method
@@ -184,7 +184,7 @@ func (d *Dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endp
 	return endpoints.Lookup(d.versionLocator(webex))
 }
 
-func (d *Dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
+func (d *Dispatcher) handlePlugins(ctx flux.Context) *flux.ServeError {
 	defer func() {
 		ctx.AddMetric("plugins", time.Since(ctx.StartAt()))
 	}()
@@ -197,7 +197,7 @@ func (d *Dispatcher) handlePlugins(ctx *flux.Context) *flux.ServeError {
 	return nil
 }
 
-func (d *Dispatcher) doTransport(ctx *flux.Context) *flux.ServeError {
+func (d *Dispatcher) doTransport(ctx flux.Context) *flux.ServeError {
 	select {
 	case <-ctx.Context().Done():
 		return &flux.ServeError{StatusCode: flux.StatusBadRequest,
@@ -259,7 +259,7 @@ func (d *Dispatcher) AddOnContextHook(h flux.OnContextHookFunc) {
 	d.onContextHooks = append(d.onContextHooks, h)
 }
 
-func (d *Dispatcher) selectFilters(ctx *flux.Context) []flux.Filter {
+func (d *Dispatcher) selectFilters(ctx flux.Context) []flux.Filter {
 	selective := make([]flux.Filter, 0, 16)
 	for _, selector := range ext.FilterSelectors() {
 		if selector.Activate(ctx) {
@@ -269,7 +269,7 @@ func (d *Dispatcher) selectFilters(ctx *flux.Context) []flux.Filter {
 	return append(ext.GlobalFilters(), selective...)
 }
 
-func (d *Dispatcher) selectPlugins(ctx *flux.Context) []flux.Plugin {
+func (d *Dispatcher) selectPlugins(ctx flux.Context) []flux.Plugin {
 	selective := make([]flux.Plugin, 0, 16)
 	for _, selector := range ext.PluginSelectors() {
 		if selector.Activate(ctx) {
