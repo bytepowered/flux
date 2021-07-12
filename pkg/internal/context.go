@@ -61,6 +61,11 @@ func (c *Context) Endpoint() *flux.EndpointSpec {
 	return c.endpoint
 }
 
+// Endpoint 返回当前请求路由定义的Endpoint元数据
+func (c *Context) Exposed() (pattern, method string) {
+	return c.endpoint.HttpPattern, c.endpoint.HttpMethod
+}
+
 // Service 返回Service信息
 func (c *Context) Service() flux.ServiceSpec {
 	return c.endpoint.Service
