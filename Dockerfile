@@ -4,7 +4,7 @@ ENV GO111MODULE=on
 ENV GOPROXY=https://goproxy.cn,direct
 
 WORKDIR /go/release/
-ADD . .
+ADD .. .
 RUN make build
 
 # Build image

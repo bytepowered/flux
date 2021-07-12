@@ -7,21 +7,21 @@ encoding: "console"
 
 # encoder
 encoderConfig:
-  messageKey: "message"
-  levelKey: "level"
-  timeKey: "time"
-  nameKey: "logger"
-  callerKey: "caller"
-  stacktraceKey: "stacktrace"
-  lineEnding: ""
-  levelEncoder: "capitalColor"
-  timeEncoder: "iso8601"
-  durationEncoder: "seconds"
-  callerEncoder: "short"
-  nameEncoder: ""
+    messageKey: "message"
+    levelKey: "level"
+    timeKey: "time"
+    nameKey: "logger"
+    callerKey: "caller"
+    stacktraceKey: "stacktrace"
+    lineEnding: ""
+    levelEncoder: "capitalColor"
+    timeEncoder: "iso8601"
+    durationEncoder: "seconds"
+    callerEncoder: "short"
+    nameEncoder: ""
 
 outputPaths:
-  - "stderr"
+    - "stderr"
 errorOutputPaths:
-  - "stderr"
+    - "stderr"
 initialFields:

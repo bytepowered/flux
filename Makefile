@@ -1,12 +1,12 @@
 # Binary name
 BINARY=flux
-VERSION=0.0.12
+VERSION=0.20
 GITCOMMIT=`git rev-parse --short HEAD`
 BUILD_DATE=`date +%FT%T%z`
 
 # Setup the -ldflags option for go build here, interpolate the variable values
 LDFLAGS=-ldflags "-w -s -X main.GitCommit=${GITCOMMIT} -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE}"
-BUFLAGS=CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+BUFLAGS=CGO_ENABLED=0
 
 # Release
 BUILD_DIR=./build

@@ -1,0 +1,44 @@
+# 配置Endpoint节点列表
+version: 1.0
+
+endpoints:
+    -   kind: "flux.endpoint/v1"
+        application: "flux"
+        version: "1.0"
+        httpPattern: "/debug/flux/echo/get"
+        httpMethod: "GET"
+        serviceId: "flux.debug.echo:get"
+        annotations:
+            flux.go/listener.selector: "admin"
+        attributes: [ ]
+
+    -   kind: "flux.endpoint/v1"
+        application: "flux"
+        version: "1.0"
+        httpPattern: "/debug/flux/echo/post"
+        httpMethod: "POST"
+        serviceId: "flux.debug.echo:post"
+        annotations: { }
+        attributes: [ ]
+
+    -   application: "flux"
+        version: "1.0"
+        httpPattern: "/debug/flux/inapp/echo"
+        httpMethod: "POST"
+        serviceId: "flux.debug.inapp.Test:echo"
+        annotations: { }
+        attributes: [ ]
+
+# Service 配置服务列表
+services:
+    -   interface: "flux.debug.echo"
+        method: "get"
+        protocol: "ECHO"
+
+    -   interface: "flux.debug.echo"
+        method: "post"
+        protocol: "ECHO"
+
+    -   interface: "flux.debug.inapp.Test"
+        method: "echo"
+        protocol: "ECHO"
