@@ -5,7 +5,9 @@ import (
 	"errors"
 	"github.com/afex/hystrix-go/hystrix"
 	"github.com/bytepowered/fluxgo/pkg/flux"
-	logger "github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/bytepowered/fluxgo/pkg/logger"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/spf13/cast"
 	"net/http"
 	"sync"
@@ -57,9 +59,19 @@ type HystrixConfig struct {
 	errorPercentThreshold  int
 }
 
+type CircuitMetrics struct {
+	// 请求取消次数统计
+	CanceledAccess *prometheus.CounterVec
+	// 请求熔断次数统计
+	CircuitedError *prometheus.CounterVec
+	// 未知错误次数统计
+	UnknownError *prometheus.CounterVec
+}
+
 // HystrixFilter 熔断与限流Filter
 type HystrixFilter struct {
 	HystrixConfig
+	metrics      *CircuitMetrics
 	commands     sync.Map
 	services     *flux.Configuration
 	applications *flux.Configuration
@@ -67,6 +79,7 @@ type HystrixFilter struct {
 
 func (r *HystrixFilter) OnInit(c *flux.Configuration) error {
 	logger.Info("Hystrix filter initializing")
+	r.metrics = newCircuitMetrics()
 	r.applications = c.Sub(ConfigApplication)
 	r.services = c.Sub(ConfigService)
 	c.SetDefaults(map[string]interface{}{
@@ -118,6 +131,11 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		// check circuit
 		var reterr *flux.ServeError
 		fallback := func(c context.Context, err error) error {
+			listener := ctx.WebListener().ListenerId()
+			method, pattern, version := ctx.Exposed()
+			if version == "" {
+				version = "default"
+			}
 			// 返回两种类型Error：
 			// 1. 执行 next() 返回 *ServeError；
 			// 2. 熔断返回 hystrix.CircuitError;
@@ -126,8 +144,12 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			} else if cerr, ok := err.(hystrix.CircuitError); ok {
 				logger.Trace(c.Value(hystrixRequestId).(string)).Infow("HYSTRIX:CIRCUITED/DOWNGRADE",
 					"is-circuited", ok, "service-name", serviceName, "circuit-error", cerr)
+				// circuited: (Listener, Method, Pattern, Version)
+				r.metrics.CircuitedError.WithLabelValues(listener, method, pattern, version)
 				reterr = r.HystrixConfig.ServiceDowngradeFunc(ctx, next, cerr)
 			} else if errors.Is(err, context.Canceled) {
+				// canceled: (Listener, Method, Pattern, Version)
+				r.metrics.CanceledAccess.WithLabelValues(listener, method, pattern, version)
 				reterr = &flux.ServeError{
 					StatusCode: flux.StatusOK,
 					ErrorCode:  flux.ErrorCodeRequestCanceled,
@@ -135,6 +157,8 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 					CauseError: err,
 				}
 			} else {
+				// unknown: (Listener, Method, Pattern, Version)
+				r.metrics.UnknownError.WithLabelValues(listener, method, pattern, version)
 				reterr = &flux.ServeError{
 					StatusCode: flux.StatusServerError,
 					ErrorCode:  flux.ErrorCodeGatewayInternal,
@@ -149,6 +173,27 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		}
 		_ = hystrix.DoC(context.WithValue(ctx.Context(), hystrixRequestId, ctx.RequestId()), serviceName, next, fallback)
 		return reterr
+	}
+}
+
+// 熔断统计
+func newCircuitMetrics() *CircuitMetrics {
+	// rer: https://prometheus.io/docs/concepts/data_model/
+	// must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
+	const namespace, subsystem = "fluxgo", "circuit"
+	return &CircuitMetrics{
+		CanceledAccess: promauto.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "canceled_count",
+			Help:      "Number of endpoint access, canceled by client",
+		}, []string{"Listener", "Method", "Pattern", "Version"}),
+		CircuitedError: promauto.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "circuited_count",
+			Help:      "Number of endpoint access, circuited by server errors",
+		}, []string{"Listener", "Method", "Pattern", "Version"}),
 	}
 }
 
