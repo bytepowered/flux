@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 import (
@@ -63,6 +64,9 @@ func (f *JWTFilter) OnInit(config *flux.Configuration) error {
 
 func (f *JWTFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 	return func(ctx flux.Context) *flux.ServeError {
+		defer func() {
+			ctx.AddMetric(f.FilterId(), time.Since(ctx.StartAt()))
+		}()
 		tokenStr, err := f.Config.TokenExtractor(ctx)
 		// 启用JWT特性，但没有传Token参数
 		if tokenStr == "" || err == request.ErrNoTokenInRequest {

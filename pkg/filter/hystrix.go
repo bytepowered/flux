@@ -110,13 +110,12 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 		if r.HystrixConfig.ServiceSkipFunc(ctx) {
 			return next(ctx)
 		}
+		defer func() {
+			ctx.AddMetric(r.FilterId(), time.Since(ctx.StartAt()))
+		}()
 		serviceName := r.HystrixConfig.ServiceNameFunc(ctx)
 		r.initCommand(serviceName, ctx)
 		// check circuit
-		work := func(_ context.Context) error {
-			ctx.AddMetric(r.FilterId(), time.Since(ctx.StartAt()))
-			return next(ctx)
-		}
 		var reterr *flux.ServeError
 		fallback := func(c context.Context, err error) error {
 			// 返回两种类型Error：
@@ -145,7 +144,10 @@ func (r *HystrixFilter) DoFilter(next flux.FilterInvoker) flux.FilterInvoker {
 			}
 			return nil // fallback dont return errors
 		}
-		_ = hystrix.DoC(context.WithValue(ctx.Context(), hystrixRequestId, ctx.RequestId()), serviceName, work, fallback)
+		next := func(_ context.Context) error {
+			return next(ctx)
+		}
+		_ = hystrix.DoC(context.WithValue(ctx.Context(), hystrixRequestId, ctx.RequestId()), serviceName, next, fallback)
 		return reterr
 	}
 }
