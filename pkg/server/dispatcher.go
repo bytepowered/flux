@@ -160,15 +160,18 @@ func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.F
 }
 
 func (d Dispatcher) metric(ctx flux.Context, err *flux.ServeError) *flux.ServeError {
-	// Access Counter: ListenerId, Method, Pattern
+	// Access Counter: (ListenerId, Method, Pattern, Version)
 	// See: pkg/server/metric.go:46
-	pattern, method := ctx.Exposed()
+	pattern, method, version := ctx.Exposed()
+	if version == "" {
+		version = "default"
+	}
 	listener := ctx.WebListener().ListenerId()
-	d.metrics.EndpointAccess.WithLabelValues(listener, method, pattern).Inc()
+	d.metrics.EndpointAccess.WithLabelValues(listener, method, pattern, version).Inc()
 	if flux.NotNil(err) {
-		// Error Counter: ListenerId, Method, Pattern ErrorCode
+		// Error Counter: (ListenerId, Method, Pattern, Version, ErrorCode)
 		// See: pkg/server/metric.go:46
-		d.metrics.EndpointError.WithLabelValues(listener, method, pattern, cast.ToString(err.ErrorCode)).Inc()
+		d.metrics.EndpointError.WithLabelValues(listener, method, pattern, version, cast.ToString(err.ErrorCode)).Inc()
 	}
 	return err
 }

@@ -48,13 +48,13 @@ func NewMetrics() *Metrics {
 			Subsystem: subsystem,
 			Name:      "access_count",
 			Help:      "Number of endpoint access",
-		}, []string{"Listener", "Method", "Pattern"}),
+		}, []string{"Listener", "Method", "Pattern", "Version"}),
 		EndpointError: promauto.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "error_count",
 			Help:      "Number of endpoint access errors",
-		}, []string{"Listener", "Method", "Pattern", "ErrorCode"}),
+		}, []string{"Listener", "Method", "Pattern", "Version", "ErrorCode"}),
 		RouteDuration: promauto.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
