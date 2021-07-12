@@ -181,19 +181,26 @@ func newCircuitMetrics() *CircuitMetrics {
 	// rer: https://prometheus.io/docs/concepts/data_model/
 	// must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 	const namespace, subsystem = "fluxgo", "circuit"
+	var labels = []string{"Listener", "Method", "Pattern", "Version"}
 	return &CircuitMetrics{
 		CanceledAccess: promauto.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "canceled_count",
 			Help:      "Number of endpoint access, canceled by client",
-		}, []string{"Listener", "Method", "Pattern", "Version"}),
+		}, labels),
 		CircuitedError: promauto.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "circuited_count",
 			Help:      "Number of endpoint access, circuited by server errors",
-		}, []string{"Listener", "Method", "Pattern", "Version"}),
+		}, labels),
+		UnknownError: promauto.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "unerror_count",
+			Help:      "Number of endpoint access, unknown errors",
+		}, labels),
 	}
 }
 
