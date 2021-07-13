@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"reflect"
 	"regexp"
@@ -266,7 +267,19 @@ func (b *RpcTransporter) DoInvoke(ctx flux.Context, service flux.ServiceSpec) (*
 	}
 	// Invoke
 	if b.trace {
-		trace.Infow("TRANSPORTER:DUBBO:INVOKE/args", "arg-values", values, "arg-types", types, "attachments", attachments)
+		args, _ := _json.MarshalToString(map[string]interface{}{
+			"invarg.names": strings.Join(func() []string {
+				names := make([]string, len(service.Arguments))
+				for i := 0; i < len(service.Arguments); i++ {
+					names[i] = service.Arguments[i].Name
+				}
+				return names
+			}(), ","),
+			"invarg.types":  types,
+			"invarg.values": values,
+			"attachments":   attachments,
+		})
+		trace.Infow("TRANSPORTER:DUBBO:INVOKE/args", "args", args)
 	}
 	invret, invatt, inverr := b.invoke0(ctx, service, types, values, attachments)
 	if b.trace && inverr == nil && invret != nil {

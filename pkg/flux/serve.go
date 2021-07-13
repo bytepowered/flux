@@ -53,9 +53,16 @@ func (e *ServeError) MergeHeader(header http.Header) *ServeError {
 type (
 	// ServeResponseWriter 用于解析和序列化响应数据结构的接口，并将序列化后的数据写入Http响应流。
 	ServeResponseWriter interface {
-		// Write 写入正常响应数据
+		// Write 当内部处理链完成并返回数据时，将执行此函数，通过 Context 写入业务响应数据到Http响应流。
+		// Write 是请求最终函数，在 Write 函数的具体实现中：
+		// 1. 应当包含对 ServeResponse 的序列化操作；
+		// 2. 应当自包含向Http响应流处理过程中发生异常的处理；
 		Write(ctx Context, response *ServeResponse)
-		// WriteError 写入发生错误响应数据
+
+		// WriteError 当内部处理链在任何阶段发生错误并返回时，将执行此函数，通过 Context 写入错误响应数据到Http响应流。
+		// WriteError 是请求最终函数，在 WriteError 函数的具体实现中：
+		// 1. 应当包含对 ServeError 的序列化操作；
+		// 2. 应当自包含向Http响应流处理过程中发生异常的处理；
 		WriteError(ctx Context, err *ServeError)
 	}
 	// ServeResponse 表示后端服务(Dubbo/Http/gRPC/Echo)返回响应数据结构，
