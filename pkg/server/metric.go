@@ -30,12 +30,16 @@ var (
 )
 
 type Metrics struct {
-	// 请求访问次数统计
-	EndpointAccess *prometheus.CounterVec
-	// 请求错误次数统计
-	EndpointError *prometheus.CounterVec
-	// 请求耗时次数统计
-	RouteDuration *prometheus.HistogramVec
+	// 各组件请求耗时次数统计
+	routeDuration *prometheus.HistogramVec
+}
+
+func (m *Metrics) NewRouteVec(kind, typeId string) prometheus.Observer {
+	return m.routeDuration.WithLabelValues(kind, typeId)
+}
+
+func (m *Metrics) NewRouteVecTimer(kind, typeId string) *prometheus.Timer {
+	return prometheus.NewTimer(m.NewRouteVec(kind, typeId))
 }
 
 func NewMetrics() *Metrics {
@@ -43,24 +47,12 @@ func NewMetrics() *Metrics {
 	// must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
 	const namespace, subsystem = "fluxgo", "runtime"
 	return &Metrics{
-		EndpointAccess: promauto.NewCounterVec(prometheus.CounterOpts{
+		routeDuration: promauto.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "access_count",
-			Help:      "Number of endpoint access",
-		}, []string{"Listener", "Method", "Pattern", "Version"}),
-		EndpointError: promauto.NewCounterVec(prometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			Name:      "error_count",
-			Help:      "Number of endpoint access errors",
-		}, []string{"Listener", "Method", "Pattern", "Version", "ErrorCode"}),
-		RouteDuration: promauto.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			Name:      "route_duration",
+			Name:      "duration",
 			Help:      "Spend time by processing a endpoint",
 			Buckets:   defaultMetricBuckets,
-		}, []string{"ComponentType", "TypeId"}),
+		}, []string{"ComponentKind", "TypeId"}),
 	}
 }

@@ -9,8 +9,6 @@ import (
 
 import (
 	"github.com/jinzhu/copier"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/spf13/cast"
 )
 
 import (
@@ -144,11 +142,10 @@ func (d *Dispatcher) dispatch(ctx flux.Context) *flux.ServeError {
 		if perr := d.handlePlugins(ctx); perr != nil {
 			return perr
 		}
-		return d.doTransportWrite(ctx)
+		return d.doTransport(ctx)
 	}
-	chain := d.makeFilterChain(next, filters)(ctx)
 	// fin: transport and write data (response,error)
-	if ferr := d.metricErrors(ctx, chain); ferr != nil {
+	if ferr := d.makeFilterChain(next, filters)(ctx); ferr != nil {
 		d.responseWriter.WriteError(ctx, ferr)
 	}
 	return nil // always return nil
@@ -159,23 +156,6 @@ func (d *Dispatcher) makeFilterChain(next flux.FilterInvoker, filters []flux.Fil
 		next = filters[i].DoFilter(next)
 	}
 	return next
-}
-
-func (d Dispatcher) metricErrors(ctx flux.Context, err *flux.ServeError) *flux.ServeError {
-	// Access Counter: (ListenerId, Method, Pattern, Version)
-	// See: pkg/server/metric.go:46
-	pattern, method, version := ctx.Exposed()
-	if version == "" {
-		version = "default"
-	}
-	listener := ctx.WebListener().ListenerId()
-	d.metrics.EndpointAccess.WithLabelValues(listener, method, pattern, version).Inc()
-	if flux.NotNil(err) {
-		// Error Counter: (ListenerId, Method, Pattern, Version, ErrorCode)
-		// See: pkg/server/metric.go:46
-		d.metrics.EndpointError.WithLabelValues(listener, method, pattern, version, cast.ToString(err.ErrorCode)).Inc()
-	}
-	return err
 }
 
 func (d *Dispatcher) lookup(webex flux.WebContext, server flux.WebListener, endpoints *flux.MVCEndpoint) (*flux.EndpointSpec, bool) {
@@ -196,7 +176,10 @@ func (d *Dispatcher) handlePlugins(ctx flux.Context) *flux.ServeError {
 		ctx.AddMetric("plugins", time.Since(ctx.StartAt()))
 	}()
 	for _, plugin := range d.selectPlugins(ctx) {
-		if pherr := plugin.DoHandle(ctx); pherr != nil {
+		timer := d.metrics.NewRouteVecTimer("Plugin", plugin.PluginId())
+		pherr := plugin.DoHandle(ctx)
+		timer.ObserveDuration()
+		if pherr != nil {
 			return pherr
 		}
 		ctx.AddMetric(plugin.PluginId(), time.Since(ctx.StartAt()))
@@ -204,7 +187,7 @@ func (d *Dispatcher) handlePlugins(ctx flux.Context) *flux.ServeError {
 	return nil
 }
 
-func (d *Dispatcher) doTransportWrite(ctx flux.Context) *flux.ServeError {
+func (d *Dispatcher) doTransport(ctx flux.Context) *flux.ServeError {
 	select {
 	case <-ctx.Context().Done():
 		return &flux.ServeError{StatusCode: flux.StatusBadRequest,
@@ -229,7 +212,7 @@ func (d *Dispatcher) doTransportWrite(ctx flux.Context) *flux.ServeError {
 	for _, hook := range d.onBeforeTransportHooks {
 		hook(ctx, transporter)
 	}
-	timer := prometheus.NewTimer(d.metrics.RouteDuration.WithLabelValues("Transporter", proto))
+	timer := d.metrics.NewRouteVecTimer("Transporter", proto)
 	invret, inverr := transporter.DoInvoke(ctx, ctx.Service())
 	timer.ObserveDuration()
 	select {
