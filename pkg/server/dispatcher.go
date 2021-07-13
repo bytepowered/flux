@@ -144,22 +144,24 @@ func (d *Dispatcher) dispatch(ctx flux.Context) *flux.ServeError {
 		if perr := d.handlePlugins(ctx); perr != nil {
 			return perr
 		}
-		return d.doTransport(ctx)
+		return d.doTransportWrite(ctx)
 	}
-	if wkerr := d.metric(ctx, d.walk(next, filters)(ctx)); wkerr != nil {
-		d.responseWriter.WriteError(ctx, wkerr)
+	chain := d.makeFilterChain(next, filters)(ctx)
+	// fin: transport and write data (response,error)
+	if ferr := d.metricErrors(ctx, chain); ferr != nil {
+		d.responseWriter.WriteError(ctx, ferr)
 	}
 	return nil // always return nil
 }
 
-func (d *Dispatcher) walk(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
+func (d *Dispatcher) makeFilterChain(next flux.FilterInvoker, filters []flux.Filter) flux.FilterInvoker {
 	for i := len(filters) - 1; i >= 0; i-- {
 		next = filters[i].DoFilter(next)
 	}
 	return next
 }
 
-func (d Dispatcher) metric(ctx flux.Context, err *flux.ServeError) *flux.ServeError {
+func (d Dispatcher) metricErrors(ctx flux.Context, err *flux.ServeError) *flux.ServeError {
 	// Access Counter: (ListenerId, Method, Pattern, Version)
 	// See: pkg/server/metric.go:46
 	pattern, method, version := ctx.Exposed()
@@ -202,7 +204,7 @@ func (d *Dispatcher) handlePlugins(ctx flux.Context) *flux.ServeError {
 	return nil
 }
 
-func (d *Dispatcher) doTransport(ctx flux.Context) *flux.ServeError {
+func (d *Dispatcher) doTransportWrite(ctx flux.Context) *flux.ServeError {
 	select {
 	case <-ctx.Context().Done():
 		return &flux.ServeError{StatusCode: flux.StatusBadRequest,
