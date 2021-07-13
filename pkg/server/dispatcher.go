@@ -68,7 +68,7 @@ func WithOnContextHooks(hooks ...flux.OnContextHookFunc) DispatcherOptionFunc {
 func newDispatcher(listener flux.WebListener) *Dispatcher {
 	return &Dispatcher{
 		WebListener:            listener,
-		metrics:                NewMetrics(),
+		metrics:                NewMetricsWith(listener.ListenerId()),
 		pooled:                 &sync.Pool{New: func() interface{} { return internal.NewContext() }},
 		versionLocator:         DefaultRequestVersionLocateFunc,
 		responseWriter:         new(internal.JSONServeResponseWriter),

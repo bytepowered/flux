@@ -42,14 +42,16 @@ func (m *Metrics) NewRouteVecTimer(kind, typeId string) *prometheus.Timer {
 	return prometheus.NewTimer(m.NewRouteVec(kind, typeId))
 }
 
-func NewMetrics() *Metrics {
+// NewMetricsWith 创建绑定ListenerId的统计指标。
+// 注意：此统计指标由WebListener初始化时创建和绑定
+func NewMetricsWith(listener string) *Metrics {
 	// rer: https://prometheus.io/docs/concepts/data_model/
 	// must match the regex [a-zA-Z_:][a-zA-Z0-9_:]*.
-	const namespace, subsystem = "fluxgo", "runtime"
+	const namespace = "fluxgo"
 	return &Metrics{
 		routeDuration: promauto.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: namespace,
-			Subsystem: subsystem,
+			Subsystem: listener,
 			Name:      "duration",
 			Help:      "Spend time by processing a endpoint",
 			Buckets:   defaultMetricBuckets,
