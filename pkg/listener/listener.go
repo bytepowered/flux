@@ -162,8 +162,7 @@ func (s *AdaptWebListener) SetBodyResolver(r flux.WebBodyResolver) {
 
 func (s *AdaptWebListener) SetNotfoundHandler(f flux.WebHandlerFunc) {
 	flux.AssertNotNil(f, "<notfound-handler> must not nil, listener-id: "+s.id)
-	s.mustNotStarted()
-	echo.NotFoundHandler = AdaptWebHandler(f).AdaptFunc
+	s.mustNotStarted().server.NotFoundHandler = AdaptWebHandler(f).AdaptFunc
 }
 
 func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandlerFunc) {
@@ -180,7 +179,7 @@ func (s *AdaptWebListener) SetErrorHandler(handler flux.WebErrorHandlerFunc) {
 }
 
 func (s *AdaptWebListener) HandleNotfound(webex flux.WebContext) error {
-	return echo.NotFoundHandler(webex.(*AdaptWebContext).ShadowContext())
+	return s.server.NotFoundHandler(webex.(*AdaptWebContext).ShadowContext())
 }
 
 func (s *AdaptWebListener) HandleError(webex flux.WebContext, err error) {
